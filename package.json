@@ -1,0 +1,28 @@
+{
+  "name": "hathor-wallet-service",
+  "version": "0.0.1",
+  "description": "",
+  "scripts": {
+    "test": "serverless-bundle test --runInBand",
+    "offline": "./node_modules/.bin/sls offline --printOutput --noPrependStageInUrl"
+  },
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/HathorNetwork/hathor-wallet-service.git"
+  },
+  "devDependencies": {
+    "serverless": "^1.73.1",
+    "serverless-bundle": "^1.7.0",
+    "serverless-dotenv-plugin": "^2.1.1",
+    "serverless-offline": "^6.3.2",
+    "ws": "^7.3.0"
+  },
+  "dependencies": {
+    "aws-sdk": "^2.690.0",
+    "bitcore-lib": "^8.20.3",
+    "mysql": "^2.18.1",
+    "serverless-mysql": "^1.5.4"
+  }
+}

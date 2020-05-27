@@ -1,0 +1,63 @@
+service: hathor-wallet-service
+
+# Create an optimized package for our functions 
+package:
+  individually: true
+
+plugins:
+  - serverless-bundle # Package our functions with Webpack
+  - serverless-offline
+  - serverless-dotenv-plugin # Load .env as environment variables
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  stage: ${env:STAGE}
+  region: us-east-1
+  environment:
+    SERVICE_NAME: ${self:service}
+    AWS_REGION: ${self:provider.region}
+    DB_ENDPOINT: ${env:DB_ENDPOINT, 'rds-endpoint-TODO'}
+    DB_NAME: ${self:service}-${env:STAGE}
+    DB_USER: ${env:STAGE}-user
+
+functions:
+  onNewTxEvent:
+    handler: txProcessor.onNewTxEvent
+  loadWalletAsync:
+    handler: api/wallet.loadWallet
+  loadWalletApi:
+    handler: api/wallet.load
+    events:
+      - http:
+          path: wallet
+          method: post
+          cors: true
+  getWalletStatusApi:
+    handler: api/wallet.getStatus
+    events:
+      - http:
+          path: wallet
+          method: get
+          cors: true
+  getAddressesApi:
+    handler: api/addresses.get
+    events:
+      - http:
+          path: addresses
+          method: get
+          cors: true
+  getBalanceApi:
+    handler: api/balance.get
+    events:
+      - http:
+          path: balance
+          method: get
+          cors: true
+  getTxHistoryApi:
+    handler: api/txhistory.get
+    events:
+      - http:
+          path: txhistory
+          method: get
+          cors: true
