@@ -1,0 +1,11 @@
+// Full node URL to listen to the ws messages
+export const SERVER = '';
+
+// AWS access key to add the messages to the SQS
+export const AWS_ACCESS_KEY = '';
+
+// AWS secret key to add the messages to the SQS
+export const AWS_SECRET_KEY = '';
+
+// URL of the SQS queue
+export const QUEUE_URL = '';
