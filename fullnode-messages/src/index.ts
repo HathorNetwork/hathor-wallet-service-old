@@ -6,12 +6,12 @@
  */
 
 import WebSocket from 'ws';
-import { SERVER, AWS_ACCESS_KEY, AWS_SECRET_KEY, QUEUE_URL } from './config';
+import { SERVER, AWS_ACCESS_KEY, AWS_SECRET_KEY, AWS_REGION, QUEUE_URL } from './config';
 import { EventEmitter } from 'events';
 import AWS from 'aws-sdk';
 
-// we need to set a region even if we don't make any calls
-AWS.config.update({ region: 'us-east-1' });
+// Setting AWS region
+AWS.config.update({ region: AWS_REGION });
 
 const sqs = new AWS.SQS({
   apiVersion: '2012-11-05',
@@ -81,14 +81,14 @@ class WalletService extends EventEmitter {
     });
   }
 
-  onOpen(): void {
+  private onOpen(): void {
     this.subscribeMessages()
     this.heartbeat = setInterval(() => {
       this.sendPing();
     }, this.heartbeatInterval);
   }
 
-  onClose(): void {
+  private onClose(): void {
     if (this.ws) {
       this.ws.close();
       this.ws = null;
@@ -101,10 +101,11 @@ class WalletService extends EventEmitter {
     if (this.heartbeat) {
       clearInterval(this.heartbeat);
       this.heartbeat = null;
+      this.latestPingDate = null;
     }
   }
 
-  sendPing(): void {
+  private sendPing(): void {
     if (this.latestPingDate) {
       // Skipping sendPing. Still waiting for pong...
       return;
@@ -116,7 +117,7 @@ class WalletService extends EventEmitter {
     this.sendMessage(msg);
   }
 
-  onPong(): void {
+  private onPong(): void {
     this.latestPingDate = null;
 
     if (this.timeoutTimer) {
@@ -125,29 +126,30 @@ class WalletService extends EventEmitter {
     }
   }
 
-  setState(state: number): void {
+  private setState(state: number): void {
     this.state = state;
     this.emit('state', state);
     console.log('State updated to', state);
   }
 
-  handleMessage(data: wsDataType): void {
+  private handleMessage(data: wsDataType): void {
+    console.log('Message', data.type)
     switch(data.type) {
       case 'subscribed':
         this.onSubscribed(data);
-      break;
+        break;
       case 'pong':
         this.onPong();
-      break;
+        break;
       case 'network:new_tx_accepted':
         this.onNewTx(data);
-      break;
+        break;
       default:
         break;
     }
   }
 
-  onNewTx(data: wsDataType): void {
+  private onNewTx(data: wsDataType): void {
     const deduplicationId = `new-tx-${data.tx_id as string}`;
     const params = {
       MessageBody: JSON.stringify(data),
@@ -162,7 +164,7 @@ class WalletService extends EventEmitter {
     });
   }
 
-  onSubscribed(data: wsDataType): void {
+  private onSubscribed(data: wsDataType): void {
     if (data.message in this.messagesToSubscribe && data.success) {
       this.subscribedMessages.add(data.message);
     }
@@ -173,14 +175,14 @@ class WalletService extends EventEmitter {
     }
   }
 
-  subscribeMessages(): void {
+  private subscribeMessages(): void {
     for (const messageToSubscribe of this.messagesToSubscribe) {
       const msg = JSON.stringify({'type': 'subscribe', 'message': messageToSubscribe});
       this.sendMessage(msg);
     }
   }
 
-  sendMessage(message: string): void {
+  private sendMessage(message: string): void {
     if (this.ws) {
       // XXX Should we check if ws is ready to send messages?
       this.ws.send(message);

@@ -7,5 +7,8 @@ export const AWS_ACCESS_KEY = '';
 // AWS secret key to add the messages to the SQS
 export const AWS_SECRET_KEY = '';
 
+// AWS region where the SQS is
+export const AWS_REGION = '';
+
 // URL of the SQS queue
 export const QUEUE_URL = '';
