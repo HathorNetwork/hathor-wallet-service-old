@@ -7,8 +7,11 @@ import {
   addUtxos,
   generateAddresses,
   getAddressWalletInfo,
+  getTxLockedInputs,
   getUtxosLockedAtHeight,
+  maybeUpdateLatestHeight,
   removeUtxos,
+  unlockUtxos as dbUnlockUtxos,
   updateAddressTablesWithTx,
   updateAddressLockedBalance,
   updateExistingAddresses,
@@ -40,6 +43,7 @@ const mysql = getDbConnection();
  * @param event - The SQS event
  */
 export const onNewTxEvent = async (event: SQSEvent): Promise<APIGatewayProxyResult> => {
+  // TODO not sure if it should be 'now' or max(now, tx.timestamp), as we allow some flexibility for timestamps
   const now = getUnixTimestamp();
   const blockRewardLock = parseInt(process.env.BLOCK_REWARD_LOCK, 10);
   for (const evt of event.Records) {
@@ -78,22 +82,32 @@ const addNewTx = async (tx: Transaction, now: number, blockRewardLock: number) =
   if (tx.version === 0 || tx.version === 3) {
     // if (tx.isBlock())
 
-    // unlock older block
+    // unlock older blocks
     const utxos = await getUtxosLockedAtHeight(mysql, now, tx.height);
-    await unlockUtxos(mysql, utxos, now);
+    await unlockUtxos(mysql, utxos, false);
 
     // set heightlock
     heightlock = tx.height + blockRewardLock;
+
+    // update height on database
+    await maybeUpdateLatestHeight(mysql, tx.height);
   }
 
+  // check if any of the inputs are still marked as locked and update tables accordingly.
+  // See remarks on getTxLockedInputs for more explanation. It's important to perform this
+  // before updating the balances
+  const lockedInputs = await getTxLockedInputs(mysql, tx.inputs);
+  await unlockUtxos(mysql, lockedInputs, true);
+
   // add outputs to utxo table
+  markLockedOutputs(tx.outputs, now, heightlock !== null);
   await addUtxos(mysql, txId, tx.outputs, heightlock);
 
   // remove inputs from utxo table
   await removeUtxos(mysql, tx.inputs);
 
   // get balance of each token for each address
-  const addressBalanceMap: StringMap<TokenBalanceMap> = getAddressBalanceMap(tx.inputs, tx.outputs, now, heightlock !== null);
+  const addressBalanceMap: StringMap<TokenBalanceMap> = getAddressBalanceMap(tx.inputs, tx.outputs);
 
   // update address tables (address, address_balance, address_tx_history)
   await updateAddressTablesWithTx(mysql, txId, tx.timestamp, addressBalanceMap);
@@ -119,21 +133,33 @@ const addNewTx = async (tx: Transaction, now: number, blockRewardLock: number) =
   // update wallet_balance and wallet_tx_history tables
   const walletBalanceMap: StringMap<TokenBalanceMap> = getWalletBalanceMap(addressWalletMap, addressBalanceMap);
   await updateWalletTablesWithTx(mysql, txId, tx.timestamp, walletBalanceMap);
+};
 
-  // TODO schedule unlock lambda if there's a timelock
+/**
+ * Mark a transaction's outputs that are locked. Modifies the outputs in place.
+ *
+ * @remarks
+ * The timestamp is used to determine if each output is locked by time. On the other hand, `hasHeightLock`
+ * applies to all outputs.
+ *
+ * The idea is that `hasHeightLock = true` should be used for blocks, whose outputs are locked by
+ * height. Timelocks are handled by the `now` parameter.
+ *
+ * @param outputs - The transaction outputs
+ * @param now - Current timestamp
+ * @param hasHeightLock - Flag that tells if outputs are locked by height
+ */
+export const markLockedOutputs = (outputs: TxOutput[], now: number, hasHeightLock = false): void => {
+  for (const output of outputs) {
+    output.locked = false;
+    if (hasHeightLock || output.decoded.timelock > now) {
+      output.locked = true;
+    }
+  }
 };
 
 /**
  * Get the map of token balances for each address in the transaction inputs and outputs.
- *
- * @remarks
- * Besides the inputs and outputs, it also expects a timestamp and outputsLocked flag. The timestamp
- * is used to determine if the outputs are locked or not. The same for outputsLocked, but as it's a
- * boolean, `outputsLocked = true` means (all) outputs are locked, no matter the timestamp. If it's
- * false, it depends on the timestamp.
- *
- * The idea is that `outputsLocked = true` should be used for blocks, whose outputs are locked by
- * height. Timelocks are handled by the `now` parameter.
  *
  * @example
  * Return map has this format:
@@ -146,15 +172,11 @@ const addNewTx = async (tx: Transaction, now: number, blockRewardLock: number) =
  *
  * @param inputs - The transaction inputs
  * @param outputs - The transaction outputs
- * @param now - Current timestamp
- * @param outputsLocked - Flag that tells if outputs are all locked
  * @returns A map of addresses and its token balances
  */
 export const getAddressBalanceMap = (
   inputs: TxInput[],
   outputs: TxOutput[],
-  now: number,
-  outputsLocked = false,
 ): StringMap<TokenBalanceMap> => {
   const addressBalanceMap = {};
   // TODO handle authority
@@ -163,7 +185,7 @@ export const getAddressBalanceMap = (
     const address = output.decoded.address;
 
     // get the TokenBalanceMap from this output
-    const tokenBalanceMap = TokenBalanceMap.fromTxOutput(output, now, outputsLocked);
+    const tokenBalanceMap = TokenBalanceMap.fromTxOutput(output);
     // merge it with existing TokenBalanceMap for the address
     addressBalanceMap[address] = TokenBalanceMap.merge(addressBalanceMap[address], tokenBalanceMap);
   }
@@ -220,16 +242,11 @@ export const getWalletBalanceMap = (
 /**
  * Update the unlocked/locked balances for addresses and wallets connected to the given UTXOs.
  *
- * @remarks
- * UTXOs become unlocked by block height, but might still be locked by timelock (although very unusual).
- * The UTXOs passed to this function should be already unlocked by height. This function will determine
- * if they're still locked by time.
- *
  * @param _mysql - Database connection
  * @param utxos - List of UTXOs that are unlocked by height
- * @param now - current timestamp
+ * @param updateTimelocks - If this update is triggered by a timelock expiring, update the next lock expiration
  */
-export const unlockUtxos = async (_mysql: ServerlessMysql, utxos: Utxo[], now: number): Promise<void> => {
+export const unlockUtxos = async (_mysql: ServerlessMysql, utxos: Utxo[], updateTimelocks: boolean): Promise<void> => {
   if (utxos.length === 0) return;
 
   const outputs: TxOutput[] = utxos.map((utxo) => {
@@ -243,21 +260,24 @@ export const unlockUtxos = async (_mysql: ServerlessMysql, utxos: Utxo[], now: n
       value: utxo.value,
       token: utxo.tokenId,
       decoded,
+      locked: false,
       // we don't care about spent_by, token_data and script
       spent_by: null,
       script: '',
     };
   });
 
-  // getAddressBalanceMap takes care of checking the timelock
-  const addressBalanceMap: StringMap<TokenBalanceMap> = getAddressBalanceMap([], outputs, now, false);
+  // mark as unlocked in database (this just changes the 'locked' flag)
+  await dbUnlockUtxos(_mysql, utxos);
+
+  const addressBalanceMap: StringMap<TokenBalanceMap> = getAddressBalanceMap([], outputs);
   // update address_balance table
-  await updateAddressLockedBalance(_mysql, addressBalanceMap);
+  await updateAddressLockedBalance(_mysql, addressBalanceMap, updateTimelocks);
 
   // check if addresses belong to any started wallet
   const addressWalletMap: StringMap<Wallet> = await getAddressWalletInfo(_mysql, Object.keys(addressBalanceMap));
 
   // update wallet_balance table
   const walletBalanceMap: StringMap<TokenBalanceMap> = getWalletBalanceMap(addressWalletMap, addressBalanceMap);
-  await updateWalletLockedBalance(_mysql, walletBalanceMap);
+  await updateWalletLockedBalance(_mysql, walletBalanceMap, updateTimelocks);
 };

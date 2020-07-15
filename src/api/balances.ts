@@ -1,12 +1,16 @@
 import { APIGatewayProxyHandler } from 'aws-lambda';
+import { ServerlessMysql } from 'serverless-mysql';
 import 'source-map-support/register';
 
 import { ApiError } from '@src/api/errors';
 import {
+  getLatestHeight,
   getWallet,
   getWalletBalances,
+  getWalletUnlockedUtxos,
 } from '@src/db';
-import { closeDbConnection, getDbConnection } from '@src/utils';
+import { unlockUtxos } from '@src/txProcessor';
+import { closeDbConnection, getDbConnection, getUnixTimestamp } from '@src/utils';
 
 const mysql = getDbConnection();
 
@@ -43,7 +47,21 @@ export const get: APIGatewayProxyHandler = async (event) => {
     // TODO validate tokenId
   }
 
-  const balances = await getWalletBalances(mysql, walletId, tokenId);
+  let balances = await getWalletBalances(mysql, walletId, tokenId);
+
+  // if any of the balances' timelock has expired, update the tables before returning
+  const now = getUnixTimestamp();
+  const refreshBalances = balances.some((tb) => {
+    if (tb.balance.lockExpires && tb.balance.lockExpires <= now) {
+      return true;
+    }
+    return false;
+  });
+
+  if (refreshBalances) {
+    await updateBalances(mysql, walletId, now);
+    balances = await getWalletBalances(mysql, walletId, tokenId);
+  }
 
   await closeDbConnection(mysql);
 
@@ -51,4 +69,10 @@ export const get: APIGatewayProxyHandler = async (event) => {
     statusCode: 200,
     body: JSON.stringify({ success: true, balances }),
   };
+};
+
+const updateBalances = async (_mysql: ServerlessMysql, walletId: string, now: number) => {
+  const currentHeight = await getLatestHeight(_mysql);
+  const utxos = await getWalletUnlockedUtxos(_mysql, walletId, now, currentHeight);
+  await unlockUtxos(_mysql, utxos, true);
 };

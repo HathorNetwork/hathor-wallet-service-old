@@ -5,10 +5,12 @@ import { get as balancesGet } from '@src/api/balances';
 import { get as txHistoryGet } from '@src/api/txhistory';
 import { get as walletGet, load as walletLoad } from '@src/api/wallet';
 import { ApiError } from '@src/api/errors';
-import { closeDbConnection, getDbConnection, getWalletId } from '@src/utils';
+import { closeDbConnection, getDbConnection, getUnixTimestamp, getWalletId } from '@src/utils';
 import {
   XPUBKEY,
   addToAddressTable,
+  addToAddressBalanceTable,
+  addToUtxoTable,
   addToWalletBalanceTable,
   addToWalletTable,
   addToWalletTxHistoryTable,
@@ -98,8 +100,9 @@ test('GET /balances', async () => {
   expect(returnBody.balances).toHaveLength(0);
 
   // add 2 balances
-  await addToWalletBalanceTable(mysql, [['my-wallet', 'token1', 10, 0, 3]]);
-  await addToWalletBalanceTable(mysql, [['my-wallet', 'token2', 3, 2, 1]]);
+  const lockExpires = getUnixTimestamp() + 200;
+  await addToWalletBalanceTable(mysql, [['my-wallet', 'token1', 10, 0, null, 3]]);
+  await addToWalletBalanceTable(mysql, [['my-wallet', 'token2', 3, 2, lockExpires, 1]]);
 
   // get all balances
   event = makeGatewayEvent({ id: 'my-wallet' });
@@ -108,8 +111,8 @@ test('GET /balances', async () => {
   expect(result.statusCode).toBe(200);
   expect(returnBody.success).toBe(true);
   expect(returnBody.balances).toHaveLength(2);
-  expect(returnBody.balances).toContainEqual({ tokenId: 'token1', transactions: 3, balance: { unlocked: 10, locked: 0 } });
-  expect(returnBody.balances).toContainEqual({ tokenId: 'token2', transactions: 1, balance: { unlocked: 3, locked: 2 } });
+  expect(returnBody.balances).toContainEqual({ tokenId: 'token1', transactions: 3, balance: { unlocked: 10, locked: 0, lockExpires: null } });
+  expect(returnBody.balances).toContainEqual({ tokenId: 'token2', transactions: 1, balance: { unlocked: 3, locked: 2, lockExpires } });
 
   // get token1 balance
   event = makeGatewayEvent({ id: 'my-wallet', token_id: 'token1' });
@@ -118,7 +121,36 @@ test('GET /balances', async () => {
   expect(result.statusCode).toBe(200);
   expect(returnBody.success).toBe(true);
   expect(returnBody.balances).toHaveLength(1);
-  expect(returnBody.balances).toContainEqual({ tokenId: 'token1', transactions: 3, balance: { unlocked: 10, locked: 0 } });
+  expect(returnBody.balances).toContainEqual({ tokenId: 'token1', transactions: 3, balance: { unlocked: 10, locked: 0, lockExpires: null } });
+
+  // balance that needs to be refreshed
+  const lockExpires2 = getUnixTimestamp() - 200;
+  await addToAddressTable(mysql, [['addr', 0, 'my-wallet', 2]]);
+  await addToAddressBalanceTable(mysql, [['addr', 'token3', 5, 1, lockExpires2, 2]]);
+  await addToWalletBalanceTable(mysql, [['my-wallet', 'token3', 5, 1, lockExpires2, 2]]);
+  await addToUtxoTable(mysql, [['txId', 0, 'token3', 'addr', 1, lockExpires2, null, true]]);
+  event = makeGatewayEvent({ id: 'my-wallet', token_id: 'token3' });
+  result = await balancesGet(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(true);
+  expect(returnBody.balances).toHaveLength(1);
+  expect(returnBody.balances).toContainEqual({ tokenId: 'token3', transactions: 2, balance: { unlocked: 6, locked: 0, lockExpires: null } });
+
+  // balance that needs to be refreshed, but there's another locked utxo in the future
+  await addToAddressBalanceTable(mysql, [['addr', 'token4', 10, 5, lockExpires2, 3]]);
+  await addToWalletBalanceTable(mysql, [['my-wallet', 'token4', 10, 5, lockExpires2, 3]]);
+  await addToUtxoTable(mysql, [
+    ['txId2', 0, 'token4', 'addr', 3, lockExpires2, null, true],
+    ['txId3', 0, 'token4', 'addr', 2, lockExpires, null, true],
+  ]);
+  event = makeGatewayEvent({ id: 'my-wallet', token_id: 'token4' });
+  result = await balancesGet(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(true);
+  expect(returnBody.balances).toHaveLength(1);
+  expect(returnBody.balances).toContainEqual({ tokenId: 'token4', transactions: 3, balance: { unlocked: 13, locked: 2, lockExpires } });
 });
 
 test('GET /txhistory', async () => {
