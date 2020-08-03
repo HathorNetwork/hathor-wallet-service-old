@@ -404,7 +404,7 @@ export const updateWalletTablesWithTx = async (
                 timelock_expires = CASE WHEN timelock_expires IS NULL THEN VALUES(timelock_expires)
                                         WHEN VALUES(timelock_expires) IS NULL THEN timelock_expires
                                         ELSE LEAST(timelock_expires, VALUES(timelock_expires))
-                                   END`,
+                                   END,
                 unlocked_authorities = unlocked_authorities | VALUES(unlocked_authorities),
                 locked_authorities = locked_authorities | VALUES(locked_authorities)`,
         [entry, tokenBalance.unlockedAmount, tokenBalance.lockedAmount, walletId, token],
@@ -413,7 +413,17 @@ export const updateWalletTablesWithTx = async (
       // same logic here as in the updateAddressTablesWithTx function
       if (tokenBalance.unlockedAuthorities.hasNegativeValue()) {
         await mysql.query(
-          'UPDATE `wallet_balance` SET `unlocked_authorities` = (SELECT BIT_OR(`unlocked_authorities`) FROM `address_balance` WHERE `address` IN (SELECT `address` FROM `address` WHERE `wallet_id` = ?) AND `token_id` = ?) WHERE `wallet_id` = ? AND `token_id` = ?',
+          `UPDATE \`wallet_balance\`
+              SET \`unlocked_authorities\` = (
+                SELECT BIT_OR(\`unlocked_authorities\`)
+                  FROM \`address_balance\`
+                 WHERE \`address\` IN (
+                   SELECT \`address\`
+                     FROM \`address\`
+                    WHERE \`wallet_id\` = ?)
+                   AND \`token_id\` = ?)
+            WHERE \`wallet_id\` = ?
+              AND \`token_id\` = ?`,
           [walletId, token, walletId, token],
         );
       }
@@ -469,15 +479,14 @@ export const addUtxos = async (
         output.decoded.timelock,
         heightlock,
         output.locked,
-      ]
-    },
-  );
+      ];
+  }),
 
   await mysql.query(
     `INSERT INTO \`utxo\` (\`tx_id\`, \`index\`, \`token_id\`,
                            \`value\`, \`authorities\`, \`address\`,
                            \`timelock\`, \`heightlock\`, \`locked\`)
-          VALUES ?`,
+     VALUES ?`,
     [entries],
   );
 };
@@ -640,16 +649,16 @@ export const updateAddressTablesWithTx = async (
       // have this authority anymore, as it might have other authority outputs
       if (tokenBalance.unlockedAuthorities.hasNegativeValue()) {
         await mysql.query(
-          'UPDATE `address_balance`
-              SET `unlocked_authorities` = (
-                SELECT BIT_OR(`authorities`)
-                  FROM `utxo`
-                 WHERE `address` = ?
-                   AND `token_id` = ?
-                   AND `locked` = false
+          `UPDATE \`address_balance\`
+              SET \`unlocked_authorities\` = (
+                SELECT BIT_OR(\`authorities\`)
+                  FROM \`utxo\`
+                 WHERE \`address\` = ?
+                   AND \`token_id\` = ?
+                   AND \`locked\` = FALSE
               )
-            WHERE `address` = ?
-              AND `token_id` = ?',
+            WHERE \`address\` = ?
+              AND \`token_id\` = ?`,
           [address, token, address, token],
         );
       }
@@ -662,7 +671,10 @@ export const updateAddressTablesWithTx = async (
     }
   }
   await mysql.query(
-    'INSERT INTO `address_tx_history`(`address`, `tx_id`, `token_id`, `balance`, `timestamp`) VALUES ?',
+    `INSERT INTO \`address_tx_history\`(\`address\`, \`tx_id\`,
+                                        \`token_id\`, \`balance\`,
+                                        \`timestamp\`)
+     VALUES ?`,
     [entries],
   );
 };
@@ -688,17 +700,26 @@ export const updateAddressLockedBalance = async (
       await mysql.query(
         `UPDATE \`address_balance\`
             SET \`unlocked_balance\` = \`unlocked_balance\` + ?,
-                \`locked_balance\` = \`locked_balance\` - ?,
+                \`locked_balance\` = \`locked_balance\` - ?
                 \`unlocked_authorities\` = \`unlocked_authorities\` | ?
           WHERE \`address\` = ?
             AND \`token_id\` = ?`,
-        [tokenBalance.unlocked, tokenBalance.unlocked, address, token],
+        [tokenBalance.unlockedAmount, tokenBalance.unlockedAmount,
+          tokenBalance.unlockedAuthorities.toInteger(), address,token],
       );
 
       // if any authority has been unlocked, we have to refresh the locked authorities
       if (tokenBalance.unlockedAuthorities.toInteger() > 0) {
         await mysql.query(
-          'UPDATE `address_balance` SET `locked_authorities` = (SELECT BIT_OR(`authorities`) FROM `utxo` WHERE `address` = ? AND `token_id` = ? AND `locked` = true) WHERE `address` = ? AND `token_id` = ?',
+          `UPDATE \`address_balance\`
+              SET \`locked_authorities\` = (
+                SELECT BIT_OR(\`authorities\`)
+                  FROM \`utxo\`
+                 WHERE \`address\` = ?
+                   AND \`token_id\` = ?
+                   AND \`locked\` = TRUE)
+                 WHERE \`address\` = ?
+                   AND \`token_id\` = ?`,
           [address, token, address, token],
         );
       }
@@ -743,16 +764,27 @@ export const updateWalletLockedBalance = async (
       await mysql.query(
         `UPDATE \`wallet_balance\`
             SET \`unlocked_balance\` = \`unlocked_balance\` + ?,
-                \`locked_balance\` = \`locked_balance\` - ?
+                \`locked_balance\` = \`locked_balance\` - ?,
                 \`unlocked_authorities\` = \`unlocked_authorities\` | ?
           WHERE \`wallet_id\` = ? AND \`token_id\` = ?`,
-        [tokenBalance.unlockedAmount, tokenBalance.unlockedAmount, tokenBalance.unlockedAuthorities.toInteger(), walletId, token],
+        [tokenBalance.unlockedAmount, tokenBalance.unlockedAmount,
+          tokenBalance.unlockedAuthorities.toInteger(), walletId, token],
       );
 
       // if any authority has been unlocked, we have to refresh the locked authorities
       if (tokenBalance.unlockedAuthorities.toInteger() > 0) {
         await mysql.query(
-          'UPDATE `wallet_balance` SET `locked_authorities` = (SELECT BIT_OR(`locked_authorities`) FROM `address_balance` WHERE `address` IN (SELECT `address` FROM `address` WHERE `wallet_id` = ?) AND `token_id` = ?) WHERE `wallet_id` = ? AND `token_id` = ?',
+          `UPDATE \`wallet_balance\`
+              SET \`locked_authorities\` = (
+                SELECT BIT_OR(\`locked_authorities\`)
+                  FROM \`address_balance\`
+                 WHERE \`address\` IN (
+                   SELECT \`address\`
+                     FROM \`address\`
+                    WHERE \`wallet_id\` = ?)
+                    AND \`token_id\` = ?)
+            WHERE \`wallet_id\` = ?
+              AND \`token_id\` = ?`,
           [walletId, token, walletId, token],
         );
       }
@@ -770,8 +802,7 @@ export const updateWalletLockedBalance = async (
                         FROM \`address\`
                        WHERE \`wallet_id\` = ?)
                    AND \`token_id\` = ?)
-            WHERE wallet_id = ?
-              AND token_id = ?`,
+            WHERE \`wallet_id\` = ? AND \`token_id\` = ?`,
           [walletId, token, walletId, token],
         );
       }
@@ -817,8 +848,11 @@ export const getWalletAddresses = async (mysql: ServerlessMysql, walletId: strin
  * @returns A list of balances.
  */
 export const getWalletBalances = async (mysql: ServerlessMysql, walletId: string, tokenId: string = null): Promise<WalletTokenBalance[]> => {
-  const balances: WalletTokenBalance[] = [];
-  let subquery = 'SELECT * FROM `wallet_balance` WHERE `wallet_id` = ?';
+  const balances: TokenBalance[] = [];
+  let subquery = `
+    SELECT *
+      FROM \`wallet_balance\`
+     WHERE \`wallet_id\` = ?`;
 
   const params = [walletId];
   if (tokenId !== null) {
