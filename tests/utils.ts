@@ -30,7 +30,18 @@ export const ADDRESSES = [
 ];
 
 export const cleanDatabase = async (mysql: ServerlessMysql): Promise<void> => {
-  const TABLES = ['address', 'address_balance', 'address_tx_history', 'metadata', 'utxo', 'wallet', 'wallet_balance', 'wallet_tx_history'];
+  const TABLES = [
+    'address',
+    'address_balance',
+    'address_tx_history',
+    'metadata',
+    'token',
+    'utxo',
+    'wallet',
+    'wallet_balance',
+    'wallet_tx_history'
+  ];
+
   for (const table of TABLES) {
     await mysql.query(`DELETE FROM ${table}`);
   }
@@ -39,18 +50,16 @@ export const cleanDatabase = async (mysql: ServerlessMysql): Promise<void> => {
 export const createOutput = (value: number, address: string, token = '00', timelock: number = null, locked = false, tokenData = 0): TxOutput => (
   {
     value,
-    token_data: tokenData,
-    script: 'dqkUH70YjKeoKdFwMX2TOYvGVbXOrKaIrA==',
+    token,
+    locked,
     decoded: {
       type: 'P2PKH',
       address,
       timelock,
-      value,
-      token_data: tokenData,
     },
-    token,
+    token_data: tokenData,
+    script: 'dqkUH70YjKeoKdFwMX2TOYvGVbXOrKaIrA==',
     spent_by: null,
-    locked,
   }
 );
 
@@ -63,8 +72,6 @@ export const createInput = (value: number, address: string, txId: string, index:
       type: 'P2PKH',
       address,
       timelock,
-      value,
-      token_data: tokenData,
     },
     token,
     tx_id: txId,
@@ -80,6 +87,7 @@ export const checkUtxoTable = async (
   tokenId?: string,
   address?: string,
   value?: number,
+  authorities?: number,
   timelock?: number | null,
   heightlock?: number | null,
   locked?: boolean,
@@ -106,16 +114,17 @@ export const checkUtxoTable = async (
        AND \`token_id\` = ?
        AND \`address\` = ?
        AND \`value\` = ?
+       AND \`authorities\` = ?
        AND \`locked\` = ?
        AND \`timelock\``;
   results = await mysql.query(
     `${baseQuery} ${timelock ? '= ?' : 'IS ?'} AND \`heightlock\` ${heightlock ? '= ?' : 'IS ?'}`,
-    [txId, index, tokenId, address, value, locked, timelock, heightlock],
+    [txId, index, tokenId, address, value, authorities, locked, timelock, heightlock],
   );
   if (results.length !== 1) {
     return {
       error: 'checkUtxoTable query',
-      params: { txId, index, tokenId, address, value, timelock, heightlock, locked },
+      params: { txId, index, tokenId, address, value, authorities, timelock, heightlock, locked },
       results,
     };
   }
@@ -175,6 +184,8 @@ export const checkAddressBalanceTable = async (
   locked: number,
   lockExpires: number | null,
   transactions: number,
+  unlockedAuthorities = 0,
+  lockedAuthorities = 0,
 ): Promise<boolean | Record<string, unknown>> => {
   // first check the total number of rows in the table
   let results: DbSelectResult = await mysql.query(`
@@ -198,7 +209,9 @@ export const checkAddressBalanceTable = async (
        AND \`token_id\` = ?
        AND \`unlocked_balance\` = ?
        AND \`locked_balance\` = ?
-       AND \`transactions\` = ?`;
+       AND \`transactions\` = ?
+       AND \`unlocked_authorities\` = ?
+       AND \`locked_authorities\` = ?`;
 
   results = await mysql.query(
     `${baseQuery} AND timelock_expires ${lockExpires === null ? 'IS' : '='} ?`, [
@@ -207,13 +220,15 @@ export const checkAddressBalanceTable = async (
       unlocked,
       locked,
       transactions,
+      unlockedAuthorities,
+      lockedAuthorities,
       lockExpires,
     ],
   );
   if (results.length !== 1) {
     return {
       error: 'checkAddressBalanceTable query',
-      params: { address, tokenId, unlocked, locked, lockExpires, transactions },
+      params: { address, tokenId, unlocked, locked, lockExpires, transactions, unlockedAuthorities, lockedAuthorities },
       results,
     };
   }
@@ -363,6 +378,8 @@ export const checkWalletBalanceTable = async (
   locked?: number,
   lockExpires?: number | null,
   transactions?: number,
+  unlockedAuthorities = 0,
+  lockedAuthorities = 0,
 ): Promise<boolean | Record<string, unknown>> => {
   // first check the total number of rows in the table
   let results: DbSelectResult = await mysql.query(`
@@ -390,15 +407,17 @@ export const checkWalletBalanceTable = async (
        AND \`unlocked_balance\` = ?
        AND \`locked_balance\` = ?
        AND \`transactions\` = ?
+       AND \`unlocked_authorities\` = ?
+       AND \`locked_authorities\` = ?
   `;
   results = await mysql.query(
     `${baseQuery} AND timelock_expires ${lockExpires === null ? 'IS' : '='} ?`,
-    [walletId, tokenId, unlocked, locked, transactions, lockExpires],
+    [walletId, tokenId, unlocked, locked, transactions, unlockedAuthorities, lockedAuthorities, lockExpires],
   );
   if (results.length !== 1) {
     return {
       error: 'checkWalletBalanceTable query',
-      params: { walletId, tokenId, unlocked, locked, lockExpires, transactions },
+      params: { walletId, tokenId, unlocked, locked, lockExpires, transactions, unlockedAuthorities, lockedAuthorities },
       results,
     };
   }
@@ -412,8 +431,9 @@ export const addToUtxoTable = async (
   await mysql.query(
     `INSERT INTO \`utxo\`(\`tx_id\`, \`index\`,
                           \`token_id\`, \`address\`,
-                          \`value\`, \`timelock\`,
-                          \`heightlock\`, \`locked\`)
+                          \`value\`, \`authorities\`,
+                          \`timelock\`, \`heightlock\`,
+                          \`locked\`)
      VALUES ?`,
     [entries],
   );
@@ -440,6 +460,8 @@ export const addToWalletBalanceTable = async (
     entry.tokenId,
     entry.unlockedBalance,
     entry.lockedBalance,
+    entry.unlockedAuthorities,
+    entry.lockedAuthorities,
     entry.timelockExpires,
     entry.transactions,
   ]));
@@ -489,7 +511,8 @@ export const addToAddressBalanceTable = async (
   await mysql.query(`
     INSERT INTO \`address_balance\`(\`address\`, \`token_id\`,
                                     \`unlocked_balance\`, \`locked_balance\`,
-                                    \`timelock_expires\`, \`transactions\`)
+                                    \`timelock_expires\`, \`transactions\`,
+                                    \`unlocked_authorities\`, \`locked_authorities\`)
     VALUES ?`,
   [entries]);
 };
@@ -504,6 +527,16 @@ export const addToAddressTxHistoryTable = async (
                                        \`timestamp\`)
     VALUES ?`,
   [entries]);
+};
+
+export const addToTokenTable = async (
+  mysql: ServerlessMysql,
+  entries: unknown[][],
+): Promise<void> => {
+  await mysql.query(
+    'INSERT INTO `token`(`id`, `name`, `symbol`) VALUES ?',
+    [entries],
+  );
 };
 
 export const makeGatewayEvent = (queryParams: { [name: string]: string } | null, body = null): APIGatewayProxyEvent => (

@@ -109,7 +109,16 @@ curl --request GET 'http://localhost:3000/txhistory/?id=23b44673413f093180ed37ce
 
 ### Troubleshooting
 
+#### bitcore-lib
+
 > Error: More than one instance of bitcore-lib found
 
 This is probably only a bug when running locally (I haven't tried deploying yet). Used this hack to get it working:
 https://github.com/bitpay/bitcore/issues/1454#issuecomment-306900782
+
+#### jest using old files
+
+Sometimes, jest will use old cached js files, even after you modified the typescript code. Just run:
+```
+./node_modules/.bin/jest --clearCache
+```

@@ -45,12 +45,21 @@ CREATE TABLE `blocks` (
   PRIMARY KEY (`tx_id`)
 );
 
+// TODO name and symbol lengths are not limited on the blockchain, might be 255
+CREATE TABLE `token` (
+  `id` varchar(64) NOT NULL,
+  `name` varchar(150) NOT NULL,
+  `symbol` varchar(30) NOT NULL,
+  PRIMARY KEY (`id`)
+);
+
 CREATE TABLE `utxo` (
   `tx_id` varchar(64) NOT NULL,
   `index` tinyint unsigned NOT NULL,
   `token_id` varchar(64) NOT NULL,
   `address` varchar(34) NOT NULL,
   `value` bigint unsigned NOT NULL,
+  `authorities` tinyint unsigned DEFAULT NULL,
   `timelock` int unsigned DEFAULT NULL,
   `heightlock` int unsigned DEFAULT NULL,
   `locked` tinyint unsigned NOT NULL DEFAULT '0',

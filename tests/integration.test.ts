@@ -237,7 +237,7 @@ test('receive blocks and tx1, start wallet and then receive tx2', async () => {
  */
 const checkAfterReceivingFirstBlock = async (walletStarted = false) => {
   const blockRewardLock = parseInt(process.env.BLOCK_REWARD_LOCK, 10);
-  await expect(checkUtxoTable(mysql, 1, txId1, 0, htrToken, 'H7GtjbWcpd8fcE4KV1QJAiLPsXN4KRMasA', blockReward, null, block.height + blockRewardLock, true)).resolves.toBe(true);
+  await expect(checkUtxoTable(mysql, 1, txId1, 0, htrToken, 'H7GtjbWcpd8fcE4KV1QJAiLPsXN4KRMasA', blockReward, 0, null, block.height + blockRewardLock, true)).resolves.toBe(true);
   await expect(checkAddressBalanceTable(mysql, 1, 'H7GtjbWcpd8fcE4KV1QJAiLPsXN4KRMasA', htrToken, 0, blockReward, null, 1)).resolves.toBe(true);
   await expect(checkAddressTxHistoryTable(mysql, 1, 'H7GtjbWcpd8fcE4KV1QJAiLPsXN4KRMasA', txId1, htrToken, blockReward, block.timestamp)).resolves.toBe(true);
   if (walletStarted) {
@@ -262,9 +262,9 @@ const checkAfterReceivingFirstBlock = async (walletStarted = false) => {
  */
 const checkAfterReceivingSecondBlock = async (walletStarted = false) => {
   const blockRewardLock = parseInt(process.env.BLOCK_REWARD_LOCK, 10);
-  await expect(checkUtxoTable(mysql, 2, txId2, 0, htrToken, 'H7GtjbWcpd8fcE4KV1QJAiLPsXN4KRMasA', blockReward, null, block2.height + blockRewardLock, true)).resolves.toBe(true);
+  await expect(checkUtxoTable(mysql, 2, txId2, 0, htrToken, 'H7GtjbWcpd8fcE4KV1QJAiLPsXN4KRMasA', blockReward, 0, null, block2.height + blockRewardLock, true)).resolves.toBe(true);
   // first block utxo is unlocked
-  await expect(checkUtxoTable(mysql, 2, txId1, 0, htrToken, 'H7GtjbWcpd8fcE4KV1QJAiLPsXN4KRMasA', blockReward, null, block.height + blockRewardLock, false)).resolves.toBe(true);
+  await expect(checkUtxoTable(mysql, 2, txId1, 0, htrToken, 'H7GtjbWcpd8fcE4KV1QJAiLPsXN4KRMasA', blockReward, 0, null, block.height + blockRewardLock, false)).resolves.toBe(true);
   await expect(checkAddressBalanceTable(mysql, 1, 'H7GtjbWcpd8fcE4KV1QJAiLPsXN4KRMasA', htrToken, blockReward, blockReward, null, 2)).resolves.toBe(true);
   await expect(checkAddressTxHistoryTable(mysql, 2, 'H7GtjbWcpd8fcE4KV1QJAiLPsXN4KRMasA', txId1, htrToken, blockReward, block.timestamp)).resolves.toBe(true);
   await expect(checkAddressTxHistoryTable(mysql, 2, 'H7GtjbWcpd8fcE4KV1QJAiLPsXN4KRMasA', txId2, htrToken, blockReward, block2.timestamp)).resolves.toBe(true);
@@ -290,8 +290,8 @@ const checkAfterReceivingSecondBlock = async (walletStarted = false) => {
  * This tx sends the block output to 2 addresses on the same wallet, so we have 3 used addresses
  */
 const checkAfterReceivingTx1 = async (walletStarted = false) => {
-  await expect(checkUtxoTable(mysql, 3, txId3, 0, htrToken, 'H9QwruQByN4qiprTAWAjBR9fDXBadFtou4', blockReward - 5000, null, null, false)).resolves.toBe(true);
-  await expect(checkUtxoTable(mysql, 3, txId3, 1, htrToken, 'HGXziPZxoTK27FuabRQbHMsav2ZBKdNBZK', 5000, null, null, false)).resolves.toBe(true);
+  await expect(checkUtxoTable(mysql, 3, txId3, 0, htrToken, 'H9QwruQByN4qiprTAWAjBR9fDXBadFtou4', blockReward - 5000, 0, null, null, false)).resolves.toBe(true);
+  await expect(checkUtxoTable(mysql, 3, txId3, 1, htrToken, 'HGXziPZxoTK27FuabRQbHMsav2ZBKdNBZK', 5000, 0, null, null, false)).resolves.toBe(true);
   await expect(checkAddressBalanceTable(mysql, 3, 'H7GtjbWcpd8fcE4KV1QJAiLPsXN4KRMasA', htrToken, 0, blockReward, null, 3)).resolves.toBe(true);
   await expect(checkAddressBalanceTable(mysql, 3, 'H9QwruQByN4qiprTAWAjBR9fDXBadFtou4', htrToken, blockReward - 5000, 0, null, 1)).resolves.toBe(true);
   await expect(checkAddressBalanceTable(mysql, 3, 'HGXziPZxoTK27FuabRQbHMsav2ZBKdNBZK', htrToken, 5000, 0, null, 1)).resolves.toBe(true);
@@ -322,9 +322,9 @@ const checkAfterReceivingTx1 = async (walletStarted = false) => {
  * This tx sends the 5000 HTR output to 2 addresses, one on the same wallet (1000 HTR, locked) and another that's not (4000 HTR)
  */
 const checkAfterReceivingTx2 = async (walletStarted = false) => {
-  await expect(checkUtxoTable(mysql, 5, txId3, 0, htrToken, 'H9QwruQByN4qiprTAWAjBR9fDXBadFtou4', blockReward - 5000, null, null, false)).resolves.toBe(true);
-  await expect(checkUtxoTable(mysql, 5, txId4, 0, htrToken, 'HKobFkfTBqRSCHpbL6cydS6geVg44CHrRL', 1000, timelock, null, true)).resolves.toBe(true);
-  await expect(checkUtxoTable(mysql, 5, txId4, 1, htrToken, 'HCuWC2qgNP47BtWtsTM48PokKitVdR6pch', 4000, null, null, false)).resolves.toBe(true);
+  await expect(checkUtxoTable(mysql, 5, txId3, 0, htrToken, 'H9QwruQByN4qiprTAWAjBR9fDXBadFtou4', blockReward - 5000, 0, null, null, false)).resolves.toBe(true);
+  await expect(checkUtxoTable(mysql, 5, txId4, 0, htrToken, 'HKobFkfTBqRSCHpbL6cydS6geVg44CHrRL', 1000, 0, timelock, null, true)).resolves.toBe(true);
+  await expect(checkUtxoTable(mysql, 5, txId4, 1, htrToken, 'HCuWC2qgNP47BtWtsTM48PokKitVdR6pch', 4000, 0, null, null, false)).resolves.toBe(true);
   // we now have 5 addresses total
   await expect(checkAddressBalanceTable(mysql, 5, 'H7GtjbWcpd8fcE4KV1QJAiLPsXN4KRMasA', htrToken, 0, blockReward, null, 3)).resolves.toBe(true);
   await expect(checkAddressBalanceTable(mysql, 5, 'H9QwruQByN4qiprTAWAjBR9fDXBadFtou4', htrToken, blockReward - 5000, 0, null, 1)).resolves.toBe(true);

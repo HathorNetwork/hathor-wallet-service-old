@@ -76,3 +76,7 @@ export const closeDbConnection = async (mysql: ServerlessMysql): Promise<void> =
     await mysql.end();
   }
 };
+
+export const isAuthority = (tokenData: number): boolean => (
+  (tokenData & 0b10000000) > 0    // eslint-disable-line no-bitwise
+);
