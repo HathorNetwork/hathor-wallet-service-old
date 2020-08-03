@@ -44,14 +44,7 @@ CREATE TABLE `token` (
   `id` varchar(64) NOT NULL,
   `name` varchar(150) NOT NULL,
   `symbol` varchar(30) NOT NULL,
-  PRIMARY KEY (`id`)
-);
-
-CREATE TABLE `blocks` (
-  `tx_id` VARCHAR(64) NOT NULL,
-  `height` INT UNSIGNED NOT NULL,
-  PRIMARY KEY (`tx_id`)
-);
+  PRIMARY KEY (`id`));
 
 CREATE TABLE `utxo` (
   `tx_id` varchar(64) NOT NULL,

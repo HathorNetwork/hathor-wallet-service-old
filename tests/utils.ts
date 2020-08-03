@@ -29,7 +29,7 @@ export const ADDRESSES = [
 
 export const cleanDatabase = async (mysql: ServerlessMysql): Promise<void> => {
   const TABLES = ['address', 'address_balance', 'address_tx_history', 'metadata', 'token', 'utxo', 'wallet', 'wallet_balance', 'wallet_tx_history'];
-  
+
   for (const table of TABLES) {
     await mysql.query(`DELETE FROM ${table}`);
   }
@@ -199,8 +199,7 @@ export const checkAddressBalanceTable = async (
        AND \`locked_balance\` = ?
        AND \`transactions\` = ?
        AND \`unlocked_authorities\` = ?
-       AND \`locked_authorities\` = ?
-  `;
+       AND \`locked_authorities\` = ?`;
 
   results = await mysql.query(
     `${baseQuery} AND timelock_expires ${lockExpires === null ? 'IS' : '='} ?`, [

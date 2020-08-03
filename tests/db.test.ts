@@ -7,6 +7,7 @@ import {
   getLatestHeight,
   getTokenInformation,
   getLockedUtxoFromInputs,
+  getTokenInformation,
   getUtxosLockedAtHeight,
   getWalletAddresses,
   getWalletBalances,
