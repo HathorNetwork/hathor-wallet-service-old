@@ -11,6 +11,7 @@ import {
   getUtxosLockedAtHeight,
   maybeUpdateLatestHeight,
   removeUtxos,
+  storeTokenInformation,
   unlockUtxos as dbUnlockUtxos,
   updateAddressTablesWithTx,
   updateAddressLockedBalance,
@@ -91,6 +92,11 @@ const addNewTx = async (tx: Transaction, now: number, blockRewardLock: number) =
 
     // update height on database
     await maybeUpdateLatestHeight(mysql, tx.height);
+  }
+
+  if (tx.version === 2) {
+    // TODO get version from lib constants
+    await storeTokenInformation(mysql, tx.tx_id, tx.token_name, tx.token_symbol);
   }
 
   // check if any of the inputs are still marked as locked and update tables accordingly.
@@ -179,22 +185,21 @@ export const getAddressBalanceMap = (
   outputs: TxOutput[],
 ): StringMap<TokenBalanceMap> => {
   const addressBalanceMap = {};
-  // TODO handle authority
-
-  for (const output of outputs) {
-    const address = output.decoded.address;
-
-    // get the TokenBalanceMap from this output
-    const tokenBalanceMap = TokenBalanceMap.fromTxOutput(output);
-    // merge it with existing TokenBalanceMap for the address
-    addressBalanceMap[address] = TokenBalanceMap.merge(addressBalanceMap[address], tokenBalanceMap);
-  }
 
   for (const input of inputs) {
     const address = input.decoded.address;
 
     // get the TokenBalanceMap from this input
     const tokenBalanceMap = TokenBalanceMap.fromTxInput(input);
+    // merge it with existing TokenBalanceMap for the address
+    addressBalanceMap[address] = TokenBalanceMap.merge(addressBalanceMap[address], tokenBalanceMap);
+  }
+
+  for (const output of outputs) {
+    const address = output.decoded.address;
+
+    // get the TokenBalanceMap from this output
+    const tokenBalanceMap = TokenBalanceMap.fromTxOutput(output);
     // merge it with existing TokenBalanceMap for the address
     addressBalanceMap[address] = TokenBalanceMap.merge(addressBalanceMap[address], tokenBalanceMap);
   }
@@ -254,14 +259,16 @@ export const unlockUtxos = async (_mysql: ServerlessMysql, utxos: Utxo[], update
       type: 'P2PKH',
       address: utxo.address,
       timelock: utxo.timelock,
-      value: utxo.value,
     };
     return {
-      value: utxo.value,
+      value: utxo.authorities > 0 ? utxo.authorities : utxo.value,
       token: utxo.tokenId,
       decoded,
       locked: false,
-      // we don't care about spent_by, token_data and script
+      // set authority bit if necessary
+      // TODO get TOKEN_AUTHORITY_MASK from lib
+      token_data: utxo.authorities > 0 ? 0b10000000 : 0,
+      // we don't care about spent_by and script
       spent_by: null,
       script: '',
     };
