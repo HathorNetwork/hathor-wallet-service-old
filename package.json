@@ -16,12 +16,14 @@
     "url": "https://github.com/HathorNetwork/hathor-wallet-service.git"
   },
   "dependencies": {
+    "@hathor/wallet-lib": "^0.16.1",
     "aws-lambda": "^1.0.6",
     "aws-sdk": "^2.700.0",
     "bitcore-lib": "^8.20.4",
     "mysql": "^2.18.1",
     "serverless-mysql": "^1.5.4",
-    "source-map-support": "^0.5.19"
+    "source-map-support": "^0.5.19",
+    "uuid": "^8.3.0"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.17",

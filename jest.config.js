@@ -16,4 +16,10 @@ module.exports = {
       statements: 97,
     },
   },
+  // TODO remove this
+  globals: {
+    'ts-jest': {
+      isolatedModules: true,
+    },
+  },
 };

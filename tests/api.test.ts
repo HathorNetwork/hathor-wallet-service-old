@@ -3,6 +3,7 @@ import { APIGatewayProxyHandler, APIGatewayProxyResult } from 'aws-lambda';
 import { get as addressesGet } from '@src/api/addresses';
 import { get as balancesGet } from '@src/api/balances';
 import { get as txHistoryGet } from '@src/api/txhistory';
+import { create as txProposalCreate } from '@src/api/txProposalCreate';
 import { get as walletGet, load as walletLoad } from '@src/api/wallet';
 import { ApiError } from '@src/api/errors';
 import { closeDbConnection, getDbConnection, getUnixTimestamp, getWalletId } from '@src/utils';
@@ -49,8 +50,8 @@ const _testInvalidParam = async (fn: APIGatewayProxyHandler, paramName: string, 
   expect(returnBody.parameter).toBe(paramName);
 };
 
-const _testMissingWallet = async (fn: APIGatewayProxyHandler, walletId: string) => {
-  const event = makeGatewayEvent({ id: walletId });
+const _testMissingWallet = async (fn: APIGatewayProxyHandler, walletId: string, body = null) => {
+  const event = makeGatewayEvent({ id: walletId }, JSON.stringify(body));
   const result = await fn(event, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(200);
@@ -330,4 +331,185 @@ test('POST /wallet', async () => {
   expect(result.statusCode).toBe(200);
   expect(returnBody.success).toBe(false);
   expect(returnBody.error).toBe(ApiError.WALLET_ALREADY_LOADED);
+});
+
+test('POST /txproposals params validation', async () => {
+  expect.hasAssertions();
+
+  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToAddressTable(mysql, [['address', 0, 'my-wallet', 2]]);
+
+  // invalid body
+  let event = makeGatewayEvent({ id: 'my-wallet' });
+  let result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  let returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+
+  event = makeGatewayEvent({ id: 'my-wallet' }, 'aaa');
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+
+  // missing id
+  event = makeGatewayEvent(null, '{}');
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.MISSING_PARAMETER);
+  expect(returnBody.parameter).toBe('id');
+
+  // missing outputs
+  event = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet' }));
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.MISSING_PARAMETER);
+  expect(returnBody.parameter).toBe('outputs');
+
+  // empty outputs
+  event = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet', outputs: [] }));
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PARAMETER);
+  expect(returnBody.parameter).toBe('outputs');
+
+  // invalid outputs
+  event = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet', outputs: [['address', '10', 'token', 100000]] }));
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PARAMETER);
+  expect(returnBody.parameter).toBe('outputs');
+
+  // invalid outputs 2
+  event = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet', outputs: [['address', 10, 'token']] }));
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PARAMETER);
+  expect(returnBody.parameter).toBe('outputs');
+
+  // invalid inputs
+  event = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet', outputs: [['address', 10, 'token1', 100000]], inputs: [['txId', '0']] }));
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PARAMETER);
+  expect(returnBody.parameter).toBe('inputs');
+
+  // invalid inputs 2
+  event = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet', outputs: [['address', 10, 'token1', 100000]], inputs: [['txId']] }));
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PARAMETER);
+  expect(returnBody.parameter).toBe('inputs');
+
+  // missing wallet
+  event = makeGatewayEvent(null, JSON.stringify({ id: 'other-wallet', outputs: [['address', 10, 'token', 100000]] }));
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.WALLET_NOT_FOUND);
+});
+
+test('POST /txproposals outputs error', async () => {
+  expect.hasAssertions();
+
+  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToAddressTable(mysql, [['address', 0, 'my-wallet', 2]]);
+
+  // too many outputs (sent by user)
+  let outputs = [];
+  for (let i = 0; i < 300; i++) {
+    outputs.push(['address', i, 'token', null]);
+  }
+  let event = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet', outputs }));
+  let result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  let returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.TOO_MANY_OUTPUTS);
+  expect(returnBody.outputs).toBe(outputs.length);
+
+  // too many outputs (after adding change output)
+  const utxos = [['txBig', 0, 'token2', 'address', 300, 0, null, null, false]];
+  await addToUtxoTable(mysql, utxos);
+  await addToWalletBalanceTable(mysql, [['my-wallet', 'token2', 300, 0, 0, 0, null, 300]]);
+  outputs = [];
+  for (let i = 0; i < 255; i++) {
+    outputs.push(['address', 1, 'token2', null]);
+  }
+  event = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet', outputs }));
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.TOO_MANY_OUTPUTS);
+  expect(returnBody.outputs).toBe(outputs.length + 1);
+});
+
+test('POST /txproposals inputs error', async () => {
+  expect.hasAssertions();
+
+  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToAddressTable(mysql, [['address', 0, 'my-wallet', 2]]);
+
+  // insufficient funds
+  await addToTokenTable(mysql, [['token1', 'MyToken1', 'MTK1']]);
+  await addToWalletBalanceTable(mysql, [['my-wallet', 'token1', 10, 0, 0, 0, null, 3]]);
+  let event = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet', outputs: [['address', 20, 'token1', 100000]] }));
+  let result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  let returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INSUFFICIENT_FUNDS);
+  expect(returnBody.insufficient[0]).toStrictEqual({ tokenId: 'token1', requested: 20, available: 10 });
+
+  // too many inputs
+  await addToTokenTable(mysql, [['token2', 'MyToken2', 'MTK2']]);
+  await addToWalletBalanceTable(mysql, [['my-wallet', 'token2', 300, 0, 0, 0, null, 300]]);
+  const utxos = [];
+  for (let i = 0; i < 300; i++) {
+    utxos.push([`tx${i}`, 0, 'token2', 'address', 1, 0, null, null, false]);
+  }
+  await addToUtxoTable(mysql, utxos);
+  event = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet', outputs: [['address', 300, 'token2', 100000]] }));
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.TOO_MANY_INPUTS);
+  expect(returnBody.inputs).toBe(300);
+
+  // inputs not found
+  event = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet', outputs: [['address', 10, 'token1', 100000]], inputs: [['txId', 0]] }));
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INPUTS_NOT_FOUND);
+  expect(returnBody.missing).toStrictEqual([{ txId: 'txId', index: 0 }]);
+
+  // insufficient inputs (sent by user)
+  event = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet', outputs: [['address', 10, 'token2', 100000]], inputs: [['tx0', 0]] }));
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INSUFFICIENT_INPUTS);
+  expect(returnBody.insufficient[0]).toStrictEqual('token2');
 });

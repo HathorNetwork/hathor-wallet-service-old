@@ -74,3 +74,21 @@ functions:
           path: txhistory
           method: get
           cors: true
+  createTxProposalApi:
+    handler: src/api/txProposalCreate.create
+    events:
+      - http:
+          path: txproposals
+          method: post
+          cors: true
+  sendTxProposalApi:
+    handler: src/api/txProposalSend.send
+    events:
+      - http:
+          path: txproposals/{txProposalId}
+          method: put
+          cors: true
+          request:
+            parameters:
+              paths:
+                txProposalId: true

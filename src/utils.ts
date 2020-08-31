@@ -118,3 +118,26 @@ export const closeDbConnection = async (mysql: ServerlessMysql): Promise<void> =
 export const isAuthority = (tokenData: number): boolean => (
   (tokenData & 0b10000000) > 0    // eslint-disable-line no-bitwise
 );
+
+/**
+ * Shuffle an array in place.
+ *
+ * @remarks
+ * Got it from https://stackoverflow.com/a/6274381.
+ *
+ * @param array - An array containing the items
+ */
+export const arrayShuffle = <T extends unknown>(array: T[]): T[] => {
+  /* eslint-disable no-param-reassign */
+  let j;
+  let x;
+  let i;
+  for (i = array.length - 1; i > 0; i--) {
+    j = Math.floor(Math.random() * (i + 1));
+    x = array[i];
+    array[i] = array[j];
+    array[j] = x;
+  }
+  return array;
+  /* eslint-enable no-param-reassign */
+};
