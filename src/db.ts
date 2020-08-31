@@ -16,11 +16,15 @@ import {
   Balance,
   DbSelectResult,
   GenerateAddresses,
+  IWalletInput,
+  IWalletOutput,
   StringMap,
   TokenBalanceMap,
   TokenInfo,
   TxInput,
   TxOutput,
+  TxProposal,
+  TxProposalStatus,
   TxTokenBalance,
   Utxo,
   Wallet,
@@ -519,6 +523,80 @@ export const removeUtxos = async (mysql: ServerlessMysql, inputs: TxInput[]): Pr
 };
 
 /**
+ * Get the requested UTXOs.
+ *
+ * @param mysql - Database connection
+ * @param utxosKeys - Information about the queried UTXOs, including tx_id and index
+ * @returns A list of UTXOs with all their properties
+ */
+export const getUtxos = async (
+  mysql: ServerlessMysql,
+  utxosInfo: IWalletInput[],
+): Promise<Utxo[]> => {
+  const utxos = [];
+  const entries = utxosInfo.map((utxo) => [utxo.txId, utxo.index]);
+  const results: DbSelectResult = await mysql.query(
+    'SELECT * FROM `utxo` WHERE (`tx_id`, `index`) IN (?)',
+    [entries],
+  );
+  for (const result of results) {
+    const utxo: Utxo = {
+      txId: result.tx_id as string,
+      index: result.index as number,
+      tokenId: result.token_id as string,
+      address: result.address as string,
+      value: result.value as number,
+      authorities: result.authorities as number,
+      timelock: result.timelock as number,
+      heightlock: result.heightlock as number,
+      locked: result.locked > 0,
+      txProposalId: result.tx_proposal as string,
+      txProposalIndex: result.tx_proposal_index as number,
+    };
+    utxos.push(utxo);
+  }
+  return utxos;
+};
+
+/**
+ * Get a wallet's UTXOs, sorted by value.
+ *
+ * @remarks
+ * Locked and authority UTXOs are not considered.
+ *
+ * @param mysql - Database connection
+ * @param walletId - The wallet id
+ * @param token - The token id
+ * @returns A list of UTXOs with all their properties
+ */
+export const getWalletSortedValueUtxos = async (
+  mysql: ServerlessMysql,
+  walletId: string,
+  tokenId: string,
+): Promise<Utxo[]> => {
+  const utxos = [];
+  const results: DbSelectResult = await mysql.query(
+    'SELECT * FROM `utxo` WHERE `address` IN (SELECT `address` from `address` WHERE `wallet_id` = ?) AND `token_id` = ? AND `authorities` = 0 AND `locked` = false AND `tx_proposal` IS NULL ORDER BY `value` DESC',
+    [walletId, tokenId],
+  );
+  for (const result of results) {
+    const utxo: Utxo = {
+      txId: result.tx_id as string,
+      index: result.index as number,
+      tokenId: result.token_id as string,
+      address: result.address as string,
+      value: result.value as number,
+      authorities: result.authorities as number,
+      timelock: result.timelock as number,
+      heightlock: result.heightlock as number,
+      locked: result.locked > 0,
+    };
+    utxos.push(utxo);
+  }
+  return utxos;
+};
+
+/**
  * Mark UTXOs as unlocked.
  *
  * @param mysql - Database connection
@@ -851,24 +929,20 @@ export const getWalletAddresses = async (mysql: ServerlessMysql, walletId: strin
  * Get a wallet's balances.
  *
  * @remarks
- * If a tokenId is given, get the balance for just that token (and return a list with 1 element).
+ * If tokenIds is given, get the balance for just those tokens.
  *
  * @param mysql - Database connection
  * @param walletId - Wallet id
- * @param tokenId - Token id
+ * @param tokenIds - A list of token ids
  * @returns A list of balances.
  */
-export const getWalletBalances = async (mysql: ServerlessMysql, walletId: string, tokenId: string = null): Promise<WalletTokenBalance[]> => {
+export const getWalletBalances = async (mysql: ServerlessMysql, walletId: string, tokenIds: string[] = []): Promise<WalletTokenBalance[]> => {
   const balances: WalletTokenBalance[] = [];
-  let subquery = `
-    SELECT *
-      FROM \`wallet_balance\`
-     WHERE \`wallet_id\` = ?`;
-
-  const params = [walletId];
-  if (tokenId !== null) {
-    subquery += ' AND `token_id` = ?';
-    params.push(tokenId);
+  let subquery = 'SELECT * FROM `wallet_balance` WHERE `wallet_id` = ?';
+  const params: unknown[] = [walletId];
+  if (tokenIds.length > 0) {
+    subquery += ' AND `token_id` IN (?)';
+    params.push(tokenIds);
   }
 
   // use LEFT JOIN as HTR token ('00') won't be on the token table, so INNER JOIN would never match it
@@ -939,7 +1013,7 @@ export const getWalletTxHistory = async (
 };
 
 /**
- * Get the utxos that are locked at a certain height.
+ * Get the UTXOs that are locked at a certain height.
  *
  * @remarks
  * UTXOs from blocks are locked by height. This function returns the ones that are locked at the given height.
@@ -978,6 +1052,8 @@ export const getUtxosLockedAtHeight = async (
         timelock: result.timelock as number,
         heightlock: result.heightlock as number,
         locked: result.locked > 0,
+        txProposalId: result.tx_proposal as string,
+        txProposalIndex: result.tx_proposal_index as number,
       };
       utxos.push(utxo);
     }
@@ -1103,4 +1179,203 @@ export const getTokenInformation = async (
   );
   if (results.length === 0) return null;
   return new TokenInfo(tokenId, results[0].name as string, results[0].symbol as string);
+};
+
+/**
+ * Get the unused addresses for a wallet.
+ *
+ * @remarks
+ * An unsued address is an address with 0 transactions. Addresses are ordered by index, ascending.
+ *
+ * @param mysql - Database connection
+ * @param walletId - The wallet's id
+ * @returns List of unused addresses
+ */
+export const getUnusedAddresses = async (mysql: ServerlessMysql, walletId: string): Promise<string[]> => {
+  const addresses = [];
+  const results: DbSelectResult = await mysql.query(
+    'SELECT `address` FROM `address` WHERE `wallet_id` = ? AND `transactions` = 0 ORDER BY `index` ASC',
+    [walletId],
+  );
+
+  for (const entry of results) {
+    const address = entry.address as string;
+    addresses.push(address);
+  }
+  return addresses;
+};
+
+/**
+ * Mark the given UTXOs with the txProposalId.
+ *
+ * @param mysql - Database connection
+ * @param txProposalId - The transaction proposal id
+ * @param utxos - The UTXOs to be marked with the proposal id
+ */
+export const markUtxosWithProposalId = async (mysql: ServerlessMysql, txProposalId: string, utxos: Utxo[]): Promise<void> => {
+  const entries = utxos.map((utxo, index) => ([utxo.txId, utxo.index, '', '', 0, 0, null, null, false, txProposalId, index]));
+  await mysql.query(
+    'INSERT INTO `utxo` VALUES ? ON DUPLICATE KEY UPDATE `tx_proposal` = VALUES(`tx_proposal`), `tx_proposal_index` = VALUES(`tx_proposal_index`)',
+    [entries],
+  );
+};
+
+/**
+ * Create a tx proposal on the database.
+ *
+ * @param mysql - Database connection
+ * @param txProposalId - The transaction proposal id
+ * @param walletId - The wallet associated with this proposal
+ * @param now - The current timestamp
+ */
+export const createTxProposal = async (
+  mysql: ServerlessMysql,
+  txProposalId: string,
+  walletId: string,
+  now: number,
+): Promise<void> => {
+  const entry = { id: txProposalId, wallet_id: walletId, status: TxProposalStatus.OPEN, created_at: now };
+  await mysql.query(
+    'INSERT INTO `tx_proposal` SET ?',
+    [entry],
+  );
+};
+
+/**
+ * Update a tx proposal.
+ *
+ * @param mysql - Database connection
+ * @param txProposalId - The transaction proposal id
+ * @param now - The current timestamp
+ * @param status - The new status
+ */
+export const updateTxProposal = async (
+  mysql: ServerlessMysql,
+  txProposalId: string,
+  now: number,
+  status: TxProposalStatus,
+): Promise<void> => {
+  await mysql.query(
+    'UPDATE `tx_proposal` SET `updated_at` = ?, `status` = ? WHERE `id` = ?',
+    [now, status, txProposalId],
+  );
+};
+
+/**
+ * Get a tx proposal.
+ *
+ * @param mysql - Database connection
+ * @param txProposalId - The transaction proposal id
+ * @param now - The current timestamp
+ */
+export const getTxProposal = async (
+  mysql: ServerlessMysql,
+  txProposalId: string,
+): Promise<TxProposal> => {
+  const results: DbSelectResult = await mysql.query(
+    'SELECT * FROM `tx_proposal` WHERE `id` = ?',
+    [txProposalId],
+  );
+  if (results.length === 0) return null;
+  return {
+    id: txProposalId,
+    walletId: results[0].wallet_id as string,
+    status: results[0].status as TxProposalStatus,
+    createdAt: results[0].created_at as number,
+    updatedAt: results[0].updated_at as number,
+  };
+};
+
+/**
+ * Add tx proposal outputs to the database.
+ *
+ * @param mysql - Database connection
+ * @param txProposalId - The transaction proposal id
+ * @param outputs - List of outputs
+ */
+export const addTxProposalOutputs = async (
+  mysql: ServerlessMysql,
+  txProposalId: string,
+  outputs: IWalletOutput[],
+): Promise<void> => {
+  const entries = [];
+  for (const [index, output] of outputs.entries()) {
+    entries.push([txProposalId, index, output.address, output.token, output.value, output.timelock]);
+  }
+  await mysql.query(
+    'INSERT INTO `tx_proposal_outputs` VALUES ?',
+    [entries],
+  );
+};
+
+/**
+ * Get tx proposal outputs.
+ *
+ * @param mysql - Database connection
+ * @param txProposalId - The transaction proposal id
+ * @returns A list of outputs.
+ */
+export const getTxProposalOutputs = async (
+  mysql: ServerlessMysql,
+  txProposalId: string,
+): Promise<IWalletOutput[]> => {
+  const outputs = [];
+  const results: DbSelectResult = await mysql.query(
+    'SELECT * FROM `tx_proposal_outputs` WHERE `tx_proposal_id` = ? ORDER BY `index` ASC',
+    [txProposalId],
+  );
+  for (const result of results) {
+    outputs.push({
+      address: result.address as string,
+      token: result.token_id as string,
+      value: result.value as number,
+      timelock: result.timelock as number,
+    });
+  }
+  return outputs;
+};
+
+/**
+ * Remove the tx proposal outputs.
+ *
+ * @param mysql - Database connection
+ * @param txProposalId - The transaction proposal id
+ */
+export const removeTxProposalOutputs = async (
+  mysql: ServerlessMysql,
+  txProposalId: string,
+): Promise<void> => {
+  await mysql.query(
+    'DELETE FROM `tx_proposal_outputs` WHERE `tx_proposal_id` = ?',
+    [txProposalId],
+  );
+};
+
+/**
+ * Get tx proposal inputs.
+ *
+ * @remarks
+ * The inputs are taken from the utxo table.
+ *
+ * @param mysql - Database connection
+ * @param txProposalId - The transaction proposal id
+ * @returns A list of inputs.
+ */
+export const getTxProposalInputs = async (
+  mysql: ServerlessMysql,
+  txProposalId: string,
+): Promise<IWalletInput[]> => {
+  const inputs = [];
+  const results: DbSelectResult = await mysql.query(
+    'SELECT * FROM `utxo` WHERE `tx_proposal` = ? ORDER BY `tx_proposal_index` ASC',
+    [txProposalId],
+  );
+  for (const result of results) {
+    const input: IWalletInput = {
+      txId: result.tx_id as string,
+      index: result.index as number,
+    };
+    inputs.push(input);
+  }
+  return inputs;
 };

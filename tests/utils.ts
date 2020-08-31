@@ -28,7 +28,7 @@ export const ADDRESSES = [
 ];
 
 export const cleanDatabase = async (mysql: ServerlessMysql): Promise<void> => {
-  const TABLES = ['address', 'address_balance', 'address_tx_history', 'metadata', 'token', 'utxo', 'wallet', 'wallet_balance', 'wallet_tx_history'];
+  const TABLES = ['address', 'address_balance', 'address_tx_history', 'metadata', 'token', 'tx_proposal', 'utxo', 'wallet', 'wallet_balance', 'wallet_tx_history'];
 
   for (const table of TABLES) {
     await mysql.query(`DELETE FROM ${table}`);
@@ -511,16 +511,16 @@ export const addToTokenTable = async (
   );
 };
 
-export const makeGatewayEvent = (queryParams: { [name: string]: string } | null, body = null): APIGatewayProxyEvent => (
+export const makeGatewayEvent = (params: { [name: string]: string }, body = null): APIGatewayProxyEvent => (
   {
     body,
-    queryStringParameters: queryParams,
+    queryStringParameters: params,
+    pathParameters: params,
     headers: {},
     multiValueHeaders: {},
     httpMethod: '',
     isBase64Encoded: false,
     path: '',
-    pathParameters: null,
     multiValueQueryStringParameters: null,
     stageVariables: null,
     requestContext: null,

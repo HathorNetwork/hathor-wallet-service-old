@@ -1,30 +1,43 @@
+import { v4 as uuidv4 } from 'uuid';
+
 import {
   addNewAddresses,
+  addTxProposalOutputs,
   addUtxos,
+  createTxProposal,
   createWallet,
   generateAddresses,
   getAddressWalletInfo,
   getLatestHeight,
   getTokenInformation,
   getLockedUtxoFromInputs,
+  getTxProposal,
+  getTxProposalInputs,
+  getTxProposalOutputs,
+  getUnusedAddresses,
+  getUtxos,
   getUtxosLockedAtHeight,
+  getWallet,
   getWalletAddresses,
   getWalletBalances,
-  getWallet,
+  getWalletSortedValueUtxos,
   initWalletBalance,
   initWalletTxHistory,
+  markUtxosWithProposalId,
   maybeUpdateLatestHeight,
+  removeTxProposalOutputs,
   removeUtxos,
   storeTokenInformation,
   unlockUtxos,
   updateAddressLockedBalance,
   updateAddressTablesWithTx,
   updateExistingAddresses,
+  updateTxProposal,
   updateWalletLockedBalance,
   updateWalletStatus,
   updateWalletTablesWithTx,
 } from '@src/db';
-import { Authorities, TokenBalanceMap, TokenInfo, WalletStatus } from '@src/types';
+import { Authorities, TokenBalanceMap, TokenInfo, TxProposalStatus, WalletStatus } from '@src/types';
 import { closeDbConnection, getDbConnection, getUnixTimestamp, isAuthority } from '@src/utils';
 import {
   ADDRESSES,
@@ -401,7 +414,7 @@ test('updateWalletTablesWithTx', async () => {
   await expect(checkWalletTxHistoryTable(mysql, 5, walletId2, token2, tx3, 10, ts3)).resolves.toBe(true);
 });
 
-test('addUtxos, unlockUtxos and removeUtxos', async () => {
+test('addUtxos, getUtxos, unlockUtxos and removeUtxos', async () => {
   expect.hasAssertions();
   const txId = 'txId';
   const utxos = [
@@ -431,6 +444,13 @@ test('addUtxos, unlockUtxos and removeUtxos', async () => {
       checkUtxoTable(mysql, utxos.length, txId, index, token, decoded.address, value, authorities, decoded.timelock, null, output.locked),
     ).resolves.toBe(true);
   }
+
+  // getUtxos
+  let results = await getUtxos(mysql, utxos.map((utxo, index) => ({ txId, index })));
+  expect(results).toHaveLength(utxos.length);
+  // fetch only 2
+  results = await getUtxos(mysql, [{ txId, index: 0 }, { txId, index: 1 }]);
+  expect(results).toHaveLength(2);
 
   // unlock the locked one
   const first = {
@@ -630,8 +650,12 @@ test('getWalletBalances', async () => {
     }
   }
 
+  // fetch both tokens explicitly
+  returnedBalances = await getWalletBalances(mysql, walletId, [token1.id, token2.id]);
+  expect(returnedBalances).toHaveLength(2);
+
   // fetch only balance for token2
-  returnedBalances = await getWalletBalances(mysql, walletId, token2.id);
+  returnedBalances = await getWalletBalances(mysql, walletId, [token2.id]);
   expect(returnedBalances).toHaveLength(1);
   expect(returnedBalances[0].token).toStrictEqual(token2);
   expect(returnedBalances[0].balance.unlockedAmount).toBe(20);
@@ -640,7 +664,7 @@ test('getWalletBalances', async () => {
   expect(returnedBalances[0].transactions).toBe(2);
 
   // fetch balance for non existing token
-  returnedBalances = await getWalletBalances(mysql, walletId, 'otherToken');
+  returnedBalances = await getWalletBalances(mysql, walletId, ['otherToken']);
   expect(returnedBalances).toHaveLength(0);
 });
 
@@ -691,6 +715,21 @@ test('getUtxosLockedAtHeight', async () => {
   // unlockedHeight < 0. This means the block is still very early after genesis and no blocks have been unlocked
   results = await getUtxosLockedAtHeight(mysql, 1000, -2);
   expect(results).toStrictEqual([]);
+
+  // add 2 other utxos with heightlock, but 1 is already unlocked (not a real situation)
+  const utxos3 = [
+    // no locks
+    { value: 65, address: 'address1', token: 'token1', locked: false },
+    // only timelock
+    { value: 75, address: 'address2', token: 'token2', locked: true },
+  ];
+  const outputs3 = utxos3.map((utxo) => createOutput(utxo.value, utxo.address, utxo.token, null, utxo.locked));
+  await addUtxos(mysql, txId3, outputs3, heightLock);
+  // should fetch 2 utxos, ignoring the one already unlocked
+  results = await getUtxosLockedAtHeight(mysql, now, heightLock);
+  expect(results).toHaveLength(2);
+  expect([35, 75]).toContain(results[0].value);
+  expect([35, 75]).toContain(results[1].value);
 });
 
 test('updateAddressLockedBalance', async () => {
@@ -769,5 +808,143 @@ test('storeTokenInformation and getTokenInformation', async () => {
   const info = new TokenInfo('tokenId', 'tokenName', 'tokenSymbol');
   storeTokenInformation(mysql, info.id, info.name, info.symbol);
 
-  expect(info).toStrictEqual(await getTokenInformation(mysql, info.id));
+  expect(await getTokenInformation(mysql, info.id)).toStrictEqual(info);
+
+  // token not found
+  expect(await getTokenInformation(mysql, 'unknown-token')).toBeNull();
+});
+
+test('getWalletSortedValueUtxos', async () => {
+  expect.hasAssertions();
+
+  const addr1 = 'addr1';
+  const addr2 = 'addr2';
+  const walletId = 'walletId';
+  const tokenId = 'tokenId';
+  const txId = 'txId';
+  await addToAddressTable(mysql, [
+    [addr1, 0, walletId, 1],
+    [addr2, 1, walletId, 1],
+  ]);
+  await addToUtxoTable(mysql, [
+    // authority utxos should be ignored
+    [txId, 0, tokenId, addr1, 0, 0b01, null, null, false],
+    // locked utxos should be ignored
+    [txId, 1, tokenId, addr1, 10, 0, 10000, null, true],
+    // another wallet
+    [txId, 2, tokenId, 'otherAddr', 10, 0, null, null, false],
+    // another token
+    [txId, 3, 'tokenId2', addr1, 5, 0, null, null, false],
+    // these sould be fetched
+    [txId, 4, tokenId, addr1, 4, 0, null, null, false],
+    [txId, 5, tokenId, addr2, 1, 0, null, null, false],
+    [txId, 6, tokenId, addr1, 7, 0, null, null, false],
+  ]);
+
+  const utxos = await getWalletSortedValueUtxos(mysql, walletId, tokenId);
+  expect(utxos).toHaveLength(3);
+  expect(utxos[0]).toStrictEqual({
+    txId, index: 6, tokenId, address: addr1, value: 7, authorities: 0, timelock: null, heightlock: null, locked: false,
+  });
+  expect(utxos[1]).toStrictEqual({
+    txId, index: 4, tokenId, address: addr1, value: 4, authorities: 0, timelock: null, heightlock: null, locked: false,
+  });
+  expect(utxos[2]).toStrictEqual({
+    txId, index: 5, tokenId, address: addr2, value: 1, authorities: 0, timelock: null, heightlock: null, locked: false,
+  });
+});
+
+test('getUnusedAddresses', async () => {
+  expect.hasAssertions();
+
+  const walletId = 'walletId';
+  const walletId2 = 'walletId2';
+  await addToAddressTable(mysql, [
+    ['addr2', 1, walletId, 0],
+    ['addr3', 2, walletId, 2],
+    ['addr1', 0, walletId, 0],
+    ['addr4', 0, walletId2, 1],
+    ['addr5', 1, walletId2, 1],
+  ]);
+
+  let addresses = await getUnusedAddresses(mysql, walletId);
+  expect(addresses).toHaveLength(2);
+  expect(addresses[0]).toBe('addr1');
+  expect(addresses[1]).toBe('addr2');
+
+  addresses = await getUnusedAddresses(mysql, walletId2);
+  expect(addresses).toHaveLength(0);
+});
+
+test('markUtxosWithProposalId and getTxProposalInputs', async () => {
+  expect.hasAssertions();
+
+  const txId = 'txId';
+  const tokenId = 'tokenId';
+  const address = 'address';
+  const txProposalId = 'txProposalId';
+
+  const utxos = [
+    { txId, index: 0, tokenId, address, value: 5, authorities: 0, timelock: null, heightlock: null, locked: false },
+    { txId, index: 1, tokenId, address, value: 15, authorities: 0, timelock: null, heightlock: null, locked: false },
+    { txId, index: 2, tokenId, address, value: 25, authorities: 0, timelock: null, heightlock: null, locked: false },
+  ];
+
+  // add to utxo table
+  const outputs = utxos.map((utxo) => createOutput(utxo.value, utxo.address, utxo.tokenId, utxo.timelock, utxo.locked));
+  await addUtxos(mysql, txId, outputs);
+
+  // we'll only mark utxos with indexes 0 and 2
+  await markUtxosWithProposalId(mysql, txProposalId, utxos.filter((utxo) => utxo.index !== 1));
+  let proposalIndex = 0;
+  utxos.forEach((utxo) => {
+    utxo.txProposalId = utxo.index !== 1 ? txProposalId : null;         // eslint-disable-line no-param-reassign
+    utxo.txProposalIndex = utxo.index !== 1 ? proposalIndex++ : null;   // eslint-disable-line no-param-reassign
+  });
+
+  const finalUtxos = await getUtxos(mysql, utxos.map((utxo) => ({ txId, index: utxo.index })));
+  expect(utxos).toStrictEqual(finalUtxos);
+
+  // getTxProposalInputs
+  // utxo with index 1 should not be returned
+  const inputs = [{ txId, index: 0 }, { txId, index: 2 }];
+  expect(await getTxProposalInputs(mysql, txProposalId)).toStrictEqual(inputs);
+});
+
+test('createTxProposal, updateTxProposal and getTxProposal', async () => {
+  expect.hasAssertions();
+
+  const now = getUnixTimestamp();
+  const txProposalId = uuidv4();
+  const walletId = 'walletId';
+
+  await createTxProposal(mysql, txProposalId, walletId, now);
+  let txProposal = await getTxProposal(mysql, txProposalId);
+  expect(txProposal).toStrictEqual({ id: txProposalId, walletId, status: TxProposalStatus.OPEN, createdAt: now, updatedAt: null });
+
+  // update
+  await updateTxProposal(mysql, txProposalId, now + 7, TxProposalStatus.SENT);
+  txProposal = await getTxProposal(mysql, txProposalId);
+  expect(txProposal).toStrictEqual({ id: txProposalId, walletId, status: TxProposalStatus.SENT, createdAt: now, updatedAt: now + 7 });
+
+  // tx proposal not found
+  expect(await getTxProposal(mysql, 'aaa')).toBeNull();
+});
+
+test('addTxProposalOutputs, getTxProposalOutputs, deleteTxProposalOutputs', async () => {
+  expect.hasAssertions();
+
+  const txProposalId = uuidv4();
+  const outputs = [
+    { address: 'addr1', token: 'token1', value: 5, timelock: null },
+    { address: 'addr2', token: 'token2', value: 10, timelock: null },
+    { address: 'addr2', token: 'token1', value: 15, timelock: 10000 },
+  ];
+
+  await addTxProposalOutputs(mysql, txProposalId, outputs);
+  expect(await getTxProposalOutputs(mysql, txProposalId)).toStrictEqual(outputs);
+
+  // remove
+  await removeTxProposalOutputs(mysql, txProposalId);
+  expect(await getTxProposalOutputs(mysql, txProposalId)).toStrictEqual([]);
 });

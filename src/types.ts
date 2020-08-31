@@ -8,6 +8,7 @@
  */
 
 import hathorLib from '@hathor/wallet-lib';
+// eslint-disable-next-line
 import { isAuthority } from '@src/utils';
 
 export interface StringMap<T> {
@@ -20,6 +21,21 @@ export interface GenerateAddresses {
   addresses: string[];
   existingAddresses: StringMap<number>;
   newAddresses: StringMap<number>;
+}
+
+export enum TxProposalStatus {
+  OPEN = 'open',
+  SENT = 'sent',
+  SEND_ERROR = 'send-error',
+  CANCELLED = 'cancelled',
+}
+
+export interface TxProposal {
+  id: string;
+  walletId: string;
+  status: TxProposalStatus;
+  createdAt: number;
+  updatedAt: number;
 }
 
 export enum WalletStatus {
@@ -56,9 +72,11 @@ export interface Utxo {
   address: string;
   value: number;
   authorities: number;
-  timelock: number | null;
-  heightlock: number | null;
+  timelock: number;
+  heightlock: number;
   locked: boolean;
+  txProposalId?: string;
+  txProposalIndex?: number;
 }
 
 export class TokenInfo {
@@ -325,6 +343,10 @@ export class TokenBalanceMap {
     this.map[tokenId] = balance;
   }
 
+  getTokens(): string[] {
+    return Object.keys(this.map);
+  }
+
   iterator(): [string, Balance][] {
     return Object.entries(this.map);
   }
@@ -444,7 +466,7 @@ export type DbSelectResult = Array<Record<string, unknown>>;
 export interface DecodedOutput {
   type: string;
   address: string;
-  timelock: number | null;
+  timelock: number;
 }
 
 export interface TxOutput {
@@ -453,7 +475,7 @@ export interface TxOutput {
   token: string;
   decoded: DecodedOutput;
   // eslint-disable-next-line camelcase
-  spent_by: string | null;
+  spent_by: string;
   // eslint-disable-next-line camelcase
   token_data: number;
   locked?: boolean;
@@ -486,4 +508,16 @@ export interface Transaction {
   token_name?: string;
   // eslint-disable-next-line camelcase
   token_symbol?: string;
+}
+
+export interface IWalletOutput {
+  address: string;
+  value: number;
+  token: string;
+  timelock: number;
+}
+
+export interface IWalletInput {
+  txId: string;
+  index: number;
 }

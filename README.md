@@ -107,6 +107,25 @@ curl --request GET http://localhost:3000/addresses/?id=23b44673413f093180ed37ce3
 curl --request GET 'http://localhost:3000/txhistory/?id=23b44673413f093180ed37ce34b6577d7dedbdec9c1d909fe42be1b0bc341ec9&count=5'
 ```
 
+#### Create tx proposal
+You need to have some balance for this to succeed.
+```
+curl --header "Content-Type: application/json" \
+  --request POST \
+  --data '{ "id": "23b44673413f093180ed37ce34b6577d7dedbdec9c1d909fe42be1b0bc341ec9", "outputs": [["H8F5neU87G8gs9XNbNY1XxN9DkAKQKhMoj", 10, "00", null]] }' \
+  http://localhost:3000/txproposals/
+```
+
+#### Send tx proposal
+Proposal must have been created before. Use the proposal id in the path and also update the parents, inputs signatures, weight and nonce.
+```
+curl --header "Content-Type: application/json" \
+  --request PUT \
+  --data '{ "timestamp": 1599051796, "parents": ["0002ad8d1519daaddc8e1a37b14aac0b045129c01832281fb1c02d873c7abbf9", "0002d4d2a15def7604688e1878ab681142a7b155cbe52a6b4e031250ae96db0a"], "weight": 1, "nonce": 700, "inputsSignatures": ["aaaa"] }' \
+  http://localhost:3000/txproposals/{txProposalId}/
+```
+//timestamp, parents, inputsSignatures, weight, nonce
+
 ### Troubleshooting
 
 #### bitcore-lib

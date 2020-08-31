@@ -6,18 +6,13 @@
  */
 
 import { APIGatewayProxyHandler } from 'aws-lambda';
-import { ServerlessMysql } from 'serverless-mysql';
 import 'source-map-support/register';
 
 import { ApiError } from '@src/api/errors';
 import { closeDbAndGetError } from '@src/api/utils';
-import {
-  getLatestHeight,
-  getWallet,
-  getWalletBalances,
-  getWalletUnlockedUtxos,
-} from '@src/db';
-import { unlockUtxos } from '@src/txProcessor';
+import { getWalletBalances } from '@src/commons';
+
+import { getWallet } from '@src/db';
 import { closeDbConnection, getDbConnection, getUnixTimestamp } from '@src/utils';
 
 const mysql = getDbConnection();
@@ -44,27 +39,14 @@ export const get: APIGatewayProxyHandler = async (event) => {
     return closeDbAndGetError(mysql, ApiError.WALLET_NOT_READY);
   }
 
-  let tokenId: string = null;
+  const tokenIds: string[] = [];
   if (params && params.token_id) {
-    tokenId = params.token_id;
+    const tokenId = params.token_id;
     // TODO validate tokenId
+    tokenIds.push(tokenId);
   }
 
-  let balances = await getWalletBalances(mysql, walletId, tokenId);
-
-  // if any of the balances' timelock has expired, update the tables before returning
-  const now = getUnixTimestamp();
-  const refreshBalances = balances.some((tb) => {
-    if (tb.balance.lockExpires && tb.balance.lockExpires <= now) {
-      return true;
-    }
-    return false;
-  });
-
-  if (refreshBalances) {
-    await updateBalances(mysql, walletId, now);
-    balances = await getWalletBalances(mysql, walletId, tokenId);
-  }
+  const balances = await getWalletBalances(mysql, getUnixTimestamp(), walletId, tokenIds);
 
   await closeDbConnection(mysql);
 
@@ -72,10 +54,4 @@ export const get: APIGatewayProxyHandler = async (event) => {
     statusCode: 200,
     body: JSON.stringify({ success: true, balances }),
   };
-};
-
-const updateBalances = async (_mysql: ServerlessMysql, walletId: string, now: number) => {
-  const currentHeight = await getLatestHeight(_mysql);
-  const utxos = await getWalletUnlockedUtxos(_mysql, walletId, now, currentHeight);
-  await unlockUtxos(_mysql, utxos, true);
 };
