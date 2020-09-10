@@ -1,6 +1,7 @@
 import { APIGatewayProxyResult, SQSEvent } from 'aws-lambda';
 import { ServerlessMysql } from 'serverless-mysql';
 import 'source-map-support/register';
+import hathorLib from '@hathor/wallet-lib';
 
 import {
   addNewAddresses,
@@ -11,7 +12,6 @@ import {
   removeUtxos,
   updateAddressTablesWithTx,
   updateAddressLockedBalance,
-  updateExistingAddresses,
   updateWalletLockedBalance,
   updateWalletTablesWithTx,
 } from '@src/db';
@@ -75,9 +75,8 @@ const addNewTx = async (tx: Transaction, now: number, blockRewardLock: number) =
   const txId = tx.tx_id;
 
   let heightlock = null;
-  if (tx.version === 0 || tx.version === 3) {
-    // if (tx.isBlock())
-
+  if (tx.version === hathorLib.constants.BLOCK_VERSION
+    || tx.version === hathorLib.constants.MERGED_MINED_BLOCK_VERSION) {
     // unlock older block
     const utxos = await getUtxosLockedAtHeight(mysql, now, tx.height);
     await unlockUtxos(mysql, utxos, now);
@@ -110,11 +109,10 @@ const addNewTx = async (tx: Transaction, now: number, blockRewardLock: number) =
     if (seenWallets.has(walletId)) continue;
     seenWallets.add(walletId);
 
-    const { existingAddresses, newAddresses } = await generateAddresses(mysql, wallet.xpubkey, wallet.maxGap);
+    const { newAddresses } = await generateAddresses(mysql, wallet.xpubkey, wallet.maxGap);
     // might need to generate new addresses to keep maxGap
     await addNewAddresses(mysql, walletId, newAddresses);
     // update existing addresses' walletId and index
-    await updateExistingAddresses(mysql, walletId, existingAddresses);
   }
   // update wallet_balance and wallet_tx_history tables
   const walletBalanceMap: StringMap<TokenBalanceMap> = getWalletBalanceMap(addressWalletMap, addressBalanceMap);

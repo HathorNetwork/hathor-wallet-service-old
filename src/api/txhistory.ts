@@ -1,7 +1,9 @@
 import { APIGatewayProxyHandler } from 'aws-lambda';
 import 'source-map-support/register';
+import hathorLib from '@hathor/wallet-lib';
 
 import { ApiError } from '@src/api/errors';
+import { closeDbAndGetError } from '@src/api/utils';
 import {
   getWallet,
   getWalletTxHistory,
@@ -13,8 +15,7 @@ const mysql = getDbConnection();
 // XXX add to .env or serverless.yml?
 const MAX_COUNT = 15;
 
-// TODO get from lib
-const htrToken = '00';
+const htrToken = hathorLib.constants.HATHOR_TOKEN_CONFIG.uid;
 
 /*
  * Get the tx-history of a wallet
@@ -28,11 +29,7 @@ export const get: APIGatewayProxyHandler = async (event) => {
   if (params && params.id) {
     walletId = params.id;
   } else {
-    await closeDbConnection(mysql);
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ success: false, error: 'missing-parameter', parameter: 'id' }),
-    };
+    return closeDbAndGetError(mysql, ApiError.MISSING_PARAMETER, { parameter: 'id' });
   }
 
   let tokenId = htrToken;
@@ -47,11 +44,7 @@ export const get: APIGatewayProxyHandler = async (event) => {
   if (params && params.skip) {
     skip = parseInt(params.skip, 10);
     if (Number.isNaN(skip)) {
-      await closeDbConnection(mysql);
-      return {
-        statusCode: 200,
-        body: JSON.stringify({ success: false, error: ApiError.INVALID_PARAMETER, parameter: 'skip' }),
-      };
+      return closeDbAndGetError(mysql, ApiError.INVALID_PARAMETER, { parameter: 'skip' });
     }
   }
 
@@ -60,11 +53,7 @@ export const get: APIGatewayProxyHandler = async (event) => {
   if (params && params.count) {
     const parsed = parseInt(params.count, 10);
     if (Number.isNaN(parsed)) {
-      await closeDbConnection(mysql);
-      return {
-        statusCode: 200,
-        body: JSON.stringify({ success: false, error: ApiError.INVALID_PARAMETER, parameter: 'count' }),
-      };
+      return closeDbAndGetError(mysql, ApiError.INVALID_PARAMETER, { parameter: 'count' });
     }
     // we don't return an error if user requests more than the maximum allowed
     count = Math.min(MAX_COUNT, parsed);
@@ -72,11 +61,10 @@ export const get: APIGatewayProxyHandler = async (event) => {
 
   const status = await getWallet(mysql, walletId);
   if (!status) {
-    await closeDbConnection(mysql);
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ success: false, error: ApiError.WALLET_NOT_FOUND }),
-    };
+    return closeDbAndGetError(mysql, ApiError.WALLET_NOT_FOUND);
+  }
+  if (!status.readyAt) {
+    return closeDbAndGetError(mysql, ApiError.WALLET_NOT_READY);
   }
 
   const history = await getWalletTxHistory(mysql, walletId, tokenId, skip, count);

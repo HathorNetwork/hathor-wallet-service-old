@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "description": "",
   "scripts": {
+    "postinstall": "npm dedupe",
     "jest": "jest --runInBand --collectCoverage",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "check-types": "tsc --noemit",
@@ -16,9 +17,10 @@
     "url": "https://github.com/HathorNetwork/hathor-wallet-service.git"
   },
   "dependencies": {
+    "@hathor/wallet-lib": "^0.16.2",
     "aws-lambda": "^1.0.6",
     "aws-sdk": "^2.700.0",
-    "bitcore-lib": "^8.20.4",
+    "bitcore-lib": "^0.16.0",
     "mysql": "^2.18.1",
     "serverless-mysql": "^1.5.4",
     "source-map-support": "^0.5.19"

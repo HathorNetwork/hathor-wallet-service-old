@@ -112,7 +112,7 @@ test('generateAddresses', async () => {
   for (const [index, address] of addressesInfo.addresses.entries()) {
     expect(ADDRESSES[index]).toBe(address);
   }
-}, 15000);
+}, 25000);
 
 test('getAddressWalletInfo', async () => {
   expect.hasAssertions();

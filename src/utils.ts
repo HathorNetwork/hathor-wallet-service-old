@@ -1,22 +1,5 @@
-import { Address, HDPublicKey, Networks } from 'bitcore-lib';
 import { createHash, HexBase64Latin1Encoding } from 'crypto';
 import serverlessMysql, { ServerlessMysql } from 'serverless-mysql';
-
-import { StringMap } from '@src/types';
-
-// TODO get from hathor-lib or maybe env?
-const mainnet = Networks.add({
-  name: 'mainnet',
-  alias: 'production',
-  pubkeyhash: 0x28,
-  privatekey: 0x80,
-  scripthash: 0x64,
-  xpubkey: 0x0488b21e,
-  xprivkey: 0x0488ade4,
-  networkMagic: 0xf9beb4d9,
-  port: 8333,
-  dnsSeeds: [],
-});
 
 /**
  * Calculate the double sha256 hash of the data.
@@ -45,34 +28,6 @@ export const sha256d = (data: string, encoding: HexBase64Latin1Encoding): string
 export const getWalletId = (xpubkey: string): string => (
   sha256d(xpubkey, 'hex')
 );
-
-/**
- * Get Hathor addresses in bulk, passing the start index and quantity of addresses to be generated
- *
- * @example
- * ```
- * getHathorAddresses('myxpub', 2, 3) => {
- *   'address2': 2,
- *   'address3': 3,
- *   'address4': 4,
- * }
- * ```
- *
- * @param xpubkey - The xpubkey
- * @param startIndex - Generate addresses starting from this index
- * @param quantity - Amount of addresses to generate
- * @returns A list with the generated addresses and corresponding index
- */
-export const getHathorAddresses = (xpubkey: string, startIndex: number, quantity: number): StringMap<number> => {
-  const addrMap: StringMap<number> = {};
-  const xpub = HDPublicKey(xpubkey);
-  for (let index = startIndex; index < startIndex + quantity; index++) {
-    const key = xpub.derive(index);
-    const address = Address(key.publicKey, mainnet);
-    addrMap[address.toString()] = index;
-  }
-  return addrMap;
-};
 
 /**
  * Get the current Unix timestamp, in seconds.

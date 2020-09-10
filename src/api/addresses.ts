@@ -2,6 +2,7 @@ import { APIGatewayProxyHandler } from 'aws-lambda';
 import 'source-map-support/register';
 
 import { ApiError } from '@src/api/errors';
+import { closeDbAndGetError } from '@src/api/utils';
 import {
   getWallet,
   getWalletAddresses,
@@ -21,20 +22,15 @@ export const get: APIGatewayProxyHandler = async (event) => {
   if (params && params.id) {
     walletId = params.id;
   } else {
-    await closeDbConnection(mysql);
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ success: false, error: ApiError.MISSING_PARAMETER, parameter: 'id' }),
-    };
+    return closeDbAndGetError(mysql, ApiError.MISSING_PARAMETER, { parameter: 'id' });
   }
 
   const status = await getWallet(mysql, walletId);
   if (!status) {
-    await closeDbConnection(mysql);
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ success: false, error: ApiError.WALLET_NOT_FOUND }),
-    };
+    return closeDbAndGetError(mysql, ApiError.WALLET_NOT_FOUND);
+  }
+  if (!status.readyAt) {
+    return closeDbAndGetError(mysql, ApiError.WALLET_NOT_READY);
   }
 
   const addresses = await getWalletAddresses(mysql, walletId);
