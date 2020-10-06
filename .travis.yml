@@ -1,0 +1,8 @@
+language: node_js
+node_js:
+  - "12"
+
+# cannot run npm run test as it depends on a mysql db running
+script:
+  - npm run check-types
+  - npm run lint

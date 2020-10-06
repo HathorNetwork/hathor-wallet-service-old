@@ -1,0 +1,76 @@
+service:
+  name: hathor-wallet-service
+
+custom:
+  webpack:
+    webpackConfig: ./webpack.config.js
+    includeModules: true
+  prune:
+    automatic: true
+    number: 3
+
+# Create an optimized package for our functions 
+package:
+  individually: true
+
+plugins:
+  - serverless-offline
+  - serverless-webpack
+  - serverless-prune-plugin
+  - serverless-dotenv-plugin
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  stage: ${env:STAGE}
+  region: us-east-1
+  apiGateway:
+    minimumCompressionSize: 1024 # Enable gzip compression for responses > 1 KB
+  environment:
+    AWS_NODEJS_CONNECTION_REUSE_ENABLED: 1
+    SERVICE_NAME: ${self:service}
+    AWS_REGION: ${self:provider.region}
+    DB_ENDPOINT: ${env:DB_ENDPOINT, 'rds-endpoint-TODO'}
+    DB_NAME: ${self:service}-${env:STAGE}
+    DB_USER: ${env:STAGE}-user
+
+functions:
+  onNewTxEvent:
+    handler: src/txProcessor.onNewTxEvent
+  createWalletAsync:
+    handler: src/api/wallet.createWallet
+  createWalletApi:
+    handler: src/api/wallet.create
+    events:
+      - http:
+          path: wallet
+          method: post
+          cors: true
+  getWalletStatusApi:
+    handler: src/api/wallet.get
+    events:
+      - http:
+          path: wallet
+          method: get
+          cors: true
+  getAddressesApi:
+    handler: src/api/addresses.get
+    events:
+      - http:
+          path: addresses
+          method: get
+          cors: true
+  getBalanceApi:
+    handler: src/api/balances.get
+    events:
+      - http:
+          path: balances
+          method: get
+          cors: true
+  getTxHistoryApi:
+    handler: src/api/txhistory.get
+    events:
+      - http:
+          path: txhistory
+          method: get
+          cors: true

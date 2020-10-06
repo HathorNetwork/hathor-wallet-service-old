@@ -1,0 +1,11 @@
+# package directories
+node_modules
+
+# serverless directories
+.serverless
+
+# webpack directories
+.webpack
+
+# code coverage directories
+coverage

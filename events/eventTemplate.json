@@ -1,0 +1,52 @@
+{
+  "Records": [
+    {
+      "messageId": "cb663b7e-a937-4bae-94ec-a64d7b4b6630",
+      "receiptHandle": "AQEBMVp7ef/+ED+qWMAFpQbzKKPqTUq2bvoLwjBa/3Hm/RjfguJPHM10D9H7gIHNT8Pcv3F8H+dLEDu9Dvy8RpS9aKPq4hKb/rWZPEQtCeyc7Caosf1oCS+AkkDxI+kEqPoZ+KbyIGHumzSSgGMcSyeM++tKZHgXmo5gwktKQApr7l9fFjXIZS50puu8hXPwO5gYxG2zktFWtgSXScYoVIJ8u56wdipE3jMp6B7a5CfMIxuT1zK6ht9OkaLD3RWcO+Lnub762sItXExQNH33ZBzEfg==",
+      "body": {
+        "tx_id": null,
+        "nonce": "171169",
+        "timestamp": 1590503218,
+        "version": 0,
+        "weight": 21,
+        "is_voided": false,
+        "parents": [
+          "000006cb93385b8b87a545a1cbb6197e6caff600c12cc12fc54250d39c8088fc",
+          "0002d4d2a15def7604688e1878ab681142a7b155cbe52a6b4e031250ae96db0a",
+          "0002ad8d1519daaddc8e1a37b14aac0b045129c01832281fb1c02d873c7abbf9"
+        ],
+        "inputs": [],
+        "outputs": [],
+        "height": 1
+      },
+      "attributes": {
+        "ApproximateReceiveCount": "1",
+        "SentTimestamp": "1589930991158",
+        "SequenceNumber": "18853766407446000896",
+        "MessageGroupId": "message_group_id",
+        "SenderId": "AIDAJCXZLXEJBPGI37LX6",
+        "MessageDeduplicationId": "3fb3ff522533675f75ce8209c4c3be614a1db1673dd8554f230d4266aeeeeb0b",
+        "ApproximateFirstReceiveTimestamp": "1589930991158"
+      },
+      "messageAttributes": {
+        "attr1_name": {
+          "stringValue": "attr1_value",
+          "stringListValues": [],
+          "binaryListValues": [],
+          "dataType": "String"
+        },
+        "attr2_name": {
+          "stringValue": "attr2_value",
+          "stringListValues": [],
+          "binaryListValues": [],
+          "dataType": "String"
+        }
+      },
+      "md5OfMessageAttributes": "8eed7b18becba5578f2b3f7ab2057c4c",
+      "md5OfBody": "ae2f9f1e1aeee5fa83f3dcbcf0b08843",
+      "eventSource": "aws:sqs",
+      "eventSourceARN": "arn:aws:sqs:us-east-2:769498303037:YanTest.fifo",
+      "awsRegion": "us-east-2"
+    }
+  ]
+}
