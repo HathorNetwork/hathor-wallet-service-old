@@ -1,5 +1,13 @@
+/**
+ * Copyright (c) Hathor Labs and its affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 import { strict as assert } from 'assert';
 import { ServerlessMysql } from 'serverless-mysql';
+import hathorLib from '@hathor/wallet-lib';
 
 import {
   AddressIndexMap,
@@ -17,7 +25,7 @@ import {
   Wallet,
   WalletStatus,
 } from '@src/types';
-import { getHathorAddresses, getUnixTimestamp } from '@src/utils';
+import { getUnixTimestamp } from '@src/utils';
 
 /**
  * Given an xpubkey, generate its addresses.
@@ -39,7 +47,7 @@ export const generateAddresses = async (mysql: ServerlessMysql, xpubkey: string,
   const allAddresses: string[] = [];
 
   do {
-    const addrMap = getHathorAddresses(xpubkey, highestCheckedIndex + 1, maxGap);
+    const addrMap = hathorLib.helpers.getAddresses(xpubkey, highestCheckedIndex + 1, maxGap, 'mainnet');
     allAddresses.push(...Object.keys(addrMap));
 
     const results: DbSelectResult = await mysql.query(
@@ -316,9 +324,9 @@ export const updateWalletTablesWithTx = async (
   const entries = [];
   for (const [walletId, tokenBalanceMap] of Object.entries(walletBalanceMap)) {
     for (const [token, tokenBalance] of tokenBalanceMap.iterator()) {
-      // on wallet_balance table, balance cannot be negative (it's unsigned). That's why we use
-      // balance as (tokenBalance < 0 ? 0 : tokenBalance). In case the balance is negative, there
-      // must necessarily be an entry already and we'll fall on the ON DUPLICATE KEY case, so the
+      // on wallet_balance table, balance cannot be negative (it's unsigned). That's why we use balance
+      // as (tokenBalance < 0 ? 0 : tokenBalance). In case the wallet's balance in this tx is negative,
+      // there must necessarily be an entry already and we'll fall on the ON DUPLICATE KEY case, so the
       // entry value won't be used. We'll just update balance = balance + tokenBalance
       const entry = {
         wallet_id: walletId,
