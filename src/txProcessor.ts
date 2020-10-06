@@ -5,66 +5,36 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import AWS from 'aws-sdk';
-import { APIGatewayProxyHandler, APIGatewayProxyResult, SQSEvent } from 'aws-lambda';
+import { APIGatewayProxyResult, SQSEvent } from 'aws-lambda';
+import { ServerlessMysql } from 'serverless-mysql';
 import 'source-map-support/register';
 import hathorLib from '@hathor/wallet-lib';
-import {
-  getAddressBalanceMap,
-  getWalletBalanceMap,
-  markLockedOutputs,
-  unlockUtxos,
-  searchForLatestValidBlock,
-  handleReorg,
-  handleVoided,
-  prepareOutputs,
-} from '@src/commons';
+
 import {
   addNewAddresses,
   addUtxos,
-  addOrUpdateTx,
-  updateTx,
   generateAddresses,
   getAddressWalletInfo,
-  getLockedUtxoFromInputs,
   getUtxosLockedAtHeight,
-  updateTxOutputSpentBy,
-  storeTokenInformation,
+  removeUtxos,
   updateAddressTablesWithTx,
+  updateAddressLockedBalance,
+  updateWalletLockedBalance,
   updateWalletTablesWithTx,
-  fetchTx,
 } from '@src/db';
 import {
-  transactionDecorator,
-} from '@src/db/utils';
-import {
-  TxOutputWithIndex,
+  DecodedOutput,
   StringMap,
   Transaction,
   TokenBalanceMap,
+  TxInput,
+  TxOutput,
+  Utxo,
   Wallet,
-  Tx,
 } from '@src/types';
-import {
-  closeDbConnection,
-  getDbConnection,
-  getUnixTimestamp,
-} from '@src/utils';
+import { closeDbConnection, getDbConnection, getUnixTimestamp } from '@src/utils';
 
 const mysql = getDbConnection();
-
-export const IGNORE_TXS = {
-  mainnet: [
-    '000006cb93385b8b87a545a1cbb6197e6caff600c12cc12fc54250d39c8088fc',
-    '0002d4d2a15def7604688e1878ab681142a7b155cbe52a6b4e031250ae96db0a',
-    '0002ad8d1519daaddc8e1a37b14aac0b045129c01832281fb1c02d873c7abbf9',
-  ],
-  testnet: [
-    '0000033139d08176d1051fb3a272c3610457f0c7f686afbe0afe3d37f966db85',
-    '00e161a6b0bee1781ea9300680913fb76fd0fac4acab527cd9626cc1514abdc9',
-    '00975897028ceb037307327c953f5e7ad4d3f42402d71bd3d11ecb63ac39f01a',
-  ],
-};
 
 /**
  * Function called when a new transaction arrives.
@@ -77,7 +47,6 @@ export const IGNORE_TXS = {
  * @param event - The SQS event
  */
 export const onNewTxEvent = async (event: SQSEvent): Promise<APIGatewayProxyResult> => {
-  // TODO not sure if it should be 'now' or max(now, tx.timestamp), as we allow some flexibility for timestamps
   const now = getUnixTimestamp();
   const blockRewardLock = parseInt(process.env.BLOCK_REWARD_LOCK, 10);
   for (const evt of event.Records) {
@@ -101,163 +70,36 @@ export const onNewTxEvent = async (event: SQSEvent): Promise<APIGatewayProxyResu
 };
 
 /**
- * Function called when to process new transactions or blocks.
- *
- * @remarks
- * This is a lambda function that should be invoked using the aws-sdk.
- */
-export const onNewTxRequest: APIGatewayProxyHandler = async (event) => {
-  const now = getUnixTimestamp();
-  const blockRewardLock = parseInt(process.env.BLOCK_REWARD_LOCK, 10);
-
-  try {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    await addNewTx(event.body, now, blockRewardLock);
-
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ success: true }),
-    };
-  } catch (e) {
-    console.log('Errored on onNewTxRequest: ', e);
-
-    return {
-      statusCode: 500,
-      body: JSON.stringify({
-        success: false,
-        message: 'Tx processor failed',
-      }),
-    };
-  }
-};
-
-/**
- * Function called when a reorg is detected on the wallet-service daemon
- *
- * @remarks
- * This is a lambda function that should be invoked using the aws-sdk.
- */
-export const onHandleReorgRequest: APIGatewayProxyHandler = async () => {
-  try {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    await handleReorg(mysql);
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ success: true }),
-    };
-  } catch (e) {
-    console.log('Errored on onHandleReorgRequest: ', e);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({
-        success: false,
-        message: 'Reorg failed.',
-      }),
-    };
-  }
-};
-
-/**
- * Function called to search for the latest valid block
- *
- * @remarks
- * This is a lambda function that should be invoked using the aws-sdk.
- */
-export const onSearchForLatestValidBlockRequest: APIGatewayProxyHandler = async () => {
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
-  const latestValidBlock = await searchForLatestValidBlock(mysql);
-
-  return {
-    statusCode: 200,
-    body: JSON.stringify({ success: true, latestValidBlock }),
-  };
-};
-
-export const handleVoidedTx = async (tx: Transaction): Promise<void> => {
-  const txId = tx.tx_id;
-  const transaction: Tx = await fetchTx(mysql, txId);
-
-  if (!transaction) {
-    throw new Error(`Transaction ${txId} not found.`);
-  }
-
-  await handleVoided(mysql, transaction);
-};
-
-/**
  * Add a new transaction or block, updating the proper tables.
  *
  * @param tx - The transaction or block
  * @param now - Current timestamp
  * @param blockRewardLock - The block reward lock
  */
-const _unsafeAddNewTx = async (tx: Transaction, now: number, blockRewardLock: number): Promise<void> => {
+const addNewTx = async (tx: Transaction, now: number, blockRewardLock: number) => {
   // TODO mysql error treatment
 
   const txId = tx.tx_id;
-  const network = process.env.NETWORK;
-
-  // we should ignore genesis transactions as they have no parents, inputs and outputs and we expect the service
-  // to already have the pre-mine utxos on its database.
-  if (network in IGNORE_TXS) {
-    if (IGNORE_TXS[network].includes(txId)) {
-      throw new Error('Rejecting tx as it is part of the genesis transactions.');
-    }
-  }
-
-  const dbTx: Tx = await fetchTx(mysql, txId);
-
-  // check if we already have the tx on our database:
-  if (dbTx) {
-    // ignore tx if we already have it confirmed on our database
-    if (dbTx.height) {
-      return;
-    }
-
-    // set height and break out because it was already on the mempool
-    // so we can consider that our balances have already been calculated
-    // and the utxos were already inserted
-    await updateTx(mysql, txId, tx.height, tx.timestamp, tx.version);
-
-    return;
-  }
 
   let heightlock = null;
   if (tx.version === hathorLib.constants.BLOCK_VERSION
     || tx.version === hathorLib.constants.MERGED_MINED_BLOCK_VERSION) {
-    // unlock older blocks
+    // unlock older block
     const utxos = await getUtxosLockedAtHeight(mysql, now, tx.height);
-    await unlockUtxos(mysql, utxos, false);
+    await unlockUtxos(mysql, utxos, now);
 
     // set heightlock
     heightlock = tx.height + blockRewardLock;
   }
 
-  if (tx.version === hathorLib.constants.CREATE_TOKEN_TX_VERSION) {
-    await storeTokenInformation(mysql, tx.tx_id, tx.token_name, tx.token_symbol);
-  }
+  // add outputs to utxo table
+  await addUtxos(mysql, txId, tx.outputs, heightlock);
 
-  const outputs: TxOutputWithIndex[] = prepareOutputs(tx.outputs, txId);
-
-  // check if any of the inputs are still marked as locked and update tables accordingly.
-  // See remarks on getLockedUtxoFromInputs for more explanation. It's important to perform this
-  // before updating the balances
-  const lockedInputs = await getLockedUtxoFromInputs(mysql, tx.inputs);
-  await unlockUtxos(mysql, lockedInputs, true);
-
-  // add transaction outputs to the tx_outputs table
-  markLockedOutputs(outputs, now, heightlock !== null);
-  await addOrUpdateTx(mysql, txId, tx.height, tx.timestamp, tx.version);
-  await addUtxos(mysql, txId, outputs, heightlock);
-
-  // mark the tx_outputs used in the transaction (tx.inputs) as spent by txId
-  await updateTxOutputSpentBy(mysql, tx.inputs, txId);
+  // remove inputs from utxo table
+  await removeUtxos(mysql, tx.inputs);
 
   // get balance of each token for each address
-  const addressBalanceMap: StringMap<TokenBalanceMap> = getAddressBalanceMap(tx.inputs, outputs);
+  const addressBalanceMap: StringMap<TokenBalanceMap> = getAddressBalanceMap(tx.inputs, tx.outputs, now, heightlock !== null);
 
   // update address tables (address, address_balance, address_tx_history)
   await updateAddressTablesWithTx(mysql, txId, tx.timestamp, addressBalanceMap);
@@ -283,32 +125,144 @@ const _unsafeAddNewTx = async (tx: Transaction, now: number, blockRewardLock: nu
   const walletBalanceMap: StringMap<TokenBalanceMap> = getWalletBalanceMap(addressWalletMap, addressBalanceMap);
   await updateWalletTablesWithTx(mysql, txId, tx.timestamp, walletBalanceMap);
 
-  const queueUrl = process.env.NEW_TX_SQS;
-  if (!queueUrl) return;
-
-  const sqs = new AWS.SQS({ apiVersion: '2012-11-05' });
-  const params = {
-    MessageBody: JSON.stringify({
-      wallets: Array.from(seenWallets),
-      tx,
-    }),
-    QueueUrl: queueUrl,
-  };
-
-  await sqs.sendMessage(params).promise();
+  // TODO schedule unlock lambda if there's a timelock
 };
 
 /**
- * Add a new transaction or block, updating the proper tables.
- * @remarks This is a wrapper for _unsafeAddNewTx that adds automatic transaction and rollback on failure
+ * Get the map of token balances for each address in the transaction inputs and outputs.
  *
- * @param tx - The transaction or block
+ * @remarks
+ * Besides the inputs and outputs, it also expects a timestamp and outputsLocked flag. The timestamp
+ * is used to determine if the outputs are locked or not. The same for outputsLocked, but as it's a
+ * boolean, `outputsLocked = true` means (all) outputs are locked, no matter the timestamp. If it's
+ * false, it depends on the timestamp.
+ *
+ * The idea is that `outputsLocked = true` should be used for blocks, whose outputs are locked by
+ * height. Timelocks are handled by the `now` parameter.
+ *
+ * @example
+ * Return map has this format:
+ * ```
+ * {
+ *   address1: {token1: balance1, token2: balance2},
+ *   address2: {token1: balance3}
+ * }
+ * ```
+ *
+ * @param inputs - The transaction inputs
+ * @param outputs - The transaction outputs
  * @param now - Current timestamp
- * @param blockRewardLock - The block reward lock
+ * @param outputsLocked - Flag that tells if outputs are all locked
+ * @returns A map of addresses and its token balances
  */
-export const addNewTx = async (tx: Transaction, now: number, blockRewardLock: number) => {
-  /* eslint-disable-next-line  @typescript-eslint/ban-types */
-  const wrappedAddNewTx = await transactionDecorator(mysql, _unsafeAddNewTx);
+export const getAddressBalanceMap = (
+  inputs: TxInput[],
+  outputs: TxOutput[],
+  now: number,
+  outputsLocked = false,
+): StringMap<TokenBalanceMap> => {
+  const addressBalanceMap = {};
+  // TODO handle authority
 
-  return wrappedAddNewTx(tx, now, blockRewardLock);
+  for (const output of outputs) {
+    const address = output.decoded.address;
+
+    // get the TokenBalanceMap from this output
+    const tokenBalanceMap = TokenBalanceMap.fromTxOutput(output, now, outputsLocked);
+    // merge it with existing TokenBalanceMap for the address
+    addressBalanceMap[address] = TokenBalanceMap.merge(addressBalanceMap[address], tokenBalanceMap);
+  }
+
+  for (const input of inputs) {
+    const address = input.decoded.address;
+
+    // get the TokenBalanceMap from this input
+    const tokenBalanceMap = TokenBalanceMap.fromTxInput(input);
+    // merge it with existing TokenBalanceMap for the address
+    addressBalanceMap[address] = TokenBalanceMap.merge(addressBalanceMap[address], tokenBalanceMap);
+  }
+
+  return addressBalanceMap;
+};
+
+/**
+ * Get the map of token balances for each wallet.
+ *
+ * @remarks
+ * Different addresses can belong to the same wallet, so this function merges their
+ * token balances.
+ *
+ * @example
+ * Return map has this format:
+ * ```
+ * {
+ *   wallet1: {token1: balance1, token2: balance2},
+ *   wallet2: {token1: balance3}
+ * }
+ * ```
+ *
+ * @param addressWalletMap - Map of addresses and corresponding wallets
+ * @param addressBalanceMap - Map of addresses and corresponding token balances
+ * @returns A map of wallet ids and its token balances
+ */
+export const getWalletBalanceMap = (
+  addressWalletMap: StringMap<Wallet>,
+  addressBalanceMap: StringMap<TokenBalanceMap>,
+): StringMap<TokenBalanceMap> => {
+  const walletBalanceMap = {};
+  for (const [address, balanceMap] of Object.entries(addressBalanceMap)) {
+    const wallet = addressWalletMap[address];
+    const walletId = wallet && wallet.walletId;
+
+    // if this address is not from a started wallet, ignore
+    if (!walletId) continue;
+
+    walletBalanceMap[walletId] = TokenBalanceMap.merge(walletBalanceMap[walletId], balanceMap);
+  }
+  return walletBalanceMap;
+};
+
+/**
+ * Update the unlocked/locked balances for addresses and wallets connected to the given UTXOs.
+ *
+ * @remarks
+ * UTXOs become unlocked by block height, but might still be locked by timelock (although very unusual).
+ * The UTXOs passed to this function should be already unlocked by height. This function will determine
+ * if they're still locked by time.
+ *
+ * @param _mysql - Database connection
+ * @param utxos - List of UTXOs that are unlocked by height
+ * @param now - current timestamp
+ */
+export const unlockUtxos = async (_mysql: ServerlessMysql, utxos: Utxo[], now: number): Promise<void> => {
+  if (utxos.length === 0) return;
+
+  const outputs: TxOutput[] = utxos.map((utxo) => {
+    const decoded: DecodedOutput = {
+      type: 'P2PKH',
+      address: utxo.address,
+      timelock: utxo.timelock,
+      value: utxo.value,
+    };
+    return {
+      value: utxo.value,
+      token: utxo.tokenId,
+      decoded,
+      // we don't care about spent_by, token_data and script
+      spent_by: null,
+      script: '',
+    };
+  });
+
+  // getAddressBalanceMap takes care of checking the timelock
+  const addressBalanceMap: StringMap<TokenBalanceMap> = getAddressBalanceMap([], outputs, now, false);
+  // update address_balance table
+  await updateAddressLockedBalance(_mysql, addressBalanceMap);
+
+  // check if addresses belong to any started wallet
+  const addressWalletMap: StringMap<Wallet> = await getAddressWalletInfo(_mysql, Object.keys(addressBalanceMap));
+
+  // update wallet_balance table
+  const walletBalanceMap: StringMap<TokenBalanceMap> = getWalletBalanceMap(addressWalletMap, addressBalanceMap);
+  await updateWalletLockedBalance(_mysql, walletBalanceMap);
 };

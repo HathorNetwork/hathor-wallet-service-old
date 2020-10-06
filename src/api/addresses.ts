@@ -5,9 +5,9 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import { APIGatewayProxyHandler } from 'aws-lambda';
 import 'source-map-support/register';
 
-import { APIGatewayProxyHandler } from 'aws-lambda';
 import { ApiError } from '@src/api/errors';
 import { closeDbAndGetError } from '@src/api/utils';
 import {
@@ -16,8 +16,6 @@ import {
 } from '@src/db';
 import { closeDbConnection, getDbConnection } from '@src/utils';
 
-import { walletIdProxyHandler } from '@src/commons';
-
 const mysql = getDbConnection();
 
 /*
@@ -25,9 +23,16 @@ const mysql = getDbConnection();
  *
  * This lambda is called by API Gateway on GET /addresses
  */
-export const get: APIGatewayProxyHandler = walletIdProxyHandler(async (walletId) => {
-  const status = await getWallet(mysql, walletId);
+export const get: APIGatewayProxyHandler = async (event) => {
+  let walletId: string;
+  const params = event.queryStringParameters;
+  if (params && params.id) {
+    walletId = params.id;
+  } else {
+    return closeDbAndGetError(mysql, ApiError.MISSING_PARAMETER, { parameter: 'id' });
+  }
 
+  const status = await getWallet(mysql, walletId);
   if (!status) {
     return closeDbAndGetError(mysql, ApiError.WALLET_NOT_FOUND);
   }
@@ -43,4 +48,4 @@ export const get: APIGatewayProxyHandler = walletIdProxyHandler(async (walletId)
     statusCode: 200,
     body: JSON.stringify({ success: true, addresses }),
   };
-});
+};

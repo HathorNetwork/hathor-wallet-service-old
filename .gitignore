@@ -9,14 +9,3 @@ node_modules
 
 # code coverage directories
 coverage
-
-# eslint
-.eslintcache
-
-# env variables
-.env
-.env.*
-
-# open files
-*.swp
-*.swo

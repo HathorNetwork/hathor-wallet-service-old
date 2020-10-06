@@ -51,7 +51,6 @@ rules:
   jest/require-top-level-describe: 'off'
   jest/no-hooks: 'off'
   jest/no-if: 'off'
-  jest/no-conditional-expect: 'off'
   jest/no-expect-resolves: 'off'
   jest/lowercase-name: 'off'
   "@typescript-eslint/naming-convention":

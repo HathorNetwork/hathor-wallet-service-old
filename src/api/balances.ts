@@ -5,58 +5,34 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import { APIGatewayProxyHandler } from 'aws-lambda';
 import 'source-map-support/register';
 
-import { APIGatewayProxyHandler } from 'aws-lambda';
 import { ApiError } from '@src/api/errors';
 import { closeDbAndGetError } from '@src/api/utils';
-import { getWalletBalances, walletIdProxyHandler } from '@src/commons';
 import {
   getWallet,
+  getWalletBalances,
 } from '@src/db';
-import {
-  closeDbConnection,
-  getDbConnection,
-  getUnixTimestamp,
-} from '@src/utils';
-import Joi from 'joi';
+import { closeDbConnection, getDbConnection } from '@src/utils';
 
 const mysql = getDbConnection();
-
-const paramsSchema = Joi.object({
-  token_id: Joi.string()
-    .alphanum()
-    .optional(),
-});
 
 /*
  * Get the balances of a wallet
  *
  * This lambda is called by API Gateway on GET /balances
- *
- * XXX: If token_id is not sent as a filter, we return all token balances
- * Maybe we should limit the amount of tokens to query the balance to prevent an user
- * with a lot of different tokens in his wallet from doing an expensive query
  */
-export const get: APIGatewayProxyHandler = walletIdProxyHandler(async (walletId, event) => {
-  const params = event.queryStringParameters || {};
-
-  const { value, error } = paramsSchema.validate(params, {
-    abortEarly: false,
-    convert: false,
-  });
-
-  if (error) {
-    const details = error.details.map((err) => ({
-      message: err.message,
-      path: err.path,
-    }));
-
-    return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, { details });
+export const get: APIGatewayProxyHandler = async (event) => {
+  const params = event.queryStringParameters;
+  let walletId: string;
+  if (params && params.id) {
+    walletId = params.id;
+  } else {
+    return closeDbAndGetError(mysql, ApiError.MISSING_PARAMETER, { parameter: 'id' });
   }
 
   const status = await getWallet(mysql, walletId);
-
   if (!status) {
     return closeDbAndGetError(mysql, ApiError.WALLET_NOT_FOUND);
   }
@@ -64,13 +40,13 @@ export const get: APIGatewayProxyHandler = walletIdProxyHandler(async (walletId,
     return closeDbAndGetError(mysql, ApiError.WALLET_NOT_READY);
   }
 
-  const tokenIds: string[] = [];
-  if (value.token_id) {
-    const tokenId = value.token_id;
-    tokenIds.push(tokenId);
+  let tokenId: string = null;
+  if (params && params.token_id) {
+    tokenId = params.token_id;
+    // TODO validate tokenId
   }
 
-  const balances = await getWalletBalances(mysql, getUnixTimestamp(), walletId, tokenIds);
+  const balances = await getWalletBalances(mysql, walletId, tokenId);
 
   await closeDbConnection(mysql);
 
@@ -78,4 +54,4 @@ export const get: APIGatewayProxyHandler = walletIdProxyHandler(async (walletId,
     statusCode: 200,
     body: JSON.stringify({ success: true, balances }),
   };
-});
+};

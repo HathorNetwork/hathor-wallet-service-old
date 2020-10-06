@@ -8,11 +8,13 @@
 import { APIGatewayProxyHandler, Handler } from 'aws-lambda';
 import { Lambda } from 'aws-sdk';
 import 'source-map-support/register';
+import hathorLib from '@hathor/wallet-lib';
 
 import { ApiError } from '@src/api/errors';
+import { closeDbAndGetError } from '@src/api/utils';
 import {
   addNewAddresses,
-  createWallet,
+  createWallet as dbCreateWallet,
   generateAddresses,
   getWallet,
   initWalletBalance,
@@ -22,21 +24,26 @@ import {
 } from '@src/db';
 import { WalletStatus } from '@src/types';
 import { closeDbConnection, getDbConnection, getWalletId } from '@src/utils';
-import { closeDbAndGetError } from '@src/api/utils';
-import { walletIdProxyHandler } from '@src/commons';
-import Joi from 'joi';
-import { walletUtils } from '@hathor/wallet-lib';
 
 const mysql = getDbConnection();
 
-const MAX_LOAD_WALLET_RETRIES: number = parseInt(process.env.MAX_LOAD_WALLET_RETRIES || '5', 10);
+// lambda api version: https://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/Lambda.html
+const LAMBDA_API_VERSION = '2015-03-31';
 
 /*
  * Get the status of a wallet
  *
  * This lambda is called by API Gateway on GET /wallet
  */
-export const get: APIGatewayProxyHandler = walletIdProxyHandler(async (walletId) => {
+export const get: APIGatewayProxyHandler = async (event) => {
+  let walletId: string;
+  const params = event.queryStringParameters;
+  if (params && params.id) {
+    walletId = params.id;
+  } else {
+    return closeDbAndGetError(mysql, ApiError.MISSING_PARAMETER, { parameter: 'id' });
+  }
+
   const status = await getWallet(mysql, walletId);
   if (!status) {
     return closeDbAndGetError(mysql, ApiError.WALLET_NOT_FOUND);
@@ -48,198 +55,116 @@ export const get: APIGatewayProxyHandler = walletIdProxyHandler(async (walletId)
     statusCode: 200,
     body: JSON.stringify({ success: true, status }),
   };
-});
-
-// If the env requires to validate the first address
-// then we must set the firstAddress field as required
-const confirmFirstAddress = process.env.CONFIRM_FIRST_ADDRESS === 'true';
-const firstAddressJoi = confirmFirstAddress ? Joi.string().required() : Joi.string();
-
-const loadBodySchema = Joi.object({
-  xpubkey: Joi.string()
-    .required(),
-  firstAddress: firstAddressJoi,
-});
-
-/**
- * Invoke the loadWalletAsync function
- *
- * @param xpubkey - The xpubkey to load
- * @param maxGap - The max gap
- */
-/* istanbul ignore next */
-export const invokeLoadWalletAsync = async (xpubkey: string, maxGap: number): Promise<void> => {
-  // invoke lambda asynchronously to handle wallet creation
-  const lambda = new Lambda({
-    apiVersion: '2015-03-31',
-    endpoint: process.env.STAGE === 'dev'
-      ? 'http://localhost:3002'
-      : `https://lambda.${process.env.AWS_REGION}.amazonaws.com`,
-  });
-
-  const params = {
-    // FunctionName is composed of: service name - stage - function name
-    FunctionName: `${process.env.SERVICE_NAME}-${process.env.STAGE}-loadWalletAsync`,
-    InvocationType: 'Event',
-    Payload: JSON.stringify({ xpubkey, maxGap }),
-  };
-
-  const response = await lambda.invoke(params).promise();
-
-  // Event InvocationType returns 202 for a successful invokation
-  if (response.StatusCode !== 202) {
-    throw new Error('Lambda invoke failed');
-  }
 };
 
 /*
- * Load a wallet. First checks if the wallet doesn't exist already and then call another
+ * Create a wallet. First checks if the wallet doesn't exist already and then call another
  * lamdba to asynchronously add new wallet info to database
  *
  * This lambda is called by API Gateway on POST /wallet
  */
-export const load: APIGatewayProxyHandler = async (event) => {
-  const eventBody = (function parseBody(body) {
-    try {
-      return JSON.parse(body);
-    } catch (e) {
-      return null;
-    }
-  }(event.body));
-
-  const { value, error } = loadBodySchema.validate(eventBody, {
-    abortEarly: false,
-    convert: false,
-  });
-
-  if (error) {
-    const details = error.details.map((err) => ({
-      message: err.message,
-      path: err.path,
-    }));
-
-    return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, { details });
+export const create: APIGatewayProxyHandler = async (event) => {
+  let body;
+  try {
+    body = JSON.parse(event.body);
+    // event.body might be null, which is also parsed to null
+    if (!body) throw new Error('body is null');
+  } catch (e) {
+    return closeDbAndGetError(mysql, ApiError.INVALID_BODY);
   }
 
-  const xpubkey = value.xpubkey;
+  const xpubkey = body.xpubkey;
+  if (!xpubkey) {
+    return closeDbAndGetError(mysql, ApiError.MISSING_PARAMETER, { parameter: 'xpubkey' });
+  }
+
+  if (!hathorLib.helpers.isXpubKeyValid(xpubkey)) {
+    return closeDbAndGetError(mysql, ApiError.INVALID_PARAMETER, { parameter: 'xpubkey' });
+  }
+
+  // is wallet already created/creating?
+  const walletId = getWalletId(xpubkey);
+  let status = await getWallet(mysql, walletId);
+  if (status) {
+    return closeDbAndGetError(mysql, ApiError.WALLET_ALREADY_CREATED, { status });
+  }
+
   const maxGap = parseInt(process.env.MAX_ADDRESS_GAP, 10);
 
-  // is wallet already loaded/loading?
-  const walletId = getWalletId(xpubkey);
-  let wallet = await getWallet(mysql, walletId);
+  // add to wallet table with 'creating' status
+  status = await dbCreateWallet(mysql, walletId, xpubkey, maxGap);
 
-  if (wallet) {
-    if (wallet.status === WalletStatus.READY
-      || wallet.status === WalletStatus.CREATING) {
-      return closeDbAndGetError(mysql, ApiError.WALLET_ALREADY_LOADED, { status: wallet });
-    }
-
-    if (wallet.status === WalletStatus.ERROR
-        && wallet.retryCount >= MAX_LOAD_WALLET_RETRIES) {
-      return closeDbAndGetError(mysql, ApiError.WALLET_MAX_RETRIES, { status: wallet });
-    }
-  } else {
-    // wallet does not exist yet. Add to wallet table with 'creating' status
-    wallet = await createWallet(mysql, walletId, xpubkey, maxGap);
-  }
-
-  if (process.env.CONFIRM_FIRST_ADDRESS === 'true') {
-    const expectedFirstAddress = value.firstAddress;
-
-    // First derive xpub to change 0 path
-    const derivedXpub = walletUtils.xpubDeriveChild(xpubkey, 0);
-    // Then get first address
-    const firstAddress = walletUtils.getAddressAtIndex(derivedXpub, 0, process.env.NETWORK);
-    if (firstAddress !== expectedFirstAddress) {
-      return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, {
-        message: `Expected first address to be ${expectedFirstAddress} but it is ${firstAddress}`,
-      });
-    }
-  }
-
+  // invoke lambda asynchronously to handle wallet creation
+  const lambda = new Lambda({
+    apiVersion: LAMBDA_API_VERSION,
+    endpoint: process.env.STAGE === 'local'
+      ? 'http://localhost:3002'
+      : `https://lambda.${process.env.AWS_REGION}.amazonaws.com`,
+  });
+  const params = {
+    // FunctionName is composed of: service name - stage - function name
+    FunctionName: `${process.env.SERVICE_NAME}-${process.env.STAGE}-createWalletAsync`,
+    InvocationType: 'Event',
+    Payload: JSON.stringify({ xpubkey, maxGap }),
+  };
   try {
-    /* This calls the lambda function as a "Event", so we don't care here for the response,
-     * we only care if the invokation failed or not
-     */
-    await invokeLoadWalletAsync(xpubkey, maxGap);
+    // TODO setup lambda error handling. It's not an error on lambda.invoke, but an error during lambda execution
+    await lambda.invoke(params).promise();
   } catch (e) {
-    console.error('Error on lambda wallet invoke', e);
-
-    const newRetryCount = wallet.retryCount ? wallet.retryCount + 1 : 1;
-    // update wallet status to 'error'
-    await updateWalletStatus(mysql, walletId, WalletStatus.ERROR, newRetryCount);
-
-    // refresh the variable with latest status, so we can return it properly
-    wallet = await getWallet(mysql, walletId);
+    await updateWalletStatus(mysql, walletId, WalletStatus.ERROR);
+    return closeDbAndGetError(mysql, ApiError.UNKNOWN_ERROR, { message: e.message });
   }
 
   await closeDbConnection(mysql);
 
   return {
     statusCode: 200,
-    body: JSON.stringify({ success: true, status: wallet }),
+    body: JSON.stringify({ success: true, status }),
   };
 };
 
-interface LoadEvent {
+interface CreateEvent {
   xpubkey: string;
   maxGap: number;
 }
 
-interface LoadResult {
-  success: boolean;
+interface CreateResult {
   walletId: string;
   xpubkey: string;
 }
 
 /*
- * This does the "heavy" work when loading a new wallet, updating the database tables accordingly. It
- * expects a wallet entry already on the database
+ * This does the "heavy" work when creating a new wallet, updating the database tables accordingly. It
+ * expects a wallet entry already on the database.
  *
- * This lambda is called async by another lambda, the one reponsible for the load wallet API
+ * This lambda is called async by another lambda, the one reponsible for the create wallet API.
  */
-export const loadWallet: Handler<LoadEvent, LoadResult> = async (event) => {
+export const createWallet: Handler<CreateEvent, CreateResult> = async (event) => {
   const xpubkey = event.xpubkey;
   const maxGap = event.maxGap;
   const walletId = getWalletId(xpubkey);
 
-  try {
-    const { addresses, existingAddresses, newAddresses } = await generateAddresses(mysql, xpubkey, maxGap);
+  const { addresses, existingAddresses, newAddresses } = await generateAddresses(mysql, xpubkey, maxGap);
 
-    // update address table with new addresses
-    await addNewAddresses(mysql, walletId, newAddresses);
+  // update address table with new addresses
+  await addNewAddresses(mysql, walletId, newAddresses);
 
-    // update existing addresses' walletId and index
-    await updateExistingAddresses(mysql, walletId, existingAddresses);
+  // update existing addresses' walletId and index
+  await updateExistingAddresses(mysql, walletId, existingAddresses);
 
-    // from address_tx_history, update wallet_tx_history
-    await initWalletTxHistory(mysql, walletId, addresses);
+  // from address_tx_history, update wallet_tx_history
+  await initWalletTxHistory(mysql, walletId, addresses);
 
-    // from address_balance table, update balance table
-    await initWalletBalance(mysql, walletId, addresses);
+  // from address_balance table, update balance table
+  await initWalletBalance(mysql, walletId, addresses);
 
-    // update wallet status to 'ready'
-    await updateWalletStatus(mysql, walletId, WalletStatus.READY);
+  // update wallet status to 'ready'
+  await updateWalletStatus(mysql, walletId, WalletStatus.READY);
 
-    await closeDbConnection(mysql);
+  await closeDbConnection(mysql);
 
-    return {
-      success: true,
-      walletId,
-      xpubkey,
-    };
-  } catch (e) {
-    console.error('Erroed on loadWalletAsync: ', e);
-
-    const wallet = await getWallet(mysql, walletId);
-    const newRetryCount = wallet.retryCount ? wallet.retryCount + 1 : 1;
-
-    await updateWalletStatus(mysql, walletId, WalletStatus.ERROR, newRetryCount);
-
-    return {
-      success: false,
-      walletId,
-      xpubkey,
-    };
-  }
+  return {
+    walletId,
+    xpubkey,
+  };
 };

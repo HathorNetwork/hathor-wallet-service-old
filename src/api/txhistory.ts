@@ -5,6 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import { APIGatewayProxyHandler } from 'aws-lambda';
 import 'source-map-support/register';
 import hathorLib from '@hathor/wallet-lib';
 
@@ -15,60 +16,57 @@ import {
   getWalletTxHistory,
 } from '@src/db';
 import { closeDbConnection, getDbConnection } from '@src/utils';
-import { walletIdProxyHandler } from '@src/commons';
-import Joi from 'joi';
+
+const mysql = getDbConnection();
 
 // XXX add to .env or serverless.yml?
 const MAX_COUNT = 15;
+
 const htrToken = hathorLib.constants.HATHOR_TOKEN_CONFIG.uid;
-
-const paramsSchema = Joi.object({
-  token_id: Joi.string()
-    .alphanum()
-    .default(htrToken)
-    .optional(),
-  skip: Joi.number()
-    .integer()
-    .min(0)
-    .default(0)
-    .optional(),
-  count: Joi.number()
-    .integer()
-    .positive()
-    .default(MAX_COUNT)
-    .max(MAX_COUNT)
-    .optional(),
-});
-
-const mysql = getDbConnection();
 
 /*
  * Get the tx-history of a wallet
  *
  * This lambda is called by API Gateway on GET /txhistory
  */
-export const get = walletIdProxyHandler(async (walletId, event) => {
-  const params = event.queryStringParameters || {};
+export const get: APIGatewayProxyHandler = async (event) => {
+  const params = event.queryStringParameters;
 
-  const { value, error } = paramsSchema.validate(params, {
-    abortEarly: false,
-    convert: true, // Skip and count will come as query params as strings
-  });
-
-  if (error) {
-    const details = error.details.map((err) => ({
-      message: err.message,
-      path: err.path,
-    }));
-
-    return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, { details });
+  let walletId: string;
+  if (params && params.id) {
+    walletId = params.id;
+  } else {
+    return closeDbAndGetError(mysql, ApiError.MISSING_PARAMETER, { parameter: 'id' });
   }
 
-  const tokenId = value.token_id;
-  const skip = value.skip;
-  const count = Math.min(MAX_COUNT, value.count);
-  const status = await getWallet(mysql, walletId);
+  let tokenId = htrToken;
+  // TODO should it be mandatory or optional?
+  if (params && params.token_id) {
+    tokenId = params.token_id;
+    // TODO validate tokenId
+  }
 
+  let skip = 0;
+  // TODO should it be mandatory or optional?
+  if (params && params.skip) {
+    skip = parseInt(params.skip, 10);
+    if (Number.isNaN(skip)) {
+      return closeDbAndGetError(mysql, ApiError.INVALID_PARAMETER, { parameter: 'skip' });
+    }
+  }
+
+  let count = MAX_COUNT;
+  // TODO should it be mandatory or optional?
+  if (params && params.count) {
+    const parsed = parseInt(params.count, 10);
+    if (Number.isNaN(parsed)) {
+      return closeDbAndGetError(mysql, ApiError.INVALID_PARAMETER, { parameter: 'count' });
+    }
+    // we don't return an error if user requests more than the maximum allowed
+    count = Math.min(MAX_COUNT, parsed);
+  }
+
+  const status = await getWallet(mysql, walletId);
   if (!status) {
     return closeDbAndGetError(mysql, ApiError.WALLET_NOT_FOUND);
   }
@@ -84,4 +82,4 @@ export const get = walletIdProxyHandler(async (walletId, event) => {
     statusCode: 200,
     body: JSON.stringify({ success: true, history, skip, count }),
   };
-});
+};
