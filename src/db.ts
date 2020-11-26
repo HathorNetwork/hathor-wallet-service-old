@@ -427,7 +427,7 @@ export const unlockUtxos = async (mysql: ServerlessMysql, utxos: Utxo[]): Promis
  * @param inputs - The transaction inputs
  * @returns The locked UTXOs
  */
-export const getTxLockedInputs = async (mysql: ServerlessMysql, inputs: TxInput[]): Promise<Utxo[]> => {
+export const getLockedUtxoFromInputs = async (mysql: ServerlessMysql, inputs: TxInput[]): Promise<Utxo[]> => {
   const entries = inputs.map((input) => [input.tx_id, input.index]);
   // entries might be empty if there are no inputs
   if (entries.length) {

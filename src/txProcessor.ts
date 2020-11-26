@@ -15,7 +15,7 @@ import {
   addUtxos,
   generateAddresses,
   getAddressWalletInfo,
-  getTxLockedInputs,
+  getLockedUtxoFromInputs,
   getUtxosLockedAtHeight,
   maybeUpdateLatestHeight,
   removeUtxos,
@@ -100,9 +100,9 @@ const addNewTx = async (tx: Transaction, now: number, blockRewardLock: number) =
   }
 
   // check if any of the inputs are still marked as locked and update tables accordingly.
-  // See remarks on getTxLockedInputs for more explanation. It's important to perform this
+  // See remarks on getLockedUtxoFromInputs for more explanation. It's important to perform this
   // before updating the balances
-  const lockedInputs = await getTxLockedInputs(mysql, tx.inputs);
+  const lockedInputs = await getLockedUtxoFromInputs(mysql, tx.inputs);
   await unlockUtxos(mysql, lockedInputs, true);
 
   // add outputs to utxo table

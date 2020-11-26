@@ -5,7 +5,7 @@ import {
   generateAddresses,
   getAddressWalletInfo,
   getLatestHeight,
-  getTxLockedInputs,
+  getLockedUtxoFromInputs,
   getUtxosLockedAtHeight,
   getWalletAddresses,
   getWalletBalances,
@@ -430,7 +430,7 @@ test('addUtxos, unlockUtxos and removeUtxos', async () => {
   await expect(checkUtxoTable(mysql, 0)).resolves.toBe(true);
 });
 
-test('getTxLockedInputs', async () => {
+test('getLockedUtxoFromInputs', async () => {
   expect.hasAssertions();
   const txId = 'txId';
   const utxos = [
@@ -448,7 +448,7 @@ test('getTxLockedInputs', async () => {
   }
 
   const inputs = utxos.map((utxo, index) => createInput(utxo.value, utxo.address, txId, index, utxo.token, utxo.timelock, null));
-  const results = await getTxLockedInputs(mysql, inputs);
+  const results = await getLockedUtxoFromInputs(mysql, inputs);
   expect(results).toHaveLength(1);
   expect(results[0].value).toBe(25);
 });
