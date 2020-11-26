@@ -504,7 +504,7 @@ export const updateAddressTablesWithTx = async (
                                                                  WHEN VALUES(timelock_expires) IS NULL THEN timelock_expires
                                                                  ELSE LEAST(timelock_expires, VALUES(timelock_expires))
                                                             END`,
-        [entry, tokenBalance.unlocked, tokenBalance.locked, address, token],
+        [entry, tokenBalance.unlocked, tokenBalance.locked],
       );
 
       // update address_tx_history with one entry for each pair (address, token)
