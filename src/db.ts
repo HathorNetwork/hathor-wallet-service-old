@@ -343,7 +343,7 @@ export const updateWalletTablesWithTx = async (
                                                                  WHEN VALUES(timelock_expires) IS NULL THEN timelock_expires
                                                                  ELSE LEAST(timelock_expires, VALUES(timelock_expires))
                                                             END`,
-        [entry, tokenBalance.unlocked, tokenBalance.locked, walletId, token],
+        [entry, tokenBalance.unlocked, tokenBalance.locked],
       );
       entries.push([walletId, token, txId, tokenBalance.total(), timestamp]);
     }
