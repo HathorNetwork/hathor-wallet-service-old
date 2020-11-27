@@ -33,7 +33,7 @@ CREATE TABLE `address_tx_history` (
   PRIMARY KEY (`address`,`tx_id`,`token_id`)
 );
 
-CREATE TABLE `info` (
+CREATE TABLE `metadata` (
   `key` varchar(25) NOT NULL,
   `value` int unsigned NOT NULL,
   PRIMARY KEY (`key`)

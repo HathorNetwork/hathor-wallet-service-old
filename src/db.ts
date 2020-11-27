@@ -917,7 +917,7 @@ export const getWalletUnlockedUtxos = async (
 export const maybeUpdateLatestHeight = async (mysql: ServerlessMysql, height: number): Promise<void> => {
   const entry = { key: 'height', value: height };
   await mysql.query(
-    'INSERT INTO `info` SET ? ON DUPLICATE KEY UPDATE `value` = GREATEST(`value`, VALUES(`value`))',
+    'INSERT INTO `metadata` SET ? ON DUPLICATE KEY UPDATE `value` = GREATEST(`value`, VALUES(`value`))',
     [entry],
   );
 };
@@ -929,7 +929,7 @@ export const maybeUpdateLatestHeight = async (mysql: ServerlessMysql, height: nu
  * @returns The latest height
  */
 export const getLatestHeight = async (mysql: ServerlessMysql): Promise<number> => {
-  const results: DbSelectResult = await mysql.query('SELECT * FROM `info` WHERE `key` = \'height\'');
+  const results: DbSelectResult = await mysql.query('SELECT * FROM `metadata` WHERE `key` = \'height\'');
   if (results.length > 0) {
     return results[0].value as number;
   }
