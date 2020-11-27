@@ -52,7 +52,7 @@ export const createOutput = (value: number, address: string, token = '00', timel
   }
 );
 
-export const createInput = (value: number, address: string, txId: string, index: number, token = '00', timelock = null, locked = false, tokenData = 0): TxInput => (
+export const createInput = (value: number, address: string, txId: string, index: number, token = '00', timelock = null, tokenData = 0): TxInput => (
   {
     value,
     token_data: tokenData,
@@ -67,7 +67,6 @@ export const createInput = (value: number, address: string, txId: string, index:
     token,
     tx_id: txId,
     index,
-    locked,
   }
 );
 
