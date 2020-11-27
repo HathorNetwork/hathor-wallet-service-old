@@ -713,8 +713,10 @@ export const updateAddressLockedBalance = async (
                 WHERE \`address\` = ?
                   AND \`token_id\` = ?
                   AND \`locked\` = TRUE
-             )`,
-        [address, token]);
+             )
+           WHERE \`address\` = ?
+             AND \`token_id\` = ?`,
+        [address, token, address, token]);
       }
     }
   }
