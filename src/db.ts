@@ -642,10 +642,16 @@ export const updateAddressLockedBalance = async (
 
       // if this is being unlocked due to a timelock, also update the timelock_expires column
       if (updateTimelocks) {
-        await mysql.query(
-          'UPDATE `address_balance` SET `timelock_expires` = (SELECT MIN(`timelock`) FROM `utxo` WHERE `address` = ? AND `token_id` = ? AND `locked` = TRUE)',
-          [address, token],
-        );
+        await mysql.query(`
+          UPDATE \`address_balance\`
+             SET \`timelock_expires\` = (
+               SELECT MIN(\`timelock\`)
+                 FROM \`utxo\`
+                WHERE \`address\` = ?
+                  AND \`token_id\` = ?
+                  AND \`locked\` = TRUE
+             )`,
+        [address, token]);
       }
     }
   }

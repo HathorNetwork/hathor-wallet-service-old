@@ -96,7 +96,16 @@ export const checkUtxoTable = async (
   if (totalResults === 0) return true;
 
   // now fetch the exact entry
-  const baseQuery = 'SELECT * FROM `utxo` WHERE `tx_id` = ? AND `index` = ? AND `token_id` = ? AND `address` = ? AND `value` = ? AND `locked` = ? AND `timelock`';
+  const baseQuery = `
+    SELECT *
+      FROM \`utxo\`
+     WHERE \`tx_id\` = ?
+       AND \`index\` = ?
+       AND \`token_id\` = ?
+       AND \`address\` = ?
+       AND \`value\` = ?
+       AND \`locked\` = ?
+       AND \`timelock\``;
   results = await mysql.query(
     `${baseQuery} ${timelock ? '= ?' : 'IS ?'} AND \`heightlock\` ${heightlock ? '= ?' : 'IS ?'}`,
     [txId, index, tokenId, address, value, locked, timelock, heightlock],
@@ -133,7 +142,13 @@ export const checkAddressTable = async (
   if (totalResults === 0) return true;
 
   // now fetch the exact entry
-  const baseQuery = 'SELECT * FROM `address` WHERE `address` = ? AND `transactions` = ? AND `index`';
+  const baseQuery = `
+    SELECT *
+      FROM \`address\`
+     WHERE \`address\` = ?
+       AND \`transactions\` = ?
+       AND \`index\`
+  `;
   const query = `${baseQuery} ${index !== null ? '= ?' : 'IS ?'} AND wallet_id ${walletId ? '= ?' : 'IS ?'}`;
   results = await mysql.query(
     query,
