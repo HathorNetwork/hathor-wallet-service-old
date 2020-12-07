@@ -28,7 +28,8 @@ export const ADDRESSES = [
 ];
 
 export const cleanDatabase = async (mysql: ServerlessMysql): Promise<void> => {
-  const TABLES = ['address', 'address_balance', 'address_tx_history', 'info', 'token', 'utxo', 'wallet', 'wallet_balance', 'wallet_tx_history'];
+  const TABLES = ['address', 'address_balance', 'address_tx_history', 'metadata', 'token', 'utxo', 'wallet', 'wallet_balance', 'wallet_tx_history'];
+  
   for (const table of TABLES) {
     await mysql.query(`DELETE FROM ${table}`);
   }
@@ -93,7 +94,17 @@ export const checkUtxoTable = async (
   if (totalResults === 0) return true;
 
   // now fetch the exact entry
-  const baseQuery = 'SELECT * FROM `utxo` WHERE `tx_id` = ? AND `index` = ? AND `token_id` = ? AND `address` = ? AND `value` = ? AND `authorities` = ? AND `locked` = ? AND `timelock`';
+  const baseQuery = `
+    SELECT *
+      FROM \`utxo\`
+     WHERE \`tx_id\` = ?
+       AND \`index\` = ?
+       AND \`token_id\` = ?
+       AND \`address\` = ?
+       AND \`value\` = ?
+       AND \`authorities\` = ?
+       AND \`locked\` = ?
+       AND \`timelock\``;
   results = await mysql.query(
     `${baseQuery} ${timelock ? '= ?' : 'IS ?'} AND \`heightlock\` ${heightlock ? '= ?' : 'IS ?'}`,
     [txId, index, tokenId, address, value, authorities, locked, timelock, heightlock],
@@ -130,7 +141,13 @@ export const checkAddressTable = async (
   if (totalResults === 0) return true;
 
   // now fetch the exact entry
-  const baseQuery = 'SELECT * FROM `address` WHERE `address` = ? AND `transactions` = ? AND `index`';
+  const baseQuery = `
+    SELECT *
+      FROM \`address\`
+     WHERE \`address\` = ?
+       AND \`transactions\` = ?
+       AND \`index\`
+  `;
   const query = `${baseQuery} ${index !== null ? '= ?' : 'IS ?'} AND wallet_id ${walletId ? '= ?' : 'IS ?'}`;
   results = await mysql.query(
     query,
@@ -159,7 +176,10 @@ export const checkAddressBalanceTable = async (
   lockedAuthorities = 0,
 ): Promise<boolean | Record<string, unknown>> => {
   // first check the total number of rows in the table
-  let results: DbSelectResult = await mysql.query('SELECT * FROM `address_balance`');
+  let results: DbSelectResult = await mysql.query(`
+    SELECT *
+      FROM \`address_balance\`
+  `);
   if (results.length !== totalResults) {
     return {
       error: 'checkAddressBalanceTable total results',
@@ -170,10 +190,29 @@ export const checkAddressBalanceTable = async (
   }
 
   // now fetch the exact entry
-  const baseQuery = 'SELECT * FROM `address_balance` WHERE `address` = ? AND `token_id` = ? AND `unlocked_balance` = ? AND `locked_balance` = ? AND `transactions` = ? AND `unlocked_authorities` = ? AND `locked_authorities` = ?';
+  const baseQuery = `
+    SELECT *
+      FROM \`address_balance\`
+     WHERE \`address\` = ?
+       AND \`token_id\` = ?
+       AND \`unlocked_balance\` = ?
+       AND \`locked_balance\` = ?
+       AND \`transactions\` = ?
+       AND \`unlocked_authorities\` = ?
+       AND \`locked_authorities\` = ?
+  `;
+
   results = await mysql.query(
-    `${baseQuery} AND timelock_expires ${lockExpires === null ? 'IS' : '='} ?`,
-    [address, tokenId, unlocked, locked, transactions, unlockedAuthorities, lockedAuthorities, lockExpires],
+    `${baseQuery} AND timelock_expires ${lockExpires === null ? 'IS' : '='} ?`, [
+      address,
+      tokenId,
+      unlocked,
+      locked,
+      transactions,
+      unlockedAuthorities,
+      lockedAuthorities,
+      lockExpires
+    ],
   );
   if (results.length !== 1) {
     return {
@@ -208,8 +247,20 @@ export const checkAddressTxHistoryTable = async (
 
   // now fetch the exact entry
   results = await mysql.query(
-    'SELECT * FROM `address_tx_history` WHERE `address` = ? AND `tx_id` = ? AND `token_id` = ? AND `balance` = ? AND timestamp = ?',
-    [address, txId, tokenId, balance, timestamp],
+    `SELECT *
+       FROM \`address_tx_history\`
+      WHERE \`address\` = ?
+        AND \`tx_id\` = ?
+        AND \`token_id\` = ?
+        AND \`balance\` = ?
+        AND \`timestamp\` = ?`,
+    [
+      address,
+      txId,
+      tokenId,
+      balance,
+      timestamp,
+    ],
   );
   if (results.length !== 1) {
     return {
@@ -242,7 +293,10 @@ export const checkWalletTable = async (mysql: ServerlessMysql,
 
   // now fetch the exact entry
   results = await mysql.query(
-    'SELECT * FROM `wallet` WHERE `id` = ? AND `status` = ?',
+    `SELECT *
+       FROM \`wallet\`
+      WHERE \`id\` = ?
+        AND \`status\` = ?`,
     [id, status],
   );
   if (results.length !== 1) {
@@ -279,8 +333,20 @@ export const checkWalletTxHistoryTable = async (mysql: ServerlessMysql,
 
   // now fetch the exact entry
   results = await mysql.query(
-    'SELECT * FROM `wallet_tx_history` WHERE `wallet_id` = ? AND `token_id` = ? AND `tx_id` = ? AND `balance` = ? AND `timestamp` = ?',
-    [walletId, tokenId, txId, balance, timestamp],
+    `SELECT *
+       FROM \`wallet_tx_history\`
+      WHERE \`wallet_id\` = ?
+        AND \`token_id\` = ?
+        AND \`tx_id\` = ?
+        AND \`balance\` = ?
+        AND \`timestamp\` = ?`,
+    [
+      walletId,
+      tokenId,
+      txId,
+      balance,
+      timestamp,
+    ],
   );
   if (results.length !== 1) {
     return {
@@ -305,7 +371,10 @@ export const checkWalletBalanceTable = async (
   lockedAuthorities = 0,
 ): Promise<boolean | Record<string, unknown>> => {
   // first check the total number of rows in the table
-  let results: DbSelectResult = await mysql.query('SELECT * FROM `wallet_balance`');
+  let results: DbSelectResult = await mysql.query(`
+    SELECT *
+      FROM \`wallet_balance\`
+  `);
   expect(results).toHaveLength(totalResults);
   if (results.length !== totalResults) {
     return {
@@ -319,7 +388,17 @@ export const checkWalletBalanceTable = async (
   if (totalResults === 0) return true;
 
   // now fetch the exact entry
-  const baseQuery = 'SELECT * FROM `wallet_balance` WHERE `wallet_id` = ? AND `token_id` = ? AND `unlocked_balance` = ? AND `locked_balance` = ? AND `transactions` = ? AND unlocked_authorities = ? AND locked_authorities = ?';
+  const baseQuery = `
+    SELECT *
+      FROM \`wallet_balance\`
+     WHERE \`wallet_id\` = ?
+       AND \`token_id\` = ?
+       AND \`unlocked_balance\` = ?
+       AND \`locked_balance\` = ?
+       AND \`transactions\` = ?
+       AND \`unlocked_authorities\` = ?
+       AND \`locked_authorities\` = ?
+  `;
   results = await mysql.query(
     `${baseQuery} AND timelock_expires ${lockExpires === null ? 'IS' : '='} ?`,
     [walletId, tokenId, unlocked, locked, transactions, unlockedAuthorities, lockedAuthorities, lockExpires],
@@ -339,7 +418,12 @@ export const addToUtxoTable = async (
   entries: unknown[][],
 ): Promise<void> => {
   await mysql.query(
-    'INSERT INTO `utxo`(`tx_id`, `index`, `token_id`, `address`, `value`, `authorities`, `timelock`, `heightlock`, `locked`) VALUES ?',
+    `INSERT INTO \`utxo\`(\`tx_id\`, \`index\`,
+                          \`token_id\`, \`address\`,
+                          \`value\`, \`authorities\`,
+                          \`timelock\`, \`heightlock\`,
+                          \`locked\`)
+     VALUES ?`,
     [entries],
   );
 };
@@ -348,60 +432,73 @@ export const addToWalletTable = async (
   mysql: ServerlessMysql,
   entries: unknown[][],
 ): Promise<void> => {
-  await mysql.query(
-    'INSERT INTO `wallet`(`id`, `xpubkey`, `status`, `max_gap`, `created_at`, `ready_at`) VALUES ?',
-    [entries],
-  );
+  await mysql.query(`
+    INSERT INTO \`wallet\`(\`id\`, \`xpubkey\`,
+                           \`status\`, \`max_gap\`,
+                           \`created_at\`, \`ready_at\`)
+    VALUES ?`,
+  [entries]);
 };
 
 export const addToWalletBalanceTable = async (
   mysql: ServerlessMysql,
   entries: unknown[][],
 ): Promise<void> => {
-  await mysql.query(
-    'INSERT INTO `wallet_balance`(`wallet_id`, `token_id`, `unlocked_balance`, `locked_balance`, `unlocked_authorities`, `locked_authorities`, `timelock_expires`, `transactions`) VALUES ?',
-    [entries],
-  );
+  await mysql.query(`
+    INSERT INTO \`wallet_balance\`(\`wallet_id\`, \`token_id\`,
+                                   \`unlocked_balance\`, \`locked_balance\`,
+                                   \`unlocked_authorities\`, \`locked_authorities\`,
+                                   \`timelock_expires\`, \`transactions\`)
+    VALUES ?`,
+  [entries]);
 };
 
 export const addToWalletTxHistoryTable = async (
   mysql: ServerlessMysql,
   entries: unknown[][],
 ): Promise<void> => {
-  await mysql.query(
-    'INSERT INTO `wallet_tx_history`(`wallet_id`, `tx_id`, `token_id`, `balance`, `timestamp`) VALUES ?',
-    [entries],
-  );
+  await mysql.query(`
+    INSERT INTO \`wallet_tx_history\`(\`wallet_id\`, \`tx_id\`,
+                                      \`token_id\`, \`balance\`,
+                                      \`timestamp\`)
+    VALUES ?`,
+  [entries]);
 };
 
 export const addToAddressTable = async (
   mysql: ServerlessMysql,
   entries: unknown[][],
 ): Promise<void> => {
-  await mysql.query(
-    'INSERT INTO `address`(`address`, `index`, `wallet_id`, `transactions`) VALUES ?',
-    [entries],
-  );
+  await mysql.query(`
+    INSERT INTO \`address\`(\`address\`, \`index\`,
+                            \`wallet_id\`, \`transactions\`)
+    VALUES ?`,
+  [entries]);
 };
 
 export const addToAddressBalanceTable = async (
   mysql: ServerlessMysql,
   entries: unknown[][],
 ): Promise<void> => {
-  await mysql.query(
-    'INSERT INTO `address_balance`(`address`, `token_id`, `unlocked_balance`, `locked_balance`, `timelock_expires`, `transactions`, `unlocked_authorities`, `locked_authorities`) VALUES ?',
-    [entries],
-  );
+  await mysql.query(`
+    INSERT INTO \`address_balance\`(\`address\`, \`token_id\`,
+                                    \`unlocked_balance\`, \`locked_balance\`,
+                                    \`timelock_expires\`, \`transactions\`,
+                                    \`unlocked_authorities\`, \`locked_authorities\`)
+    VALUES ?`,
+  [entries]);
 };
 
 export const addToAddressTxHistoryTable = async (
   mysql: ServerlessMysql,
   entries: unknown[][],
 ): Promise<void> => {
-  await mysql.query(
-    'INSERT INTO `address_tx_history`(`address`, `tx_id`, `token_id`, `balance`, `timestamp`) VALUES ?',
-    [entries],
-  );
+  await mysql.query(`
+    INSERT INTO \`address_tx_history\`(\`address\`, \`tx_id\`,
+                                       \`token_id\`, \`balance\`,
+                                       \`timestamp\`)
+    VALUES ?`,
+  [entries]);
 };
 
 export const addToTokenTable = async (

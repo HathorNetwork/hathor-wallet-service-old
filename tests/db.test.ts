@@ -6,7 +6,7 @@ import {
   getAddressWalletInfo,
   getLatestHeight,
   getTokenInformation,
-  getTxLockedInputs,
+  getLockedUtxoFromInputs,
   getUtxosLockedAtHeight,
   getWalletAddresses,
   getWalletBalances,
@@ -120,7 +120,7 @@ test('generateAddresses', async () => {
   for (const [index, address] of addressesInfo.addresses.entries()) {
     expect(ADDRESSES[index]).toBe(address);
   }
-}, 15000);
+}, 25000);
 
 test('getAddressWalletInfo', async () => {
   expect.hasAssertions();
@@ -453,12 +453,12 @@ test('addUtxos, unlockUtxos and removeUtxos', async () => {
   await unlockUtxos(mysql, []);
 
   // remove from utxo table
-  const inputs = utxos.map((utxo, index) => createInput(utxo.value, utxo.address, txId, index, utxo.token, utxo.timelock, null));
+  const inputs = utxos.map((utxo, index) => createInput(utxo.value, utxo.address, txId, index, utxo.token, utxo.timelock));
   await removeUtxos(mysql, inputs);
   await expect(checkUtxoTable(mysql, 0)).resolves.toBe(true);
 });
 
-test('getTxLockedInputs', async () => {
+test('getLockedUtxoFromInputs', async () => {
   expect.hasAssertions();
   const txId = 'txId';
   const utxos = [
@@ -475,8 +475,8 @@ test('getTxLockedInputs', async () => {
     await expect(checkUtxoTable(mysql, 3, txId, index, token, decoded.address, value, 0, decoded.timelock, null, output.locked)).resolves.toBe(true);
   }
 
-  const inputs = utxos.map((utxo, index) => createInput(utxo.value, utxo.address, txId, index, utxo.token, utxo.timelock, null));
-  const results = await getTxLockedInputs(mysql, inputs);
+  const inputs = utxos.map((utxo, index) => createInput(utxo.value, utxo.address, txId, index, utxo.token, utxo.timelock));
+  const results = await getLockedUtxoFromInputs(mysql, inputs);
   expect(results).toHaveLength(1);
   expect(results[0].value).toBe(25);
 });

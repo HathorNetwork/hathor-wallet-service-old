@@ -1,6 +1,6 @@
 import eventTemplate from '@events/eventTemplate.json';
-import { loadWallet } from '@src/api/wallet';
-import { createWallet } from '@src/db';
+import { createWallet } from '@src/api/wallet';
+import { createWallet as dbCreateWallet } from '@src/db';
 import * as txProcessor from '@src/txProcessor';
 import { Transaction, WalletStatus } from '@src/types';
 import { closeDbConnection, getDbConnection, getUnixTimestamp, getWalletId } from '@src/utils';
@@ -126,20 +126,20 @@ test('receive blocks and txs and then start wallet', async () => {
   await checkAfterReceivingTx2(false);
 
   /*
-   * load wallet
+   * create wallet
    */
-  await createWallet(mysql, walletId, XPUBKEY, maxGap);
-  await loadWallet({ xpubkey: XPUBKEY, maxGap }, null, null);
+  await dbCreateWallet(mysql, walletId, XPUBKEY, maxGap);
+  await createWallet({ xpubkey: XPUBKEY, maxGap }, null, null);
   await checkAfterReceivingTx2(true);
 }, 30000);
 
 // eslint-disable-next-line jest/prefer-expect-assertions, jest/expect-expect
 test('start wallet and then receive blocks and txs', async () => {
   /*
-   * load wallet
+   * create wallet
    */
-  await createWallet(mysql, walletId, XPUBKEY, maxGap);
-  await loadWallet({ xpubkey: XPUBKEY, maxGap }, null, null);
+  await dbCreateWallet(mysql, walletId, XPUBKEY, maxGap);
+  await createWallet({ xpubkey: XPUBKEY, maxGap }, null, null);
 
   /*
    * receive a block
@@ -181,10 +181,10 @@ test('receive blocks, start wallet and then receive transactions', async () => {
   await checkAfterReceivingSecondBlock(false);
 
   /*
-   * load wallet
+   * create wallet
    */
-  await createWallet(mysql, walletId, XPUBKEY, maxGap);
-  await loadWallet({ xpubkey: XPUBKEY, maxGap }, null, null);
+  await dbCreateWallet(mysql, walletId, XPUBKEY, maxGap);
+  await createWallet({ xpubkey: XPUBKEY, maxGap }, null, null);
 
   /*
    * add transaction that sends block reward to 2 different addresses on same wallet
@@ -197,7 +197,7 @@ test('receive blocks, start wallet and then receive transactions', async () => {
    */
   await txProcessor.onNewTxEvent(txEvent2);
   await checkAfterReceivingTx2(true);
-}, 30000);
+}, 35000);
 
 // eslint-disable-next-line jest/prefer-expect-assertions, jest/expect-expect
 test('receive blocks and tx1, start wallet and then receive tx2', async () => {
@@ -220,17 +220,17 @@ test('receive blocks and tx1, start wallet and then receive tx2', async () => {
   await checkAfterReceivingTx1(false);
 
   /*
-   * load wallet
+   * create wallet
    */
-  await createWallet(mysql, walletId, XPUBKEY, maxGap);
-  await loadWallet({ xpubkey: XPUBKEY, maxGap }, null, null);
+  await dbCreateWallet(mysql, walletId, XPUBKEY, maxGap);
+  await createWallet({ xpubkey: XPUBKEY, maxGap }, null, null);
 
   /*
    * add transaction that sends block reward to 2 different addresses, one of which is not in this wallet
    */
   await txProcessor.onNewTxEvent(txEvent2);
   await checkAfterReceivingTx2(true);
-}, 30000);
+}, 35000);
 
 /*
  * After receiving the block, we only have 1 used address and block rewards are locked

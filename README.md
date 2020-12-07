@@ -1,7 +1,6 @@
 # hathor-wallet-service
 
-The hathor-wallet-service is the backend for all official Hathor wallets. It's highly inspired in the [Bitcore Wallet
-Service](https://github.com/bitpay/bitcore-wallet-service).
+The hathor-wallet-service is the backend for all official Hathor wallets.
 
 It's designed to run on AWS serverless environment and uses a MySQL database for persisting data. Upon receiving a new
 transaction, a lambda handles updating the data. Later, when a wallet queries it, API lambdas only need to query the

@@ -1,4 +1,12 @@
 /* eslint-disable */
+
+/*
+ * This script starts a connection with a local full node and listens to new transactions. Upon
+ * receiving a tx, it invokes the wallet-service lambda to handle it.
+ *
+ * This code is to be used on dev environments only.
+ */
+
 const fs = require('fs');
 const WebSocket = require('ws');
 const AWS = require('aws-sdk');

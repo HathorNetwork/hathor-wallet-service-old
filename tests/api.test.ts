@@ -3,7 +3,7 @@ import { APIGatewayProxyHandler, APIGatewayProxyResult } from 'aws-lambda';
 import { get as addressesGet } from '@src/api/addresses';
 import { get as balancesGet } from '@src/api/balances';
 import { get as txHistoryGet } from '@src/api/txhistory';
-import { get as walletGet, load as walletLoad } from '@src/api/wallet';
+import { get as walletGet, create as walletCreate } from '@src/api/wallet';
 import { ApiError } from '@src/api/errors';
 import { closeDbConnection, getDbConnection, getUnixTimestamp, getWalletId } from '@src/utils';
 import {
@@ -58,6 +58,17 @@ const _testMissingWallet = async (fn: APIGatewayProxyHandler, walletId: string) 
   expect(returnBody.error).toBe(ApiError.WALLET_NOT_FOUND);
 };
 
+const _testWalletNotReady = async (fn: APIGatewayProxyHandler) => {
+  const walletId = 'wallet-not-started';
+  await addToWalletTable(mysql, [[walletId, 'aaaa', 'creating', 5, 10000, null]]);
+  const event = makeGatewayEvent({ id: walletId });
+  const result = await fn(event, null, null) as APIGatewayProxyResult;
+  const returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.WALLET_NOT_READY);
+};
+
 test('GET /addresses', async () => {
   expect.hasAssertions();
 
@@ -69,6 +80,9 @@ test('GET /addresses', async () => {
 
   // missing wallet
   await _testMissingWallet(addressesGet, 'some-wallet');
+
+  // wallet not ready
+  await _testWalletNotReady(addressesGet);
 
   // success case
   const event = makeGatewayEvent({ id: 'my-wallet' });
@@ -103,6 +117,9 @@ test('GET /balances', async () => {
 
   // missing wallet
   await _testMissingWallet(balancesGet, 'some-wallet');
+
+  // wallet not ready
+  await _testWalletNotReady(balancesGet);
 
   // success but no balances
   let event = makeGatewayEvent({ id: 'my-wallet' });
@@ -226,6 +243,9 @@ test('GET /txhistory', async () => {
   // missing wallet
   await _testMissingWallet(txHistoryGet, 'some-wallet');
 
+  // wallet not ready
+  await _testWalletNotReady(txHistoryGet);
+
   // invalid 'skip' param
   await _testInvalidParam(txHistoryGet, 'skip', { id: 'my-wallet', skip: 'aaa' });
 
@@ -297,37 +317,44 @@ test('POST /wallet', async () => {
 
   // invalid body
   let event = makeGatewayEvent({});
-  let result = await walletLoad(event, null, null) as APIGatewayProxyResult;
+  let result = await walletCreate(event, null, null) as APIGatewayProxyResult;
   let returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(200);
   expect(returnBody.success).toBe(false);
-  expect(returnBody.error).toBe(ApiError.INVALID_PARAMETER);
-  expect(returnBody.parameter).toBe('xpubkey');
+  expect(returnBody.error).toBe(ApiError.INVALID_BODY);
 
   event = makeGatewayEvent({}, 'aaa');
-  result = await walletLoad(event, null, null) as APIGatewayProxyResult;
+  result = await walletCreate(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(200);
   expect(returnBody.success).toBe(false);
-  expect(returnBody.error).toBe(ApiError.INVALID_PARAMETER);
-  expect(returnBody.parameter).toBe('xpubkey');
+  expect(returnBody.error).toBe(ApiError.INVALID_BODY);
 
   // missing xpubkey
   event = makeGatewayEvent({}, JSON.stringify({ param1: 'aaa' }));
-  result = await walletLoad(event, null, null) as APIGatewayProxyResult;
+  result = await walletCreate(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(200);
   expect(returnBody.success).toBe(false);
   expect(returnBody.error).toBe(ApiError.MISSING_PARAMETER);
   expect(returnBody.parameter).toBe('xpubkey');
 
+  // invalid xpubkey
+  event = makeGatewayEvent({}, JSON.stringify({ xpubkey: 'aaa' }));
+  result = await walletCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PARAMETER);
+  expect(returnBody.parameter).toBe('xpubkey');
+
   // already loaded
   const walletId = getWalletId(XPUBKEY);
   await addToWalletTable(mysql, [[walletId, XPUBKEY, 'ready', 5, 10000, 10001]]);
   event = makeGatewayEvent({}, JSON.stringify({ xpubkey: XPUBKEY }));
-  result = await walletLoad(event, null, null) as APIGatewayProxyResult;
+  result = await walletCreate(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(200);
   expect(returnBody.success).toBe(false);
-  expect(returnBody.error).toBe(ApiError.WALLET_ALREADY_LOADED);
+  expect(returnBody.error).toBe(ApiError.WALLET_ALREADY_CREATED);
 });

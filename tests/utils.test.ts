@@ -1,13 +1,4 @@
-import { getHathorAddresses, sha256d } from '@src/utils';
-import { ADDRESSES, XPUBKEY } from '@tests/utils';
-
-test('getHathorAddresses', () => {
-  expect.hasAssertions();
-  const calculatedAddresses = getHathorAddresses(XPUBKEY, 0, ADDRESSES.length);
-  const addrList = Object.keys(calculatedAddresses);
-  expect(addrList).toHaveLength(ADDRESSES.length);
-  expect(addrList).toStrictEqual(ADDRESSES);
-});
+import { sha256d } from '@src/utils';
 
 test('sha256d', () => {
   expect.hasAssertions();
