@@ -27,7 +27,8 @@ import {
   WalletStatus,
   WalletTokenBalance,
 } from '@src/types';
-import { getHathorAddresses, getUnixTimestamp, isAuthority } from '@src/utils';
+
+import { getUnixTimestamp, isAuthority } from '@src/utils';
 
 /**
  * Given an xpubkey, generate its addresses.
@@ -405,7 +406,7 @@ export const updateWalletTablesWithTx = async (
                                         WHEN VALUES(timelock_expires) IS NULL THEN timelock_expires
                                         ELSE LEAST(timelock_expires, VALUES(timelock_expires))
                                    END,
-                unlocked_authorities = unlocked_authorities | VALUES(unlocked_authorities),
+                unlocked_authorities = (unlocked_authorities | VALUES(unlocked_authorities)),
                 locked_authorities = locked_authorities | VALUES(locked_authorities)`,
         [entry, tokenBalance.unlockedAmount, tokenBalance.lockedAmount, walletId, token],
       );
@@ -464,6 +465,7 @@ export const addUtxos = async (
     (output, index) => {
       let authorities = 0;
       let value = output.value;
+
       if (isAuthority(output.token_data)) {
         authorities = value;
         value = 0;
@@ -480,7 +482,8 @@ export const addUtxos = async (
         heightlock,
         output.locked,
       ];
-  }),
+    },
+  );
 
   await mysql.query(
     `INSERT INTO \`utxo\` (\`tx_id\`, \`index\`, \`token_id\`,
@@ -638,7 +641,7 @@ export const updateAddressTablesWithTx = async (
                                                         WHEN VALUES(timelock_expires) IS NULL THEN timelock_expires
                                                         ELSE LEAST(timelock_expires, VALUES(timelock_expires))
                                                       END,
-                                   unlocked_authorities = unlocked_authorities | VALUES(unlocked_authorities),
+                                   unlocked_authorities = (unlocked_authorities | VALUES(unlocked_authorities)),
                                    locked_authorities = locked_authorities | VALUES(locked_authorities)`,
         [entry, tokenBalance.unlockedAmount, tokenBalance.lockedAmount, address, token],
       );
@@ -700,12 +703,16 @@ export const updateAddressLockedBalance = async (
       await mysql.query(
         `UPDATE \`address_balance\`
             SET \`unlocked_balance\` = \`unlocked_balance\` + ?,
-                \`locked_balance\` = \`locked_balance\` - ?
-                \`unlocked_authorities\` = \`unlocked_authorities\` | ?
+                \`locked_balance\` = \`locked_balance\` - ?,
+                \`unlocked_authorities\` = (unlocked_authorities | ?)
           WHERE \`address\` = ?
-            AND \`token_id\` = ?`,
-        [tokenBalance.unlockedAmount, tokenBalance.unlockedAmount,
-          tokenBalance.unlockedAuthorities.toInteger(), address,token],
+            AND \`token_id\` = ?`, [
+          tokenBalance.unlockedAmount,
+          tokenBalance.unlockedAmount,
+          tokenBalance.unlockedAuthorities.toInteger(),
+          address,
+          token,
+        ],
       );
 
       // if any authority has been unlocked, we have to refresh the locked authorities
@@ -765,8 +772,9 @@ export const updateWalletLockedBalance = async (
         `UPDATE \`wallet_balance\`
             SET \`unlocked_balance\` = \`unlocked_balance\` + ?,
                 \`locked_balance\` = \`locked_balance\` - ?,
-                \`unlocked_authorities\` = \`unlocked_authorities\` | ?
-          WHERE \`wallet_id\` = ? AND \`token_id\` = ?`,
+                \`unlocked_authorities\` = (\`unlocked_authorities\` | ?)
+          WHERE \`wallet_id\` = ?
+            AND \`token_id\` = ?`,
         [tokenBalance.unlockedAmount, tokenBalance.unlockedAmount,
           tokenBalance.unlockedAuthorities.toInteger(), walletId, token],
       );
@@ -848,7 +856,7 @@ export const getWalletAddresses = async (mysql: ServerlessMysql, walletId: strin
  * @returns A list of balances.
  */
 export const getWalletBalances = async (mysql: ServerlessMysql, walletId: string, tokenId: string = null): Promise<WalletTokenBalance[]> => {
-  const balances: TokenBalance[] = [];
+  const balances: WalletTokenBalance[] = [];
   let subquery = `
     SELECT *
       FROM \`wallet_balance\`
@@ -870,6 +878,7 @@ export const getWalletBalances = async (mysql: ServerlessMysql, walletId: string
     const unlockedAuthorities = new Authorities(result.unlocked_authorities as number);
     const lockedAuthorities = new Authorities(result.locked_authorities as number);
     const timelockExpires = result.timelock_expires as number;
+
     const balance = new WalletTokenBalance(
       new TokenInfo(result.token_id as string, result.name as string, result.symbol as string),
       new Balance(unlockedBalance, lockedBalance, timelockExpires, unlockedAuthorities, lockedAuthorities),
