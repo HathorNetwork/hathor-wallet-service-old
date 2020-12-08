@@ -225,6 +225,7 @@ export const checkAddressBalanceTable = async (
       lockExpires,
     ],
   );
+
   if (results.length !== 1) {
     return {
       error: 'checkAddressBalanceTable query',
