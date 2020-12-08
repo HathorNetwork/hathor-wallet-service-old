@@ -7,7 +7,6 @@ import {
   getLatestHeight,
   getTokenInformation,
   getLockedUtxoFromInputs,
-  getTokenInformation,
   getUtxosLockedAtHeight,
   getWalletAddresses,
   getWalletBalances,
@@ -712,67 +711,48 @@ test('getUtxosLockedAtHeight', async () => {
 
   const txId = 'txId';
   const txId2 = 'txId2';
-  const txId3 = 'txId3';
-  const now = 100;
-  const heightLock = 10;
-
   const utxos = [
     // no locks
     { value: 5, address: 'address1', token: 'token1', locked: false },
     // only timelock
-    { value: 25, address: 'address2', token: 'token2', timelock: now - 1, locked: false },
+    { value: 25, address: 'address2', token: 'token2', timelock: 50, locked: false },
 
   ];
   const utxos2 = [
     // only heightlock
     { value: 35, address: 'address2', token: 'token1', timelock: null, locked: true },
     // timelock and heightlock
-    { value: 45, address: 'address2', token: 'token1', timelock: now + 1, locked: true },
-    { value: 55, address: 'address2', token: 'token1', timelock: now * 10, locked: true },
+    { value: 45, address: 'address2', token: 'token1', timelock: 100, locked: true },
+    { value: 55, address: 'address2', token: 'token1', timelock: 1000, locked: true },
   ];
 
   // add to utxo table
   const outputs = utxos.map((utxo) => createOutput(utxo.value, utxo.address, utxo.token, utxo.timelock, utxo.locked));
   await addUtxos(mysql, txId, outputs, null);
   const outputs2 = utxos2.map((utxo) => createOutput(utxo.value, utxo.address, utxo.token, utxo.timelock, utxo.locked));
-  await addUtxos(mysql, txId2, outputs2, heightLock);
+  await addUtxos(mysql, txId2, outputs2, 10);
 
-  // fetch on timestamp=now and heightlock=heightLock. Should return:
+  // fetch on timestamp=99 and heightlock=10. Should return:
   // { value: 35, address: 'address2', token: 'token1', timelock: null},
-  let results = await getUtxosLockedAtHeight(mysql, now, heightLock);
+  let results = await getUtxosLockedAtHeight(mysql, 99, 10);
   expect(results).toHaveLength(1);
   expect(results[0].value).toBe(35);
 
-  // fetch on timestamp=now+1 and heightlock=heightLock. Should return:
+  // fetch on timestamp=100 and heightlock=10. Should return:
   // { value: 35, address: 'address2', token: 'token1', timelock: null},
   // { value: 45, address: 'address2', token: 'token1', timelock: 100},
-  results = await getUtxosLockedAtHeight(mysql, now + 1, heightLock);
+  results = await getUtxosLockedAtHeight(mysql, 100, 10);
   expect(results).toHaveLength(2);
   expect([35, 45]).toContain(results[0].value);
   expect([35, 45]).toContain(results[1].value);
 
-  // fetch on timestamp=now + 1 and heightlock=heightLock-1. Should return empty
-  results = await getUtxosLockedAtHeight(mysql, now + 1, heightLock - 1);
+  // fetch on timestamp=100 and heightlock=9. Should return empty
+  results = await getUtxosLockedAtHeight(mysql, 1000, 9);
   expect(results).toStrictEqual([]);
 
   // unlockedHeight < 0. This means the block is still very early after genesis and no blocks have been unlocked
   results = await getUtxosLockedAtHeight(mysql, 1000, -2);
   expect(results).toStrictEqual([]);
-
-  // add 2 other utxos with heightlock, but 1 is already unlocked (not a real situation)
-  const utxos3 = [
-    // no locks
-    { value: 65, address: 'address1', token: 'token1', locked: false },
-    // only timelock
-    { value: 75, address: 'address2', token: 'token2', locked: true },
-  ];
-  const outputs3 = utxos3.map((utxo) => createOutput(utxo.value, utxo.address, utxo.token, null, utxo.locked));
-  await addUtxos(mysql, txId3, outputs3, heightLock - 1);
-  // should fetch 2 utxos, ignoring the one already unlocked
-  results = await getUtxosLockedAtHeight(mysql, now, heightLock);
-  expect(results).toHaveLength(2);
-  expect([35, 75]).toContain(results[0].value);
-  expect([35, 75]).toContain(results[1].value);
 });
 
 test('updateAddressLockedBalance', async () => {
