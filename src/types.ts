@@ -40,6 +40,12 @@ export interface AddressInfo {
   transactions: number;
 }
 
+export interface TokenBalance {
+  tokenId: string;
+  balance: Balance;
+  transactions: number;
+}
+
 export interface Utxo {
   txId: string;
   index: number;
