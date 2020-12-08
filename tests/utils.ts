@@ -210,9 +210,10 @@ export const checkAddressBalanceTable = async (
       transactions,
       unlockedAuthorities,
       lockedAuthorities,
-      lockExpires
+      lockExpires,
     ],
   );
+
   if (results.length !== 1) {
     return {
       error: 'checkAddressBalanceTable query',
