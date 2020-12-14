@@ -192,8 +192,8 @@ export class Authorities {
     const authorities = this.toInteger();
     return {
       // TODO get from lib
-      mint: (authorities & 0b00000001) > 0,   // eslint-disable-line no-bitwise
-      melt: (authorities & 0b00000010) > 0,   // eslint-disable-line no-bitwise
+      mint: (authorities & hathorLib.constants.TOKEN_MINT_MASK) > 0,   // eslint-disable-line no-bitwise
+      melt: (authorities & hathorLib.constants.TOKEN_MELT_MASK) > 0,   // eslint-disable-line no-bitwise
     };
   }
 }
