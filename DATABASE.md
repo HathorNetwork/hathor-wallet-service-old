@@ -35,13 +35,6 @@ CREATE TABLE `address_tx_history` (
   PRIMARY KEY (`address`,`tx_id`,`token_id`)
 );
 
-CREATE TABLE `token` (
-  `id` varchar(64) NOT NULL,
-  `name` varchar(150) NOT NULL,
-  `symbol` varchar(30) NOT NULL,
-  PRIMARY KEY (`id`)
-);
-
 CREATE TABLE `metadata` (
   `key` varchar(25) NOT NULL,
   `value` int unsigned NOT NULL,
@@ -57,10 +50,9 @@ CREATE TABLE `blocks` (
 // TODO name and symbol lengths are not limited on the blockchain, might be 255
 CREATE TABLE `token` (
   `id` varchar(64) NOT NULL,
-  `name` varchar(150) NOT NULL,
-  `symbol` varchar(30) NOT NULL,
-  PRIMARY KEY (`id`)
-);
+  `name` varchar(30) NOT NULL,
+  `symbol` varchar(5) NOT NULL,
+  PRIMARY KEY (`id`));
 
 CREATE TABLE `utxo` (
   `tx_id` varchar(64) NOT NULL,
