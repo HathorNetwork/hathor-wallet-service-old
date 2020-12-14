@@ -3,7 +3,7 @@ import tokenCreationTx from '@events/tokenCreationTx.json';
 import { getLatestHeight, getTokenInformation } from '@src/db';
 import * as txProcessor from '@src/txProcessor';
 import { Authorities, Balance, TokenBalanceMap, Utxo } from '@src/types';
-import { closeDbConnection, getDbConnection } from '@src/utils';
+import { closeDbConnection, getDbConnection, isAuthority } from '@src/utils';
 import {
   XPUBKEY,
   addToAddressTable,
@@ -459,7 +459,7 @@ test('receive token creation tx', async () => {
   for (const [index, output] of tokenCreationTx.outputs.entries()) {
     let value = output.value;
     let authorities = 0;
-    if ((output.token_data & 0b10000000) > 0) {     // eslint-disable-line no-bitwise
+    if (isAuthority(output.token_data)) {     // eslint-disable-line no-bitwise
       authorities = value;
       value = 0;
     }

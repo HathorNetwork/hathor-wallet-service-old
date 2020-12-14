@@ -7,6 +7,9 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import hathorLib from '@hathor/wallet-lib';
+import { isAuthority } from '@src/utils';
+
 export interface StringMap<T> {
   [x: string]: T;
 }
@@ -69,11 +72,12 @@ export class TokenInfo {
     this.id = id;
     this.name = name;
     this.symbol = symbol;
-    // TODO get HTR info from lib
-    // XXX should we force HTR info for token '00'?
-    if (this.id === '00') {
-      this.name = 'Hathor';
-      this.symbol = 'HTR';
+
+    const hathorConfig = hathorLib.constants.HATHOR_TOKEN_CONFIG;
+
+    if (this.id === hathorConfig.uid) {
+      this.name = hathorConfig.name;
+      this.symbol = hathorConfig.symbol;
     }
   }
 
@@ -386,17 +390,20 @@ export class TokenBalanceMap {
     // TODO check if output.decoded exists, else return null
     const token = output.token;
     const value = output.value;
-    const isAuthority = (output.token_data & 0b10000000) > 0;   // eslint-disable-line no-bitwise
-
     const obj = new TokenBalanceMap();
+
     if (output.locked) {
-      if (isAuthority) obj.set(token, new Balance(0, 0, output.decoded.timelock, 0, new Authorities(output.value)));
-      else obj.set(token, new Balance(0, value, output.decoded.timelock, 0, 0));
-    } else if (isAuthority) {
+      if (isAuthority(output.token_data)) {
+        obj.set(token, new Balance(0, 0, output.decoded.timelock, 0, new Authorities(output.value)));
+      } else {
+        obj.set(token, new Balance(0, value, output.decoded.timelock, 0, 0));
+      }
+    } else if (isAuthority(output.token_data)) {
       obj.set(token, new Balance(0, 0, null, new Authorities(output.value), 0));
     } else {
       obj.set(token, new Balance(value, 0, null));
     }
+
     return obj;
   }
 
@@ -413,8 +420,7 @@ export class TokenBalanceMap {
     const token = input.token;
     const obj = new TokenBalanceMap();
 
-    // TODO get token mask from lib constants
-    if ((input.token_data & 0b10000000) > 0) {    // eslint-disable-line no-bitwise
+    if (isAuthority(input.token_data)) {    // eslint-disable-line no-bitwise
       // for inputs, the authorities will have a value of -1 when set
       const authorities = new Authorities(input.value);
       obj.set(token, new Balance(0, 0, null, authorities.toNegative(), new Authorities(0)));

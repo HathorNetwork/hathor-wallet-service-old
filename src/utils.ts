@@ -7,7 +7,7 @@
 
 import { createHash, HexBase64Latin1Encoding } from 'crypto';
 import serverlessMysql, { ServerlessMysql } from 'serverless-mysql';
-
+import hathorLib from '@hathor/wallet-lib';
 /**
  * Calculate the double sha256 hash of the data.
  *
@@ -78,5 +78,5 @@ export const closeDbConnection = async (mysql: ServerlessMysql): Promise<void> =
 };
 
 export const isAuthority = (tokenData: number): boolean => (
-  (tokenData & 0b10000000) > 0    // eslint-disable-line no-bitwise
+  (tokenData & hathorLib.constants.TOKEN_AUTHORITY_MASK) > 0    // eslint-disable-line no-bitwise
 );

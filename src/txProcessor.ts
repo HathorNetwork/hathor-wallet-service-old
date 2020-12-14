@@ -100,8 +100,7 @@ const addNewTx = async (tx: Transaction, now: number, blockRewardLock: number) =
     await maybeUpdateLatestHeight(mysql, tx.height);
   }
 
-  if (tx.version === 2) {
-    // TODO get version from lib constants
+  if (tx.version === hathorLib.constants.CREATE_TOKEN_TX_VERSION) {
     await storeTokenInformation(mysql, tx.tx_id, tx.token_name, tx.token_symbol);
   }
 
@@ -271,8 +270,7 @@ export const unlockUtxos = async (_mysql: ServerlessMysql, utxos: Utxo[], update
       decoded,
       locked: false,
       // set authority bit if necessary
-      // TODO get TOKEN_AUTHORITY_MASK from lib
-      token_data: utxo.authorities > 0 ? 0b10000000 : 0,
+      token_data: utxo.authorities > 0 ? hathorLib.constants.TOKEN_AUTHORITY_MASK : 0,
       // we don't care about spent_by and script
       spent_by: null,
       script: '',
