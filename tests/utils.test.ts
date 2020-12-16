@@ -1,4 +1,3 @@
-import { sha256d } from '@src/utils';
 import { arrayShuffle, getHathorAddresses, sha256d } from '@src/utils';
 import { ADDRESSES, XPUBKEY } from '@tests/utils';
 

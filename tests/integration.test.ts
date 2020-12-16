@@ -1,6 +1,6 @@
 import eventTemplate from '@events/eventTemplate.json';
-import { createWallet } from '@src/api/wallet';
-import { createWallet as dbCreateWallet } from '@src/db';
+import { loadWallet } from '@src/api/wallet';
+import { createWallet } from '@src/db';
 import * as txProcessor from '@src/txProcessor';
 import { Transaction, WalletStatus } from '@src/types';
 import { closeDbConnection, getDbConnection, getUnixTimestamp, getWalletId } from '@src/utils';
@@ -128,8 +128,9 @@ test('receive blocks and txs and then start wallet', async () => {
   /*
    * create wallet
    */
-  await dbCreateWallet(mysql, walletId, XPUBKEY, maxGap);
-  await createWallet({ xpubkey: XPUBKEY, maxGap }, null, null);
+  await createWallet(mysql, walletId, XPUBKEY, maxGap);
+  await loadWallet({ xpubkey: XPUBKEY, maxGap }, null, null);
+
   await checkAfterReceivingTx2(true);
 }, 30000);
 
@@ -138,8 +139,8 @@ test('start wallet and then receive blocks and txs', async () => {
   /*
    * create wallet
    */
-  await dbCreateWallet(mysql, walletId, XPUBKEY, maxGap);
-  await createWallet({ xpubkey: XPUBKEY, maxGap }, null, null);
+  await createWallet(mysql, walletId, XPUBKEY, maxGap);
+  await loadWallet({ xpubkey: XPUBKEY, maxGap }, null, null);
 
   /*
    * receive a block
@@ -183,8 +184,8 @@ test('receive blocks, start wallet and then receive transactions', async () => {
   /*
    * create wallet
    */
-  await dbCreateWallet(mysql, walletId, XPUBKEY, maxGap);
-  await createWallet({ xpubkey: XPUBKEY, maxGap }, null, null);
+  await createWallet(mysql, walletId, XPUBKEY, maxGap);
+  await loadWallet({ xpubkey: XPUBKEY, maxGap }, null, null);
 
   /*
    * add transaction that sends block reward to 2 different addresses on same wallet
@@ -222,8 +223,8 @@ test('receive blocks and tx1, start wallet and then receive tx2', async () => {
   /*
    * create wallet
    */
-  await dbCreateWallet(mysql, walletId, XPUBKEY, maxGap);
-  await createWallet({ xpubkey: XPUBKEY, maxGap }, null, null);
+  await createWallet(mysql, walletId, XPUBKEY, maxGap);
+  await loadWallet({ xpubkey: XPUBKEY, maxGap }, null, null);
 
   /*
    * add transaction that sends block reward to 2 different addresses, one of which is not in this wallet

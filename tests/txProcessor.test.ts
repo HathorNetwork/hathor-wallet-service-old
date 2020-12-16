@@ -2,7 +2,6 @@ import eventTemplate from '@events/eventTemplate.json';
 import tokenCreationTx from '@events/tokenCreationTx.json';
 import { getLatestHeight, getTokenInformation } from '@src/db';
 import * as txProcessor from '@src/txProcessor';
-import { Authorities, Balance, TokenBalanceMap, Utxo } from '@src/types';
 import { closeDbConnection, getDbConnection, isAuthority } from '@src/utils';
 import {
   XPUBKEY,

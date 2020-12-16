@@ -715,21 +715,6 @@ test('getUtxosLockedAtHeight', async () => {
   // unlockedHeight < 0. This means the block is still very early after genesis and no blocks have been unlocked
   results = await getUtxosLockedAtHeight(mysql, 1000, -2);
   expect(results).toStrictEqual([]);
-
-  // add 2 other utxos with heightlock, but 1 is already unlocked (not a real situation)
-  const utxos3 = [
-    // no locks
-    { value: 65, address: 'address1', token: 'token1', locked: false },
-    // only timelock
-    { value: 75, address: 'address2', token: 'token2', locked: true },
-  ];
-  const outputs3 = utxos3.map((utxo) => createOutput(utxo.value, utxo.address, utxo.token, null, utxo.locked));
-  await addUtxos(mysql, txId3, outputs3, heightLock);
-  // should fetch 2 utxos, ignoring the one already unlocked
-  results = await getUtxosLockedAtHeight(mysql, now, heightLock);
-  expect(results).toHaveLength(2);
-  expect([35, 75]).toContain(results[0].value);
-  expect([35, 75]).toContain(results[1].value);
 });
 
 test('updateAddressLockedBalance', async () => {
@@ -805,7 +790,7 @@ test('maybeUpdateLatestHeight and getLatestHeight', async () => {
 test('storeTokenInformation and getTokenInformation', async () => {
   expect.hasAssertions();
 
-  const info = new TokenInfo('tokenId', 'tokenName', 'tokenSymbol');
+  const info = new TokenInfo('tokenId', 'tokenName', 'TKNSY');
   storeTokenInformation(mysql, info.id, info.name, info.symbol);
 
   expect(await getTokenInformation(mysql, info.id)).toStrictEqual(info);

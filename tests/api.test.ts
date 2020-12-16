@@ -322,14 +322,16 @@ test('POST /wallet', async () => {
   let returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(200);
   expect(returnBody.success).toBe(false);
-  expect(returnBody.error).toBe(ApiError.INVALID_BODY);
+  expect(returnBody.error).toBe(ApiError.INVALID_PARAMETER);
+  expect(returnBody.parameter).toBe('xpubkey');
 
   event = makeGatewayEvent({}, 'aaa');
   result = await walletLoad(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(200);
   expect(returnBody.success).toBe(false);
-  expect(returnBody.error).toBe(ApiError.INVALID_BODY);
+  expect(returnBody.error).toBe(ApiError.INVALID_PARAMETER);
+  expect(returnBody.parameter).toBe('xpubkey');
 
   // missing xpubkey
   event = makeGatewayEvent({}, JSON.stringify({ param1: 'aaa' }));
@@ -340,15 +342,6 @@ test('POST /wallet', async () => {
   expect(returnBody.error).toBe(ApiError.MISSING_PARAMETER);
   expect(returnBody.parameter).toBe('xpubkey');
 
-  // invalid xpubkey
-  event = makeGatewayEvent({}, JSON.stringify({ xpubkey: 'aaa' }));
-  result = await walletLoad(event, null, null) as APIGatewayProxyResult;
-  returnBody = JSON.parse(result.body as string);
-  expect(result.statusCode).toBe(200);
-  expect(returnBody.success).toBe(false);
-  expect(returnBody.error).toBe(ApiError.INVALID_PARAMETER);
-  expect(returnBody.parameter).toBe('xpubkey');
-
   // already loaded
   const walletId = getWalletId(XPUBKEY);
   await addToWalletTable(mysql, [[walletId, XPUBKEY, 'ready', 5, 10000, 10001]]);
@@ -357,7 +350,7 @@ test('POST /wallet', async () => {
   returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(200);
   expect(returnBody.success).toBe(false);
-  expect(returnBody.error).toBe(ApiError.WALLET_ALREADY_CREATED);
+  expect(returnBody.error).toBe(ApiError.WALLET_ALREADY_LOADED);
 });
 
 test('POST /txproposals params validation', async () => {
@@ -453,42 +446,6 @@ test('POST /txproposals params validation', async () => {
   expect(returnBody.error).toBe(ApiError.WALLET_NOT_FOUND);
 });
 
-test('POST /txproposals outputs error', async () => {
-  expect.hasAssertions();
-
-  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
-  await addToAddressTable(mysql, [['address', 0, 'my-wallet', 2]]);
-
-  // too many outputs (sent by user)
-  let outputs = [];
-  for (let i = 0; i < 300; i++) {
-    outputs.push(['address', i, 'token', null]);
-  }
-  let event = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet', outputs }));
-  let result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
-  let returnBody = JSON.parse(result.body as string);
-  expect(result.statusCode).toBe(200);
-  expect(returnBody.success).toBe(false);
-  expect(returnBody.error).toBe(ApiError.TOO_MANY_OUTPUTS);
-  expect(returnBody.outputs).toBe(outputs.length);
-
-  // too many outputs (after adding change output)
-  const utxos = [['txBig', 0, 'token2', 'address', 300, 0, null, null, false]];
-  await addToUtxoTable(mysql, utxos);
-  await addToWalletBalanceTable(mysql, [['my-wallet', 'token2', 300, 0, 0, 0, null, 300]]);
-  outputs = [];
-  for (let i = 0; i < 255; i++) {
-    outputs.push(['address', 1, 'token2', null]);
-  }
-  event = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet', outputs }));
-  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
-  returnBody = JSON.parse(result.body as string);
-  expect(result.statusCode).toBe(200);
-  expect(returnBody.success).toBe(false);
-  expect(returnBody.error).toBe(ApiError.TOO_MANY_OUTPUTS);
-  expect(returnBody.outputs).toBe(outputs.length + 1);
-});
-
 test('POST /txproposals inputs error', async () => {
   expect.hasAssertions();
 
@@ -539,4 +496,40 @@ test('POST /txproposals inputs error', async () => {
   expect(returnBody.success).toBe(false);
   expect(returnBody.error).toBe(ApiError.INSUFFICIENT_INPUTS);
   expect(returnBody.insufficient[0]).toStrictEqual('token2');
+});
+
+test('POST /txproposals outputs error', async () => {
+  expect.hasAssertions();
+
+  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToAddressTable(mysql, [['address', 0, 'my-wallet', 2]]);
+
+  // too many outputs (sent by user)
+  let outputs = [];
+  for (let i = 0; i < 300; i++) {
+    outputs.push(['address', i, 'token', null]);
+  }
+  let event = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet', outputs }));
+  let result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  let returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.TOO_MANY_OUTPUTS);
+  expect(returnBody.outputs).toBe(outputs.length);
+
+  // too many outputs (after adding change output)
+  const utxos = [['txBig', 0, 'token2', 'address', 300, 0, null, null, false]];
+  await addToUtxoTable(mysql, utxos);
+  await addToWalletBalanceTable(mysql, [['my-wallet', 'token2', 300, 0, 0, 0, null, 300]]);
+  outputs = [];
+  for (let i = 0; i < 255; i++) {
+    outputs.push(['address', 1, 'token2', null]);
+  }
+  event = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet', outputs }));
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.TOO_MANY_OUTPUTS);
+  expect(returnBody.outputs).toBe(outputs.length + 1);
 });

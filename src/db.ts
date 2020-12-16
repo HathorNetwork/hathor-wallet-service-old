@@ -183,6 +183,7 @@ export const createWallet = async (
         SET ?`,
     [entry],
   );
+
   return {
     walletId,
     xpubkey,

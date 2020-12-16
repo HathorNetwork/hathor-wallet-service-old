@@ -58,6 +58,16 @@ CREATE TABLE `tx_proposal` (
 );
 
 
+CREATE TABLE `tx_proposal` (
+  `id` varchar(36) NOT NULL,
+  `wallet_id` varchar(64) NOT NULL,
+  `status` enum('open','sent','send_error','cancelled') NOT NULL,
+  `created_at` int unsigned NOT NULL,
+  `updated_at` int unsigned DEFAULT NULL,
+  PRIMARY KEY (`id`)
+);
+
+
 CREATE TABLE `tx_proposal_outputs` (
   `tx_proposal_id` varchar(36) NOT NULL,
   `index` tinyint unsigned NOT NULL,

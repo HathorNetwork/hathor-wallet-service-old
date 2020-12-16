@@ -123,7 +123,9 @@ export const getAddressBalanceMap = (
   for (const output of outputs) {
     const address = output.decoded.address;
 
+    // get the TokenBalanceMap from this output
     const tokenBalanceMap = TokenBalanceMap.fromTxOutput(output);
+
     // merge it with existing TokenBalanceMap for the address
     addressBalanceMap[address] = TokenBalanceMap.merge(addressBalanceMap[address], tokenBalanceMap);
   }
