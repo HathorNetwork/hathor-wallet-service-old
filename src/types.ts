@@ -420,7 +420,7 @@ export class TokenBalanceMap {
     const token = input.token;
     const obj = new TokenBalanceMap();
 
-    if (isAuthority(input.token_data)) {    // eslint-disable-line no-bitwise
+    if (isAuthority(input.token_data)) {
       // for inputs, the authorities will have a value of -1 when set
       const authorities = new Authorities(input.value);
       obj.set(token, new Balance(0, 0, null, authorities.toNegative(), new Authorities(0)));
