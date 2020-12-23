@@ -1,5 +1,6 @@
 import { APIGatewayProxyHandler } from 'aws-lambda';
 import hathorLib from '@hathor/wallet-lib';
+
 import 'source-map-support/register';
 
 import { ApiError } from '@src/api/errors';
@@ -7,11 +8,15 @@ import {
   getTxProposal,
   getTxProposalInputs,
   getTxProposalOutputs,
+  updateTxProposal,
+  removeTxProposalOutputs,
 } from '@src/db';
 import { TxProposalStatus } from '@src/types';
-import { closeDbConnection, getDbConnection } from '@src/utils';
+import { closeDbConnection, getDbConnection, getUnixTimestamp } from '@src/utils';
 
 const mysql = getDbConnection();
+
+hathorLib.network.setNetwork('mainnet');
 
 /*
  * Send a transaction.
@@ -70,8 +75,6 @@ export const send: APIGatewayProxyHandler = async (event) => {
     };
   }
 
-  // const now = getUnixTimestamp();
-
   // TODO validate max input signature size
   // input: tx_id, index, data
   const inputs = [];
@@ -94,7 +97,7 @@ export const send: APIGatewayProxyHandler = async (event) => {
   for (const output of proposalOutputs) {
     outputs.push({
       value: output.value,
-      address: output.value,
+      address: output.address,
       timelock: output.timelock,
       tokenData: output.token === hathorLib.constants.HATHOR_TOKEN_CONFIG.uid ? 0 : tokens.indexOf(output.token) + 1,
     });
@@ -113,16 +116,40 @@ export const send: APIGatewayProxyHandler = async (event) => {
 
   const txHex = hathorLib.transaction.getTxHexFromData(txData);
 
-  // TODO send tx, update database (update proposal table, remove from tx_proposal_outputs)
+  // TODO update database (update proposal table, remove from tx_proposal_outputs)
 
   await closeDbConnection(mysql);
 
-  return {
-    statusCode: 200,
-    body: JSON.stringify({
-      success: true,
+  try {
+    await hathorLib.txApi.pushTx(txHex, false);
+
+    const now = getUnixTimestamp();
+
+    await updateTxProposal(
+      mysql,
       txProposalId,
-      txHex,
-    }),
-  };
+      now,
+      TxProposalStatus.SENT,
+    );
+
+    await removeTxProposalOutputs(mysql, txProposalId);
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        success: true,
+        txProposalId,
+        txHex,
+      }),
+    };
+  } catch (e) {
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        success: false,
+        txProposalId,
+        txHex,
+      }),
+    };
+  }
 };

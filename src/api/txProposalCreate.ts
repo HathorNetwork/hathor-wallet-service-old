@@ -135,7 +135,9 @@ export const create: APIGatewayProxyHandler = async (event) => {
   let inputUtxos = [];
   if (inputs) {
     inputUtxos = await getUtxos(mysql, inputs);
+
     const missing = checkMissingUtxos(inputs, inputUtxos);
+
     if (missing.length > 0) {
       await closeDbConnection(mysql);
       return {
@@ -150,6 +152,7 @@ export const create: APIGatewayProxyHandler = async (event) => {
       inputUtxos.push(...utxos);
     }
   }
+
   // TODO get limit from lib
   if (inputUtxos.length > 255) {
     await closeDbConnection(mysql);
