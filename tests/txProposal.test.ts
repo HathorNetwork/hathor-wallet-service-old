@@ -8,6 +8,7 @@ import {
   parseValidateOutputs,
   useLargerUtxos,
 } from '@src/api/txProposalCreate';
+import { send as txProposalSend } from '@src/api/txProposalSend';
 import { getTxProposal, getTxProposalOutputs, getUtxos } from '@src/db';
 import { Balance, TokenBalanceMap, TokenInfo, WalletTokenBalance } from '@src/types';
 import { closeDbConnection, getDbConnection, getUnixTimestamp } from '@src/utils';
@@ -19,6 +20,12 @@ import {
   cleanDatabase,
   makeGatewayEvent,
 } from '@tests/utils';
+import buffer from 'buffer';
+import bitcoreLib from 'bitcore-lib';
+
+// eslint-disable-next-line
+const hathorLib = require('@hathor/wallet-lib');
+// jest.mock('@hathor/wallet-lib');
 
 const mysql = getDbConnection();
 
@@ -343,7 +350,13 @@ test('POST /txproposals two tokens, both with change output', async () => {
   await addToWalletBalanceTable(mysql, [['my-wallet', 'token1', 400, 0, 0, 0, null, 2], ['my-wallet', 'token2', 300, 0, 0, 0, null, 1]]);
   await addToAddressTable(mysql, [['address2', 1, 'my-wallet', 0]]);
 
-  const event = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet', outputs: [['address', 320, 'token1', null], ['address', 90, 'token2', null]] }));
+  const event = makeGatewayEvent(null, JSON.stringify({
+    id: 'my-wallet',
+    outputs: [
+      ['address', 320, 'token1', null],
+      ['address', 90, 'token2', null],
+    ],
+  }));
   const result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(200);
@@ -360,4 +373,53 @@ test('POST /txproposals two tokens, both with change output', async () => {
   expect(returnBody.outputs).toContainEqual({ address: 'address2', value: 210, token: 'token2', timelock: null });
 
   await _checkTxProposalTables(returnBody.txProposalId, returnBody.inputs, returnBody.outputs);
+});
+
+test('PUT /txproposals/{proposalId}', async () => {
+  expect.hasAssertions();
+
+  // Create the spy to mock wallet-lib
+
+  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToAddressTable(mysql, [['HVFMryYnzj7J8cN3vdBVAiSrbjsPva9MX1', 0, 'my-wallet', 2]]);
+
+  const utxos = [
+    ['00000000000000001650cd208a2bcff09dce8af88d1b07097ef0efdba4aacbaa', 0, 'token1', 'HVFMryYnzj7J8cN3vdBVAiSrbjsPva9MX1', 300, 0, null, null, false],
+    ['000000000000000042fb8ae48accbc48561729e2359838751e11f837ca9a5746', 0, 'token1', 'HVFMryYnzj7J8cN3vdBVAiSrbjsPva9MX1', 100, 0, null, null, false],
+    ['0000000000000000cfd3dea4c689aa4c863bf6e6aea4518abcfe7d5ff6769aef', 0, 'token2', 'HVFMryYnzj7J8cN3vdBVAiSrbjsPva9MX1', 300, 0, null, null, false],
+  ];
+
+  await addToUtxoTable(mysql, utxos);
+  await addToWalletBalanceTable(mysql, [
+    ['my-wallet', 'token1', 400, 0, 0, 0, null, 2],
+    ['my-wallet', 'token2', 300, 0, 0, 0, null, 1],
+  ]);
+  await addToAddressTable(mysql, [['HFxhB69vk5PCdvVpRtk5bB27ujP68jPKe2', 1, 'my-wallet', 0]]);
+
+  const txCreateEvent = makeGatewayEvent(null,
+    JSON.stringify({
+      id: 'my-wallet',
+      outputs: [
+        ['HVFMryYnzj7J8cN3vdBVAiSrbjsPva9MX1', 320, 'token1', null],
+        ['HVFMryYnzj7J8cN3vdBVAiSrbjsPva9MX1', 90, 'token2', null],
+      ],
+    }));
+  const txCreateResult = await txProposalCreate(txCreateEvent, null, null) as APIGatewayProxyResult;
+  const returnBody = JSON.parse(txCreateResult.body as string);
+
+  expect(true).toBe(true);
+
+  const signature = buffer.Buffer(20);
+  const pubkeyBytes = buffer.Buffer(30);
+
+  const txSendEvent = makeGatewayEvent({ txProposalId: returnBody.txProposalId }, JSON.stringify({
+    inputsSignatures: [
+      1, 2, 3, 4, 5, 6, 7,
+    ].map(() => {
+      return hathorLib.transaction.createInputData(signature, pubkeyBytes);
+    }),
+  }));
+  const txSendResult = await txProposalSend(txSendEvent, null, null) as APIGatewayProxyResult;
+
+  expect(1).toBe(1);
 });
