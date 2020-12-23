@@ -80,10 +80,13 @@ export const send: APIGatewayProxyHandler = async (event) => {
   const inputs = [];
   const usedUtxos = await getTxProposalInputs(mysql, txProposalId);
   for (const [i, utxo] of usedUtxos.entries()) {
+    // Deserialize from base64
+    const inputSignature = Buffer.from(inputsSignatures[i], 'base64');
+
     inputs.push({
       tx_id: utxo.txId,
       index: utxo.index,
-      data: inputsSignatures[i],
+      data: inputSignature,
     });
   }
 
