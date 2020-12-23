@@ -21,7 +21,6 @@ import {
   makeGatewayEvent,
 } from '@tests/utils';
 import buffer from 'buffer';
-import bitcoreLib from 'bitcore-lib';
 
 // eslint-disable-next-line
 const hathorLib = require('@hathor/wallet-lib');
@@ -415,9 +414,7 @@ test('PUT /txproposals/{proposalId}', async () => {
   const txSendEvent = makeGatewayEvent({ txProposalId: returnBody.txProposalId }, JSON.stringify({
     inputsSignatures: [
       1, 2, 3, 4, 5, 6, 7,
-    ].map(() => {
-      return hathorLib.transaction.createInputData(signature, pubkeyBytes);
-    }),
+    ].map(() => hathorLib.transaction.createInputData(signature, pubkeyBytes).toString('base64')),
   }));
   const txSendResult = await txProposalSend(txSendEvent, null, null) as APIGatewayProxyResult;
 
