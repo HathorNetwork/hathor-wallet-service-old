@@ -528,3 +528,8 @@ export interface IWalletInput {
   txId: string;
   index: number;
 }
+
+export interface ApiResponse {
+  success: boolean;
+  message: string;
+}
