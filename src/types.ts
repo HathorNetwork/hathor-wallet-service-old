@@ -8,6 +8,7 @@
  */
 
 import hathorLib from '@hathor/wallet-lib';
+// eslint-disable-next-line
 import { isAuthority } from '@src/utils';
 
 export interface StringMap<T> {
@@ -20,6 +21,21 @@ export interface GenerateAddresses {
   addresses: string[];
   existingAddresses: StringMap<number>;
   newAddresses: StringMap<number>;
+}
+
+export enum TxProposalStatus {
+  OPEN = 'open',
+  SENT = 'sent',
+  SEND_ERROR = 'send_error',
+  CANCELLED = 'cancelled',
+}
+
+export interface TxProposal {
+  id: string;
+  walletId: string;
+  status: TxProposalStatus;
+  createdAt: number;
+  updatedAt: number;
 }
 
 export enum WalletStatus {
@@ -59,6 +75,8 @@ export interface Utxo {
   timelock: number | null;
   heightlock: number | null;
   locked: boolean;
+  txProposalId?: string;
+  txProposalIndex?: number;
 }
 
 export class TokenInfo {
@@ -497,4 +515,16 @@ export interface Transaction {
   token_name?: string;
   // eslint-disable-next-line camelcase
   token_symbol?: string;
+}
+
+export interface IWalletOutput {
+  address: string;
+  value: number;
+  token: string;
+  timelock: number;
+}
+
+export interface IWalletInput {
+  txId: string;
+  index: number;
 }
