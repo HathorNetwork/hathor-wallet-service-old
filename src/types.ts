@@ -26,7 +26,7 @@ export interface GenerateAddresses {
 export enum TxProposalStatus {
   OPEN = 'open',
   SENT = 'sent',
-  SEND_ERROR = 'send-error',
+  SEND_ERROR = 'send_error',
   CANCELLED = 'cancelled',
 }
 
