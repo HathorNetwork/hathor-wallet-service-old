@@ -11,7 +11,7 @@ import {
   updateTxProposal,
   removeTxProposalOutputs,
 } from '@src/db';
-import { TxProposalStatus } from '@src/types';
+import { TxProposalStatus, ApiResponse } from '@src/types';
 import { closeDbConnection, getDbConnection, getUnixTimestamp } from '@src/utils';
 
 const mysql = getDbConnection();
@@ -119,14 +119,16 @@ export const send: APIGatewayProxyHandler = async (event) => {
 
   const txHex = hathorLib.transaction.getTxHexFromData(txData);
 
-  // TODO update database (update proposal table, remove from tx_proposal_outputs)
-
   await closeDbConnection(mysql);
 
-  try {
-    await hathorLib.txApi.pushTx(txHex, false);
+  const now = getUnixTimestamp();
 
-    const now = getUnixTimestamp();
+  try {
+    const response: ApiResponse = await new Promise((resolve) => {
+      hathorLib.txApi.pushTx(txHex, false, resolve);
+    });
+
+    if (!response.success) throw new Error(response.message);
 
     await updateTxProposal(
       mysql,
@@ -146,10 +148,18 @@ export const send: APIGatewayProxyHandler = async (event) => {
       }),
     };
   } catch (e) {
+    await updateTxProposal(
+      mysql,
+      txProposalId,
+      now,
+      TxProposalStatus.SEND_ERROR,
+    );
+
     return {
       statusCode: 200,
       body: JSON.stringify({
         success: false,
+        message: e.message,
         txProposalId,
         txHex,
       }),
