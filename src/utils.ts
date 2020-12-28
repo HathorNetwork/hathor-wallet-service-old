@@ -27,6 +27,43 @@ const mainnet = Networks.add({
   dnsSeeds: [],
 });
 
+export class CustomStorage {
+  store: unknown;
+
+  constructor() {
+    this.preStart();
+  }
+
+  getItem(key: string): string {
+    return this.store[key];
+  }
+
+  setItem(key: string, value: string): string {
+    this.store[key] = value;
+
+    return value;
+  }
+
+  removeItem(key: string): string {
+    delete this.store[key];
+
+    return key;
+  }
+
+  clear(): void {
+    this.store = {};
+  }
+
+  preStart(): void {
+    this.store = {
+      'wallet:server': hathorLib.constants.DEFAULT_SERVER,
+      'wallet:defaultServer': hathorLib.constants.DEFAULT_SERVER,
+    };
+  }
+}
+
+hathorLib.storage.setStore(new CustomStorage());
+
 /**
  * Calculate the double sha256 hash of the data.
  *

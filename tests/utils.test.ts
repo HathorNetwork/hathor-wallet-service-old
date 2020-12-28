@@ -1,5 +1,6 @@
-import { arrayShuffle, getHathorAddresses, sha256d } from '@src/utils';
+import { CustomStorage, arrayShuffle, getHathorAddresses, sha256d } from '@src/utils';
 import { ADDRESSES, XPUBKEY } from '@tests/utils';
+import hathorLib from '@hathor/wallet-lib';
 
 test('getHathorAddresses', () => {
   expect.hasAssertions();
@@ -7,6 +8,29 @@ test('getHathorAddresses', () => {
   const addrList = Object.keys(calculatedAddresses);
   expect(addrList).toHaveLength(ADDRESSES.length);
   expect(addrList).toStrictEqual(ADDRESSES);
+});
+
+test('CustomStorage', () => {
+  expect.hasAssertions();
+
+  const store = new CustomStorage();
+  // Should be initialized with hathor default server and server
+  expect(store.getItem('wallet:defaultServer')).toBe(hathorLib.constants.DEFAULT_SERVER);
+  expect(store.getItem('wallet:server')).toBe(hathorLib.constants.DEFAULT_SERVER);
+
+  store.setItem('hathor', 'hathor');
+  expect(store.getItem('hathor')).toBe('hathor');
+  store.removeItem('hathor');
+
+  expect(store.getItem('hathor')).toBeUndefined();
+
+  store.setItem('hathor', 'hathor2');
+  store.clear();
+  expect(store.getItem('hathor')).toBeUndefined();
+
+  store.preStart();
+  expect(store.getItem('wallet:defaultServer')).toBe(hathorLib.constants.DEFAULT_SERVER);
+  expect(store.getItem('wallet:server')).toBe(hathorLib.constants.DEFAULT_SERVER);
 });
 
 test('sha256d', () => {
