@@ -13,6 +13,8 @@ import { StringMap } from '@src/types';
 import serverlessMysql, { ServerlessMysql } from 'serverless-mysql';
 import hathorLib from '@hathor/wallet-lib';
 
+hathorLib.network.setNetwork(process.env.NETWORK);
+
 // TODO get from hathor-lib or maybe env?
 const mainnet = Networks.add({
   name: 'mainnet',
