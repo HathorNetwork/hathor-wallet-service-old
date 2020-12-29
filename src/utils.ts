@@ -13,6 +13,8 @@ import { StringMap } from '@src/types';
 import serverlessMysql, { ServerlessMysql } from 'serverless-mysql';
 import hathorLib from '@hathor/wallet-lib';
 
+hathorLib.network.setNetwork(process.env.NETWORK);
+
 // TODO get from hathor-lib or maybe env?
 const mainnet = Networks.add({
   name: 'mainnet',
@@ -112,6 +114,7 @@ export const getDbConnection = (): ServerlessMysql => (
       host: process.env.DB_ENDPOINT,
       database: process.env.DB_NAME,
       user: process.env.DB_USER,
+      port: parseInt(process.env.DB_PORT, 10),
       // TODO if not on local env, get IAM token
       // https://aws.amazon.com/blogs/database/iam-role-based-authentication-to-amazon-aurora-from-serverless-applications/
       password: process.env.DB_PASS,

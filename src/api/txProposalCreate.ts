@@ -16,6 +16,7 @@ import {
 } from '@src/db';
 import { Balance, IWalletInput, IWalletOutput, TokenBalanceMap, Utxo, WalletTokenBalance } from '@src/types';
 import { arrayShuffle, closeDbConnection, getDbConnection, getUnixTimestamp } from '@src/utils';
+import hathorLib from '@hathor/wallet-lib';
 
 const mysql = getDbConnection();
 
@@ -97,8 +98,20 @@ export const create: APIGatewayProxyHandler = async (event) => {
     }
   }
 
-  // TODO allow receiving it from the user
-  const inputSelectionAlgo = InputSelectionAlgo.USE_LARGER_UTXOS;
+  const inputSelectionAlgo = (function getInputAlgoFromBody() {
+    if (!body.inputSelectionAlgo) return InputSelectionAlgo.USE_LARGER_UTXOS;
+
+    return InputSelectionAlgo[body.inputSelectionAlgo];
+  }());
+
+  if (!inputSelectionAlgo) {
+    await closeDbConnection(mysql);
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify({ success: false, error: ApiError.INVALID_SELECTION_ALGO }),
+    };
+  }
 
   const status = await getWallet(mysql, walletId);
   if (!status) {
@@ -112,8 +125,7 @@ export const create: APIGatewayProxyHandler = async (event) => {
     await closeDbConnection(mysql);
     return {
       statusCode: 200,
-      // TODO change to WALLET_NOT_READY, but this will come from PR #4
-      body: JSON.stringify({ success: false, error: ApiError.WALLET_NOT_FOUND }),
+      body: JSON.stringify({ success: false, error: ApiError.WALLET_NOT_READY }),
     };
   }
 
@@ -235,6 +247,13 @@ export const parseValidateOutputs = (outputs: unknown[]): IWalletOutput[] => {
       token: output[2],
       timelock: output[3],
     };
+
+    if (!hathorLib.transaction.isAddressValid(parsed.address)) {
+      console.log('address is not valid: ', parsed.address);
+      // invalid address
+      return null;
+    }
+
     if (typeof parsed.address !== 'string' || typeof parsed.value !== 'number'
       || typeof parsed.token !== 'string' || (parsed.timelock !== null && typeof parsed.timelock !== 'number')) {
       // types are not correct

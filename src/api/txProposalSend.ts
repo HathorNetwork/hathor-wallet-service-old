@@ -16,8 +16,6 @@ import { closeDbConnection, getDbConnection, getUnixTimestamp } from '@src/utils
 
 const mysql = getDbConnection();
 
-hathorLib.network.setNetwork('mainnet');
-
 /*
  * Send a transaction.
  *

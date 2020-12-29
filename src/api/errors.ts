@@ -8,6 +8,7 @@
 export enum ApiError {
   MISSING_PARAMETER = 'missing-parameter',
   INVALID_BODY = 'invalid-body',
+  INVALID_SELECTION_ALGO = 'invalid-selection-algo',
   INVALID_PARAMETER = 'invalid-parameter',
   UNKNOWN_ERROR = 'unknown-error',
   INPUTS_NOT_FOUND = 'inputs-not-found',
