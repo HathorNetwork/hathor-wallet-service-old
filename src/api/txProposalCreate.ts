@@ -66,7 +66,7 @@ export const create: APIGatewayProxyHandler = async (event) => {
     };
   }
 
-  // TODO get limit from lib
+  // TODO get limit from the full-node (https://github.com/HathorNetwork/hathor-wallet-service/issues/12)
   if (rawOutputs.length > 255) {
     await closeDbConnection(mysql);
     return {
@@ -153,7 +153,7 @@ export const create: APIGatewayProxyHandler = async (event) => {
     }
   }
 
-  // TODO get limit from lib
+  // TODO get limit from the full-node (https://github.com/HathorNetwork/hathor-wallet-service/issues/12)
   if (inputUtxos.length > 255) {
     await closeDbConnection(mysql);
     return {
@@ -184,7 +184,8 @@ export const create: APIGatewayProxyHandler = async (event) => {
   const changeOutputs = getChangeOutputs(diff, addresses);
 
   const finalOutputs = outputs.concat(changeOutputs);
-  // TODO get limit from lib
+
+  // TODO get limit from the full-node (https://github.com/HathorNetwork/hathor-wallet-service/issues/12)
   if (finalOutputs.length > 255) {
     // we also need to do this check here, as we may have added change outputs
     await closeDbConnection(mysql);
