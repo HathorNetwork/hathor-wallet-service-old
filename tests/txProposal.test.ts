@@ -13,6 +13,7 @@ import { getTxProposal, getTxProposalOutputs, getUtxos, updateTxProposal } from 
 import { TxProposalStatus, Balance, TokenBalanceMap, TokenInfo, WalletTokenBalance } from '@src/types';
 import { closeDbConnection, getDbConnection, getUnixTimestamp } from '@src/utils';
 import {
+  ADDRESSES,
   addToAddressTable,
   addToUtxoTable,
   addToWalletBalanceTable,
@@ -43,7 +44,7 @@ test('parseValidateOutputs', () => {
   expect(parseValidateOutputs(outputs)).toStrictEqual([]);
 
   // less than 4 elements
-  outputs = [['address', 10, 'token1']];
+  outputs = [[ADDRESSES[0], 10, 'token1']];
   expect(parseValidateOutputs(outputs)).toBeNull();
 
   // wrong address type
@@ -51,24 +52,24 @@ test('parseValidateOutputs', () => {
   expect(parseValidateOutputs(outputs)).toBeNull();
 
   // wrong value type
-  outputs = [['address', '10', 'token1', 20]];
+  outputs = [[ADDRESSES[0], '10', 'token1', 20]];
   expect(parseValidateOutputs(outputs)).toBeNull();
 
   // wrong token type
-  outputs = [['address', 10, 15, 20]];
+  outputs = [[ADDRESSES[0], 10, 15, 20]];
   expect(parseValidateOutputs(outputs)).toBeNull();
 
   // wrong timelock type
-  outputs = [['address', 10, 'token1', '20']];
+  outputs = [[ADDRESSES[0], 10, 'token1', '20']];
   expect(parseValidateOutputs(outputs)).toBeNull();
 
   // success test
-  outputs = [['address', 10, 'token1', 20]];
-  expect(parseValidateOutputs(outputs)).toStrictEqual([{ address: 'address', value: 10, token: 'token1', timelock: 20 }]);
+  outputs = [[ADDRESSES[0], 10, 'token1', 20]];
+  expect(parseValidateOutputs(outputs)).toStrictEqual([{ address: ADDRESSES[0], value: 10, token: 'token1', timelock: 20 }]);
 
   // success test (null timelock)
-  outputs = [['address', 10, 'token1', null]];
-  expect(parseValidateOutputs(outputs)).toStrictEqual([{ address: 'address', value: 10, token: 'token1', timelock: null }]);
+  outputs = [[ADDRESSES[0], 10, 'token1', null]];
+  expect(parseValidateOutputs(outputs)).toStrictEqual([{ address: ADDRESSES[0], value: 10, token: 'token1', timelock: null }]);
 });
 
 test('parseValidateInputs', () => {
@@ -97,7 +98,7 @@ test('parseValidateInputs', () => {
 test('getOutputsBalance', () => {
   expect.hasAssertions();
   const addr1 = 'address1';
-  const addr2 = 'address2';
+  const addr2 = ADDRESSES[1];
   const token1 = 'token1';
   const token2 = 'token2';
 
@@ -123,7 +124,7 @@ test('getInputsBalance', () => {
   expect.hasAssertions();
 
   const addr1 = 'address1';
-  const addr2 = 'address2';
+  const addr2 = ADDRESSES[1];
   const token1 = 'token1';
   const token2 = 'token2';
   const txId = 'txId';
@@ -277,19 +278,19 @@ test('POST /txproposals one output and input', async () => {
   expect.hasAssertions();
 
   await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
-  await addToAddressTable(mysql, [['address', 0, 'my-wallet', 2]]);
+  await addToAddressTable(mysql, [[ADDRESSES[0], 0, 'my-wallet', 2]]);
 
   const utxos = [
-    ['txSuccess0', 0, 'token1', 'address', 300, 0, null, null, false],
-    ['txSuccess1', 0, 'token1', 'address', 100, 0, null, null, false],
-    ['txSuccess2', 0, 'token2', 'address', 300, 0, null, null, false],
+    ['txSuccess0', 0, 'token1', ADDRESSES[0], 300, 0, null, null, false],
+    ['txSuccess1', 0, 'token1', ADDRESSES[0], 100, 0, null, null, false],
+    ['txSuccess2', 0, 'token2', ADDRESSES[0], 300, 0, null, null, false],
   ];
   await addToUtxoTable(mysql, utxos);
   await addToWalletBalanceTable(mysql, [['my-wallet', 'token1', 400, 0, 0, 0, null, 2], ['my-wallet', 'token2', 300, 0, 0, 0, null, 1]]);
-  await addToAddressTable(mysql, [['address2', 1, 'my-wallet', 0]]);
+  await addToAddressTable(mysql, [[ADDRESSES[1], 1, 'my-wallet', 0]]);
 
   // only one output, spending the whole 300 utxo of token3
-  const outputs = [['address', 300, 'token1', null]];
+  const outputs = [[ADDRESSES[0], 300, 'token1', null]];
   const event = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet', outputs }));
   const result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(result.body as string);
@@ -299,7 +300,7 @@ test('POST /txproposals one output and input', async () => {
   expect(returnBody.inputs).toHaveLength(1);
   expect(returnBody.inputs).toContainEqual({ txId: 'txSuccess0', index: 0 });
   expect(returnBody.outputs).toHaveLength(1);
-  expect(returnBody.outputs).toContainEqual({ address: 'address', value: 300, token: 'token1', timelock: null });
+  expect(returnBody.outputs).toContainEqual({ address: ADDRESSES[0], value: 300, token: 'token1', timelock: null });
 
   await _checkTxProposalTables(returnBody.txProposalId, returnBody.inputs, returnBody.outputs);
 });
@@ -308,17 +309,21 @@ test('POST /txproposals use two UTXOs and add change output', async () => {
   expect.hasAssertions();
 
   await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
-  await addToAddressTable(mysql, [['address', 0, 'my-wallet', 2]]);
+  await addToAddressTable(mysql, [[ADDRESSES[0], 0, 'my-wallet', 2]]);
 
   const utxos = [
-    ['txSuccess0', 0, 'token1', 'address', 300, 0, null, null, false],
-    ['txSuccess1', 0, 'token1', 'address', 100, 0, null, null, false],
+    ['txSuccess0', 0, 'token1', ADDRESSES[0], 300, 0, null, null, false],
+    ['txSuccess1', 0, 'token1', ADDRESSES[0], 100, 0, null, null, false],
   ];
   await addToUtxoTable(mysql, utxos);
   await addToWalletBalanceTable(mysql, [['my-wallet', 'token1', 400, 0, 0, 0, null, 2], ['my-wallet', 'token2', 300, 0, 0, 0, null, 1]]);
-  await addToAddressTable(mysql, [['address2', 1, 'my-wallet', 0]]);
+  await addToAddressTable(mysql, [[ADDRESSES[1], 1, 'my-wallet', 0]]);
 
-  const event = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet', outputs: [['address', 320, 'token1', null]] }));
+  const event = makeGatewayEvent(null, JSON.stringify({
+    id: 'my-wallet',
+    outputs: [[ADDRESSES[0], 320, 'token1', null]],
+  }));
+
   const result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(200);
@@ -328,36 +333,65 @@ test('POST /txproposals use two UTXOs and add change output', async () => {
   expect(returnBody.inputs).toContainEqual({ txId: 'txSuccess0', index: 0 });
   expect(returnBody.inputs).toContainEqual({ txId: 'txSuccess1', index: 0 });
   expect(returnBody.outputs).toHaveLength(2);
-  expect(returnBody.outputs).toContainEqual({ address: 'address', value: 320, token: 'token1', timelock: null });
-  expect(returnBody.outputs).toContainEqual({ address: 'address2', value: 80, token: 'token1', timelock: null });
+  expect(returnBody.outputs).toContainEqual({ address: ADDRESSES[0], value: 320, token: 'token1', timelock: null });
+  expect(returnBody.outputs).toContainEqual({ address: ADDRESSES[1], value: 80, token: 'token1', timelock: null });
 
   await _checkTxProposalTables(returnBody.txProposalId, returnBody.inputs, returnBody.outputs);
+});
+
+test('POST /txproposals with invalid inputSelectionAlgo should fail with ApiError.INVALID_SELECTION_ALGO', async () => {
+  expect.hasAssertions();
+
+  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToAddressTable(mysql, [[ADDRESSES[0], 0, 'my-wallet', 2]]);
+
+  const utxos = [
+    ['txSuccess0', 0, 'token1', ADDRESSES[0], 300, 0, null, null, false],
+    ['txSuccess1', 0, 'token1', ADDRESSES[0], 100, 0, null, null, false],
+  ];
+  await addToUtxoTable(mysql, utxos);
+  await addToWalletBalanceTable(mysql, [['my-wallet', 'token1', 400, 0, 0, 0, null, 2], ['my-wallet', 'token2', 300, 0, 0, 0, null, 1]]);
+  await addToAddressTable(mysql, [[ADDRESSES[1], 1, 'my-wallet', 0]]);
+
+  const event = makeGatewayEvent(null, JSON.stringify({
+    id: 'my-wallet',
+    outputs: [[ADDRESSES[0], 320, 'token1', null]],
+    inputSelectionAlgo: 'INVALID_SELECTION_ALGO',
+  }));
+
+  const result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  const returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_SELECTION_ALGO);
 });
 
 test('POST /txproposals two tokens, both with change output', async () => {
   expect.hasAssertions();
 
   await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
-  await addToAddressTable(mysql, [['address', 0, 'my-wallet', 2]]);
+  await addToAddressTable(mysql, [[ADDRESSES[0], 0, 'my-wallet', 2]]);
 
   const utxos = [
-    ['txSuccess0', 0, 'token1', 'address', 300, 0, null, null, false],
-    ['txSuccess1', 0, 'token1', 'address', 100, 0, null, null, false],
-    ['txSuccess2', 0, 'token2', 'address', 300, 0, null, null, false],
+    ['txSuccess0', 0, 'token1', ADDRESSES[0], 300, 0, null, null, false],
+    ['txSuccess1', 0, 'token1', ADDRESSES[0], 100, 0, null, null, false],
+    ['txSuccess2', 0, 'token2', ADDRESSES[0], 300, 0, null, null, false],
   ];
   await addToUtxoTable(mysql, utxos);
   await addToWalletBalanceTable(mysql, [['my-wallet', 'token1', 400, 0, 0, 0, null, 2], ['my-wallet', 'token2', 300, 0, 0, 0, null, 1]]);
-  await addToAddressTable(mysql, [['address2', 1, 'my-wallet', 0]]);
+  await addToAddressTable(mysql, [[ADDRESSES[1], 1, 'my-wallet', 0]]);
 
   const event = makeGatewayEvent(null, JSON.stringify({
     id: 'my-wallet',
     outputs: [
-      ['address', 320, 'token1', null],
-      ['address', 90, 'token2', null],
+      [ADDRESSES[0], 320, 'token1', null],
+      [ADDRESSES[0], 90, 'token2', null],
     ],
   }));
   const result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(result.body as string);
+
   expect(result.statusCode).toBe(200);
   expect(returnBody.success).toBe(true);
   expect(returnBody.txProposalId).toHaveLength(36);
@@ -366,10 +400,10 @@ test('POST /txproposals two tokens, both with change output', async () => {
   expect(returnBody.inputs).toContainEqual({ txId: 'txSuccess1', index: 0 });
   expect(returnBody.inputs).toContainEqual({ txId: 'txSuccess2', index: 0 });
   expect(returnBody.outputs).toHaveLength(4);
-  expect(returnBody.outputs).toContainEqual({ address: 'address', value: 320, token: 'token1', timelock: null });
-  expect(returnBody.outputs).toContainEqual({ address: 'address2', value: 80, token: 'token1', timelock: null });
-  expect(returnBody.outputs).toContainEqual({ address: 'address', value: 90, token: 'token2', timelock: null });
-  expect(returnBody.outputs).toContainEqual({ address: 'address2', value: 210, token: 'token2', timelock: null });
+  expect(returnBody.outputs).toContainEqual({ address: ADDRESSES[0], value: 320, token: 'token1', timelock: null });
+  expect(returnBody.outputs).toContainEqual({ address: ADDRESSES[1], value: 80, token: 'token1', timelock: null });
+  expect(returnBody.outputs).toContainEqual({ address: ADDRESSES[0], value: 90, token: 'token2', timelock: null });
+  expect(returnBody.outputs).toContainEqual({ address: ADDRESSES[1], value: 210, token: 'token2', timelock: null });
 
   await _checkTxProposalTables(returnBody.txProposalId, returnBody.inputs, returnBody.outputs);
 });
@@ -388,12 +422,12 @@ test('PUT /txproposals/{proposalId}', async () => {
   });
 
   await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
-  await addToAddressTable(mysql, [['HVFMryYnzj7J8cN3vdBVAiSrbjsPva9MX1', 0, 'my-wallet', 2]]);
+  await addToAddressTable(mysql, [[ADDRESSES[0], 0, 'my-wallet', 2]]);
 
   const utxos = [
-    ['00000000000000001650cd208a2bcff09dce8af88d1b07097ef0efdba4aacbaa', 0, 'token1', 'HVFMryYnzj7J8cN3vdBVAiSrbjsPva9MX1', 300, 0, null, null, false],
-    ['000000000000000042fb8ae48accbc48561729e2359838751e11f837ca9a5746', 0, 'token1', 'HVFMryYnzj7J8cN3vdBVAiSrbjsPva9MX1', 100, 0, null, null, false],
-    ['0000000000000000cfd3dea4c689aa4c863bf6e6aea4518abcfe7d5ff6769aef', 0, 'token2', 'HVFMryYnzj7J8cN3vdBVAiSrbjsPva9MX1', 300, 0, null, null, false],
+    ['00000000000000001650cd208a2bcff09dce8af88d1b07097ef0efdba4aacbaa', 0, 'token1', ADDRESSES[0], 300, 0, null, null, false],
+    ['000000000000000042fb8ae48accbc48561729e2359838751e11f837ca9a5746', 0, 'token1', ADDRESSES[0], 100, 0, null, null, false],
+    ['0000000000000000cfd3dea4c689aa4c863bf6e6aea4518abcfe7d5ff6769aef', 0, 'token2', ADDRESSES[0], 300, 0, null, null, false],
   ];
 
   await addToUtxoTable(mysql, utxos);
@@ -407,8 +441,8 @@ test('PUT /txproposals/{proposalId}', async () => {
     JSON.stringify({
       id: 'my-wallet',
       outputs: [
-        ['HVFMryYnzj7J8cN3vdBVAiSrbjsPva9MX1', 320, 'token1', null],
-        ['HVFMryYnzj7J8cN3vdBVAiSrbjsPva9MX1', 90, 'token2', null],
+        [ADDRESSES[0], 320, 'token1', null],
+        [ADDRESSES[0], 90, 'token2', null],
       ],
     }));
   const txCreateResult = await txProposalCreate(txCreateEvent, null, null) as APIGatewayProxyResult;
@@ -433,12 +467,12 @@ test('PUT /txproposals/{proposalId} with an empty body should fail with ApiError
   expect.hasAssertions();
 
   await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
-  await addToAddressTable(mysql, [['HVFMryYnzj7J8cN3vdBVAiSrbjsPva9MX1', 0, 'my-wallet', 2]]);
+  await addToAddressTable(mysql, [[ADDRESSES[0], 0, 'my-wallet', 2]]);
 
   const utxos = [
-    ['00000000000000001650cd208a2bcff09dce8af88d1b07097ef0efdba4aacbaa', 0, 'token1', 'HVFMryYnzj7J8cN3vdBVAiSrbjsPva9MX1', 300, 0, null, null, false],
-    ['000000000000000042fb8ae48accbc48561729e2359838751e11f837ca9a5746', 0, 'token1', 'HVFMryYnzj7J8cN3vdBVAiSrbjsPva9MX1', 100, 0, null, null, false],
-    ['0000000000000000cfd3dea4c689aa4c863bf6e6aea4518abcfe7d5ff6769aef', 0, 'token2', 'HVFMryYnzj7J8cN3vdBVAiSrbjsPva9MX1', 300, 0, null, null, false],
+    ['00000000000000001650cd208a2bcff09dce8af88d1b07097ef0efdba4aacbaa', 0, 'token1', ADDRESSES[0], 300, 0, null, null, false],
+    ['000000000000000042fb8ae48accbc48561729e2359838751e11f837ca9a5746', 0, 'token1', ADDRESSES[0], 100, 0, null, null, false],
+    ['0000000000000000cfd3dea4c689aa4c863bf6e6aea4518abcfe7d5ff6769aef', 0, 'token2', ADDRESSES[0], 300, 0, null, null, false],
   ];
 
   await addToUtxoTable(mysql, utxos);
@@ -452,8 +486,8 @@ test('PUT /txproposals/{proposalId} with an empty body should fail with ApiError
     JSON.stringify({
       id: 'my-wallet',
       outputs: [
-        ['HVFMryYnzj7J8cN3vdBVAiSrbjsPva9MX1', 320, 'token1', null],
-        ['HVFMryYnzj7J8cN3vdBVAiSrbjsPva9MX1', 90, 'token2', null],
+        [ADDRESSES[0], 320, 'token1', null],
+        [ADDRESSES[0], 90, 'token2', null],
       ],
     }));
   const txCreateResult = await txProposalCreate(txCreateEvent, null, null) as APIGatewayProxyResult;
@@ -489,12 +523,12 @@ test('PUT /txproposals/{proposalId} on a proposal which status is not OPEN or SE
   expect.hasAssertions();
 
   await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
-  await addToAddressTable(mysql, [['HVFMryYnzj7J8cN3vdBVAiSrbjsPva9MX1', 0, 'my-wallet', 2]]);
+  await addToAddressTable(mysql, [[ADDRESSES[0], 0, 'my-wallet', 2]]);
 
   const utxos = [
-    ['00000000000000001650cd208a2bcff09dce8af88d1b07097ef0efdba4aacbaa', 0, 'token1', 'HVFMryYnzj7J8cN3vdBVAiSrbjsPva9MX1', 300, 0, null, null, false],
-    ['000000000000000042fb8ae48accbc48561729e2359838751e11f837ca9a5746', 0, 'token1', 'HVFMryYnzj7J8cN3vdBVAiSrbjsPva9MX1', 100, 0, null, null, false],
-    ['0000000000000000cfd3dea4c689aa4c863bf6e6aea4518abcfe7d5ff6769aef', 0, 'token2', 'HVFMryYnzj7J8cN3vdBVAiSrbjsPva9MX1', 300, 0, null, null, false],
+    ['00000000000000001650cd208a2bcff09dce8af88d1b07097ef0efdba4aacbaa', 0, 'token1', ADDRESSES[0], 300, 0, null, null, false],
+    ['000000000000000042fb8ae48accbc48561729e2359838751e11f837ca9a5746', 0, 'token1', ADDRESSES[0], 100, 0, null, null, false],
+    ['0000000000000000cfd3dea4c689aa4c863bf6e6aea4518abcfe7d5ff6769aef', 0, 'token2', ADDRESSES[0], 300, 0, null, null, false],
   ];
 
   await addToUtxoTable(mysql, utxos);
@@ -508,8 +542,8 @@ test('PUT /txproposals/{proposalId} on a proposal which status is not OPEN or SE
     JSON.stringify({
       id: 'my-wallet',
       outputs: [
-        ['HVFMryYnzj7J8cN3vdBVAiSrbjsPva9MX1', 320, 'token1', null],
-        ['HVFMryYnzj7J8cN3vdBVAiSrbjsPva9MX1', 90, 'token2', null],
+        [ADDRESSES[0], 320, 'token1', null],
+        [ADDRESSES[0], 90, 'token2', null],
       ],
     }));
   const txCreateResult = await txProposalCreate(txCreateEvent, null, null) as APIGatewayProxyResult;
@@ -547,12 +581,12 @@ test('PUT /txproposals/{proposalId} with an invalid txHex should fail and update
   });
 
   await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
-  await addToAddressTable(mysql, [['HVFMryYnzj7J8cN3vdBVAiSrbjsPva9MX1', 0, 'my-wallet', 2]]);
+  await addToAddressTable(mysql, [[ADDRESSES[0], 0, 'my-wallet', 2]]);
 
   const utxos = [
-    ['00000000000000001650cd208a2bcff09dce8af88d1b07097ef0efdba4aacbaa', 0, 'token1', 'HVFMryYnzj7J8cN3vdBVAiSrbjsPva9MX1', 300, 0, null, null, false],
-    ['000000000000000042fb8ae48accbc48561729e2359838751e11f837ca9a5746', 0, 'token1', 'HVFMryYnzj7J8cN3vdBVAiSrbjsPva9MX1', 100, 0, null, null, false],
-    ['0000000000000000cfd3dea4c689aa4c863bf6e6aea4518abcfe7d5ff6769aef', 0, 'token2', 'HVFMryYnzj7J8cN3vdBVAiSrbjsPva9MX1', 300, 0, null, null, false],
+    ['00000000000000001650cd208a2bcff09dce8af88d1b07097ef0efdba4aacbaa', 0, 'token1', ADDRESSES[0], 300, 0, null, null, false],
+    ['000000000000000042fb8ae48accbc48561729e2359838751e11f837ca9a5746', 0, 'token1', ADDRESSES[0], 100, 0, null, null, false],
+    ['0000000000000000cfd3dea4c689aa4c863bf6e6aea4518abcfe7d5ff6769aef', 0, 'token2', ADDRESSES[0], 300, 0, null, null, false],
   ];
 
   await addToUtxoTable(mysql, utxos);
@@ -566,8 +600,8 @@ test('PUT /txproposals/{proposalId} with an invalid txHex should fail and update
     JSON.stringify({
       id: 'my-wallet',
       outputs: [
-        ['HVFMryYnzj7J8cN3vdBVAiSrbjsPva9MX1', 320, 'token1', null],
-        ['HVFMryYnzj7J8cN3vdBVAiSrbjsPva9MX1', 90, 'token2', null],
+        [ADDRESSES[0], 320, 'token1', null],
+        [ADDRESSES[0], 90, 'token2', null],
       ],
     }));
   const txCreateResult = await txProposalCreate(txCreateEvent, null, null) as APIGatewayProxyResult;
@@ -604,12 +638,12 @@ test('PUT /txproposals/{proposalId} should update tx_proposal to SEND_ERROR on f
   });
 
   await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
-  await addToAddressTable(mysql, [['HVFMryYnzj7J8cN3vdBVAiSrbjsPva9MX1', 0, 'my-wallet', 2]]);
+  await addToAddressTable(mysql, [[ADDRESSES[0], 0, 'my-wallet', 2]]);
 
   const utxos = [
-    ['00000000000000001650cd208a2bcff09dce8af88d1b07097ef0efdba4aacbaa', 0, 'token1', 'HVFMryYnzj7J8cN3vdBVAiSrbjsPva9MX1', 300, 0, null, null, false],
-    ['000000000000000042fb8ae48accbc48561729e2359838751e11f837ca9a5746', 0, 'token1', 'HVFMryYnzj7J8cN3vdBVAiSrbjsPva9MX1', 100, 0, null, null, false],
-    ['0000000000000000cfd3dea4c689aa4c863bf6e6aea4518abcfe7d5ff6769aef', 0, 'token2', 'HVFMryYnzj7J8cN3vdBVAiSrbjsPva9MX1', 300, 0, null, null, false],
+    ['00000000000000001650cd208a2bcff09dce8af88d1b07097ef0efdba4aacbaa', 0, 'token1', ADDRESSES[0], 300, 0, null, null, false],
+    ['000000000000000042fb8ae48accbc48561729e2359838751e11f837ca9a5746', 0, 'token1', ADDRESSES[0], 100, 0, null, null, false],
+    ['0000000000000000cfd3dea4c689aa4c863bf6e6aea4518abcfe7d5ff6769aef', 0, 'token2', ADDRESSES[0], 300, 0, null, null, false],
   ];
 
   await addToUtxoTable(mysql, utxos);
@@ -623,8 +657,8 @@ test('PUT /txproposals/{proposalId} should update tx_proposal to SEND_ERROR on f
     JSON.stringify({
       id: 'my-wallet',
       outputs: [
-        ['HVFMryYnzj7J8cN3vdBVAiSrbjsPva9MX1', 320, 'token1', null],
-        ['HVFMryYnzj7J8cN3vdBVAiSrbjsPva9MX1', 90, 'token2', null],
+        [ADDRESSES[0], 320, 'token1', null],
+        [ADDRESSES[0], 90, 'token2', null],
       ],
     }));
   const txCreateResult = await txProposalCreate(txCreateEvent, null, null) as APIGatewayProxyResult;
