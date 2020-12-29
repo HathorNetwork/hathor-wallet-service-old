@@ -514,20 +514,17 @@ export const addToTokenTable = async (
 export const makeGatewayEvent = (params: {
     [name: string]: string,
     [txProposalId: string]: string
-  },
-  body = null): APIGatewayProxyEvent => (
-  {
-    body,
-    queryStringParameters: params,
-    pathParameters: params,
-    headers: {},
-    multiValueHeaders: {},
-    httpMethod: '',
-    isBase64Encoded: false,
-    path: '',
-    multiValueQueryStringParameters: null,
-    stageVariables: null,
-    requestContext: null,
-    resource: null,
-  }
-);
+  }, body = null): APIGatewayProxyEvent => ({
+  body,
+  queryStringParameters: params,
+  pathParameters: params,
+  headers: {},
+  multiValueHeaders: {},
+  httpMethod: '',
+  isBase64Encoded: false,
+  path: '',
+  multiValueQueryStringParameters: null,
+  stageVariables: null,
+  requestContext: null,
+  resource: null,
+});
