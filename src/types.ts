@@ -209,7 +209,6 @@ export class Authorities {
   toJSON(): Record<string, unknown> {
     const authorities = this.toInteger();
     return {
-      // TODO get from lib
       mint: (authorities & hathorLib.constants.TOKEN_MINT_MASK) > 0,   // eslint-disable-line no-bitwise
       melt: (authorities & hathorLib.constants.TOKEN_MELT_MASK) > 0,   // eslint-disable-line no-bitwise
     };

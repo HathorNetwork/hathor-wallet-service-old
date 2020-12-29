@@ -241,7 +241,6 @@ export const parseValidateOutputs = (outputs: unknown[]): IWalletOutput[] => {
   const parsedOutputs = [];
   for (const output of outputs) {
     const parsed = {
-      // TODO validate address format?
       address: output[0],
       value: output[1],
       token: output[2],
@@ -249,7 +248,6 @@ export const parseValidateOutputs = (outputs: unknown[]): IWalletOutput[] => {
     };
 
     if (!hathorLib.transaction.isAddressValid(parsed.address)) {
-      console.log('address is not valid: ', parsed.address);
       // invalid address
       return null;
     }
