@@ -26,6 +26,13 @@ CREATE TABLE `address_balance` (
   PRIMARY KEY (`address`,`token_id`)
 );
 
+CREATE TABLE `token` (
+  `id` VARCHAR(64) NOT NULL,
+  `name` VARCHAR(150) NOT NULL,
+  `symbol` VARCHAR(30) NOT NULL,
+  PRIMARY KEY (`id`)
+);
+
 CREATE TABLE `address_tx_history` (
   `address` varchar(34) NOT NULL,
   `tx_id` varchar(64) NOT NULL,
