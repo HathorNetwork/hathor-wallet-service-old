@@ -9,7 +9,7 @@ custom:
     automatic: true
     number: 3
 
-# Create an optimized package for our functions 
+# Create an optimized package for our functions
 package:
   individually: true
 
@@ -87,6 +87,17 @@ functions:
       - http:
           path: txproposals/{txProposalId}
           method: put
+          cors: true
+          request:
+            parameters:
+              paths:
+                txProposalId: true
+  deleteTxProposalApi:
+    handler: src/api/txProposalDestroy.destroy
+    events:
+      - http:
+          path: txproposals/{txProposalId}
+          method: delete
           cors: true
           request:
             parameters:
