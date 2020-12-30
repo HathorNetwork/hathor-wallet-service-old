@@ -9,6 +9,7 @@ import {
   useLargerUtxos,
 } from '@src/api/txProposalCreate';
 import { send as txProposalSend } from '@src/api/txProposalSend';
+import { destroy as txProposalDestroy } from '@src/api/txProposalDestroy';
 import { getTxProposal, getTxProposalOutputs, getUtxos, updateTxProposal } from '@src/db';
 import { TxProposalStatus, Balance, TokenBalanceMap, TokenInfo, WalletTokenBalance } from '@src/types';
 import { closeDbConnection, getDbConnection, getUnixTimestamp } from '@src/utils';
@@ -681,4 +682,46 @@ test('PUT /txproposals/{proposalId} should update tx_proposal to SEND_ERROR on f
   expect(txProposal.status).toStrictEqual(TxProposalStatus.SEND_ERROR);
 
   spy.mockRestore();
+});
+
+test('DELETE /txproposals/{proposalId} should delete a tx_proposal and remove the utxos associated to it', async () => {
+  expect.hasAssertions();
+
+  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToAddressTable(mysql, [[ADDRESSES[0], 0, 'my-wallet', 2]]);
+
+  const utxos = [
+    ['00000000000000001650cd208a2bcff09dce8af88d1b07097ef0efdba4aacbaa', 0, 'token1', ADDRESSES[0], 300, 0, null, null, false],
+    ['000000000000000042fb8ae48accbc48561729e2359838751e11f837ca9a5746', 0, 'token1', ADDRESSES[0], 100, 0, null, null, false],
+    ['0000000000000000cfd3dea4c689aa4c863bf6e6aea4518abcfe7d5ff6769aef', 0, 'token2', ADDRESSES[0], 300, 0, null, null, false],
+  ];
+
+  await addToUtxoTable(mysql, utxos);
+  await addToWalletBalanceTable(mysql, [
+    ['my-wallet', 'token1', 400, 0, 0, 0, null, 2],
+    ['my-wallet', 'token2', 300, 0, 0, 0, null, 1],
+  ]);
+  await addToAddressTable(mysql, [['HFxhB69vk5PCdvVpRtk5bB27ujP68jPKe2', 1, 'my-wallet', 0]]);
+
+  const txCreateEvent = makeGatewayEvent(null,
+    JSON.stringify({
+      id: 'my-wallet',
+      outputs: [
+        [ADDRESSES[0], 320, 'token1', null],
+        [ADDRESSES[0], 90, 'token2', null],
+      ],
+    }));
+  const txCreateResult = await txProposalCreate(txCreateEvent, null, null) as APIGatewayProxyResult;
+  const returnBody = JSON.parse(txCreateResult.body as string);
+
+  const txDeleteEvent = makeGatewayEvent({ txProposalId: returnBody.txProposalId }, null);
+  const txDeleteResult = await txProposalDestroy(txDeleteEvent, null, null) as APIGatewayProxyResult;
+
+  expect(JSON.parse(txDeleteResult.body).success).toStrictEqual(true);
+
+  const txProposal = await getTxProposal(mysql, returnBody.txProposalId);
+
+  expect(txProposal.status).toStrictEqual(TxProposalStatus.CANCELLED);
+
+  // Verify if outputs were deleted from tx_proposal
 });
