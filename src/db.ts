@@ -461,6 +461,9 @@ export const addUtxos = async (
   txId: string,
   outputs: TxOutput[],
   heightlock: number = null): Promise<void> => {
+  // outputs might be empty if we're destroying authorities
+  if (outputs.length === 0) return;
+
   const entries = outputs.map(
     (output, index) => {
       let authorities = 0;
