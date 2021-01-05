@@ -420,6 +420,21 @@ test('PUT /txproposals/{proposalId}', async () => {
         success: true,
       },
     }),
+    get: () => Promise.resolve({
+      data: {
+        success: true,
+        version: '0.38.0',
+        network: 'mainnet',
+        min_weight: 14,
+        min_tx_weight: 14,
+        min_tx_weight_coefficient: 1.6,
+        min_tx_weight_k: 100,
+        token_deposit_percentage: 0.01,
+        reward_spend_min_blocks: 300,
+        max_number_inputs: 255,
+        max_number_outputs: 255,
+      },
+    }),
   });
 
   await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
@@ -612,6 +627,21 @@ test('PUT /txproposals/{proposalId} with an invalid txHex should fail and update
         message: 'invalid txhex',
       },
     }),
+    get: () => Promise.resolve({
+      data: {
+        success: true,
+        version: '0.38.0',
+        network: 'mainnet',
+        min_weight: 14,
+        min_tx_weight: 14,
+        min_tx_weight_coefficient: 1.6,
+        min_tx_weight_k: 100,
+        token_deposit_percentage: 0.01,
+        reward_spend_min_blocks: 300,
+        max_number_inputs: 255,
+        max_number_outputs: 255,
+      },
+    }),
   });
 
   await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
@@ -676,6 +706,21 @@ test('PUT /txproposals/{proposalId} should update tx_proposal to SEND_ERROR on f
     post: () => {
       throw new Error('Wallet lib error');
     },
+    get: () => Promise.resolve({
+      data: {
+        success: true,
+        version: '0.38.0',
+        network: 'mainnet',
+        min_weight: 14,
+        min_tx_weight: 14,
+        min_tx_weight_coefficient: 1.6,
+        min_tx_weight_k: 100,
+        token_deposit_percentage: 0.01,
+        reward_spend_min_blocks: 300,
+        max_number_inputs: 255,
+        max_number_outputs: 255,
+      },
+    }),
   });
 
   await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
@@ -770,5 +815,5 @@ test('DELETE /txproposals/{proposalId} should delete a tx_proposal and remove th
 
   expect(txProposal.status).toStrictEqual(TxProposalStatus.CANCELLED);
 
-  // Verify if outputs were deleted from tx_proposal
+  // TODO: Verify if outputs were deleted from tx_proposal
 });
