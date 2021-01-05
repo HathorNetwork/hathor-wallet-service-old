@@ -1056,6 +1056,37 @@ export const maybeUpdateLatestHeight = async (mysql: ServerlessMysql, height: nu
 };
 
 /**
+ * Update latest version_check time
+ *
+ * @param mysql - Database connection
+ * @param now - The current timestamp
+ */
+export const updateLastVersionCheck = async (mysql: ServerlessMysql, now: number): Promise<void> => {
+  const entry = { key: 'version_check', value: now };
+
+  await mysql.query(
+    'INSERT INTO `metadata` SET ? ON DUPLICATE KEY UPDATE `value` = ?',
+    [entry, now],
+  );
+};
+
+/**
+ * Update latest version_check time
+ *
+ * @param mysql - Database connection
+ * @returns the timestamp of the latest check
+ */
+export const getLastVersionCheck = async (mysql: ServerlessMysql): Promise<number> => {
+  const results: DbSelectResult = await mysql.query('SELECT * FROM `metadata` WHERE `key` = \'version_check\'');
+
+  if (results.length > 0) {
+    return results[0].value as number;
+  }
+
+  return -1;
+};
+
+/**
  * Get height info from database.
  *
  * @param mysql - Database connection

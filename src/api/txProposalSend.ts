@@ -14,7 +14,16 @@ import {
   removeTxProposalOutputs,
 } from '@src/db';
 import { TxProposalStatus, ApiResponse } from '@src/types';
-import { closeDbConnection, getDbConnection, getUnixTimestamp } from '@src/utils';
+import {
+  closeDbConnection,
+  getDbConnection,
+  getUnixTimestamp,
+  validateWeight,
+} from '@src/utils';
+
+import {
+  maybeRefreshWalletConstants,
+} from '@src/commons';
 
 const mysql = getDbConnection();
 
@@ -160,9 +169,25 @@ export const send: APIGatewayProxyHandler = async (event) => {
     outputs,
   };
 
-  const txHex = hathorLib.transaction.getTxHexFromData(txData);
+  await maybeRefreshWalletConstants(mysql);
 
-  await closeDbConnection(mysql);
+  // Validate TX_WEIGHT
+  const calculatedTxWeight = hathorLib.transaction.calculateTxWeight(txData);
+
+  if (!validateWeight(calculatedTxWeight, txData.weight)) {
+    await closeDbConnection(mysql);
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        success: false,
+        error: ApiError.INVALID_TX_WEIGHT,
+        message: `Expected weight >= ${calculatedTxWeight}`,
+      }),
+    };
+  }
+
+  const txHex = hathorLib.transaction.getTxHexFromData(txData);
 
   const now = getUnixTimestamp();
 

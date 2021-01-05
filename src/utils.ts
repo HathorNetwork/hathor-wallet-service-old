@@ -13,7 +13,7 @@ import { StringMap } from '@src/types';
 import serverlessMysql, { ServerlessMysql } from 'serverless-mysql';
 import hathorLib from '@hathor/wallet-lib';
 
-hathorLib.network.setNetwork(process.env.NETWORK);
+const ACCEPTABLE_WEIGHT_RANGE = 1.1; // 10%
 
 // TODO get from hathor-lib or maybe env?
 const mainnet = Networks.add({
@@ -29,6 +29,9 @@ const mainnet = Networks.add({
   dnsSeeds: [],
 });
 
+/* TODO: We should remove this as soon as the wallet-lib is refactored
+*  (https://github.com/HathorNetwork/hathor-wallet-lib/issues/122)
+*/
 export class CustomStorage {
   store: unknown;
 
@@ -64,6 +67,7 @@ export class CustomStorage {
   }
 }
 
+hathorLib.network.setNetwork(process.env.NETWORK);
 hathorLib.storage.setStore(new CustomStorage());
 
 /**
@@ -190,3 +194,14 @@ export const getHathorAddresses = (xpubkey: string, startIndex: number, quantity
   }
   return addrMap;
 };
+
+/**
+ * Check if the received weight is in the acceptable weight range.
+ * This is calculated using the calculateTxWeight from the wallet-lib.
+ *
+ * @returns A boolean with the result
+ */
+export const validateWeight = (calculated: number, received: number) => (
+  (received >= calculated)
+  && (received < (calculated * ACCEPTABLE_WEIGHT_RANGE))
+);
