@@ -8,6 +8,8 @@ import {
   unlockUtxos as dbUnlockUtxos,
   updateAddressLockedBalance,
   updateWalletLockedBalance,
+  getLastVersionCheck,
+  updateLastVersionCheck,
 } from '@src/db';
 import {
   DecodedOutput,
@@ -20,7 +22,11 @@ import {
   WalletTokenBalance,
 } from '@src/types';
 
+import { getUnixTimestamp } from '@src/utils';
+
 import hathorLib from '@hathor/wallet-lib';
+
+const VERSION_CHECK_MAX_DIFF = 60 * 60 * 1000; // 1 hour
 
 /**
  * Update the unlocked/locked balances for addresses and wallets connected to the given UTXOs.
@@ -204,4 +210,23 @@ export const getWalletBalances = async (
     balances = await dbGetWalletBalances(mysql, walletId, tokenIds);
   }
   return balances;
+};
+
+/**
+ * Updates the wallet-lib constants if needed.
+ *
+ * @returns A promise that resolves when the wallet-lib constants have been set.
+ */
+export const maybeRefreshWalletConstants = async (mysql: ServerlessMysql) => {
+  const lastVersionCheck = await getLastVersionCheck(mysql);
+  const now = getUnixTimestamp();
+
+  if (now - lastVersionCheck > VERSION_CHECK_MAX_DIFF) {
+    // Query and update versions
+    await hathorLib.version.checkApiVersion();
+    await updateLastVersionCheck(mysql, now);
+
+    // TODO: Maybe when checkApiVersion fails we could use the current values on
+    // the wallet instead of propagating the error
+  }
 };
