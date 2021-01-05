@@ -42,6 +42,21 @@ CREATE TABLE `address_tx_history` (
   PRIMARY KEY (`address`,`tx_id`,`token_id`)
 );
 
+CREATE TABLE `version_data` (
+  `timestamp` bigint unsigned NOT NULL,
+  `version` varchar(11) NOT NULL,
+  `network` varchar(8) NOT NULL,
+  `min_weight` float unsigned NOT NULL,
+  `min_tx_weight` float unsigned NOT NULL,
+  `min_tx_weight_coefficient` float unsigned NOT NULL,
+  `min_tx_weight_k` float unsigned NOT NULL,
+  `token_deposit_percentage` float unsigned NOT NULL,
+  `reward_spend_min_blocks` int unsigned NOT NULL,
+  `max_number_inputs` int unsigned NOT NULL,
+  `max_number_outputs` int unsigned NOT NULL,
+  PRIMARY KEY (`version`)
+);
+
 CREATE TABLE `metadata` (
   `key` varchar(25) NOT NULL,
   `value` int unsigned NOT NULL,

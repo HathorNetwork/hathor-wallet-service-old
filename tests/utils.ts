@@ -28,7 +28,7 @@ export const ADDRESSES = [
 ];
 
 export const cleanDatabase = async (mysql: ServerlessMysql): Promise<void> => {
-  const TABLES = ['address', 'address_balance', 'address_tx_history', 'metadata', 'token', 'tx_proposal', 'utxo', 'wallet', 'wallet_balance', 'wallet_tx_history'];
+  const TABLES = ['address', 'address_balance', 'version_data', 'address_tx_history', 'metadata', 'token', 'tx_proposal', 'utxo', 'wallet', 'wallet_balance', 'wallet_tx_history'];
 
   for (const table of TABLES) {
     await mysql.query(`DELETE FROM ${table}`);
