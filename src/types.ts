@@ -30,6 +30,20 @@ export enum TxProposalStatus {
   CANCELLED = 'cancelled',
 }
 
+export interface FullNodeVersionData {
+  timestamp: number;
+  version: string;
+  network: string;
+  minWeight: number;
+  minTxWeight: number;
+  minTxWeightCoefficient: number;
+  minTxWeightK: number;
+  tokenDepositPercentage: number;
+  rewardSpendMinBlocks: number;
+  maxNumberInputs: number;
+  maxNumberOutputs: number;
+}
+
 export interface TxProposal {
   id: string;
   walletId: string;

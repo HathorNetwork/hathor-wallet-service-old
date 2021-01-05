@@ -26,6 +26,7 @@ import {
   Wallet,
   WalletStatus,
   WalletTokenBalance,
+  FullNodeVersionData,
 } from '@src/types';
 
 import { getUnixTimestamp, isAuthority } from '@src/utils';
@@ -1056,17 +1057,29 @@ export const maybeUpdateLatestHeight = async (mysql: ServerlessMysql, height: nu
 };
 
 /**
- * Update latest version_check time
+ * Update latest version_data on the database
  *
  * @param mysql - Database connection
- * @param now - The current timestamp
+ * @param data - Latest version data to store
  */
-export const updateLastVersionCheck = async (mysql: ServerlessMysql, now: number): Promise<void> => {
-  const entry = { key: 'version_check', value: now };
+export const updateVersionData = async (mysql: ServerlessMysql, data: FullNodeVersionData): Promise<void> => {
+  const entry = {
+    timestamp: data.timestamp,
+    version: data.version,
+    network: data.network,
+    min_weight: data.minWeight,
+    min_tx_weight: data.minTxWeight,
+    min_tx_weight_coefficient: data.minTxWeightCoefficient,
+    min_tx_weight_k: data.minTxWeightK,
+    token_deposit_percentage: data.tokenDepositPercentage,
+    reward_spend_min_blocks: data.rewardSpendMinBlocks,
+    max_number_inputs: data.maxNumberInputs,
+    max_number_outputs: data.maxNumberOutputs,
+  };
 
   await mysql.query(
-    'INSERT INTO `metadata` SET ? ON DUPLICATE KEY UPDATE `value` = ?',
-    [entry, now],
+    'INSERT INTO `version_data` SET ? ON DUPLICATE KEY UPDATE ?',
+    [entry, entry],
   );
 };
 
@@ -1074,16 +1087,32 @@ export const updateLastVersionCheck = async (mysql: ServerlessMysql, now: number
  * Update latest version_check time
  *
  * @param mysql - Database connection
- * @returns the timestamp of the latest check
+ * @returns
  */
-export const getLastVersionCheck = async (mysql: ServerlessMysql): Promise<number> => {
-  const results: DbSelectResult = await mysql.query('SELECT * FROM `metadata` WHERE `key` = \'version_check\'');
+export const getVersionData = async (mysql: ServerlessMysql): Promise<FullNodeVersionData | null> => {
+  const results: DbSelectResult = await mysql.query('SELECT * FROM `version_data`');
 
   if (results.length > 0) {
-    return results[0].value as number;
+    const data = results[0];
+
+    const entry: FullNodeVersionData = {
+      timestamp: data.timestamp as number,
+      version: data.version as string,
+      network: data.network as string,
+      minWeight: data.min_weight as number,
+      minTxWeight: data.min_tx_weight as number,
+      minTxWeightCoefficient: data.min_tx_weight_coefficient as number,
+      minTxWeightK: data.min_tx_weight_k as number,
+      tokenDepositPercentage: data.token_deposit_percentage as number,
+      rewardSpendMinBlocks: data.reward_spend_min_blocks as number,
+      maxNumberInputs: data.max_number_inputs as number,
+      maxNumberOutputs: data.max_number_outputs as number,
+    };
+
+    return entry;
   }
 
-  return -1;
+  return null;
 };
 
 /**

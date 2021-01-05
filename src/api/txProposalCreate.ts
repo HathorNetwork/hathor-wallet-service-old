@@ -121,8 +121,10 @@ export const create: APIGatewayProxyHandler = async (event) => {
       body: JSON.stringify({ success: false, error: ApiError.WALLET_NOT_FOUND }),
     };
   }
+
   if (!status.readyAt) {
     await closeDbConnection(mysql);
+
     return {
       statusCode: 200,
       body: JSON.stringify({ success: false, error: ApiError.WALLET_NOT_READY }),

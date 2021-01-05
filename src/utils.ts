@@ -201,7 +201,7 @@ export const getHathorAddresses = (xpubkey: string, startIndex: number, quantity
  *
  * @returns A boolean with the result
  */
-export const validateWeight = (calculated: number, received: number) => (
+export const validateWeight = (calculated: number, received: number): boolean => (
   (received >= calculated)
   && (received < (calculated * ACCEPTABLE_WEIGHT_RANGE))
 );
