@@ -1,6 +1,8 @@
 import { APIGatewayProxyHandler } from 'aws-lambda';
 import hathorLib from '@hathor/wallet-lib';
 
+import Joi from 'joi';
+
 import 'source-map-support/register';
 
 import { ApiError } from '@src/api/errors';
@@ -16,30 +18,72 @@ import { closeDbConnection, getDbConnection, getUnixTimestamp } from '@src/utils
 
 const mysql = getDbConnection();
 
+const paramsSchema = Joi.object({
+  txProposalId: Joi.string()
+    .guid({
+      version: [
+        'uuidv4',
+        'uuidv5',
+      ],
+    })
+    .required(),
+});
+
+const bodySchema = Joi.object({
+  timestamp: Joi.date()
+    .timestamp()
+    .required(),
+  parents: Joi.array()
+    .required()
+    .length(2),
+  weight: Joi.number()
+    .required(),
+  nonce: Joi.number()
+    .required(),
+  inputsSignatures: Joi.array()
+    .required(),
+});
+
 /*
  * Send a transaction.
  *
  * This lambda is called by API Gateway on PUT /txproposals/{proposalId}
  */
 export const send: APIGatewayProxyHandler = async (event) => {
-  const params = event.pathParameters;
-  let txProposalId: string;
-  if (params && params.txProposalId) {
-    txProposalId = params.txProposalId;
-  } else {
+  if (!event.pathParameters) {
     await closeDbConnection(mysql);
     return {
       statusCode: 200,
-      body: JSON.stringify({ success: false, error: ApiError.MISSING_PARAMETER, parameter: 'txProposalId' }),
+      body: JSON.stringify({
+        success: false,
+        error: ApiError.MISSING_PARAMETER,
+        parameter: 'txProposalId', // this is our only param, so this is safe
+      }),
     };
   }
 
-  let body;
-  try {
-    body = JSON.parse(event.body);
-    // event.body might be null, which is also parsed to null
-    if (!body) throw new Error('body is null');
-  } catch (e) {
+  const { value, error } = paramsSchema.validate(event.pathParameters);
+
+  if (error) {
+    // There is only one parameter on this API (txProposalId) and it is on path 0
+    const parameter = error.details[0].path[0];
+
+    await closeDbConnection(mysql);
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        success: false,
+        error: ApiError.INVALID_PARAMETER,
+        parameter,
+      }),
+    };
+  }
+
+  const { txProposalId } = value;
+
+  const bodyValidation = bodySchema.validate(JSON.parse(event.body));
+
+  if (bodyValidation.error) {
     await closeDbConnection(mysql);
     return {
       statusCode: 200,
@@ -47,15 +91,16 @@ export const send: APIGatewayProxyHandler = async (event) => {
     };
   }
 
-  // TODO validate params, maybe use Joi (https://joi.dev/api/)
-
-  const timestamp = body.timestamp;
-  const parents = body.parents;
-  const weight = body.weight;
-  const nonce = body.nonce;
-  const inputsSignatures = body.inputsSignatures;
+  const {
+    timestamp,
+    parents,
+    weight,
+    nonce,
+    inputsSignatures,
+  } = bodyValidation.value;
 
   const txProposal = await getTxProposal(mysql, txProposalId);
+
   if (txProposal === null) {
     await closeDbConnection(mysql);
     return {

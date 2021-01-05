@@ -456,7 +456,15 @@ test('PUT /txproposals/{proposalId}', async () => {
     inputsSignatures: [
       1, 2, 3, 4, 5, 6, 7,
     ].map(() => hathorLib.transaction.createInputData(signature, pubkeyBytes).toString('base64')),
+    nonce: 28,
+    parents: [
+      '00000000204080e1b7563558869e39d169efae5008d2158cc3cb6c0c3812ff2a',
+      '00000000414ede4aad9e08e3a336191e2b0510d9f74c7b5e94b68e653bcbf42e',
+    ],
+    timestamp: new Date().getTime(),
+    weight: 20,
   }));
+
   const txSendResult = await txProposalSend(txSendEvent, null, null) as APIGatewayProxyResult;
 
   expect(JSON.parse(txSendResult.body).success).toStrictEqual(true);
@@ -507,17 +515,35 @@ test('PUT /txproposals/{proposalId} with missing params should fail with ApiErro
   const txSendResult = await txProposalSend(txSendEvent, null, null) as APIGatewayProxyResult;
 
   expect(JSON.parse(txSendResult.body as string).error).toBe(ApiError.MISSING_PARAMETER);
+  expect(JSON.parse(txSendResult.body as string).parameter).toBe('txProposalId');
 });
 
-test('PUT /txproposals/{proposalId} with invalid proposalId should fail with ApiError.TX_PROPOSAL_NOT_FOUND', async () => {
+test('PUT /txproposals/{proposalId} with a missing proposalId should fail with ApiError.TX_PROPOSAL_NOT_FOUND', async () => {
   expect.hasAssertions();
 
-  const txSendEvent = makeGatewayEvent({ txProposalId: 404 }, JSON.stringify({
+  const txSendEvent = makeGatewayEvent({ txProposalId: '8d1e2921-7bc9-41f5-9758-40b734edff0f' }, JSON.stringify({
     inputsSignatures: [1],
+    nonce: 28,
+    parents: [
+      '00000000204080e1b7563558869e39d169efae5008d2158cc3cb6c0c3812ff2a',
+      '00000000414ede4aad9e08e3a336191e2b0510d9f74c7b5e94b68e653bcbf42e',
+    ],
+    timestamp: new Date().getTime(),
+    weight: 20,
   }));
   const txSendResult = await txProposalSend(txSendEvent, null, null) as APIGatewayProxyResult;
 
   expect(JSON.parse(txSendResult.body as string).error).toStrictEqual(ApiError.TX_PROPOSAL_NOT_FOUND);
+});
+
+test('PUT /txproposals/{proposalId} with a invalid proposalId should fail with ApiError.INVALID_PARAMETER', async () => {
+  expect.hasAssertions();
+
+  const txSendEvent = makeGatewayEvent({ txProposalId: 'invalid-uuid' }, null);
+  const txSendResult = await txProposalSend(txSendEvent, null, null) as APIGatewayProxyResult;
+
+  expect(JSON.parse(txSendResult.body as string).error).toStrictEqual(ApiError.INVALID_PARAMETER);
+  expect(JSON.parse(txSendResult.body as string).parameter).toStrictEqual('txProposalId');
 });
 
 test('PUT /txproposals/{proposalId} on a proposal which status is not OPEN or SEND_ERROR should fail with ApiError.TX_PROPOSAL_NOT_OPEN', async () => {
@@ -561,6 +587,13 @@ test('PUT /txproposals/{proposalId} on a proposal which status is not OPEN or SE
 
   const txSendEvent = makeGatewayEvent({ txProposalId: returnBody.txProposalId }, JSON.stringify({
     inputsSignatures: [1],
+    nonce: 28,
+    parents: [
+      '00000000204080e1b7563558869e39d169efae5008d2158cc3cb6c0c3812ff2a',
+      '00000000414ede4aad9e08e3a336191e2b0510d9f74c7b5e94b68e653bcbf42e',
+    ],
+    timestamp: new Date().getTime(),
+    weight: 20,
   }));
   const txSendResult = await txProposalSend(txSendEvent, null, null) as APIGatewayProxyResult;
 
@@ -615,6 +648,13 @@ test('PUT /txproposals/{proposalId} with an invalid txHex should fail and update
     inputsSignatures: [
       1, 2, 3, 4, 5, 6, 7,
     ].map(() => hathorLib.transaction.createInputData(signature, pubkeyBytes).toString('base64')),
+    nonce: 28,
+    parents: [
+      '00000000204080e1b7563558869e39d169efae5008d2158cc3cb6c0c3812ff2a',
+      '00000000414ede4aad9e08e3a336191e2b0510d9f74c7b5e94b68e653bcbf42e',
+    ],
+    timestamp: new Date().getTime(),
+    weight: 20,
   }));
   const txSendResult = await txProposalSend(txSendEvent, null, null) as APIGatewayProxyResult;
 
@@ -672,6 +712,13 @@ test('PUT /txproposals/{proposalId} should update tx_proposal to SEND_ERROR on f
     inputsSignatures: [
       1, 2, 3, 4, 5, 6, 7,
     ].map(() => hathorLib.transaction.createInputData(signature, pubkeyBytes).toString('base64')),
+    nonce: 28,
+    parents: [
+      '00000000204080e1b7563558869e39d169efae5008d2158cc3cb6c0c3812ff2a',
+      '00000000414ede4aad9e08e3a336191e2b0510d9f74c7b5e94b68e653bcbf42e',
+    ],
+    timestamp: new Date().getTime(),
+    weight: 20,
   }));
   const txSendResult = await txProposalSend(txSendEvent, null, null) as APIGatewayProxyResult;
 
