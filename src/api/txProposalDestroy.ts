@@ -21,10 +21,12 @@ const mysql = getDbConnection();
 export const destroy: APIGatewayProxyHandler = async (event) => {
   const params = event.pathParameters;
   let txProposalId: string;
+
   if (params && params.txProposalId) {
     txProposalId = params.txProposalId;
   } else {
     await closeDbConnection(mysql);
+
     return {
       statusCode: 200,
       body: JSON.stringify({ success: false, error: ApiError.MISSING_PARAMETER, parameter: 'txProposalId' }),
@@ -35,9 +37,19 @@ export const destroy: APIGatewayProxyHandler = async (event) => {
 
   if (txProposal === null) {
     await closeDbConnection(mysql);
+
     return {
       statusCode: 200,
       body: JSON.stringify({ success: false, error: ApiError.TX_PROPOSAL_NOT_FOUND }),
+    };
+  }
+
+  if (txProposal.status !== TxProposalStatus.OPEN && txProposal.status !== TxProposalStatus.SEND_ERROR) {
+    await closeDbConnection(mysql);
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify({ success: false, error: ApiError.TX_PROPOSAL_NOT_OPEN }),
     };
   }
 
@@ -51,6 +63,8 @@ export const destroy: APIGatewayProxyHandler = async (event) => {
   );
 
   await removeTxProposalOutputs(mysql, txProposalId);
+
+  await closeDbConnection(mysql);
 
   return {
     statusCode: 200,
