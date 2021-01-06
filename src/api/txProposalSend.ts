@@ -232,5 +232,7 @@ export const send: APIGatewayProxyHandler = async (event) => {
         txHex,
       }),
     };
+  } finally {
+    await closeDbConnection(mysql);
   }
 };
