@@ -14,13 +14,14 @@ import { getTxProposal, getTxProposalOutputs, getUtxos, updateTxProposal } from 
 import { TxProposalStatus, Balance, TokenBalanceMap, TokenInfo, WalletTokenBalance } from '@src/types';
 import { closeDbConnection, getDbConnection, getUnixTimestamp } from '@src/utils';
 import {
-  ADDRESSES,
-  addToAddressTable,
-  addToUtxoTable,
   addToWalletBalanceTable,
+  addToTxProposalTable,
+  addToAddressTable,
   addToWalletTable,
-  cleanDatabase,
+  addToUtxoTable,
   makeGatewayEvent,
+  cleanDatabase,
+  ADDRESSES,
 } from '@tests/utils';
 import buffer from 'buffer';
 
@@ -306,6 +307,31 @@ test('POST /txproposals one output and input', async () => {
   await _checkTxProposalTables(returnBody.txProposalId, returnBody.inputs, returnBody.outputs);
 });
 
+test('POST /txproposals with a wallet that is not ready should fail with ApiError.WALLET_NOT_READY', async () => {
+  expect.hasAssertions();
+
+  await addToWalletTable(mysql, [['not-ready-wallet', 'xpubkey', 'creating', 5, 10000, null]]);
+  await addToAddressTable(mysql, [[ADDRESSES[0], 0, 'not-ready-wallet', 2]]);
+
+  const utxos = [
+    ['txSuccess0', 0, 'token1', ADDRESSES[0], 300, 0, null, null, false],
+    ['txSuccess1', 0, 'token1', ADDRESSES[0], 100, 0, null, null, false],
+    ['txSuccess2', 0, 'token2', ADDRESSES[0], 300, 0, null, null, false],
+  ];
+  await addToUtxoTable(mysql, utxos);
+  await addToWalletBalanceTable(mysql, [['my-wallet', 'token1', 400, 0, 0, 0, null, 2], ['my-wallet', 'token2', 300, 0, 0, 0, null, 1]]);
+  await addToAddressTable(mysql, [[ADDRESSES[1], 1, 'my-wallet', 0]]);
+
+  // only one output, spending the whole 300 utxo of token3
+  const outputs = [[ADDRESSES[0], 300, 'token1', null]];
+  const event = makeGatewayEvent(null, JSON.stringify({ id: 'not-ready-wallet', outputs }));
+  const result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  const returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.WALLET_NOT_READY);
+});
+
 test('POST /txproposals use two UTXOs and add change output', async () => {
   expect.hasAssertions();
 
@@ -480,7 +506,11 @@ test('PUT /txproposals/{proposalId}', async () => {
 
   const txSendResult = await txProposalSend(txSendEvent, null, null) as APIGatewayProxyResult;
 
-  expect(JSON.parse(txSendResult.body).success).toStrictEqual(true);
+  const sendReturnBody = JSON.parse(txSendResult.body as string);
+  const txProposal = await getTxProposal(mysql, sendReturnBody.txProposalId);
+
+  expect(sendReturnBody.success).toStrictEqual(true);
+  expect(txProposal.status).toStrictEqual(TxProposalStatus.SENT);
 
   spy.mockRestore();
 });
@@ -890,4 +920,40 @@ test('DELETE /txproposals/{proposalId} should delete a tx_proposal and remove th
   expect(txProposal.status).toStrictEqual(TxProposalStatus.CANCELLED);
 
   // TODO: Verify if outputs were deleted from tx_proposal
+});
+
+test('DELETE /txproposals/{proposalId} with missing txProposalId should fail with ApiError.MISSING_PARAMETER', async () => {
+  expect.hasAssertions();
+
+  const txDeleteEvent = makeGatewayEvent(null, null);
+  const txDeleteResult = await txProposalDestroy(txDeleteEvent, null, null) as APIGatewayProxyResult;
+  const txDeleteResultBody = JSON.parse(txDeleteResult.body as string);
+
+  expect(txDeleteResultBody.success).toStrictEqual(false);
+  expect(txDeleteResultBody.error).toStrictEqual(ApiError.MISSING_PARAMETER);
+  expect(txDeleteResultBody.parameter).toStrictEqual('txProposalId');
+});
+
+test('DELETE /txproposals/{proposalId} with not existing tx_proposal should fail with ApiError.TX_PROPOSAL_NOT_FOUND', async () => {
+  expect.hasAssertions();
+
+  const txDeleteEvent = makeGatewayEvent({ txProposalId: 'invalid-tx-proposal-id' }, null);
+  const txDeleteResult = await txProposalDestroy(txDeleteEvent, null, null) as APIGatewayProxyResult;
+  const txDeleteResultBody = JSON.parse(txDeleteResult.body as string);
+
+  expect(txDeleteResultBody.success).toStrictEqual(false);
+  expect(txDeleteResultBody.error).toStrictEqual(ApiError.TX_PROPOSAL_NOT_FOUND);
+});
+
+test('DELETE /txproposals/{proposalId} shoudl fail with ApiError.TX_PROPOSAL_NOT_OPEN on already sent tx_proposals', async () => {
+  expect.hasAssertions();
+
+  await addToTxProposalTable(mysql, [['fe141b88-7328-4851-a608-631d1d5a5513', 'wallet-id', 'sent', 1, 1]]);
+
+  const txDeleteEvent = makeGatewayEvent({ txProposalId: 'fe141b88-7328-4851-a608-631d1d5a5513' }, null);
+  const txDeleteResult = await txProposalDestroy(txDeleteEvent, null, null) as APIGatewayProxyResult;
+  const txDeleteResultBody = JSON.parse(txDeleteResult.body as string);
+
+  expect(txDeleteResultBody.success).toStrictEqual(false);
+  expect(txDeleteResultBody.error).toStrictEqual(ApiError.TX_PROPOSAL_NOT_OPEN);
 });

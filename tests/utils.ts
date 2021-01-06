@@ -547,6 +547,16 @@ export const addToTokenTable = async (
   );
 };
 
+export const addToTxProposalTable = async (
+  mysql: ServerlessMysql,
+  entries: unknown[][],
+): Promise<void> => {
+  await mysql.query(
+    'INSERT INTO tx_proposal (`id`, `wallet_id`, `status`, `created_at`, `updated_at`) VALUES ?',
+    [entries],
+  );
+};
+
 export const makeGatewayEvent = (params: {
     [name: string]: string,
     [txProposalId: string]: string
