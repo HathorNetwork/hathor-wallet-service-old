@@ -415,6 +415,7 @@ test('POST /txproposals params validation', async () => {
   let event = makeGatewayEvent({ id: 'my-wallet' });
   let result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
   let returnBody = JSON.parse(result.body as string);
+
   expect(result.statusCode).toBe(200);
   expect(returnBody.success).toBe(false);
   expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
