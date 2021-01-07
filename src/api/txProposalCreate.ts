@@ -2,9 +2,10 @@ import { APIGatewayProxyHandler } from 'aws-lambda';
 import { ServerlessMysql } from 'serverless-mysql';
 import 'source-map-support/register';
 import { v4 as uuidv4 } from 'uuid';
+import Joi from 'joi';
 
 import { ApiError } from '@src/api/errors';
-import { getWalletBalances } from '@src/commons';
+import { getWalletBalances, maybeRefreshWalletConstants } from '@src/commons';
 import {
   addTxProposalOutputs,
   createTxProposal,
@@ -30,53 +31,85 @@ interface IWalletInsufficientFunds {
   available: number;
 }
 
+const bodySchema = Joi.object({
+  id: Joi.string()
+    .required(),
+  outputs: Joi.array()
+    .items(
+      Joi.array()
+        .min(4)
+        .max(4),
+    )
+    .required(),
+  inputs: Joi.array()
+    .items(
+      Joi.array()
+        .min(2)
+        .max(2),
+    ),
+  inputSelectionAlgo: Joi.string(),
+});
+
 /*
  * Create a tx-proposal.
  *
  * This lambda is called by API Gateway on POST /txproposals
  */
 export const create: APIGatewayProxyHandler = async (event) => {
-  let body;
-  try {
-    body = JSON.parse(event.body);
-    // event.body might be null, which is also parsed to null
-    if (!body) throw new Error('body is null');
-  } catch (e) {
+  await maybeRefreshWalletConstants(mysql);
+
+  const eventBody = (function parseBody(body) {
+    try {
+      return JSON.parse(body);
+    } catch (e) {
+      return null;
+    }
+  }(event.body));
+
+  const { value, error } = bodySchema.validate(eventBody);
+
+  if (error) {
     await closeDbConnection(mysql);
+    const firstErrorDetails = error.details[0];
+
+    if (firstErrorDetails.type === 'object.base') {
+      // There was an error parsing the body, we should fail with INVALID_PAYLOAD
+      return {
+        statusCode: 200,
+        body: JSON.stringify({ success: false, error: ApiError.INVALID_PAYLOAD }),
+      };
+    }
+
+    // The error is in at least one of the parameters, we should fail with INVALID_PARAMETER
+    // while returning the first invalid parameter
+    const parameter = firstErrorDetails.path[0];
+    const apiError = firstErrorDetails.type === 'any.required' ? ApiError.MISSING_PARAMETER : ApiError.INVALID_PARAMETER;
+
     return {
       statusCode: 200,
-      body: JSON.stringify({ success: false, error: ApiError.INVALID_PAYLOAD }),
+      body: JSON.stringify({
+        success: false,
+        error: apiError,
+        parameter,
+      }),
     };
   }
 
+  const body = value;
   const walletId = body.id;
-  if (!walletId) {
+
+  if (body.outputs.length > hathorLib.transaction.getMaxOutputsConstant()) {
     await closeDbConnection(mysql);
+
     return {
       statusCode: 200,
-      body: JSON.stringify({ success: false, error: ApiError.MISSING_PARAMETER, parameter: 'id' }),
+      body: JSON.stringify({ success: false, error: ApiError.TOO_MANY_OUTPUTS, outputs: body.outputs.length }),
     };
   }
 
-  const rawOutputs = body.outputs;
-  if (!rawOutputs) {
-    await closeDbConnection(mysql);
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ success: false, error: ApiError.MISSING_PARAMETER, parameter: 'outputs' }),
-    };
-  }
+  const outputs = parseValidateOutputs(body.outputs);
+  const inputs = body.inputs ? parseValidateInputs(body.inputs) : null;
 
-  // TODO get limit from the full-node (https://github.com/HathorNetwork/hathor-wallet-service/issues/12)
-  if (rawOutputs.length > 255) {
-    await closeDbConnection(mysql);
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ success: false, error: ApiError.TOO_MANY_OUTPUTS, outputs: rawOutputs.length }),
-    };
-  }
-
-  const outputs = parseValidateOutputs(rawOutputs);
   if (!outputs || outputs.length === 0) {
     await closeDbConnection(mysql);
     return {
@@ -85,17 +118,14 @@ export const create: APIGatewayProxyHandler = async (event) => {
     };
   }
 
-  const rawInputs = body.inputs;
-  let inputs = null;
-  if (rawInputs) {
-    inputs = parseValidateInputs(rawInputs);
-    if (!inputs) {
-      await closeDbConnection(mysql);
-      return {
-        statusCode: 200,
-        body: JSON.stringify({ success: false, error: ApiError.INVALID_PARAMETER, parameter: 'inputs' }),
-      };
-    }
+  // We should only validate inputs if they were received on the body
+  if (body.inputs && !inputs) {
+    await closeDbConnection(mysql);
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify({ success: false, error: ApiError.INVALID_PARAMETER, parameter: 'inputs' }),
+    };
   }
 
   const inputSelectionAlgo = (function getInputAlgoFromBody() {
@@ -167,8 +197,7 @@ export const create: APIGatewayProxyHandler = async (event) => {
     }
   }
 
-  // TODO get limit from the full-node (https://github.com/HathorNetwork/hathor-wallet-service/issues/12)
-  if (inputUtxos.length > 255) {
+  if (inputUtxos.length > hathorLib.transaction.getMaxInputsConstant()) {
     await closeDbConnection(mysql);
     return {
       statusCode: 200,
