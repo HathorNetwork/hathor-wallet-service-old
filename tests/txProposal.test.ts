@@ -276,6 +276,18 @@ const _checkTxProposalTables = async (txProposalId, inputs, outputs): void => {
   expect(await getTxProposalOutputs(mysql, txProposalId)).toStrictEqual(outputs);
 };
 
+test('POST /txproposals with null as param should fail with ApiError.INVALID_PAYLOAD', async () => {
+  expect.hasAssertions();
+
+  const event = makeGatewayEvent(null, null);
+  const result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  const returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+});
+
 test('POST /txproposals one output and input', async () => {
   expect.hasAssertions();
 
