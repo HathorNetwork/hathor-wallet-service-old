@@ -37,10 +37,10 @@ provider:
 functions:
   onNewTxEvent:
     handler: src/txProcessor.onNewTxEvent
-  createWalletAsync:
-    handler: src/api/wallet.createWallet
-  createWalletApi:
-    handler: src/api/wallet.create
+  loadWalletAsync:
+    handler: src/api/wallet.loadWallet
+  loadWalletApi:
+    handler: src/api/wallet.load
     events:
       - http:
           path: wallet
