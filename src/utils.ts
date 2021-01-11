@@ -61,8 +61,8 @@ export class CustomStorage {
 
   preStart(): void {
     this.store = {
-      'wallet:server': hathorLib.constants.DEFAULT_SERVER,
-      'wallet:defaultServer': hathorLib.constants.DEFAULT_SERVER,
+      'wallet:server': process.env.DEFAULT_SERVER || hathorLib.constants.DEFAULT_SERVER,
+      'wallet:defaultServer': process.env.DEFAULT_SERVER || hathorLib.constants.DEFAULT_SERVER,
     };
   }
 }
