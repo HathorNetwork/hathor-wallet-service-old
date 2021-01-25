@@ -107,7 +107,6 @@ export const send: APIGatewayProxyHandler = async (event) => {
     inputsSignatures,
   } = bodyValidation.value;
 
-
   const txProposal = await getTxProposal(mysql, txProposalId);
 
   if (txProposal === null) {
