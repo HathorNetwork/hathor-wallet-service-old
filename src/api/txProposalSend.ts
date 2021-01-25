@@ -39,8 +39,7 @@ const paramsSchema = Joi.object({
 });
 
 const bodySchema = Joi.object({
-  timestamp: Joi.date()
-    .timestamp()
+  timestamp: Joi.number()
     .required(),
   parents: Joi.array()
     .required()
@@ -107,6 +106,7 @@ export const send: APIGatewayProxyHandler = async (event) => {
     nonce,
     inputsSignatures,
   } = bodyValidation.value;
+
 
   const txProposal = await getTxProposal(mysql, txProposalId);
 
