@@ -74,6 +74,13 @@ export const get: APIGatewayProxyHandler = async (event) => {
   };
 };
 
+/**
+ * Unlocks utxos for the latest height for a given wallet
+ *
+ * @param mysql - Database connection
+ * @param walletId - The wallet Id
+ * @param now - Current timestamp
+ */
 const updateBalances = async (_mysql: ServerlessMysql, walletId: string, now: number) => {
   const currentHeight = await getLatestHeight(_mysql);
   const utxos = await getWalletUnlockedUtxos(_mysql, walletId, now, currentHeight);
