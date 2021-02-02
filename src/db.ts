@@ -838,7 +838,7 @@ export const getUtxosLockedAtHeight = async (
         WHERE \`heightlock\` <= ?
           AND (\`timelock\` <= ?
                OR \`timelock\` is NULL)
-          AND \`locked\` = TRUE`,
+          AND \`locked\` = 1`,
       [height, now],
     );
     for (const result of results) {
@@ -885,7 +885,7 @@ export const getWalletUnlockedUtxos = async (
              OR \`heightlock\` is NULL)
         AND (\`timelock\` <= ?
              OR \`timelock\` is NULL)
-        AND \`locked\` = TRUE
+        AND \`locked\` = 1
         AND \`address\` IN (
           SELECT \`address\`
             FROM \`address\`
