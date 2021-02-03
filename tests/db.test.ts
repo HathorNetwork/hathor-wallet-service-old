@@ -71,7 +71,12 @@ test('generateAddresses', async () => {
   expect(addressesInfo.addresses[0]).toBe(address0);
 
   // add first address with no transactions. As it's not used, we should still only generate maxGap addresses
-  await addToAddressTable(mysql, [[address0, 0, null, 0]]);
+  await addToAddressTable(mysql, [{
+    address: address0,
+    index: 0,
+    walletId: null,
+    transactions: 0,
+  }]);
   addressesInfo = await generateAddresses(mysql, XPUBKEY, maxGap);
   expect(addressesInfo.addresses).toHaveLength(maxGap);
   expect(addressesInfo.existingAddresses).toStrictEqual({ [address0]: 0 });
@@ -93,7 +98,12 @@ test('generateAddresses', async () => {
   // add address with index 1 as used
   usedIndex = 1;
   const address1 = ADDRESSES[1];
-  await addToAddressTable(mysql, [[address1, usedIndex, null, 1]]);
+  await addToAddressTable(mysql, [{
+    address: address1,
+    index: usedIndex,
+    walletId: null,
+    transactions: 1,
+  }]);
   addressesInfo = await generateAddresses(mysql, XPUBKEY, maxGap);
   expect(addressesInfo.addresses).toHaveLength(maxGap + usedIndex + 1);
   expect(addressesInfo.existingAddresses).toStrictEqual({ [address0]: 0, [address1]: 1 });
@@ -104,7 +114,12 @@ test('generateAddresses', async () => {
   // add address with index 4 as used
   usedIndex = 4;
   const address4 = ADDRESSES[4];
-  await addToAddressTable(mysql, [[address4, usedIndex, null, 1]]);
+  await addToAddressTable(mysql, [{
+    address: address4,
+    index: usedIndex,
+    walletId: null,
+    transactions: 1,
+  }]);
   addressesInfo = await generateAddresses(mysql, XPUBKEY, maxGap);
   expect(addressesInfo.addresses).toHaveLength(maxGap + usedIndex + 1);
   expect(addressesInfo.existingAddresses).toStrictEqual({ [address0]: 0, [address1]: 1, [address4]: 4 });
@@ -130,10 +145,20 @@ test('getAddressWalletInfo', async () => {
 
   // populate address table
   for (const [address, wallet] of Object.entries(finalMap)) {
-    await addToAddressTable(mysql, [[address, 0, wallet.walletId, 0]]);
+    await addToAddressTable(mysql, [{
+      address,
+      index: 0,
+      walletId: wallet.walletId,
+      transactions: 0,
+    }]);
   }
   // add address that won't be requested on walletAddressMap
-  await addToAddressTable(mysql, [['addr4', 0, 'wallet3', 0]]);
+  await addToAddressTable(mysql, [{
+    address: 'addr4',
+    index: 0,
+    walletId: 'wallet3',
+    transactions: 0,
+  }]);
 
   // populate wallet table
   for (const wallet of Object.values(finalMap)) {
@@ -346,10 +371,10 @@ test('updateWalletTablesWithTx', async () => {
   const ts3 = 30;
 
   await addToAddressTable(mysql, [
-    ['addr1', 0, walletId, 1],
-    ['addr2', 1, walletId, 1],
-    ['addr3', 2, walletId, 1],
-    ['addr4', 0, walletId2, 1],
+    { address: 'addr1', index: 0, walletId, transactions: 1 },
+    { address: 'addr2', index: 1, walletId, transactions: 1 },
+    { address: 'addr3', index: 2, walletId, transactions: 1 },
+    { address: 'addr4', index: 0, walletId: walletId2, transactions: 1 },
   ]);
 
   // add tx1
@@ -458,7 +483,9 @@ test('updateAddressTablesWithTx', async () => {
   const address1 = 'address1';
   const address2 = 'address2';
   // we'll add address1 to the address table already, as if it had already received another transaction
-  await addToAddressTable(mysql, [[address1, null, null, 1]]);
+  await addToAddressTable(mysql, [
+    { address: address1, index: null, walletId: null, transactions: 1 },
+  ]);
 
   const txId1 = 'txId1';
   const timestamp1 = 10;
@@ -543,10 +570,20 @@ test('getWalletAddresses', async () => {
   // add some addresses into db
   const entries = [];
   for (let i = 0; i < lastIndex; i++) {
-    entries.push([ADDRESSES[i], i, walletId, 0]);
+    entries.push({
+      address: ADDRESSES[i],
+      index: i,
+      walletId,
+      transactions: 0,
+    });
   }
   // add entry to beginning of array, to test if method will return addresses ordered
-  entries.unshift([ADDRESSES[lastIndex], lastIndex, walletId, 0]);
+  entries.unshift({
+    address: ADDRESSES[lastIndex],
+    index: lastIndex,
+    walletId,
+    transactions: 0,
+  });
   await addToAddressTable(mysql, entries);
 
   const returnedAddresses = await getWalletAddresses(mysql, walletId);
@@ -564,11 +601,29 @@ test('getWalletBalances', async () => {
   const token2 = 'token2';
   const now = 1000;
   // add some balances into db
-  const entries = [
-    [walletId, token1, 10, 4, now, 1],
-    [walletId, token2, 20, 5, now, 2],
-    ['otherId', token1, 30, 1, now, 3],
-  ];
+  const entries = [{
+    walletId,
+    tokenId: token1,
+    unlockedBalance: 10,
+    lockedBalance: 4,
+    timelockExpires: now,
+    transactions: 1,
+  }, {
+    walletId,
+    tokenId: token2,
+    unlockedBalance: 20,
+    lockedBalance: 5,
+    timelockExpires: now,
+    transactions: 2,
+  }, {
+    walletId: 'otherId',
+    tokenId: token1,
+    unlockedBalance: 30,
+    lockedBalance: 1,
+    timelockExpires: now,
+    transactions: 3,
+  }];
+
   await addToWalletBalanceTable(mysql, entries);
 
   // first test fetching all tokens
@@ -699,11 +754,28 @@ test('updateWalletLockedBalance', async () => {
   const tokenId = 'tokenId';
   const otherToken = 'otherToken';
   const now = 1000;
-  const entries = [
-    [wallet1, tokenId, 10, 20, now, 5],
-    [wallet2, tokenId, 0, 100, now, 4],
-    [wallet1, otherToken, 1, 2, null, 1],
-  ];
+  const entries = [{
+    walletId: wallet1,
+    tokenId,
+    unlockedBalance: 10,
+    lockedBalance: 20,
+    timelockExpires: now,
+    transactions: 5,
+  }, {
+    walletId: wallet2,
+    tokenId,
+    unlockedBalance: 0,
+    lockedBalance: 100,
+    timelockExpires: now,
+    transactions: 4,
+  }, {
+    walletId: wallet1,
+    tokenId: otherToken,
+    unlockedBalance: 1,
+    lockedBalance: 2,
+    timelockExpires: null,
+    transactions: 1,
+  }];
   await addToWalletBalanceTable(mysql, entries);
 
   const wallet1Map = TokenBalanceMap.fromStringMap({ [tokenId]: { unlocked: 15, locked: 0 } });

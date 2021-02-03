@@ -3,6 +3,8 @@ import { ServerlessMysql } from 'serverless-mysql';
 
 import { DbSelectResult, TxInput, TxOutput } from '@src/types';
 
+import { WalletBalanceEntry, AddressTableEntry } from '@tests/types';
+
 // we'll use this xpubkey and corresponding addresses in some tests
 export const XPUBKEY = 'xpub6EcBoi2vDFcCW5sPAiQpXDYYtXd1mKhUJD64tUi8CPRG1VQFDkAbL8G5gqTmSZD6oq4Yhr5PZ8pKf3Xmb3W3pGcgqzUdFNaCRKL7TZa3res';
 
@@ -431,14 +433,23 @@ export const addToWalletTable = async (
 
 export const addToWalletBalanceTable = async (
   mysql: ServerlessMysql,
-  entries: unknown[][],
+  entries: WalletBalanceEntry[],
 ): Promise<void> => {
+  const payload = entries.map((entry) => ([
+    entry.walletId,
+    entry.tokenId,
+    entry.unlockedBalance,
+    entry.lockedBalance,
+    entry.timelockExpires,
+    entry.transactions,
+  ]));
+
   await mysql.query(`
     INSERT INTO \`wallet_balance\`(\`wallet_id\`, \`token_id\`,
                                    \`unlocked_balance\`, \`locked_balance\`,
                                    \`timelock_expires\`, \`transactions\`)
     VALUES ?`,
-  [entries]);
+  [payload]);
 };
 
 export const addToWalletTxHistoryTable = async (
@@ -455,13 +466,20 @@ export const addToWalletTxHistoryTable = async (
 
 export const addToAddressTable = async (
   mysql: ServerlessMysql,
-  entries: unknown[][],
+  entries: AddressTableEntry[],
 ): Promise<void> => {
+  const payload = entries.map((entry) => ([
+    entry.address,
+    entry.index,
+    entry.walletId,
+    entry.transactions,
+  ]));
+
   await mysql.query(`
     INSERT INTO \`address\`(\`address\`, \`index\`,
                             \`wallet_id\`, \`transactions\`)
     VALUES ?`,
-  [entries]);
+  [payload]);
 };
 
 export const addToAddressBalanceTable = async (

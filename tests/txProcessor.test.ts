@@ -185,16 +185,21 @@ test('unlockUtxos', async () => {
   ]);
 
   await addToAddressTable(mysql, [
-    [addr, 0, walletId, 1],
+    { address: addr, index: 0, walletId, transactions: 1 },
   ]);
 
   await addToAddressBalanceTable(mysql, [
     [addr, token, 0, 2 * reward + 5000, now, 4],
   ]);
 
-  await addToWalletBalanceTable(mysql, [
-    [walletId, token, 0, 2 * reward + 5000, now, 4],
-  ]);
+  await addToWalletBalanceTable(mysql, [{
+    walletId,
+    tokenId: token,
+    unlockedBalance: 0,
+    lockedBalance: 2 * reward + 5000,
+    timelockExpires: now,
+    transactions: 4,
+  }]);
 
   const utxo: Utxo = {
     txId: txId1,
@@ -266,16 +271,21 @@ test('spend "locked" utxo', async () => {
   ]);
 
   await addToAddressTable(mysql, [
-    [addr, 0, walletId, 1],
+    { address: addr, index: 0, walletId, transactions: 1 },
   ]);
 
   await addToAddressBalanceTable(mysql, [
     [addr, token, 0, 2500, timelock, 1],
   ]);
 
-  await addToWalletBalanceTable(mysql, [
-    [walletId, token, 0, 2500, timelock, 1],
-  ]);
+  await addToWalletBalanceTable(mysql, [{
+    walletId,
+    tokenId: token,
+    unlockedBalance: 0,
+    lockedBalance: 2500,
+    timelockExpires: timelock,
+    transactions: 1,
+  }]);
 
   // let's now receive a tx that spends this utxo, while it's still marked as locked
   const evt = JSON.parse(JSON.stringify(eventTemplate));

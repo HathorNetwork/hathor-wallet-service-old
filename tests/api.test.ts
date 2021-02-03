@@ -72,7 +72,10 @@ test('GET /addresses', async () => {
   expect.hasAssertions();
 
   await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
-  await addToAddressTable(mysql, [['addr1', 0, 'my-wallet', 0], ['addr2', 1, 'my-wallet', 0]]);
+  await addToAddressTable(mysql, [
+    { address: 'addr1', index: 0, walletId: 'my-wallet', transactions: 0 },
+    { address: 'addr2', index: 1, walletId: 'my-wallet', transactions: 0 },
+  ]);
 
   // missing param
   await _testMissingParam(addressesGet, 'id');
@@ -118,8 +121,22 @@ test('GET /balances', async () => {
 
   // add 2 balances
   const lockExpires = getUnixTimestamp() + 200;
-  await addToWalletBalanceTable(mysql, [['my-wallet', 'token1', 10, 0, null, 3]]);
-  await addToWalletBalanceTable(mysql, [['my-wallet', 'token2', 3, 2, lockExpires, 1]]);
+  await addToWalletBalanceTable(mysql, [{
+    walletId: 'my-wallet',
+    tokenId: 'token1',
+    unlockedBalance: 10,
+    lockedBalance: 0,
+    timelockExpires: null,
+    transactions: 3,
+  }]);
+  await addToWalletBalanceTable(mysql, [{
+    walletId: 'my-wallet',
+    tokenId: 'token2',
+    unlockedBalance: 3,
+    lockedBalance: 2,
+    timelockExpires: lockExpires,
+    transactions: 1,
+  }]);
 
   // get all balances
   event = makeGatewayEvent({ id: 'my-wallet' });
@@ -142,9 +159,21 @@ test('GET /balances', async () => {
 
   // balance that needs to be refreshed
   const lockExpires2 = getUnixTimestamp() - 200;
-  await addToAddressTable(mysql, [['addr', 0, 'my-wallet', 2]]);
+  await addToAddressTable(mysql, [{
+    address: 'addr',
+    index: 0,
+    walletId: 'my-wallet',
+    transactions: 2,
+  }]);
   await addToAddressBalanceTable(mysql, [['addr', 'token3', 5, 1, lockExpires2, 2]]);
-  await addToWalletBalanceTable(mysql, [['my-wallet', 'token3', 5, 1, lockExpires2, 2]]);
+  await addToWalletBalanceTable(mysql, [{
+    walletId: 'my-wallet',
+    tokenId: 'token3',
+    unlockedBalance: 5,
+    lockedBalance: 1,
+    timelockExpires: lockExpires2,
+    transactions: 2,
+  }]);
   await addToUtxoTable(mysql, [['txId', 0, 'token3', 'addr', 1, lockExpires2, null, true]]);
   event = makeGatewayEvent({ id: 'my-wallet', token_id: 'token3' });
   result = await balancesGet(event, null, null) as APIGatewayProxyResult;
@@ -156,7 +185,14 @@ test('GET /balances', async () => {
 
   // balance that needs to be refreshed, but there's another locked utxo in the future
   await addToAddressBalanceTable(mysql, [['addr', 'token4', 10, 5, lockExpires2, 3]]);
-  await addToWalletBalanceTable(mysql, [['my-wallet', 'token4', 10, 5, lockExpires2, 3]]);
+  await addToWalletBalanceTable(mysql, [{
+    walletId: 'my-wallet',
+    tokenId: 'token4',
+    unlockedBalance: 10,
+    lockedBalance: 5,
+    timelockExpires: lockExpires2,
+    transactions: 3,
+  }]);
   await addToUtxoTable(mysql, [
     ['txId2', 0, 'token4', 'addr', 3, lockExpires2, null, true],
     ['txId3', 0, 'token4', 'addr', 2, lockExpires, null, true],
