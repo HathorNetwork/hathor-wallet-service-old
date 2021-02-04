@@ -56,6 +56,7 @@ export const getDbConnection = (): ServerlessMysql => (
       host: process.env.DB_ENDPOINT,
       database: process.env.DB_NAME,
       user: process.env.DB_USER,
+      port: parseInt(process.env.DB_PORT, 10),
       // TODO if not on local env, get IAM token
       // https://aws.amazon.com/blogs/database/iam-role-based-authentication-to-amazon-aurora-from-serverless-applications/
       password: process.env.DB_PASS,
