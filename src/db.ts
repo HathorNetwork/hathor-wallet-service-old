@@ -394,6 +394,7 @@ export const updateWalletTablesWithTx = async (
         timelock_expires: tokenBalance.lockExpires,
         transactions: 1,
       };
+
       // save the smaller value of timelock_expires, when not null
       await mysql.query(
         `INSERT INTO wallet_balance
@@ -413,6 +414,10 @@ export const updateWalletTablesWithTx = async (
 
       // same logic here as in the updateAddressTablesWithTx function
       if (tokenBalance.unlockedAuthorities.hasNegativeValue()) {
+        // If we got here, it means that we spent an authority, so we need to update the table to refresh the current
+        // value.
+        // To do that, we get all unlocked_authorities from all addresses (querying by wallet and token_id) and
+        // bitwise OR them with each other.
         await mysql.query(
           `UPDATE \`wallet_balance\`
               SET \`unlocked_authorities\` = (
