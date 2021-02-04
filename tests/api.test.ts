@@ -256,7 +256,17 @@ test('GET /balances', async () => {
   });
 
   // add HTR balance
-  await addToWalletBalanceTable(mysql, [['my-wallet', '00', 10, 0, 0, 0, null, 3]]);
+  await addToWalletBalanceTable(mysql, [{
+    walletId: 'my-wallet',
+    tokenId: '00',
+    unlockedBalance: 10,
+    lockedBalance: 0,
+    unlockedAuthorities: 0,
+    lockedAuthorities: 0,
+    timelockExpires: null,
+    transactions: 3,
+  }]);
+
   event = makeGatewayEvent({ id: 'my-wallet', token_id: '00' });
   result = await balancesGet(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);

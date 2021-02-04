@@ -412,7 +412,12 @@ test('updateWalletTablesWithTx', async () => {
   };
   // the tx above removes an authority, which will trigger a "refresh" on the available authorities.
   // Let's pretend there's another utxo with some authorities as well
-  await addToAddressTable(mysql, [['address1', 0, walletId, 1]]);
+  await addToAddressTable(mysql, [{
+    address: 'address1',
+    index: 0,
+    walletId,
+    transactions: 1,
+  }]);
   await addToAddressBalanceTable(mysql, [['address1', token1, 0, 0, null, 1, 0b10, 0]]);
 
   await updateWalletTablesWithTx(mysql, tx3, ts3, walletBalanceMap3);
@@ -830,7 +835,12 @@ test('updateWalletLockedBalance', async () => {
   await expect(checkWalletBalanceTable(mysql, 3, wallet1, otherToken, 1, 2, null, 1)).resolves.toBe(true);
 
   // now pretend there's another locked authority, so final balance of locked authorities should be updated accordingly
-  await addToAddressTable(mysql, [['address1', 0, wallet1, 1]]);
+  await addToAddressTable(mysql, [{
+    address: 'address1',
+    index: 0,
+    walletId: wallet1,
+    transactions: 1,
+  }]);
   await addToAddressBalanceTable(mysql, [['address1', tokenId, 0, 0, null, 1, 0, 0b01]]);
   const newMap = TokenBalanceMap.fromStringMap({ [tokenId]: { unlocked: 0, locked: 0, unlockedAuthorities: new Authorities(0b10) } });
   await updateWalletLockedBalance(mysql, { [wallet1]: newMap });
