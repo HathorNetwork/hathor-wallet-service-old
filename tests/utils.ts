@@ -39,7 +39,7 @@ export const cleanDatabase = async (mysql: ServerlessMysql): Promise<void> => {
     'utxo',
     'wallet',
     'wallet_balance',
-    'wallet_tx_history'
+    'wallet_tx_history',
   ];
 
   for (const table of TABLES) {
@@ -470,6 +470,7 @@ export const addToWalletBalanceTable = async (
   await mysql.query(`
     INSERT INTO \`wallet_balance\`(\`wallet_id\`, \`token_id\`,
                                    \`unlocked_balance\`, \`locked_balance\`,
+                                   \`unlocked_authorities\`, \`locked_authorities\`,
                                    \`timelock_expires\`, \`transactions\`)
     VALUES ?`,
   [payload]);
