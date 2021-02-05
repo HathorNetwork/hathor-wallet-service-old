@@ -145,7 +145,12 @@ export class Authorities {
    */
   toNegative(): Authorities {
     const finalAuthorities = this.array.map((value) => {
+      // This if is needed because Javascript uses the IEEE_754 standard and has negative and positive zeros,
+      // so (-1) * 0 would return -0.  Apparently -0 === 0 is true on most cases, so there wouldn't be a problem,
+      // but we will leave this here to be safe.
+      // https://en.wikipedia.org/wiki/IEEE_754
       if (value === 0) return 0;
+
       return (-1) * value;
     });
     return new Authorities(finalAuthorities);
