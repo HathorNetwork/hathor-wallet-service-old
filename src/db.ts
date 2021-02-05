@@ -389,8 +389,8 @@ export const updateWalletTablesWithTx = async (
         token_id: token,
         unlocked_balance: (tokenBalance.unlockedAmount < 0 ? 0 : tokenBalance.unlockedAmount),
         locked_balance: tokenBalance.lockedAmount,
-        unlocked_authorities: Math.abs(tokenBalance.unlockedAuthorities.toInteger()),
-        locked_authorities: Math.abs(tokenBalance.lockedAuthorities.toInteger()),
+        unlocked_authorities: tokenBalance.unlockedAuthorities.toUnsignedInteger(),
+        locked_authorities: tokenBalance.lockedAuthorities.toUnsignedInteger(),
         timelock_expires: tokenBalance.lockExpires,
         transactions: 1,
       };
@@ -631,8 +631,8 @@ export const updateAddressTablesWithTx = async (
         unlocked_balance: (tokenBalance.unlockedAmount < 0 ? 0 : tokenBalance.unlockedAmount),
         // this is never less than 0, as locked balance only changes when a tx is unlocked
         locked_balance: tokenBalance.lockedAmount,
-        unlocked_authorities: Math.abs(tokenBalance.unlockedAuthorities.toInteger()),
-        locked_authorities: Math.abs(tokenBalance.lockedAuthorities.toInteger()),
+        unlocked_authorities: tokenBalance.unlockedAuthorities.toUnsignedInteger(),
+        locked_authorities: tokenBalance.lockedAuthorities.toUnsignedInteger(),
         timelock_expires: tokenBalance.lockExpires,
         transactions: 1,
       };

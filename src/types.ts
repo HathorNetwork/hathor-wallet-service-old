@@ -127,6 +127,10 @@ export class Authorities {
     return n;
   }
 
+  toUnsignedInteger(): number {
+    return Math.abs(this.toInteger());
+  }
+
   clone(): Authorities {
     return new Authorities(this.array);
   }
