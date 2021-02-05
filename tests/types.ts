@@ -24,3 +24,9 @@ export interface AddressTableEntry {
   walletId?: string;
   transactions: number;
 }
+
+export interface TokenTableEntry {
+  id: string;
+  name: string;
+  symbol: string;
+}

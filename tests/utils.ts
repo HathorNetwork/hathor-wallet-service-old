@@ -3,7 +3,7 @@ import { ServerlessMysql } from 'serverless-mysql';
 
 import { DbSelectResult, TxInput, TxOutput } from '@src/types';
 
-import { WalletBalanceEntry, AddressTableEntry } from '@tests/types';
+import { WalletBalanceEntry, AddressTableEntry, TokenTableEntry } from '@tests/types';
 
 // we'll use this xpubkey and corresponding addresses in some tests
 export const XPUBKEY = 'xpub6EcBoi2vDFcCW5sPAiQpXDYYtXd1mKhUJD64tUi8CPRG1VQFDkAbL8G5gqTmSZD6oq4Yhr5PZ8pKf3Xmb3W3pGcgqzUdFNaCRKL7TZa3res';
@@ -533,11 +533,17 @@ export const addToAddressTxHistoryTable = async (
 
 export const addToTokenTable = async (
   mysql: ServerlessMysql,
-  entries: unknown[][],
+  entries: TokenTableEntry[],
 ): Promise<void> => {
+  const payload = entries.map((entry) => ([
+    entry.id,
+    entry.name,
+    entry.symbol,
+  ]));
+
   await mysql.query(
     'INSERT INTO `token`(`id`, `name`, `symbol`) VALUES ?',
-    [entries],
+    [payload],
   );
 };
 

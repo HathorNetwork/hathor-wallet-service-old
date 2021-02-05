@@ -109,10 +109,10 @@ test('GET /balances', async () => {
   const token3 = { id: 'token3', name: 'MyToken3', symbol: 'MT3' };
   const token4 = { id: 'token4', name: 'MyToken4', symbol: 'MT4' };
   await addToTokenTable(mysql, [
-    [token1.id, token1.name, token1.symbol],
-    [token2.id, token2.name, token2.symbol],
-    [token3.id, token3.name, token3.symbol],
-    [token4.id, token4.name, token4.symbol],
+    { id: token1.id, name: token1.name, symbol: token1.symbol },
+    { id: token2.id, name: token2.name, symbol: token2.symbol },
+    { id: token3.id, name: token3.name, symbol: token3.symbol },
+    { id: token4.id, name: token4.name, symbol: token4.symbol },
   ]);
 
   // missing param

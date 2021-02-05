@@ -674,8 +674,8 @@ test('getWalletBalances', async () => {
   }]);
 
   await addToTokenTable(mysql, [
-    [token1.id, token1.name, token1.symbol],
-    [token2.id, token2.name, token2.symbol],
+    { id: token1.id, name: token1.name, symbol: token1.symbol },
+    { id: token2.id, name: token2.name, symbol: token2.symbol },
   ]);
 
   // first test fetching all tokens
