@@ -14,6 +14,15 @@ CREATE TABLE `address` (
   PRIMARY KEY (`address`)
 );
 
+-- Unlocked authorities represents:
+-- null or 0b00 - Has no authority
+-- 0b01 - Mint authority
+-- 0b11 - Mint and Melt authority
+-- 0b10 - Melt authority
+
+-- This is always up to date with the authorities in every
+-- UTXO for this address.
+
 CREATE TABLE `address_balance` (
   `address` varchar(34) NOT NULL,
   `token_id` varchar(64) NOT NULL,
