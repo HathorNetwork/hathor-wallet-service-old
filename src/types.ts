@@ -45,9 +45,12 @@ export class Balance {
 
   unlocked: number;
 
-  constructor(unlocked = 0, locked = 0) {
+  lockExpires: number | null;
+
+  constructor(unlocked = 0, locked = 0, lockExpires = null) {
     this.unlocked = unlocked;
     this.locked = locked;
+    this.lockExpires = lockExpires;
   }
 
   /**
@@ -65,18 +68,29 @@ export class Balance {
    * @returns A new Balance object with the same balances (unlocked and locked)
    */
   clone(): Balance {
-    return new Balance(this.unlocked, this.locked);
+    return new Balance(this.unlocked, this.locked, this.lockExpires);
   }
 
   /**
-   * Sums two balances
+   * Merge two balances.
+   *
+   * @remarks
+   * In case lockExpires is set, it returns the lowest one.
    *
    * @param b1 - First balance
    * @param b2 - Second balance
    * @returns The sum of both balances
    */
-  static sum(b1: Balance, b2: Balance): Balance {
-    return new Balance(b1.unlocked + b2.unlocked, b1.locked + b2.locked);
+  static merge(b1: Balance, b2: Balance): Balance {
+    let lockExpires = null;
+    if (b1.lockExpires === null) {
+      lockExpires = b2.lockExpires;
+    } else if (b2.lockExpires === null) {
+      lockExpires = b1.lockExpires;
+    } else {
+      lockExpires = Math.min(b1.lockExpires, b2.lockExpires);
+    }
+    return new Balance(b1.unlocked + b2.unlocked, b1.locked + b2.locked, lockExpires);
   }
 }
 
@@ -88,6 +102,7 @@ export interface Utxo {
   value: number;
   timelock: number | null;
   heightlock: number | null;
+  locked: boolean;
 }
 
 export interface TokenBalance {
@@ -138,7 +153,7 @@ export class TokenBalanceMap {
    * ```
    * {
    *   token1: {unlocked: n, locked: m},
-   *   token2: {unlocked: a, locked: b},
+   *   token2: {unlocked: a, locked: b, lockExpires: c},
    * }
    * ```
    *
@@ -148,13 +163,13 @@ export class TokenBalanceMap {
   static fromStringMap(tokenBalanceMap: StringMap<StringMap<number>>): TokenBalanceMap {
     const obj = new TokenBalanceMap();
     for (const [tokenId, balance] of Object.entries(tokenBalanceMap)) {
-      obj.set(tokenId, new Balance(balance.unlocked, balance.locked));
+      obj.set(tokenId, new Balance(balance.unlocked, balance.locked, balance.lockExpires || null));
     }
     return obj;
   }
 
   /**
-   * Merge 2 TokenBalanceMap objects, summing the balances for each token.
+   * Merge two TokenBalanceMap objects, merging the balances for each token.
    *
    * @param balanceMap1 - First TokenBalanceMap
    * @param balanceMap2 - Second TokenBalanceMap
@@ -165,7 +180,7 @@ export class TokenBalanceMap {
     if (!balanceMap2) return balanceMap1.clone();
     const mergedMap = balanceMap1.clone();
     for (const [token, balance] of balanceMap2.iterator()) {
-      const finalBalance = Balance.sum(mergedMap.get(token), balance);
+      const finalBalance = Balance.merge(mergedMap.get(token), balance);
       mergedMap.set(token, finalBalance);
     }
     return mergedMap;
@@ -174,27 +189,20 @@ export class TokenBalanceMap {
   /**
    * Create a TokenBalanceMap from a TxOutput.
    *
-   * @remarks
-   * It uses `now` and `rewardLock` to determine if the balance is locked. It will have only one token entry.
-   *
    * @param output - The transaction output
-   * @param now - The current timestamp
-   * @param rewardLock - Flag that tells if outputs are all locked
    * @returns The TokenBalanceMap object
    */
-  static fromTxOutput(output: TxOutput, now: number, rewardLock = false): TokenBalanceMap {
+  static fromTxOutput(output: TxOutput): TokenBalanceMap {
     // TODO handle authority
     // TODO check if output.decoded exists, else return null
     const token = output.token;
     const value = output.value;
-    const timelock = output.decoded.timelock || 0;
 
     const obj = new TokenBalanceMap();
-    if (rewardLock || timelock > now) {
-      // still locked
-      obj.set(token, new Balance(0, value));
+    if (output.locked) {
+      obj.set(token, new Balance(0, value, output.decoded.timelock));
     } else {
-      obj.set(token, new Balance(value, 0));
+      obj.set(token, new Balance(value, 0, null));
     }
     return obj;
   }
@@ -203,7 +211,7 @@ export class TokenBalanceMap {
    * Create a TokenBalanceMap from a TxInput.
    *
    * @remarks
-   * It will have only one token entry and balance will be negative. Also, it'll always be unlocked.
+   * It will have only one token entry and balance will be negative.
    *
    * @param input - The transaction input
    * @returns The TokenBalanceMap object
@@ -215,7 +223,7 @@ export class TokenBalanceMap {
     const value = -input.value;
 
     const obj = new TokenBalanceMap();
-    obj.set(token, new Balance(value, 0));
+    obj.set(token, new Balance(value, 0, null));
     return obj;
   }
 }
@@ -248,6 +256,7 @@ export interface TxOutput {
   spent_by: string | null;
   // eslint-disable-next-line camelcase
   token_data?: number;
+  locked?: boolean;
 }
 
 export interface TxInput {

@@ -12,8 +12,6 @@ export interface WalletBalanceEntry {
   tokenId: string;
   unlockedBalance: number;
   lockedBalance: number;
-  unlockedAuthorities: number;
-  lockedAuthorities: number;
   timelockExpires?: number;
   transactions: number;
 }
@@ -23,10 +21,4 @@ export interface AddressTableEntry {
   index: number;
   walletId?: string;
   transactions: number;
-}
-
-export interface TokenTableEntry {
-  id: string;
-  name: string;
-  symbol: string;
 }
