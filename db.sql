@@ -1,6 +1,6 @@
 -- MySQL dump 10.13  Distrib 5.7.21, for osx10.12 (x86_64)
 --
--- Host: localhost    Database: wallet_service
+-- Host: localhost    Database: wallet
 -- ------------------------------------------------------
 -- Server version	8.0.20
 
@@ -52,8 +52,6 @@ CREATE TABLE `address_balance` (
   `token_id` varchar(64) NOT NULL,
   `unlocked_balance` bigint unsigned NOT NULL,
   `locked_balance` bigint unsigned NOT NULL,
-  `unlocked_authorities` tinyint unsigned NOT NULL DEFAULT '0',
-  `locked_authorities` tinyint unsigned NOT NULL DEFAULT '0',
   `timelock_expires` int unsigned DEFAULT NULL,
   `transactions` int unsigned NOT NULL,
   PRIMARY KEY (`address`,`token_id`)
@@ -96,6 +94,29 @@ LOCK TABLES `address_tx_history` WRITE;
 UNLOCK TABLES;
 
 --
+-- Table structure for table `blocks`
+--
+
+DROP TABLE IF EXISTS `blocks`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `blocks` (
+  `tx_id` varchar(64) NOT NULL,
+  `height` int unsigned NOT NULL,
+  PRIMARY KEY (`tx_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `blocks`
+--
+
+LOCK TABLES `blocks` WRITE;
+/*!40000 ALTER TABLE `blocks` DISABLE KEYS */;
+/*!40000 ALTER TABLE `blocks` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `info`
 --
 
@@ -119,83 +140,6 @@ LOCK TABLES `info` WRITE;
 UNLOCK TABLES;
 
 --
--- Table structure for table `token`
---
-
-DROP TABLE IF EXISTS `token`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `token` (
-  `id` varchar(64) NOT NULL,
-  `name` varchar(150) NOT NULL,
-  `symbol` varchar(30) NOT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `token`
---
-
-LOCK TABLES `token` WRITE;
-/*!40000 ALTER TABLE `token` DISABLE KEYS */;
-/*!40000 ALTER TABLE `token` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `tx_proposal`
---
-
-DROP TABLE IF EXISTS `tx_proposal`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `tx_proposal` (
-  `id` varchar(36) NOT NULL,
-  `wallet_id` varchar(64) NOT NULL,
-  `status` enum('open','sent','send_error','cancelled') NOT NULL,
-  `created_at` int unsigned NOT NULL,
-  `updated_at` int unsigned DEFAULT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `tx_proposal`
---
-
-LOCK TABLES `tx_proposal` WRITE;
-/*!40000 ALTER TABLE `tx_proposal` DISABLE KEYS */;
-/*!40000 ALTER TABLE `tx_proposal` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `tx_proposal_outputs`
---
-
-DROP TABLE IF EXISTS `tx_proposal_outputs`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `tx_proposal_outputs` (
-  `tx_proposal_id` varchar(36) NOT NULL,
-  `index` tinyint unsigned NOT NULL,
-  `address` varchar(34) NOT NULL,
-  `token_id` varchar(64) NOT NULL,
-  `value` bigint DEFAULT NULL,
-  `timelock` int unsigned DEFAULT NULL,
-  PRIMARY KEY (`tx_proposal_id`,`index`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `tx_proposal_outputs`
---
-
-LOCK TABLES `tx_proposal_outputs` WRITE;
-/*!40000 ALTER TABLE `tx_proposal_outputs` DISABLE KEYS */;
-/*!40000 ALTER TABLE `tx_proposal_outputs` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
 -- Table structure for table `utxo`
 --
 
@@ -208,12 +152,9 @@ CREATE TABLE `utxo` (
   `token_id` varchar(64) NOT NULL,
   `address` varchar(34) NOT NULL,
   `value` bigint unsigned NOT NULL,
-  `authorities` tinyint unsigned NOT NULL DEFAULT '0',
   `timelock` int unsigned DEFAULT NULL,
   `heightlock` int unsigned DEFAULT NULL,
-  `locked` tinyint(1) NOT NULL,
-  `tx_proposal` varchar(36) DEFAULT NULL,
-  `tx_proposal_index` tinyint unsigned DEFAULT NULL,
+  `locked` tinyint unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`tx_id`,`index`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -266,8 +207,6 @@ CREATE TABLE `wallet_balance` (
   `token_id` varchar(64) NOT NULL,
   `unlocked_balance` bigint unsigned NOT NULL,
   `locked_balance` bigint unsigned NOT NULL,
-  `unlocked_authorities` tinyint unsigned NOT NULL DEFAULT '0',
-  `locked_authorities` tinyint unsigned NOT NULL DEFAULT '0',
   `timelock_expires` int unsigned DEFAULT NULL,
   `transactions` int unsigned NOT NULL,
   PRIMARY KEY (`wallet_id`,`token_id`)
@@ -318,4 +257,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2020-09-08 14:40:25
+-- Dump completed on 2020-10-06 11:49:22

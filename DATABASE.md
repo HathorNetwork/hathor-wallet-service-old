@@ -19,6 +19,7 @@ CREATE TABLE `address_balance` (
   `token_id` varchar(64) NOT NULL,
   `unlocked_balance` bigint unsigned NOT NULL,
   `locked_balance` bigint unsigned NOT NULL,
+  `timelock_expires` int unsigned,
   `transactions` int unsigned NOT NULL,
   PRIMARY KEY (`address`,`token_id`)
 );
@@ -30,6 +31,12 @@ CREATE TABLE `address_tx_history` (
   `balance` bigint NOT NULL,
   `timestamp` int unsigned NOT NULL,
   PRIMARY KEY (`address`,`tx_id`,`token_id`)
+);
+
+CREATE TABLE `metadata` (
+  `key` varchar(25) NOT NULL,
+  `value` int unsigned NOT NULL,
+  PRIMARY KEY (`key`)
 );
 
 CREATE TABLE `blocks` (
@@ -46,6 +53,7 @@ CREATE TABLE `utxo` (
   `value` bigint unsigned NOT NULL,
   `timelock` int unsigned DEFAULT NULL,
   `heightlock` int unsigned DEFAULT NULL,
+  `locked` tinyint unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`tx_id`,`index`)
 );
 
@@ -64,6 +72,7 @@ CREATE TABLE `wallet_balance` (
   `token_id` varchar(64) NOT NULL,
   `unlocked_balance` bigint unsigned NOT NULL,
   `locked_balance` bigint unsigned NOT NULL,
+  `timelock_expires` int unsigned,
   `transactions` int unsigned NOT NULL,
   PRIMARY KEY (`wallet_id`,`token_id`)
 );
