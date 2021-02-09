@@ -862,7 +862,7 @@ test('maybeUpdateLatestHeight and getLatestHeight', async () => {
 test('storeTokenInformation and getTokenInformation', async () => {
   expect.hasAssertions();
 
-  const info = new TokenInfo('tokenId', 'tokenName', 'tokenSymbol');
+  const info = new TokenInfo('tokenId', 'tokenName', 'TKNS');
   storeTokenInformation(mysql, info.id, info.name, info.symbol);
 
   expect(info).toStrictEqual(await getTokenInformation(mysql, info.id));
