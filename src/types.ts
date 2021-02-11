@@ -122,6 +122,8 @@ export class Authorities {
   toInteger(): number {
     let n = 0;
     for (let i = 0; i < this.array.length; i++) {
+      if (this.array[i] === 0) continue;
+
       n += this.array[i] * (2 ** (this.array.length - i - 1));
     }
     return n;
