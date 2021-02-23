@@ -1,10 +1,44 @@
-import { Balance, DecodedOutput, TokenBalanceMap, TxInput, TxOutput } from '@src/types';
+import { Authorities, Balance, DecodedOutput, TokenBalanceMap, TxInput, TxOutput } from '@src/types';
+
+test('Authorities', () => {
+  expect.hasAssertions();
+
+  const a = new Authorities();
+  expect(a.array).toHaveLength(Authorities.LENGTH);
+
+  expect(new Authorities()).toStrictEqual(new Authorities([0, 0, 0, 0, 0, 0, 0, 0]));
+  expect(new Authorities(0b0)).toStrictEqual(new Authorities([0]));
+  expect(new Authorities(0b10000000)).toStrictEqual(new Authorities([1, 0, 0, 0, 0, 0, 0, 0]));
+  expect(new Authorities(0b11111111)).toStrictEqual(new Authorities([1, 1, 1, 1, 1, 1, 1, 1]));
+
+  // clone
+  const b = new Authorities(0b101);
+  expect(b.clone()).toStrictEqual(b);
+  expect(b.clone()).not.toBe(b);
+
+  // toInteger
+  expect((new Authorities(0b0)).toInteger()).toBe(0b0);
+  expect((new Authorities(0b10)).toInteger()).toBe(0b10);
+  expect((new Authorities(0b11111111)).toInteger()).toBe(0b11111111);
+
+  // toNegative
+  expect((new Authorities([0, 0, 0, 0, 1, 0, -1, 0])).toNegative().array).toStrictEqual([0, 0, 0, 0, -1, 0, 1, 0]);
+
+  // merge
+  expect(Authorities.merge(new Authorities(0b0), new Authorities(0b1)).toInteger()).toBe(0b1);
+  expect(Authorities.merge(new Authorities(0b0), new Authorities(0b11111111)).toInteger()).toBe(0b11111111);
+  expect(Authorities.merge(new Authorities(0b01010101), new Authorities(0b10101010)).toInteger()).toBe(0b11111111);
+  expect(Authorities.merge(new Authorities(0b11111111), new Authorities(0b11111111)).toInteger()).toBe(0b11111111);
+  // with negative values
+  expect(Authorities.merge(new Authorities([0, -1, 1]), new Authorities([-1, -1, -1]))).toStrictEqual(new Authorities([-1, -1, 0]));
+});
 
 test('Balance merge', () => {
   expect.hasAssertions();
-  const b1 = new Balance(1, 2);
-  const b2 = new Balance(3, 4);
-  expect(Balance.merge(b1, b2)).toStrictEqual(new Balance(4, 6, null));
+
+  const b1 = new Balance(1, 2, null, new Authorities(0b01), new Authorities(0b00));
+  const b2 = new Balance(3, 4, null, new Authorities(0b10), new Authorities(0b11));
+  expect(Balance.merge(b1, b2)).toStrictEqual(new Balance(4, 6, null, new Authorities(0b11), new Authorities(0b11)));
 
   const b3 = new Balance(1, 2, 1000);
   const b4 = new Balance(3, 4);
@@ -14,6 +48,13 @@ test('Balance merge', () => {
   const b5 = new Balance(10, 20, 2000);
   expect(Balance.merge(b3, b5)).toStrictEqual(new Balance(11, 22, 1000));
   expect(Balance.merge(b5, b3)).toStrictEqual(new Balance(11, 22, 1000));
+});
+
+test('Balance total and authorities', () => {
+  expect.hasAssertions();
+  const b = new Balance(1, 2, null, new Authorities(0b01), new Authorities(0b10));
+  expect(b.total()).toBe(3);
+  expect(b.authorities()).toStrictEqual(new Authorities(0b11));
 });
 
 test('TokenBalanceMap basic', () => {
@@ -75,12 +116,10 @@ test('TokenBalanceMap fromTxOutput fromTxInput', () => {
     type: 'P2PKH',
     address: 'HCLqWoDJvprSnwwmr6huBg3bNR7DxjwXcD',
     timelock,
-    value: 200,
-    token_data: 0,
   };
   const txOutput: TxOutput = {
-    value: decoded.value,
-    token_data: decoded.token_data,
+    value: 200,
+    token_data: 0,
     script: 'not-used',
     token: '00',
     spent_by: null,
@@ -90,17 +129,17 @@ test('TokenBalanceMap fromTxOutput fromTxInput', () => {
   const txInput: TxInput = {
     tx_id: '00000000000000029411240dc4aea675b672c260f1419c8a3b87cfa203398098',
     index: 2,
-    value: decoded.value,
-    token_data: decoded.token_data,
+    value: 200,
+    token_data: 0,
     script: 'not-used',
     token: '00',
     decoded,
   };
 
-  expect(TokenBalanceMap.fromTxInput(txInput)).toStrictEqual(TokenBalanceMap.fromStringMap({ '00': { unlocked: -decoded.value, locked: 0 } }));
-  expect(TokenBalanceMap.fromTxOutput(txOutput)).toStrictEqual(TokenBalanceMap.fromStringMap({ '00': { unlocked: decoded.value, locked: 0 } }));
+  expect(TokenBalanceMap.fromTxInput(txInput)).toStrictEqual(TokenBalanceMap.fromStringMap({ '00': { unlocked: -txInput.value, locked: 0 } }));
+  expect(TokenBalanceMap.fromTxOutput(txOutput)).toStrictEqual(TokenBalanceMap.fromStringMap({ '00': { unlocked: txOutput.value, locked: 0 } }));
 
   // locked
   txOutput.locked = true;
-  expect(TokenBalanceMap.fromTxOutput(txOutput)).toStrictEqual(TokenBalanceMap.fromStringMap({ '00': { locked: decoded.value, unlocked: 0, lockExpires: timelock } }));
+  expect(TokenBalanceMap.fromTxOutput(txOutput)).toStrictEqual(TokenBalanceMap.fromStringMap({ '00': { locked: txOutput.value, unlocked: 0, lockExpires: timelock } }));
 });

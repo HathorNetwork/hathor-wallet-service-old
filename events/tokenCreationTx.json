@@ -1,0 +1,82 @@
+{
+  "tx_id": "000002cda72c0f95d11d9a270e3626a17e314c252cc270a39dae383027b7cee8",
+  "version": 2,
+  "weight": 21.27218479542122,
+  "timestamp": 1595939257,
+  "is_voided": false,
+  "inputs": [
+    {
+      "value": 6400,
+      "token_data": 0,
+      "script": "dqkUCEboPJo9txn548FA/NLLaMLsfsSIrA==",
+      "decoded": {
+        "type": "P2PKH",
+        "address": "HLUjnbbgxzgDTLAU7TjsTHzuZpeYY2xezw",
+        "timelock": null
+      },
+      "token": "00",
+      "tx_id": "00fe3013b576408034be71db6be57eaf2a7d39cf2c4844ff37dd7946df33f4ba",
+      "index": 0
+    }
+  ],
+  "outputs": [
+    {
+      "value": 5400,
+      "token_data": 0,
+      "script": "dqkUmR4QdNEC6K8uibwyUMVCsEW3DRiIrA==",
+      "decoded": {
+        "type": "P2PKH",
+        "address": "HLUjnbbgxzgDTLAU7TjsTHzuZpeYY2xezw",
+        "timelock": null
+      },
+      "token": "00",
+      "spent_by": null
+    },
+    {
+      "value": 100000,
+      "token_data": 1,
+      "script": "dqkUWWag8rS/Sh0mtMg1F3zs3O9OlwOIrA==",
+      "decoded": {
+        "type": "P2PKH",
+        "address": "HEfqUBf4Rd4A35uhdtv7fuUtthGtjptYQC",
+        "timelock": null
+      },
+      "token": "000002cda72c0f95d11d9a270e3626a17e314c252cc270a39dae383027b7cee8",
+      "spent_by": null
+    },
+    {
+      "value": 1,
+      "token_data": 129,
+      "script": "dqkUNxdW36waXXpOuO6W4930yfy4mQOIrA==",
+      "decoded": {
+        "type": "P2PKH",
+        "address": "HBYRWYMpDQzkBPCdAJMix4dGNVi81CC855",
+        "timelock": null
+      },
+      "token": "000002cda72c0f95d11d9a270e3626a17e314c252cc270a39dae383027b7cee8",
+      "spent_by": null
+    },
+    {
+      "value": 2,
+      "token_data": 129,
+      "script": "dqkUg2KkQGyXZXkFexuY+9ygPjDZ4EaIrA==",
+      "decoded": {
+        "type": "P2PKH",
+        "address": "HJVq5DKPTeJ73UpuivJURdhfWnTLG7WAjo",
+        "timelock": null
+      },
+      "token": "000002cda72c0f95d11d9a270e3626a17e314c252cc270a39dae383027b7cee8",
+      "spent_by": null
+    }
+  ],
+  "parents": [
+    "000000f4bf297f59f4f0d8aaf6b9ebc12f70194c1398091a0aa92b1a8d08c68b",
+    "000004cb6ae89be0997c63ec29ac1e03bf0fc25e78c3c9d8a52e18dbb6d9f494"
+  ],
+  "is_block": false,
+  "token_name": "MyCoin",
+  "token_symbol": "MYC",
+  "tokens": [],
+  "type": "network:new_tx_accepted",
+  "throttled": false
+}

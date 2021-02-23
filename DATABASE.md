@@ -14,11 +14,22 @@ CREATE TABLE `address` (
   PRIMARY KEY (`address`)
 );
 
+-- Unlocked authorities represents:
+-- null or 0b00 - Has no authority
+-- 0b01 - Mint authority
+-- 0b11 - Mint and Melt authority
+-- 0b10 - Melt authority
+
+-- This is always up to date with the authorities in every
+-- UTXO for this address.
+
 CREATE TABLE `address_balance` (
   `address` varchar(34) NOT NULL,
   `token_id` varchar(64) NOT NULL,
   `unlocked_balance` bigint unsigned NOT NULL,
   `locked_balance` bigint unsigned NOT NULL,
+  `unlocked_authorities` tinyint unsigned NOT NULL DEFAULT '0',
+  `locked_authorities` tinyint unsigned NOT NULL DEFAULT '0',
   `timelock_expires` int unsigned,
   `transactions` int unsigned NOT NULL,
   PRIMARY KEY (`address`,`token_id`)
@@ -45,12 +56,19 @@ CREATE TABLE `blocks` (
   PRIMARY KEY (`tx_id`)
 );
 
+CREATE TABLE `token` (
+  `id` varchar(64) NOT NULL,
+  `name` varchar(30) NOT NULL,
+  `symbol` varchar(5) NOT NULL,
+  PRIMARY KEY (`id`));
+
 CREATE TABLE `utxo` (
   `tx_id` varchar(64) NOT NULL,
   `index` tinyint unsigned NOT NULL,
   `token_id` varchar(64) NOT NULL,
   `address` varchar(34) NOT NULL,
   `value` bigint unsigned NOT NULL,
+  `authorities` tinyint unsigned DEFAULT NULL,
   `timelock` int unsigned DEFAULT NULL,
   `heightlock` int unsigned DEFAULT NULL,
   `locked` tinyint unsigned NOT NULL DEFAULT '0',
@@ -72,6 +90,8 @@ CREATE TABLE `wallet_balance` (
   `token_id` varchar(64) NOT NULL,
   `unlocked_balance` bigint unsigned NOT NULL,
   `locked_balance` bigint unsigned NOT NULL,
+  `unlocked_authorities` tinyint unsigned NOT NULL DEFAULT '0',
+  `locked_authorities` tinyint unsigned NOT NULL DEFAULT '0',
   `timelock_expires` int unsigned,
   `transactions` int unsigned NOT NULL,
   PRIMARY KEY (`wallet_id`,`token_id`)
