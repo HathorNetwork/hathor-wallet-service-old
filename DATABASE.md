@@ -56,7 +56,6 @@ CREATE TABLE `blocks` (
   PRIMARY KEY (`tx_id`)
 );
 
-// TODO name and symbol lengths are not limited on the blockchain, might be 255
 CREATE TABLE `token` (
   `id` varchar(64) NOT NULL,
   `name` varchar(30) NOT NULL,
