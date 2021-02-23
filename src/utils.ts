@@ -7,7 +7,7 @@
 
 import { createHash, HexBase64Latin1Encoding } from 'crypto';
 import serverlessMysql, { ServerlessMysql } from 'serverless-mysql';
-
+import hathorLib from '@hathor/wallet-lib';
 /**
  * Calculate the double sha256 hash of the data.
  *
@@ -56,6 +56,7 @@ export const getDbConnection = (): ServerlessMysql => (
       host: process.env.DB_ENDPOINT,
       database: process.env.DB_NAME,
       user: process.env.DB_USER,
+      port: parseInt(process.env.DB_PORT, 10),
       // TODO if not on local env, get IAM token
       // https://aws.amazon.com/blogs/database/iam-role-based-authentication-to-amazon-aurora-from-serverless-applications/
       password: process.env.DB_PASS,
@@ -76,3 +77,7 @@ export const closeDbConnection = async (mysql: ServerlessMysql): Promise<void> =
     await mysql.end();
   }
 };
+
+export const isAuthority = (tokenData: number): boolean => (
+  (tokenData & hathorLib.constants.TOKEN_AUTHORITY_MASK) > 0    // eslint-disable-line no-bitwise
+);

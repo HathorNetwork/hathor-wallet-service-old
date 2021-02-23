@@ -12,3 +12,6 @@ coverage
 
 # eslint
 .eslintcache
+
+# env variables
+.env
