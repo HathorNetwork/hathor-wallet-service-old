@@ -34,9 +34,13 @@ export const cleanDatabase = async (mysql: ServerlessMysql): Promise<void> => {
     'address',
     'address_balance',
     'address_tx_history',
+    'blocks',
     'metadata',
     'token',
+    'tx_proposal',
+    'tx_proposal_outputs',
     'utxo',
+    'version_data',
     'wallet',
     'wallet_balance',
     'wallet_tx_history',
@@ -559,7 +563,6 @@ export const addToTxProposalTable = async (
 
 export const makeGatewayEvent = (params: {
     [name: string]: string,
-    [txProposalId: string]: string
   }, body = null): APIGatewayProxyEvent => ({
   body,
   queryStringParameters: params,

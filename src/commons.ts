@@ -192,9 +192,9 @@ export const getWalletBalances = async (
   mysql: ServerlessMysql,
   now: number,
   walletId: string,
-  tokenId: string,
+  tokenIds: string[] = [],
 ): Promise<WalletTokenBalance[]> => {
-  let balances = await dbGetWalletBalances(mysql, walletId, tokenId);
+  let balances = await dbGetWalletBalances(mysql, walletId, tokenIds);
 
   // if any of the balances' timelock has expired, update the tables before returning
   const refreshBalances = balances.some((tb) => {
@@ -208,7 +208,7 @@ export const getWalletBalances = async (
     const currentHeight = await getLatestHeight(mysql);
     const utxos = await getWalletUnlockedUtxos(mysql, walletId, now, currentHeight);
     await unlockUtxos(mysql, utxos, true);
-    balances = await dbGetWalletBalances(mysql, walletId, tokenId);
+    balances = await dbGetWalletBalances(mysql, walletId, tokenIds);
   }
   return balances;
 };

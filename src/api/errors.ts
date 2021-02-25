@@ -10,7 +10,6 @@ export enum ApiError {
   INVALID_BODY = 'invalid-body',
   INVALID_TX_WEIGHT = 'invalid-tx-weight',
   INVALID_SELECTION_ALGO = 'invalid-selection-algo',
-  INVALID_PARAMETER = 'invalid-parameter',
   UNKNOWN_ERROR = 'unknown-error',
   INPUTS_NOT_FOUND = 'inputs-not-found',
   INSUFFICIENT_FUNDS = 'insufficient-funds',

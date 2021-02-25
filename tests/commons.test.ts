@@ -6,7 +6,7 @@ import {
   unlockUtxos,
   maybeRefreshWalletConstants,
 } from '@src/commons';
-import { Authorities, Balance, TokenBalanceMap, Utxo } from '@src/types';
+import { FullNodeVersionData, Authorities, Balance, TokenBalanceMap, Utxo } from '@src/types';
 import { closeDbConnection, getDbConnection } from '@src/utils';
 import {
   addToAddressTable,
@@ -210,17 +210,27 @@ test('unlockUtxos', async () => {
     [walletId, 'xpub', 'ready', 10, now, now + 1],
   ]);
 
-  await addToAddressTable(mysql, [
-    [addr, 0, walletId, 1],
-  ]);
+  await addToAddressTable(mysql, [{
+    address: addr,
+    index: 0,
+    walletId,
+    transactions: 1,
+  }]);
 
   await addToAddressBalanceTable(mysql, [
     [addr, token, 0, 2 * reward + 5000, now, 5, 0, 0b10],
   ]);
 
-  await addToWalletBalanceTable(mysql, [
-    [walletId, token, 0, 2 * reward + 5000, 0, 0b10, now, 5],
-  ]);
+  await addToWalletBalanceTable(mysql, [{
+    walletId,
+    tokenId: token,
+    unlockedBalance: 0,
+    lockedBalance: 2 * reward + 5000,
+    unlockedAuthorities: 0,
+    lockedAuthorities: 0b10,
+    timelockExpires: now,
+    transactions: 5,
+  }]);
 
   const utxo: Utxo = {
     txId: txId1,

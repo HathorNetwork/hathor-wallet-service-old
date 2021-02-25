@@ -6,18 +6,14 @@
  */
 
 import { APIGatewayProxyHandler } from 'aws-lambda';
-import { ServerlessMysql } from 'serverless-mysql';
 import 'source-map-support/register';
 
 import { ApiError } from '@src/api/errors';
 import { closeDbAndGetError } from '@src/api/utils';
+import { getWalletBalances } from '@src/commons';
 import {
-  getLatestHeight,
   getWallet,
-  getWalletBalances,
-  getWalletUnlockedUtxos,
 } from '@src/db';
-import { unlockUtxos } from '@src/commons';
 import { closeDbConnection, getDbConnection, getUnixTimestamp } from '@src/utils';
 
 const mysql = getDbConnection();
