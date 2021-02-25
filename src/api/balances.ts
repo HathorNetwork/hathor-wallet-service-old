@@ -17,7 +17,7 @@ import {
   getWalletBalances,
   getWalletUnlockedUtxos,
 } from '@src/db';
-import { unlockUtxos } from '@src/txProcessor';
+import { unlockUtxos } from '@src/commons';
 import { closeDbConnection, getDbConnection, getUnixTimestamp } from '@src/utils';
 
 const mysql = getDbConnection();
