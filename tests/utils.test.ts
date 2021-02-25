@@ -9,3 +9,13 @@ test('sha256d', () => {
   result = sha256d('something-else', 'hex');
   expect(result).toBe('5c690b78d489f158d8575e7ed271521d056c445e8bd3978c8295775c1743bec0');
 });
+
+test('arrayShuffle', () => {
+  expect.hasAssertions();
+  const original = Array.from(Array(10).keys());
+
+  const shuffled = Array.from(Array(10).keys());
+  arrayShuffle(shuffled);
+
+  expect(original).not.toStrictEqual(shuffled);
+});

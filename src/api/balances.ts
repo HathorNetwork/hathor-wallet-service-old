@@ -44,27 +44,14 @@ export const get: APIGatewayProxyHandler = async (event) => {
     return closeDbAndGetError(mysql, ApiError.WALLET_NOT_READY);
   }
 
-  let tokenId: string = null;
+  const tokenIds: string[] = [];
   if (params && params.token_id) {
-    tokenId = params.token_id;
+    const tokenId = params.token_id;
     // TODO validate tokenId
+    tokenIds.push(tokenId);
   }
 
-  let balances = await getWalletBalances(mysql, walletId, tokenId);
-
-  // if any of the balances' timelock has expired, update the tables before returning
-  const now = getUnixTimestamp();
-  const refreshBalances = balances.some((tb) => {
-    if (tb.balance.lockExpires && tb.balance.lockExpires <= now) {
-      return true;
-    }
-    return false;
-  });
-
-  if (refreshBalances) {
-    await updateBalances(mysql, walletId, now);
-    balances = await getWalletBalances(mysql, walletId, tokenId);
-  }
+  const balances = await getWalletBalances(mysql, getUnixTimestamp(), walletId, tokenIds);
 
   await closeDbConnection(mysql);
 
@@ -72,17 +59,4 @@ export const get: APIGatewayProxyHandler = async (event) => {
     statusCode: 200,
     body: JSON.stringify({ success: true, balances }),
   };
-};
-
-/**
- * Unlocks utxos for the latest height for a given wallet
- *
- * @param mysql - Database connection
- * @param walletId - The wallet Id
- * @param now - Current timestamp
- */
-const updateBalances = async (_mysql: ServerlessMysql, walletId: string, now: number) => {
-  const currentHeight = await getLatestHeight(_mysql);
-  const utxos = await getWalletUnlockedUtxos(_mysql, walletId, now, currentHeight);
-  await unlockUtxos(_mysql, utxos, true);
 };
