@@ -23,6 +23,7 @@ import {
   cleanDatabase,
   ADDRESSES,
 } from '@tests/utils';
+import { APIGatewayProxyResult } from 'aws-lambda';
 import buffer from 'buffer';
 
 import { ApiError } from '@src/api/errors';
@@ -186,8 +187,8 @@ test('useLargerUtxos', async () => {
   const tokenId = 'tokenId';
   const txId = 'txId';
   await addToAddressTable(mysql, [
-    [addr1, 0, walletId, 1],
-    [addr2, 1, walletId, 1],
+    { address: addr1, index: 0, walletId, transactions: 1 },
+    { address: addr2, index: 1, walletId, transactions: 1 },
   ]);
   await addToUtxoTable(mysql, [
     // another wallet
@@ -267,7 +268,7 @@ test('checkWalletFunds', () => {
   expect(result).toHaveLength(0);
 });
 
-const _checkTxProposalTables = async (txProposalId, inputs, outputs): void => {
+const _checkTxProposalTables = async (txProposalId, inputs, outputs): Promise<void> => {
   const utxos = await getUtxos(mysql, inputs);
   for (const utxo of utxos) {
     expect(utxo.txProposalId).toBe(txProposalId);
@@ -292,7 +293,12 @@ test('POST /txproposals one output and input', async () => {
   expect.hasAssertions();
 
   await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
-  await addToAddressTable(mysql, [[ADDRESSES[0], 0, 'my-wallet', 2]]);
+  await addToAddressTable(mysql, [{
+    address: ADDRESSES[0],
+    index: 0,
+    walletId: 'my-wallet',
+    transactions: 2,
+  }]);
 
   const utxos = [
     ['txSuccess0', 0, 'token1', ADDRESSES[0], 300, 0, null, null, false],
@@ -300,8 +306,32 @@ test('POST /txproposals one output and input', async () => {
     ['txSuccess2', 0, 'token2', ADDRESSES[0], 300, 0, null, null, false],
   ];
   await addToUtxoTable(mysql, utxos);
-  await addToWalletBalanceTable(mysql, [['my-wallet', 'token1', 400, 0, 0, 0, null, 2], ['my-wallet', 'token2', 300, 0, 0, 0, null, 1]]);
-  await addToAddressTable(mysql, [[ADDRESSES[1], 1, 'my-wallet', 0]]);
+  await addToWalletBalanceTable(mysql, [{
+    walletId: 'my-wallet',
+    tokenId: 'token1',
+    unlockedBalance: 400,
+    lockedBalance: 0,
+    unlockedAuthorities: 0,
+    lockedAuthorities: 0,
+    timelockExpires: null,
+    transactions: 2,
+  }, {
+    walletId: 'my-wallet',
+    tokenId: 'token2',
+    unlockedBalance: 300,
+    lockedBalance: 0,
+    unlockedAuthorities: 0,
+    lockedAuthorities: 0,
+    timelockExpires: null,
+    transactions: 1,
+  }]);
+
+  await addToAddressTable(mysql, [{
+    address: ADDRESSES[1],
+    index: 1,
+    walletId: 'my-wallet',
+    transactions: 0,
+  }]);
 
   // only one output, spending the whole 300 utxo of token3
   const outputs = [[ADDRESSES[0], 300, 'token1', null]];
@@ -323,7 +353,12 @@ test('POST /txproposals with a wallet that is not ready should fail with ApiErro
   expect.hasAssertions();
 
   await addToWalletTable(mysql, [['not-ready-wallet', 'xpubkey', 'creating', 5, 10000, null]]);
-  await addToAddressTable(mysql, [[ADDRESSES[0], 0, 'not-ready-wallet', 2]]);
+  await addToAddressTable(mysql, [{
+    address: ADDRESSES[0],
+    index: 0,
+    walletId: 'not-ready-wallet',
+    transactions: 2,
+  }]);
 
   const utxos = [
     ['txSuccess0', 0, 'token1', ADDRESSES[0], 300, 0, null, null, false],
@@ -331,8 +366,32 @@ test('POST /txproposals with a wallet that is not ready should fail with ApiErro
     ['txSuccess2', 0, 'token2', ADDRESSES[0], 300, 0, null, null, false],
   ];
   await addToUtxoTable(mysql, utxos);
-  await addToWalletBalanceTable(mysql, [['my-wallet', 'token1', 400, 0, 0, 0, null, 2], ['my-wallet', 'token2', 300, 0, 0, 0, null, 1]]);
-  await addToAddressTable(mysql, [[ADDRESSES[1], 1, 'my-wallet', 0]]);
+  await addToWalletBalanceTable(mysql, [{
+    walletId: 'my-wallet',
+    tokenId: 'token1',
+    unlockedBalance: 400,
+    lockedBalance: 0,
+    unlockedAuthorities: 0,
+    lockedAuthorities: 0,
+    timelockExpires: null,
+    transactions: 2,
+  }, {
+    walletId: 'my-wallet',
+    tokenId: 'token2',
+    unlockedBalance: 300,
+    lockedBalance: 0,
+    unlockedAuthorities: 0,
+    lockedAuthorities: 0,
+    timelockExpires: null,
+    transactions: 1,
+  }]);
+
+  await addToAddressTable(mysql, [{
+    address: ADDRESSES[1],
+    index: 1,
+    walletId: 'my-wallet',
+    transactions: 0,
+  }]);
 
   // only one output, spending the whole 300 utxo of token3
   const outputs = [[ADDRESSES[0], 300, 'token1', null]];
@@ -348,15 +407,43 @@ test('POST /txproposals use two UTXOs and add change output', async () => {
   expect.hasAssertions();
 
   await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
-  await addToAddressTable(mysql, [[ADDRESSES[0], 0, 'my-wallet', 2]]);
+  await addToAddressTable(mysql, [{
+    address: ADDRESSES[0],
+    index: 0,
+    walletId: 'my-wallet',
+    transactions: 2,
+  }]);
 
   const utxos = [
     ['txSuccess0', 0, 'token1', ADDRESSES[0], 300, 0, null, null, false],
     ['txSuccess1', 0, 'token1', ADDRESSES[0], 100, 0, null, null, false],
   ];
   await addToUtxoTable(mysql, utxos);
-  await addToWalletBalanceTable(mysql, [['my-wallet', 'token1', 400, 0, 0, 0, null, 2], ['my-wallet', 'token2', 300, 0, 0, 0, null, 1]]);
-  await addToAddressTable(mysql, [[ADDRESSES[1], 1, 'my-wallet', 0]]);
+  await addToWalletBalanceTable(mysql, [{
+    walletId: 'my-wallet',
+    tokenId: 'token1',
+    unlockedBalance: 400,
+    lockedBalance: 0,
+    unlockedAuthorities: 0,
+    lockedAuthorities: 0,
+    timelockExpires: null,
+    transactions: 2,
+  }, {
+    walletId: 'my-wallet',
+    tokenId: 'token2',
+    unlockedBalance: 300,
+    lockedBalance: 0,
+    unlockedAuthorities: 0,
+    lockedAuthorities: 0,
+    timelockExpires: null,
+    transactions: 1,
+  }]);
+  await addToAddressTable(mysql, [{
+    address: ADDRESSES[1],
+    index: 1,
+    walletId: 'my-wallet',
+    transactions: 0,
+  }]);
 
   const event = makeGatewayEvent(null, JSON.stringify({
     id: 'my-wallet',
@@ -382,15 +469,44 @@ test('POST /txproposals with invalid inputSelectionAlgo should fail with ApiErro
   expect.hasAssertions();
 
   await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
-  await addToAddressTable(mysql, [[ADDRESSES[0], 0, 'my-wallet', 2]]);
+  await addToAddressTable(mysql, [{
+    address: ADDRESSES[0],
+    index: 0,
+    walletId: 'my-wallet',
+    transactions: 2,
+  }]);
 
   const utxos = [
     ['txSuccess0', 0, 'token1', ADDRESSES[0], 300, 0, null, null, false],
     ['txSuccess1', 0, 'token1', ADDRESSES[0], 100, 0, null, null, false],
   ];
   await addToUtxoTable(mysql, utxos);
-  await addToWalletBalanceTable(mysql, [['my-wallet', 'token1', 400, 0, 0, 0, null, 2], ['my-wallet', 'token2', 300, 0, 0, 0, null, 1]]);
-  await addToAddressTable(mysql, [[ADDRESSES[1], 1, 'my-wallet', 0]]);
+  await addToWalletBalanceTable(mysql, [{
+    walletId: 'my-wallet',
+    tokenId: 'token1',
+    unlockedBalance: 400,
+    lockedBalance: 0,
+    unlockedAuthorities: 0,
+    lockedAuthorities: 0,
+    timelockExpires: null,
+    transactions: 2,
+  }, {
+    walletId: 'my-wallet',
+    tokenId: 'token2',
+    unlockedBalance: 300,
+    lockedBalance: 0,
+    unlockedAuthorities: 0,
+    lockedAuthorities: 0,
+    timelockExpires: null,
+    transactions: 1,
+  }]);
+
+  await addToAddressTable(mysql, [{
+    address: ADDRESSES[1],
+    index: 1,
+    walletId: 'my-wallet',
+    transactions: 0,
+  }]);
 
   const event = makeGatewayEvent(null, JSON.stringify({
     id: 'my-wallet',
@@ -410,7 +526,12 @@ test('POST /txproposals two tokens, both with change output', async () => {
   expect.hasAssertions();
 
   await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
-  await addToAddressTable(mysql, [[ADDRESSES[0], 0, 'my-wallet', 2]]);
+  await addToAddressTable(mysql, [{
+    address: ADDRESSES[0],
+    index: 0,
+    walletId: 'my-wallet',
+    transactions: 2,
+  }]);
 
   const utxos = [
     ['txSuccess0', 0, 'token1', ADDRESSES[0], 300, 0, null, null, false],
@@ -418,8 +539,32 @@ test('POST /txproposals two tokens, both with change output', async () => {
     ['txSuccess2', 0, 'token2', ADDRESSES[0], 300, 0, null, null, false],
   ];
   await addToUtxoTable(mysql, utxos);
-  await addToWalletBalanceTable(mysql, [['my-wallet', 'token1', 400, 0, 0, 0, null, 2], ['my-wallet', 'token2', 300, 0, 0, 0, null, 1]]);
-  await addToAddressTable(mysql, [[ADDRESSES[1], 1, 'my-wallet', 0]]);
+  await addToWalletBalanceTable(mysql, [{
+    walletId: 'my-wallet',
+    tokenId: 'token1',
+    unlockedBalance: 400,
+    lockedBalance: 0,
+    unlockedAuthorities: 0,
+    lockedAuthorities: 0,
+    timelockExpires: null,
+    transactions: 2,
+  }, {
+    walletId: 'my-wallet',
+    tokenId: 'token2',
+    unlockedBalance: 300,
+    lockedBalance: 0,
+    unlockedAuthorities: 0,
+    lockedAuthorities: 0,
+    timelockExpires: null,
+    transactions: 1,
+  }]);
+
+  await addToAddressTable(mysql, [{
+    address: ADDRESSES[1],
+    index: 1,
+    walletId: 'my-wallet',
+    transactions: 0,
+  }]);
 
   const event = makeGatewayEvent(null, JSON.stringify({
     id: 'my-wallet',
@@ -474,7 +619,12 @@ test('PUT /txproposals/{proposalId}', async () => {
   });
 
   await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
-  await addToAddressTable(mysql, [[ADDRESSES[0], 0, 'my-wallet', 2]]);
+  await addToAddressTable(mysql, [{
+    address: ADDRESSES[0],
+    index: 0,
+    walletId: 'my-wallet',
+    transactions: 2,
+  }]);
 
   const utxos = [
     ['00000000000000001650cd208a2bcff09dce8af88d1b07097ef0efdba4aacbaa', 0, 'token1', ADDRESSES[0], 300, 0, null, null, false],
@@ -483,11 +633,32 @@ test('PUT /txproposals/{proposalId}', async () => {
   ];
 
   await addToUtxoTable(mysql, utxos);
-  await addToWalletBalanceTable(mysql, [
-    ['my-wallet', 'token1', 400, 0, 0, 0, null, 2],
-    ['my-wallet', 'token2', 300, 0, 0, 0, null, 1],
-  ]);
-  await addToAddressTable(mysql, [['HFxhB69vk5PCdvVpRtk5bB27ujP68jPKe2', 1, 'my-wallet', 0]]);
+  await addToWalletBalanceTable(mysql, [{
+    walletId: 'my-wallet',
+    tokenId: 'token1',
+    unlockedBalance: 400,
+    lockedBalance: 0,
+    unlockedAuthorities: 0,
+    lockedAuthorities: 0,
+    timelockExpires: null,
+    transactions: 2,
+  }, {
+    walletId: 'my-wallet',
+    tokenId: 'token2',
+    unlockedBalance: 300,
+    lockedBalance: 0,
+    unlockedAuthorities: 0,
+    lockedAuthorities: 0,
+    timelockExpires: null,
+    transactions: 1,
+  }]);
+
+  await addToAddressTable(mysql, [{
+    address: 'HFxhB69vk5PCdvVpRtk5bB27ujP68jPKe2',
+    index: 1,
+    walletId: 'my-wallet',
+    transactions: 0,
+  }]);
 
   const txCreateEvent = makeGatewayEvent(null,
     JSON.stringify({
@@ -500,8 +671,8 @@ test('PUT /txproposals/{proposalId}', async () => {
   const txCreateResult = await txProposalCreate(txCreateEvent, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(txCreateResult.body as string);
 
-  const signature = buffer.Buffer(20);
-  const pubkeyBytes = buffer.Buffer(30);
+  const signature = new buffer.Buffer(20);
+  const pubkeyBytes = new buffer.Buffer(30);
 
   const txSendEvent = makeGatewayEvent({ txProposalId: returnBody.txProposalId }, JSON.stringify({
     inputsSignatures: [
@@ -531,7 +702,12 @@ test('PUT /txproposals/{proposalId} with an empty body should fail with ApiError
   expect.hasAssertions();
 
   await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
-  await addToAddressTable(mysql, [[ADDRESSES[0], 0, 'my-wallet', 2]]);
+  await addToAddressTable(mysql, [{
+    address: ADDRESSES[0],
+    index: 0,
+    walletId: 'my-wallet',
+    transactions: 2,
+  }]);
 
   const utxos = [
     ['00000000000000001650cd208a2bcff09dce8af88d1b07097ef0efdba4aacbaa', 0, 'token1', ADDRESSES[0], 300, 0, null, null, false],
@@ -540,11 +716,32 @@ test('PUT /txproposals/{proposalId} with an empty body should fail with ApiError
   ];
 
   await addToUtxoTable(mysql, utxos);
-  await addToWalletBalanceTable(mysql, [
-    ['my-wallet', 'token1', 400, 0, 0, 0, null, 2],
-    ['my-wallet', 'token2', 300, 0, 0, 0, null, 1],
-  ]);
-  await addToAddressTable(mysql, [['HFxhB69vk5PCdvVpRtk5bB27ujP68jPKe2', 1, 'my-wallet', 0]]);
+  await addToWalletBalanceTable(mysql, [{
+    walletId: 'my-wallet',
+    tokenId: 'token1',
+    unlockedBalance: 400,
+    lockedBalance: 0,
+    unlockedAuthorities: 0,
+    lockedAuthorities: 0,
+    timelockExpires: null,
+    transactions: 2,
+  }, {
+    walletId: 'my-wallet',
+    tokenId: 'token2',
+    unlockedBalance: 300,
+    lockedBalance: 0,
+    unlockedAuthorities: 0,
+    lockedAuthorities: 0,
+    timelockExpires: null,
+    transactions: 1,
+  }]);
+
+  await addToAddressTable(mysql, [{
+    address: 'HFxhB69vk5PCdvVpRtk5bB27ujP68jPKe2',
+    index: 1,
+    walletId: 'my-wallet',
+    transactions: 0,
+  }]);
 
   const txCreateEvent = makeGatewayEvent(null,
     JSON.stringify({
@@ -605,7 +802,12 @@ test('PUT /txproposals/{proposalId} on a proposal which status is not OPEN or SE
   expect.hasAssertions();
 
   await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
-  await addToAddressTable(mysql, [[ADDRESSES[0], 0, 'my-wallet', 2]]);
+  await addToAddressTable(mysql, [{
+    address: ADDRESSES[0],
+    index: 0,
+    walletId: 'my-wallet',
+    transactions: 2,
+  }]);
 
   const utxos = [
     ['00000000000000001650cd208a2bcff09dce8af88d1b07097ef0efdba4aacbaa', 0, 'token1', ADDRESSES[0], 300, 0, null, null, false],
@@ -614,11 +816,32 @@ test('PUT /txproposals/{proposalId} on a proposal which status is not OPEN or SE
   ];
 
   await addToUtxoTable(mysql, utxos);
-  await addToWalletBalanceTable(mysql, [
-    ['my-wallet', 'token1', 400, 0, 0, 0, null, 2],
-    ['my-wallet', 'token2', 300, 0, 0, 0, null, 1],
-  ]);
-  await addToAddressTable(mysql, [['HFxhB69vk5PCdvVpRtk5bB27ujP68jPKe2', 1, 'my-wallet', 0]]);
+  await addToWalletBalanceTable(mysql, [{
+    walletId: 'my-wallet',
+    tokenId: 'token1',
+    unlockedBalance: 400,
+    lockedBalance: 0,
+    unlockedAuthorities: 0,
+    lockedAuthorities: 0,
+    timelockExpires: null,
+    transactions: 2,
+  }, {
+    walletId: 'my-wallet',
+    tokenId: 'token2',
+    unlockedBalance: 300,
+    lockedBalance: 0,
+    unlockedAuthorities: 0,
+    lockedAuthorities: 0,
+    timelockExpires: null,
+    transactions: 1,
+  }]);
+
+  await addToAddressTable(mysql, [{
+    address: 'HFxhB69vk5PCdvVpRtk5bB27ujP68jPKe2',
+    index: 1,
+    walletId: 'my-wallet',
+    transactions: 0,
+  }]);
 
   const txCreateEvent = makeGatewayEvent(null,
     JSON.stringify({
@@ -682,7 +905,12 @@ test('PUT /txproposals/{proposalId} with an invalid weight should fail with ApiE
   });
 
   await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
-  await addToAddressTable(mysql, [[ADDRESSES[0], 0, 'my-wallet', 2]]);
+  await addToAddressTable(mysql, [{
+    address: ADDRESSES[0],
+    index: 0,
+    walletId: 'my-wallet',
+    transactions: 2,
+  }]);
 
   const utxos = [
     ['00000000000000001650cd208a2bcff09dce8af88d1b07097ef0efdba4aacbaa', 0, 'token1', ADDRESSES[0], 300, 0, null, null, false],
@@ -691,11 +919,32 @@ test('PUT /txproposals/{proposalId} with an invalid weight should fail with ApiE
   ];
 
   await addToUtxoTable(mysql, utxos);
-  await addToWalletBalanceTable(mysql, [
-    ['my-wallet', 'token1', 400, 0, 0, 0, null, 2],
-    ['my-wallet', 'token2', 300, 0, 0, 0, null, 1],
-  ]);
-  await addToAddressTable(mysql, [['HFxhB69vk5PCdvVpRtk5bB27ujP68jPKe2', 1, 'my-wallet', 0]]);
+  await addToWalletBalanceTable(mysql, [{
+    walletId: 'my-wallet',
+    tokenId: 'token1',
+    unlockedBalance: 400,
+    lockedBalance: 0,
+    unlockedAuthorities: 0,
+    lockedAuthorities: 0,
+    timelockExpires: null,
+    transactions: 2,
+  }, {
+    walletId: 'my-wallet',
+    tokenId: 'token2',
+    unlockedBalance: 300,
+    lockedBalance: 0,
+    unlockedAuthorities: 0,
+    lockedAuthorities: 0,
+    timelockExpires: null,
+    transactions: 1,
+  }]);
+
+  await addToAddressTable(mysql, [{
+    address: 'HFxhB69vk5PCdvVpRtk5bB27ujP68jPKe2',
+    index: 1,
+    walletId: 'my-wallet',
+    transactions: 0,
+  }]);
 
   const txCreateEvent = makeGatewayEvent(null,
     JSON.stringify({
@@ -708,8 +957,8 @@ test('PUT /txproposals/{proposalId} with an invalid weight should fail with ApiE
   const txCreateResult = await txProposalCreate(txCreateEvent, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(txCreateResult.body as string);
 
-  const signature = buffer.Buffer(20);
-  const pubkeyBytes = buffer.Buffer(30);
+  const signature = new buffer.Buffer(20);
+  const pubkeyBytes = new buffer.Buffer(30);
 
   const txSendEvent = makeGatewayEvent({ txProposalId: returnBody.txProposalId }, JSON.stringify({
     inputsSignatures: [
@@ -761,7 +1010,12 @@ test('PUT /txproposals/{proposalId} with an invalid txHex should fail and update
   });
 
   await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
-  await addToAddressTable(mysql, [[ADDRESSES[0], 0, 'my-wallet', 2]]);
+  await addToAddressTable(mysql, [{
+    address: ADDRESSES[0],
+    index: 0,
+    walletId: 'my-wallet',
+    transactions: 2,
+  }]);
 
   const utxos = [
     ['00000000000000001650cd208a2bcff09dce8af88d1b07097ef0efdba4aacbaa', 0, 'token1', ADDRESSES[0], 300, 0, null, null, false],
@@ -770,11 +1024,32 @@ test('PUT /txproposals/{proposalId} with an invalid txHex should fail and update
   ];
 
   await addToUtxoTable(mysql, utxos);
-  await addToWalletBalanceTable(mysql, [
-    ['my-wallet', 'token1', 400, 0, 0, 0, null, 2],
-    ['my-wallet', 'token2', 300, 0, 0, 0, null, 1],
-  ]);
-  await addToAddressTable(mysql, [['HFxhB69vk5PCdvVpRtk5bB27ujP68jPKe2', 1, 'my-wallet', 0]]);
+  await addToWalletBalanceTable(mysql, [{
+    walletId: 'my-wallet',
+    tokenId: 'token1',
+    unlockedBalance: 400,
+    lockedBalance: 0,
+    unlockedAuthorities: 0,
+    lockedAuthorities: 0,
+    timelockExpires: null,
+    transactions: 2,
+  }, {
+    walletId: 'my-wallet',
+    tokenId: 'token2',
+    unlockedBalance: 300,
+    lockedBalance: 0,
+    unlockedAuthorities: 0,
+    lockedAuthorities: 0,
+    timelockExpires: null,
+    transactions: 1,
+  }]);
+
+  await addToAddressTable(mysql, [{
+    address: 'HFxhB69vk5PCdvVpRtk5bB27ujP68jPKe2',
+    index: 1,
+    walletId: 'my-wallet',
+    transactions: 0,
+  }]);
 
   const txCreateEvent = makeGatewayEvent(null,
     JSON.stringify({
@@ -787,8 +1062,8 @@ test('PUT /txproposals/{proposalId} with an invalid txHex should fail and update
   const txCreateResult = await txProposalCreate(txCreateEvent, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(txCreateResult.body as string);
 
-  const signature = buffer.Buffer(20);
-  const pubkeyBytes = buffer.Buffer(30);
+  const signature = new buffer.Buffer(20);
+  const pubkeyBytes = new buffer.Buffer(30);
 
   const txSendEvent = makeGatewayEvent({ txProposalId: returnBody.txProposalId }, JSON.stringify({
     inputsSignatures: [
@@ -840,7 +1115,12 @@ test('PUT /txproposals/{proposalId} should update tx_proposal to SEND_ERROR on f
   });
 
   await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
-  await addToAddressTable(mysql, [[ADDRESSES[0], 0, 'my-wallet', 2]]);
+  await addToAddressTable(mysql, [{
+    address: ADDRESSES[0],
+    index: 0,
+    walletId: 'my-wallet',
+    transactions: 2,
+  }]);
 
   const utxos = [
     ['00000000000000001650cd208a2bcff09dce8af88d1b07097ef0efdba4aacbaa', 0, 'token1', ADDRESSES[0], 300, 0, null, null, false],
@@ -849,11 +1129,32 @@ test('PUT /txproposals/{proposalId} should update tx_proposal to SEND_ERROR on f
   ];
 
   await addToUtxoTable(mysql, utxos);
-  await addToWalletBalanceTable(mysql, [
-    ['my-wallet', 'token1', 400, 0, 0, 0, null, 2],
-    ['my-wallet', 'token2', 300, 0, 0, 0, null, 1],
-  ]);
-  await addToAddressTable(mysql, [['HFxhB69vk5PCdvVpRtk5bB27ujP68jPKe2', 1, 'my-wallet', 0]]);
+  await addToWalletBalanceTable(mysql, [{
+    walletId: 'my-wallet',
+    tokenId: 'token1',
+    unlockedBalance: 400,
+    lockedBalance: 0,
+    unlockedAuthorities: 0,
+    lockedAuthorities: 0,
+    timelockExpires: null,
+    transactions: 2,
+  }, {
+    walletId: 'my-wallet',
+    tokenId: 'token2',
+    unlockedBalance: 300,
+    lockedBalance: 0,
+    unlockedAuthorities: 0,
+    lockedAuthorities: 0,
+    timelockExpires: null,
+    transactions: 1,
+  }]);
+
+  await addToAddressTable(mysql, [{
+    address: 'HFxhB69vk5PCdvVpRtk5bB27ujP68jPKe2',
+    index: 1,
+    walletId: 'my-wallet',
+    transactions: 0,
+  }]);
 
   const txCreateEvent = makeGatewayEvent(null,
     JSON.stringify({
@@ -866,8 +1167,8 @@ test('PUT /txproposals/{proposalId} should update tx_proposal to SEND_ERROR on f
   const txCreateResult = await txProposalCreate(txCreateEvent, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(txCreateResult.body as string);
 
-  const signature = buffer.Buffer(20);
-  const pubkeyBytes = buffer.Buffer(30);
+  const signature = new buffer.Buffer(20);
+  const pubkeyBytes = new buffer.Buffer(30);
 
   const txSendEvent = makeGatewayEvent({ txProposalId: returnBody.txProposalId }, JSON.stringify({
     inputsSignatures: [
@@ -896,7 +1197,12 @@ test('DELETE /txproposals/{proposalId} should delete a tx_proposal and remove th
   expect.hasAssertions();
 
   await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
-  await addToAddressTable(mysql, [[ADDRESSES[0], 0, 'my-wallet', 2]]);
+  await addToAddressTable(mysql, [{
+    address: ADDRESSES[0],
+    index: 0,
+    walletId: 'my-wallet',
+    transactions: 2,
+  }]);
 
   const utxos = [
     ['00000000000000001650cd208a2bcff09dce8af88d1b07097ef0efdba4aacbaa', 0, 'token1', ADDRESSES[0], 300, 0, null, null, false],
@@ -905,11 +1211,32 @@ test('DELETE /txproposals/{proposalId} should delete a tx_proposal and remove th
   ];
 
   await addToUtxoTable(mysql, utxos);
-  await addToWalletBalanceTable(mysql, [
-    ['my-wallet', 'token1', 400, 0, 0, 0, null, 2],
-    ['my-wallet', 'token2', 300, 0, 0, 0, null, 1],
-  ]);
-  await addToAddressTable(mysql, [['HFxhB69vk5PCdvVpRtk5bB27ujP68jPKe2', 1, 'my-wallet', 0]]);
+  await addToWalletBalanceTable(mysql, [{
+    walletId: 'my-wallet',
+    tokenId: 'token1',
+    unlockedBalance: 400,
+    lockedBalance: 0,
+    unlockedAuthorities: 0,
+    lockedAuthorities: 0,
+    timelockExpires: null,
+    transactions: 2,
+  }, {
+    walletId: 'my-wallet',
+    tokenId: 'token2',
+    unlockedBalance: 300,
+    lockedBalance: 0,
+    unlockedAuthorities: 0,
+    lockedAuthorities: 0,
+    timelockExpires: null,
+    transactions: 1,
+  }]);
+
+  await addToAddressTable(mysql, [{
+    address: 'HFxhB69vk5PCdvVpRtk5bB27ujP68jPKe2',
+    index: 1,
+    walletId: 'my-wallet',
+    transactions: 0,
+  }]);
 
   const txCreateEvent = makeGatewayEvent(null,
     JSON.stringify({

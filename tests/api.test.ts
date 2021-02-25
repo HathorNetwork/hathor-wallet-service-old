@@ -409,7 +409,12 @@ test('POST /txproposals params validation', async () => {
   expect.hasAssertions();
 
   await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
-  await addToAddressTable(mysql, [['address', 0, 'my-wallet', 2]]);
+  await addToAddressTable(mysql, [{
+    address: 'address',
+    index: 0,
+    walletId: 'my-wallet',
+    transactions: 2,
+  }]);
 
   // invalid body
   let event = makeGatewayEvent({ id: 'my-wallet' });
@@ -503,11 +508,29 @@ test('POST /txproposals inputs error', async () => {
   expect.hasAssertions();
 
   await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
-  await addToAddressTable(mysql, [[ADDRESSES[0], 0, 'my-wallet', 2]]);
+  await addToAddressTable(mysql, [{
+    address: ADDRESSES[0],
+    index: 0,
+    walletId: 'my-wallet',
+    transactions: 2,
+  }]);
 
   // insufficient funds
-  await addToTokenTable(mysql, [['token1', 'MyToken1', 'MTK1']]);
-  await addToWalletBalanceTable(mysql, [['my-wallet', 'token1', 10, 0, 0, 0, null, 3]]);
+  await addToTokenTable(mysql, [{
+    id: 'token1',
+    name: 'MyToken1',
+    symbol: 'MTK1',
+  }]);
+  await addToWalletBalanceTable(mysql, [{
+    walletId: 'my-wallet',
+    tokenId: 'token1',
+    unlockedBalance: 10,
+    lockedBalance: 0,
+    unlockedAuthorities: 0,
+    lockedAuthorities: 0,
+    timelockExpires: null,
+    transactions: 3,
+  }]);
   let event = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet', outputs: [[ADDRESSES[0], 20, 'token1', 100000]] }));
   let result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
   let returnBody = JSON.parse(result.body as string);
@@ -517,8 +540,21 @@ test('POST /txproposals inputs error', async () => {
   expect(returnBody.insufficient[0]).toStrictEqual({ tokenId: 'token1', requested: 20, available: 10 });
 
   // too many inputs
-  await addToTokenTable(mysql, [['token2', 'MyToken2', 'MTK2']]);
-  await addToWalletBalanceTable(mysql, [['my-wallet', 'token2', 300, 0, 0, 0, null, 300]]);
+  await addToTokenTable(mysql, [{
+    id: 'token2',
+    name: 'MyToken2',
+    symbol: 'MTK2',
+  }]);
+  await addToWalletBalanceTable(mysql, [{
+    walletId: 'my-wallet',
+    tokenId: 'token2',
+    unlockedBalance: 300,
+    lockedBalance: 0,
+    unlockedAuthorities: 0,
+    lockedAuthorities: 0,
+    timelockExpires: null,
+    transactions: 300,
+  }]);
   const utxos = [];
   for (let i = 0; i < 300; i++) {
     utxos.push([`tx${i}`, 0, 'token2', ADDRESSES[0], 1, 0, null, null, false]);
@@ -555,7 +591,12 @@ test('POST /txproposals outputs error', async () => {
   expect.hasAssertions();
 
   await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
-  await addToAddressTable(mysql, [[ADDRESSES[0], 0, 'my-wallet', 2]]);
+  await addToAddressTable(mysql, [{
+    address: ADDRESSES[0],
+    index: 0,
+    walletId: 'my-wallet',
+    transactions: 2,
+  }]);
 
   // too many outputs (sent by user)
   let outputs = [];
@@ -573,7 +614,16 @@ test('POST /txproposals outputs error', async () => {
   // too many outputs (after adding change output)
   const utxos = [['txBig', 0, 'token2', ADDRESSES[0], 300, 0, null, null, false]];
   await addToUtxoTable(mysql, utxos);
-  await addToWalletBalanceTable(mysql, [['my-wallet', 'token2', 300, 0, 0, 0, null, 300]]);
+  await addToWalletBalanceTable(mysql, [{
+    walletId: 'my-wallet',
+    tokenId: 'token2',
+    unlockedBalance: 300,
+    lockedBalance: 0,
+    unlockedAuthorities: 0,
+    lockedAuthorities: 0,
+    timelockExpires: null,
+    transactions: 300,
+  }]);
   outputs = [];
   for (let i = 0; i < 255; i++) {
     outputs.push([ADDRESSES[0], 1, 'token2', null]);

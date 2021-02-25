@@ -367,6 +367,10 @@ export class TokenBalanceMap {
     this.map[tokenId] = balance;
   }
 
+  getTokens(): string[] {
+    return Object.keys(this.map);
+  }
+
   iterator(): [string, Balance][] {
     return Object.entries(this.map);
   }
