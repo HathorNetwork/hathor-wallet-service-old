@@ -129,7 +129,9 @@ export const create: APIGatewayProxyHandler = async (event) => {
   }
 
   const inputSelectionAlgo = (function getInputAlgoFromBody() {
-    if (!body.inputSelectionAlgo) return InputSelectionAlgo.USE_LARGER_UTXOS;
+    if (!body.inputSelectionAlgo) {
+      return InputSelectionAlgo.USE_LARGER_UTXOS;
+    }
 
     return InputSelectionAlgo[body.inputSelectionAlgo];
   }());
