@@ -230,8 +230,7 @@ export const create: APIGatewayProxyHandler = async (event) => {
 
   const finalOutputs = outputs.concat(changeOutputs);
 
-  // TODO get limit from the full-node (https://github.com/HathorNetwork/hathor-wallet-service/issues/12)
-  if (finalOutputs.length > 255) {
+  if (finalOutputs.length > hathorLib.transaction.getMaxOutputsConstant()) {
     // we also need to do this check here, as we may have added change outputs
     await closeDbConnection(mysql);
     return {
