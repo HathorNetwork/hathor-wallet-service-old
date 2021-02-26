@@ -4,17 +4,8 @@ import {
   getWalletBalanceMap,
   markLockedOutputs,
   unlockUtxos,
-  maybeRefreshWalletConstants,
-  searchForLatestValidBlock,
 } from '@src/commons';
-import {
-  FullNodeVersionData,
-  Authorities,
-  Balance,
-  TokenBalanceMap,
-  DbTxOutput,
-  Block,
-} from '@src/types';
+import { Authorities, Balance, TokenBalanceMap, Utxo } from '@src/types';
 import { closeDbConnection, getDbConnection } from '@src/utils';
 import {
   addToAddressTable,
@@ -28,15 +19,7 @@ import {
   checkWalletBalanceTable,
   createInput,
   createOutput,
-  TX_IDS,
 } from '@tests/utils';
-import {
-  updateVersionData,
-  addOrUpdateTx,
-} from '@src/db';
-
-import * as Utils from '@src/utils';
-import hathorLib from '@hathor/wallet-lib';
 
 const mysql = getDbConnection();
 const OLD_ENV = process.env;
@@ -72,9 +55,9 @@ test('markLockedOutputs and getAddressBalanceMap', () => {
     createInput(3, 'address2', 'inputTx', 2, 'token1'),
   ];
   tx.outputs = [
-    createOutput(0, 5, 'address1', 'token1'),
-    createOutput(1, 2, 'address1', 'token3'),
-    createOutput(2, 11, 'address2', 'token1'),
+    createOutput(5, 'address1', 'token1'),
+    createOutput(2, 'address1', 'token3'),
+    createOutput(11, 'address2', 'token1'),
   ];
   const map1 = new TokenBalanceMap();
   map1.set('token1', new Balance(-10, 0));
@@ -114,7 +97,7 @@ test('markLockedOutputs and getAddressBalanceMap', () => {
   // a block will have its rewards locked, even with no timelock
   tx.inputs = [];
   tx.outputs = [
-    createOutput(0, 100, 'address1', 'token1'),
+    createOutput(100, 'address1', 'token1'),
   ];
   markLockedOutputs(tx.outputs, now, true);
   for (const output of tx.outputs) {
@@ -134,8 +117,8 @@ test('markLockedOutputs and getAddressBalanceMap', () => {
     createInput(0b10, 'address1', 'inputTx', 1, 'token2', null, 129),
   ];
   tx.outputs = [
-    createOutput(0, 0b01, 'address1', 'token1', null, false, 129),
-    createOutput(1, 0b10, 'address1', 'token2', 1000, true, 129),
+    createOutput(0b01, 'address1', 'token1', null, false, 129),
+    createOutput(0b10, 'address1', 'token2', 1000, true, 129),
   ];
   const map4 = new TokenBalanceMap();
   map4.set('token1', new Balance(0, 0, null));
@@ -221,29 +204,19 @@ test('unlockUtxos', async () => {
     [walletId, 'xpub', 'ready', 10, now, now + 1],
   ]);
 
-  await addToAddressTable(mysql, [{
-    address: addr,
-    index: 0,
-    walletId,
-    transactions: 1,
-  }]);
+  await addToAddressTable(mysql, [
+    [addr, 0, walletId, 1],
+  ]);
 
   await addToAddressBalanceTable(mysql, [
     [addr, token, 0, 2 * reward + 5000, now, 5, 0, 0b10],
   ]);
 
-  await addToWalletBalanceTable(mysql, [{
-    walletId,
-    tokenId: token,
-    unlockedBalance: 0,
-    lockedBalance: 2 * reward + 5000,
-    unlockedAuthorities: 0,
-    lockedAuthorities: 0b10,
-    timelockExpires: now,
-    transactions: 5,
-  }]);
+  await addToWalletBalanceTable(mysql, [
+    [walletId, token, 0, 2 * reward + 5000, 0, 0b10, now, 5],
+  ]);
 
-  const utxo: DbTxOutput = {
+  const utxo: Utxo = {
     txId: txId1,
     index: 0,
     tokenId: token,
@@ -309,118 +282,4 @@ test('unlockUtxos', async () => {
   ).resolves.toBe(true);
   await expect(checkAddressBalanceTable(mysql, 1, addr, token, 2 * reward + 5000, 0, null, 5, 0b10, 0)).resolves.toBe(true);
   await expect(checkWalletBalanceTable(mysql, 1, walletId, token, 2 * reward + 5000, 0, null, 5, 0b10, 0)).resolves.toBe(true);
-});
-
-test('maybeRefreshWalletConstants with an uninitialized version_data database should call hathorLib.version.checkApiVersion()', async () => {
-  expect.hasAssertions();
-
-  const spy = jest.spyOn(hathorLib.axios, 'createRequestInstance');
-
-  const mockGet = jest.fn(() => Promise.resolve({
-    data: {
-      success: true,
-      version: '0.38.0',
-      network: 'mainnet',
-      min_weight: 14,
-      min_tx_weight: 14,
-      min_tx_weight_coefficient: 1.6,
-      min_tx_weight_k: 100,
-      token_deposit_percentage: 0.01,
-      reward_spend_min_blocks: 300,
-      max_number_inputs: 255,
-      max_number_outputs: 255,
-    },
-  }));
-
-  spy.mockReturnValue({
-    post: () => Promise.resolve({
-      data: {
-        success: true,
-      },
-    }),
-    get: mockGet,
-  });
-
-  await maybeRefreshWalletConstants(mysql);
-
-  expect(mockGet).toHaveBeenCalledTimes(1);
-});
-
-test('maybeRefreshWalletConstants with an initialized version_data database should query data from the database', async () => {
-  expect.hasAssertions();
-
-  const axiosSpy = jest.spyOn(hathorLib.axios, 'createRequestInstance');
-  const mockGet = jest.fn(() => Promise.resolve({ data: {} }));
-
-  axiosSpy.mockReturnValue({ get: mockGet });
-
-  const mockedVersionData: FullNodeVersionData = {
-    timestamp: new Date().getTime(),
-    version: '0.38.0',
-    network: 'mainnet',
-    minWeight: 14,
-    minTxWeight: 14,
-    minTxWeightCoefficient: 1.6,
-    minTxWeightK: 100,
-    tokenDepositPercentage: 0.01,
-    rewardSpendMinBlocks: 300,
-    maxNumberInputs: 255,
-    maxNumberOutputs: 255,
-  };
-
-  await updateVersionData(mysql, mockedVersionData);
-
-  await maybeRefreshWalletConstants(mysql);
-
-  const {
-    txMinWeight,
-    txWeightCoefficient,
-    txMinWeightK,
-  } = hathorLib.transaction.getTransactionWeightConstants();
-
-  const maxNumberInputs = hathorLib.transaction.getMaxInputsConstant();
-  const maxNumberOutputs = hathorLib.transaction.getMaxOutputsConstant();
-
-  expect(mockGet).toHaveBeenCalledTimes(0);
-  expect(txMinWeight).toStrictEqual(mockedVersionData.minTxWeight);
-  expect(txWeightCoefficient).toStrictEqual(mockedVersionData.minTxWeightCoefficient);
-  expect(txMinWeightK).toStrictEqual(mockedVersionData.minTxWeightK);
-  expect(maxNumberInputs).toStrictEqual(mockedVersionData.maxNumberInputs);
-  expect(maxNumberOutputs).toStrictEqual(mockedVersionData.maxNumberOutputs);
-});
-
-test('searchForLatestValidBlock should find the first voided block', async () => {
-  expect.hasAssertions();
-
-  const spy = jest.spyOn(Utils, 'isTxVoided');
-
-  const mockImplementation = jest.fn(async (block: string): Promise<[boolean, any]> => {
-    const voidedList = [
-      '0000000f1fbb4bd8a8e71735af832be210ac9a6c1e2081b21faeea3c0f5797f7',
-      '00000649d769de25fcca204faaa23d4974d00fcb01130ab3f736fade4013598d',
-      '000002e185a37162bbcb1ec43576056638f0fad43648ae070194d1e1105f339a',
-      '00000597288221301f856e245579e7d32cea3e257330f9cb10178bb487b343e5',
-    ];
-
-    if (voidedList.indexOf(block) > -1) {
-      return [true, {}];
-    }
-
-    return [false, {}];
-  });
-
-  spy.mockImplementation(mockImplementation);
-
-  const mockData: Block[] = TX_IDS.map((tx, index) => ({
-    txId: tx,
-    height: index,
-  }));
-
-  for (let i = 0; i < mockData.length; i++) {
-    await addOrUpdateTx(mysql, mockData[i].txId, mockData[i].height, i, 0);
-  }
-
-  const result = await searchForLatestValidBlock(mysql);
-
-  expect(result.txId).toStrictEqual('000005cbcb8b29f74446a260cd7d36fab3cba1295ac9fe904795d7b064e0e53c');
 });
