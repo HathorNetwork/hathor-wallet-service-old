@@ -331,7 +331,7 @@ export const getOutputsBalance = (outputs: IWalletOutput[], now: number): TokenB
       decoded,
       value: output.value,
       token: output.token,
-      // TODO not handling authority outputs
+      // This is being done in https://github.com/HathorNetwork/hathor-wallet-service/pull/13
       token_data: 0,
       script: null,
       spent_by: null,
