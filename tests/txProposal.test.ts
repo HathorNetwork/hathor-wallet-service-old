@@ -465,7 +465,7 @@ test('POST /txproposals use two UTXOs and add change output', async () => {
   await _checkTxProposalTables(returnBody.txProposalId, returnBody.inputs, returnBody.outputs);
 });
 
-test('POST /txproposals with invalid inputSelectionAlgo should fail with ApiError.INVALID_SELECTION_ALGO', async () => {
+test('POST /txproposals with invalid inputSelectionAlgo should fail with ApiError.INVALID_SELECTION_ALGORITHM', async () => {
   expect.hasAssertions();
 
   await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
@@ -511,7 +511,7 @@ test('POST /txproposals with invalid inputSelectionAlgo should fail with ApiErro
   const event = makeGatewayEvent(null, JSON.stringify({
     id: 'my-wallet',
     outputs: [[ADDRESSES[0], 320, 'token1', null]],
-    inputSelectionAlgo: 'INVALID_SELECTION_ALGO',
+    inputSelectionAlgo: 'INVALID_SELECTION_ALGORITHM',
   }));
 
   const result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
@@ -519,7 +519,7 @@ test('POST /txproposals with invalid inputSelectionAlgo should fail with ApiErro
 
   expect(result.statusCode).toBe(200);
   expect(returnBody.success).toBe(false);
-  expect(returnBody.error).toBe(ApiError.INVALID_SELECTION_ALGO);
+  expect(returnBody.error).toBe(ApiError.INVALID_SELECTION_ALGORITHM);
 });
 
 test('POST /txproposals two tokens, both with change output', async () => {
