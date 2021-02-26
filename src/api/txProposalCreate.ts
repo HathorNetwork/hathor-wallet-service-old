@@ -139,7 +139,7 @@ export const create: APIGatewayProxyHandler = async (event) => {
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ success: false, error: ApiError.INVALID_SELECTION_ALGO }),
+      body: JSON.stringify({ success: false, error: ApiError.INVALID_SELECTION_ALGORITHM }),
     };
   }
 
