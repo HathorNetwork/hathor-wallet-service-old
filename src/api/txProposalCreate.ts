@@ -284,8 +284,9 @@ export const parseValidateOutputs = (outputs: unknown[]): IWalletOutput[] => {
       return null;
     }
 
-    if (typeof parsed.address !== 'string' || typeof parsed.value !== 'number'
-      || typeof parsed.token !== 'string' || (parsed.timelock !== null && typeof parsed.timelock !== 'number')) {
+    if (!Number.isInteger(parsed.value)
+        || typeof parsed.token !== 'string'
+        || (parsed.timelock !== null && !Number.isInteger(parsed.timelock))) {
       // types are not correct
       return null;
     }
@@ -307,7 +308,7 @@ export const parseValidateInputs = (inputs: unknown[]): IWalletInput[] => {
       txId: input[0],
       index: input[1],
     };
-    if (typeof parsed.txId !== 'string' || typeof parsed.index !== 'number') {
+    if (typeof parsed.txId !== 'string' || !Number.isInteger(parsed.index)) {
       // types are not correct
       return null;
     }
