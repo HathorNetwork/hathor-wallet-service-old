@@ -239,7 +239,10 @@ export const create: APIGatewayProxyHandler = async (event) => {
     };
   }
 
-  // shuffle array
+  /**
+   * We shuffle the array to prevent the change address from always being the last output so we can give some more
+   * privacy to the user
+   */
   arrayShuffle(finalOutputs);
 
   // mark utxos with tx-proposal id
