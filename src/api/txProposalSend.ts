@@ -47,6 +47,7 @@ const bodySchema = Joi.object({
   weight: Joi.number()
     .required(),
   nonce: Joi.number()
+    .integer()
     .required(),
   inputsSignatures: Joi.array()
     .required(),
