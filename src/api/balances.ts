@@ -14,7 +14,11 @@ import { getWalletBalances } from '@src/commons';
 import {
   getWallet,
 } from '@src/db';
-import { closeDbConnection, getDbConnection, getUnixTimestamp } from '@src/utils';
+import {
+  closeDbConnection,
+  getDbConnection,
+  getUnixTimestamp,
+} from '@src/utils';
 
 const mysql = getDbConnection();
 

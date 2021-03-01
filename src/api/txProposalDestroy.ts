@@ -10,6 +10,7 @@ import {
 } from '@src/db';
 import { TxProposalStatus } from '@src/types';
 import { closeDbConnection, getDbConnection, getUnixTimestamp } from '@src/utils';
+import { closeDbAndGetError } from '@src/api/utils';
 
 const mysql = getDbConnection();
 
@@ -25,32 +26,17 @@ export const destroy: APIGatewayProxyHandler = async (event) => {
   if (params && params.txProposalId) {
     txProposalId = params.txProposalId;
   } else {
-    await closeDbConnection(mysql);
-
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ success: false, error: ApiError.MISSING_PARAMETER, parameter: 'txProposalId' }),
-    };
+    return closeDbAndGetError(mysql, ApiError.MISSING_PARAMETER, { parameter: 'txProposalId' });
   }
 
   const txProposal = await getTxProposal(mysql, txProposalId);
 
   if (txProposal === null) {
-    await closeDbConnection(mysql);
-
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ success: false, error: ApiError.TX_PROPOSAL_NOT_FOUND }),
-    };
+    return closeDbAndGetError(mysql, ApiError.TX_PROPOSAL_NOT_FOUND);
   }
 
   if (txProposal.status !== TxProposalStatus.OPEN && txProposal.status !== TxProposalStatus.SEND_ERROR) {
-    await closeDbConnection(mysql);
-
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ success: false, error: ApiError.TX_PROPOSAL_NOT_OPEN }),
-    };
+    return closeDbAndGetError(mysql, ApiError.TX_PROPOSAL_NOT_OPEN);
   }
 
   const now = getUnixTimestamp();

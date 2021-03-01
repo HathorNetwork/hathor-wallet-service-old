@@ -217,6 +217,18 @@ const _checkTxProposalTables = async (txProposalId, inputs, outputs): Promise<vo
   expect(await getTxProposalOutputs(mysql, txProposalId)).toStrictEqual(outputs);
 };
 
+test('POST /txproposals with null as param should fail with ApiError.INVALID_PAYLOAD', async () => {
+  expect.hasAssertions();
+
+  const event = makeGatewayEvent(null, null);
+  const result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  const returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+});
+
 test('POST /txproposals one output and input', async () => {
   expect.hasAssertions();
 
@@ -267,7 +279,7 @@ test('POST /txproposals one output and input', async () => {
   const event = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet', outputs }));
   const result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(result.body as string);
-  expect(result.statusCode).toBe(200);
+  expect(result.statusCode).toBe(201);
   expect(returnBody.success).toBe(true);
   expect(returnBody.txProposalId).toHaveLength(36);
   expect(returnBody.inputs).toHaveLength(1);
@@ -326,7 +338,7 @@ test('POST /txproposals with utxos that are already used on another txproposal s
   const event = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet', outputs }));
   const result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(result.body as string);
-  expect(result.statusCode).toBe(200);
+  expect(result.statusCode).toBe(201);
   expect(returnBody.success).toBe(true);
   expect(returnBody.txProposalId).toHaveLength(36);
   expect(returnBody.inputs).toHaveLength(1);
@@ -391,7 +403,7 @@ test('POST /txproposals with a wallet that is not ready should fail with ApiErro
   const event = makeGatewayEvent(null, JSON.stringify({ id: 'not-ready-wallet', outputs }));
   const result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(result.body as string);
-  expect(result.statusCode).toBe(200);
+  expect(result.statusCode).toBe(400);
   expect(returnBody.success).toBe(false);
   expect(returnBody.error).toBe(ApiError.WALLET_NOT_READY);
 });
@@ -445,7 +457,7 @@ test('POST /txproposals use two UTXOs and add change output', async () => {
 
   const result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(result.body as string);
-  expect(result.statusCode).toBe(200);
+  expect(result.statusCode).toBe(201);
   expect(returnBody.success).toBe(true);
   expect(returnBody.txProposalId).toHaveLength(36);
   expect(returnBody.inputs).toHaveLength(2);
@@ -510,7 +522,7 @@ test('POST /txproposals with invalid inputSelectionAlgo should fail with ApiErro
   const result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(result.body as string);
 
-  expect(result.statusCode).toBe(200);
+  expect(result.statusCode).toBe(400);
   expect(returnBody.success).toBe(false);
   expect(returnBody.error).toBe(ApiError.INVALID_SELECTION_ALGORITHM);
 });
@@ -569,7 +581,7 @@ test('POST /txproposals two tokens, both with change output', async () => {
   const result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(result.body as string);
 
-  expect(result.statusCode).toBe(200);
+  expect(result.statusCode).toBe(201);
   expect(returnBody.success).toBe(true);
   expect(returnBody.txProposalId).toHaveLength(36);
   expect(returnBody.inputs).toHaveLength(3);
