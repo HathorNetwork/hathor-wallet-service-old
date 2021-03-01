@@ -1,14 +1,5 @@
-import { CustomStorage, arrayShuffle, getHathorAddresses, sha256d } from '@src/utils';
-import { ADDRESSES, XPUBKEY } from '@tests/utils';
+import { CustomStorage, arrayShuffle, sha256d } from '@src/utils';
 import hathorLib from '@hathor/wallet-lib';
-
-test('getHathorAddresses', () => {
-  expect.hasAssertions();
-  const calculatedAddresses = getHathorAddresses(XPUBKEY, 0, ADDRESSES.length);
-  const addrList = Object.keys(calculatedAddresses);
-  expect(addrList).toHaveLength(ADDRESSES.length);
-  expect(addrList).toStrictEqual(ADDRESSES);
-});
 
 test('CustomStorage', () => {
   expect.hasAssertions();
