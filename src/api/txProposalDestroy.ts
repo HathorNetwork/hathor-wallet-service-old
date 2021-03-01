@@ -14,7 +14,7 @@ import { closeDbConnection, getDbConnection, getUnixTimestamp } from '@src/utils
 const mysql = getDbConnection();
 
 /*
- * Send a transaction.
+ * Destroy a txProposal.
  *
  * This lambda is called by API Gateway on DELETE /txproposals/{proposalId}
  */
