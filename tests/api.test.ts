@@ -478,7 +478,7 @@ test('POST /txproposals params validation', async () => {
   expect(returnBody.parameter).toBe('outputs');
 
   // invalid inputs
-  event = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet', outputs: [[ADDRESSES[0], 10, 'token1', 100000]], inputs: [['txId', '0']] }));
+  event = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet', outputs: [[ADDRESSES[0], 10, 'token1', 100000]], inputs: [{ txId: 'txId', index: '0' }] }));
   result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(200);
@@ -487,7 +487,7 @@ test('POST /txproposals params validation', async () => {
   expect(returnBody.parameter).toBe('inputs');
 
   // invalid inputs 2
-  event = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet', outputs: [[ADDRESSES[0], 10, 'token1', 100000]], inputs: [['txId']] }));
+  event = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet', outputs: [[ADDRESSES[0], 10, 'token1', 100000]], inputs: [{ txId: 'txId' }] }));
   result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(200);

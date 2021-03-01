@@ -82,19 +82,19 @@ test('parseValidateInputs', () => {
   expect(parseValidateInputs(inputs)).toStrictEqual([]);
 
   // less than 2 elements
-  inputs = [['txId']];
+  inputs = [{ txId: 'txId' }];
   expect(parseValidateInputs(inputs)).toBeNull();
 
   // wrong txId type
-  inputs = [[10, 0]];
+  inputs = [{ txId: 10, index: 0 }];
   expect(parseValidateInputs(inputs)).toBeNull();
 
   // wrong index type
-  inputs = [['txId', '0']];
+  inputs = [{ txId: 'txId', index: '0' }];
   expect(parseValidateInputs(inputs)).toBeNull();
 
   // success test
-  inputs = [['txId', 0]];
+  inputs = [{ txId: 'txId', index: 0 }];
   expect(parseValidateInputs(inputs)).toStrictEqual([{ txId: 'txId', index: 0 }]);
 });
 

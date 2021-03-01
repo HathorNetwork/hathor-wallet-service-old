@@ -15,7 +15,14 @@ import {
   getWalletSortedValueUtxos,
   markUtxosWithProposalId,
 } from '@src/db';
-import { Balance, IWalletInput, IWalletOutput, TokenBalanceMap, Utxo, WalletTokenBalance } from '@src/types';
+import {
+  Balance,
+  IWalletInput,
+  IWalletOutput,
+  TokenBalanceMap,
+  Utxo,
+  WalletTokenBalance,
+} from '@src/types';
 import { arrayShuffle, closeDbConnection, getDbConnection, getUnixTimestamp } from '@src/utils';
 import hathorLib from '@hathor/wallet-lib';
 
@@ -43,9 +50,14 @@ const bodySchema = Joi.object({
     .required(),
   inputs: Joi.array()
     .items(
-      Joi.array()
-        .min(2)
-        .max(2),
+      Joi.object({
+        txId: Joi.string()
+          .alphanum()
+          .required(),
+        index: Joi.number()
+          .integer(),
+      })
+      .required()
     ),
   inputSelectionAlgo: Joi.string(),
 });
@@ -101,7 +113,7 @@ export const create: APIGatewayProxyHandler = async (event) => {
   }
 
   const outputs = parseValidateOutputs(body.outputs);
-  const inputs = body.inputs ? parseValidateInputs(body.inputs) : null;
+  const inputs: IWalletInput[] = body.inputs ? parseValidateInputs(body.inputs) : null;
 
   if (!outputs || outputs.length === 0) {
     await closeDbConnection(mysql);
@@ -306,19 +318,19 @@ export const parseValidateOutputs = (outputs: unknown[]): IWalletOutput[] => {
  * @param inputs - The received inputs
  * @returns The parsed inputs, or null if there's been an error
  */
-export const parseValidateInputs = (inputs: unknown[]): IWalletInput[] => {
+export const parseValidateInputs = (inputs: IWalletInput[]): IWalletInput[] => {
+  console.log('inputs: ', inputs);
   const parsedInputs = [];
+
   for (const input of inputs) {
-    const parsed = {
-      txId: input[0],
-      index: input[1],
-    };
-    if (typeof parsed.txId !== 'string' || !Number.isInteger(parsed.index)) {
+    if (typeof input.txId !== 'string' || !Number.isInteger(input.index)) {
       // types are not correct
       return null;
     }
-    parsedInputs.push(parsed);
+    parsedInputs.push(input);
   }
+
+  console.log('parsed inputs: ', parsedInputs);
   return parsedInputs;
 };
 
