@@ -582,7 +582,20 @@ export const getWalletSortedValueUtxos = async (
 ): Promise<Utxo[]> => {
   const utxos = [];
   const results: DbSelectResult = await mysql.query(
-    'SELECT * FROM `utxo` WHERE `address` IN (SELECT `address` from `address` WHERE `wallet_id` = ?) AND `token_id` = ? AND `authorities` = 0 AND `locked` = false AND `tx_proposal` IS NULL ORDER BY `value` DESC',
+    `SELECT *
+       FROM \`utxo\`
+      WHERE \`address\`
+         IN (
+           SELECT \`address\`
+             FROM \`address\`
+            WHERE \`wallet_id\` = ?
+         )
+        AND \`token_id\` = ?
+        AND \`authorities\` = 0
+        AND \`locked\` = FALSE
+        AND \`tx_proposal\` IS NULL
+   ORDER BY \`value\`
+       DESC`,
     [walletId, tokenId],
   );
   for (const result of results) {
