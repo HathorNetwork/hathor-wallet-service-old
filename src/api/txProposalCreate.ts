@@ -211,7 +211,7 @@ export const create: APIGatewayProxyHandler = async (event) => {
   const inputsBalance = getInputsBalance(inputUtxos);
   const diff = TokenBalanceMap.merge(outputsBalance, inputsBalance);
 
-  // Make sure diff is 0 or lower, which means inputs sum is grater than (or equal to) outputs sum.
+  // Make sure diff is 0 or lower, which means inputs sum is greater than (or equal to) outputs sum.
   // This should only happen when we receive the inputs from user and he didn't select enough inputs.
   const insufficientInputs = [];
   for (const [token, tokenBalance] of diff.iterator()) {
