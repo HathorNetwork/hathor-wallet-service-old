@@ -12,6 +12,7 @@ export enum ApiError {
   INVALID_SELECTION_ALGORITHM = 'invalid-selection-algorithm',
   UNKNOWN_ERROR = 'unknown-error',
   INPUTS_NOT_FOUND = 'inputs-not-found',
+  INPUTS_ALREADY_USED = 'inputs-already-used',
   INSUFFICIENT_FUNDS = 'insufficient-funds',
   INSUFFICIENT_INPUTS = 'insufficient-inputs',
   INVALID_PARAMETER = 'invalid-parameter',

@@ -191,7 +191,16 @@ export const create: APIGatewayProxyHandler = async (event) => {
         body: JSON.stringify({ success: false, error: ApiError.INPUTS_NOT_FOUND, missing }),
       };
     }
+
     // check if inputs sent by user are not part of another tx proposal
+    if (checkUsedUtxos(inputUtxos)) {
+      await closeDbConnection(mysql);
+
+      return {
+        statusCode: 200,
+        body: JSON.stringify({ success: false, error: ApiError.INPUTS_ALREADY_USED }),
+      };
+    }
   } else {
     for (const [tokenId, tokenBalance] of outputsBalance.iterator()) {
       const utxos = await getUtxosForTokenBalance(mysql, inputSelectionAlgo, walletId, tokenId, tokenBalance);
@@ -499,4 +508,20 @@ export const checkMissingUtxos = (inputs: IWalletInput[], utxos: Utxo[]): IWalle
     missing.push({ txId: utxo[0], index: utxo[1] });
   }
   return missing;
+};
+
+/**
+ * Confirm that the inputs requested by the user are not already being used on another TxProposal
+ *
+ * @param utxos - List of UTXOs retrieved from database
+ * @returns A list with the missing UTXOs, if any
+ */
+export const checkUsedUtxos = (utxos: Utxo[]): boolean => {
+  for (let x = 0; x < utxos.length; x++) {
+    if (utxos[x].txProposalId) {
+      return true;
+    }
+  }
+
+  return false;
 };

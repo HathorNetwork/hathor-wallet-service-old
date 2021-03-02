@@ -349,6 +349,70 @@ test('POST /txproposals one output and input', async () => {
   await _checkTxProposalTables(returnBody.txProposalId, returnBody.inputs, returnBody.outputs);
 });
 
+test('POST /txproposals with utxos that are already used on another txproposal should fail with ApiError.INPUTS_ALREADY_USED', async () => {
+  expect.hasAssertions();
+
+  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToAddressTable(mysql, [{
+    address: ADDRESSES[0],
+    index: 0,
+    walletId: 'my-wallet',
+    transactions: 2,
+  }]);
+
+  const utxos = [
+    ['txSuccess0', 0, 'token1', ADDRESSES[0], 300, 0, null, null, false],
+    ['txSuccess1', 0, 'token1', ADDRESSES[0], 100, 0, null, null, false],
+    ['txSuccess2', 0, 'token2', ADDRESSES[0], 300, 0, null, null, false],
+  ];
+  await addToUtxoTable(mysql, utxos);
+  await addToWalletBalanceTable(mysql, [{
+    walletId: 'my-wallet',
+    tokenId: 'token1',
+    unlockedBalance: 400,
+    lockedBalance: 0,
+    unlockedAuthorities: 0,
+    lockedAuthorities: 0,
+    timelockExpires: null,
+    transactions: 2,
+  }, {
+    walletId: 'my-wallet',
+    tokenId: 'token2',
+    unlockedBalance: 300,
+    lockedBalance: 0,
+    unlockedAuthorities: 0,
+    lockedAuthorities: 0,
+    timelockExpires: null,
+    transactions: 1,
+  }]);
+
+  await addToAddressTable(mysql, [{
+    address: ADDRESSES[1],
+    index: 1,
+    walletId: 'my-wallet',
+    transactions: 0,
+  }]);
+
+  const outputs = [[ADDRESSES[0], 300, 'token1', null]];
+  const event = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet', outputs }));
+  const result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  const returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(true);
+  expect(returnBody.txProposalId).toHaveLength(36);
+  expect(returnBody.inputs).toHaveLength(1);
+  expect(returnBody.inputs).toContainEqual({ txId: 'txSuccess0', index: 0 });
+  expect(returnBody.outputs).toHaveLength(1);
+  expect(returnBody.outputs).toContainEqual({ address: ADDRESSES[0], value: 300, token: 'token1', timelock: null });
+
+  const usedInputsEvent = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet', outputs, inputs: [['txSuccess0', 0]] }));
+  const usedInputsResult = await txProposalCreate(usedInputsEvent, null, null) as APIGatewayProxyResult;
+  const usedInputsReturnBody = JSON.parse(usedInputsResult.body as string);
+
+  expect(usedInputsReturnBody.success).toBe(false);
+  expect(usedInputsReturnBody.error).toBe(ApiError.INPUTS_ALREADY_USED);
+});
+
 test('POST /txproposals with a wallet that is not ready should fail with ApiError.WALLET_NOT_READY', async () => {
   expect.hasAssertions();
 
