@@ -66,31 +66,24 @@ export const create: APIGatewayProxyHandler = async (event) => {
     }
   }(event.body));
 
-  const { value, error } = bodySchema.validate(eventBody);
+  const { value, error } = bodySchema.validate(eventBody, {
+    abortEarly: false,
+    convert: false,
+  });
 
   if (error) {
     await closeDbConnection(mysql);
-    const firstErrorDetails = error.details[0];
-
-    if (firstErrorDetails.type === 'object.base') {
-      // There was an error parsing the body, we should fail with INVALID_PAYLOAD
-      return {
-        statusCode: 200,
-        body: JSON.stringify({ success: false, error: ApiError.INVALID_PAYLOAD }),
-      };
-    }
-
-    // The error is in at least one of the parameters, we should fail with INVALID_PARAMETER
-    // while returning the first invalid parameter
-    const parameter = firstErrorDetails.path[0];
-    const apiError = firstErrorDetails.type === 'any.required' ? ApiError.MISSING_PARAMETER : ApiError.INVALID_PARAMETER;
+    const details = error.details.map((err) => ({
+      message: err.message,
+      path: err.path,
+    }));
 
     return {
       statusCode: 200,
       body: JSON.stringify({
         success: false,
-        error: apiError,
-        parameter,
+        error: ApiError.INVALID_PAYLOAD,
+        details,
       }),
     };
   }
