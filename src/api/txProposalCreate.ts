@@ -43,10 +43,22 @@ const bodySchema = Joi.object({
     .required(),
   outputs: Joi.array()
     .items(
-      Joi.array()
-        .min(4)
-        .max(4),
+      Joi.object({
+        address: Joi.string()
+          .alphanum()
+          .required(),
+        value: Joi.number()
+          .integer()
+          .required(),
+        token: Joi.string()
+          .alphanum(),
+        timelock: Joi.number()
+          .integer()
+          .optional()
+          .allow(null),
+      }),
     )
+    .min(1)
     .required(),
   inputs: Joi.array()
     .items(
@@ -55,9 +67,9 @@ const bodySchema = Joi.object({
           .alphanum()
           .required(),
         index: Joi.number()
-          .integer(),
-      })
-      .required()
+          .integer()
+          .required(),
+      }).required(),
     ),
   inputSelectionAlgo: Joi.string(),
 });
@@ -112,26 +124,8 @@ export const create: APIGatewayProxyHandler = async (event) => {
     };
   }
 
-  const outputs = parseValidateOutputs(body.outputs);
-  const inputs: IWalletInput[] = body.inputs ? parseValidateInputs(body.inputs) : null;
-
-  if (!outputs || outputs.length === 0) {
-    await closeDbConnection(mysql);
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ success: false, error: ApiError.INVALID_PARAMETER, parameter: 'outputs' }),
-    };
-  }
-
-  // We should only validate inputs if they were received on the body
-  if (body.inputs && !inputs) {
-    await closeDbConnection(mysql);
-
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ success: false, error: ApiError.INVALID_PARAMETER, parameter: 'inputs' }),
-    };
-  }
+  const outputs: IWalletOutput[] = body.outputs;
+  const inputs: IWalletInput[] = body.inputs;
 
   const inputSelectionAlgo = (function getInputAlgoFromBody() {
     if (!body.inputSelectionAlgo) {
@@ -278,60 +272,6 @@ export const create: APIGatewayProxyHandler = async (event) => {
       outputs: finalOutputs,
     }),
   };
-};
-
-/**
- * Validate that received outputs have the correct types and transform to IWalletOutput interface.
- *
- * @param outputs - The received outputs
- * @returns The parsed outputs, or null if there's been an error
- */
-export const parseValidateOutputs = (outputs: unknown[]): IWalletOutput[] => {
-  const parsedOutputs = [];
-  for (const output of outputs) {
-    const parsed = {
-      address: output[0],
-      value: output[1],
-      token: output[2],
-      timelock: output[3],
-    };
-
-    if (!hathorLib.transaction.isAddressValid(parsed.address)) {
-      // invalid address
-      return null;
-    }
-
-    if (!Number.isInteger(parsed.value)
-        || typeof parsed.token !== 'string'
-        || (parsed.timelock !== null && !Number.isInteger(parsed.timelock))) {
-      // types are not correct
-      return null;
-    }
-    parsedOutputs.push(parsed);
-  }
-  return parsedOutputs;
-};
-
-/**
- * Validate that received inputs have the correct types and transform to WalletInput interface.
- *
- * @param inputs - The received inputs
- * @returns The parsed inputs, or null if there's been an error
- */
-export const parseValidateInputs = (inputs: IWalletInput[]): IWalletInput[] => {
-  console.log('inputs: ', inputs);
-  const parsedInputs = [];
-
-  for (const input of inputs) {
-    if (typeof input.txId !== 'string' || !Number.isInteger(input.index)) {
-      // types are not correct
-      return null;
-    }
-    parsedInputs.push(input);
-  }
-
-  console.log('parsed inputs: ', parsedInputs);
-  return parsedInputs;
 };
 
 /**
