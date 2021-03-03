@@ -28,7 +28,6 @@ const paramsSchema = Joi.object({
     .required(),
   token_id: Joi.string()
     .alphanum()
-    .required()
     .optional(),
 });
 

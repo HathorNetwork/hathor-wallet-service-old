@@ -27,16 +27,18 @@ const paramsSchema = Joi.object({
     .required(),
   token_id: Joi.string()
     .alphanum()
-    .required()
     .default(htrToken)
     .optional(),
   skip: Joi.number()
     .integer()
+    .min(0)
     .default(0)
     .optional(),
   count: Joi.number()
     .integer()
+    .positive()
     .default(MAX_COUNT)
+    .max(MAX_COUNT)
     .optional(),
 });
 

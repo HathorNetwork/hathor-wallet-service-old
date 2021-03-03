@@ -34,7 +34,7 @@ export const get: APIGatewayProxyHandler = async (event) => {
 
   const { value, error } = getParamsSchema.validate(params, {
     abortEarly: false,
-    convert: true, // Skip and count will come as query params as strings
+    convert: true,
   });
 
   if (error) {
