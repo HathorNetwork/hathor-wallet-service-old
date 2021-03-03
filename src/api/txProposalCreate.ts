@@ -15,7 +15,14 @@ import {
   getWalletSortedValueUtxos,
   markUtxosWithProposalId,
 } from '@src/db';
-import { Balance, IWalletInput, IWalletOutput, TokenBalanceMap, Utxo, WalletTokenBalance } from '@src/types';
+import {
+  Balance,
+  IWalletInput,
+  IWalletOutput,
+  TokenBalanceMap,
+  Utxo,
+  WalletTokenBalance,
+} from '@src/types';
 import { arrayShuffle, closeDbConnection, getDbConnection, getUnixTimestamp } from '@src/utils';
 import hathorLib from '@hathor/wallet-lib';
 
@@ -36,16 +43,36 @@ const bodySchema = Joi.object({
     .required(),
   outputs: Joi.array()
     .items(
-      Joi.array()
-        .min(4)
-        .max(4),
+      Joi.object({
+        address: Joi.string()
+          .alphanum()
+          .required(),
+        value: Joi.number()
+          .integer()
+          .positive()
+          .required(),
+        token: Joi.string()
+          .alphanum(),
+        timelock: Joi.number()
+          .integer()
+          .positive()
+          .optional()
+          .allow(null),
+      }),
     )
+    .min(1)
     .required(),
   inputs: Joi.array()
     .items(
-      Joi.array()
-        .min(2)
-        .max(2),
+      Joi.object({
+        txId: Joi.string()
+          .alphanum()
+          .required(),
+        index: Joi.number()
+          .integer()
+          .required()
+          .min(0),
+      }).required(),
     ),
   inputSelectionAlgo: Joi.string(),
 });
@@ -67,8 +94,8 @@ export const create: APIGatewayProxyHandler = async (event) => {
   }(event.body));
 
   const { value, error } = bodySchema.validate(eventBody, {
-    abortEarly: false,
-    convert: false,
+    abortEarly: false, // We want it to return all the errors not only the first
+    convert: false, // We want it to be strict with the parameters and not parse a string as integer
   });
 
   if (error) {
@@ -100,26 +127,8 @@ export const create: APIGatewayProxyHandler = async (event) => {
     };
   }
 
-  const outputs = parseValidateOutputs(body.outputs);
-  const inputs = body.inputs ? parseValidateInputs(body.inputs) : null;
-
-  if (!outputs || outputs.length === 0) {
-    await closeDbConnection(mysql);
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ success: false, error: ApiError.INVALID_PARAMETER, parameter: 'outputs' }),
-    };
-  }
-
-  // We should only validate inputs if they were received on the body
-  if (body.inputs && !inputs) {
-    await closeDbConnection(mysql);
-
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ success: false, error: ApiError.INVALID_PARAMETER, parameter: 'inputs' }),
-    };
-  }
+  const outputs: IWalletOutput[] = body.outputs;
+  const inputs: IWalletInput[] = body.inputs;
 
   const inputSelectionAlgo = (function getInputAlgoFromBody() {
     if (!body.inputSelectionAlgo) {
@@ -266,60 +275,6 @@ export const create: APIGatewayProxyHandler = async (event) => {
       outputs: finalOutputs,
     }),
   };
-};
-
-/**
- * Validate that received outputs have the correct types and transform to IWalletOutput interface.
- *
- * @param outputs - The received outputs
- * @returns The parsed outputs, or null if there's been an error
- */
-export const parseValidateOutputs = (outputs: unknown[]): IWalletOutput[] => {
-  const parsedOutputs = [];
-  for (const output of outputs) {
-    const parsed = {
-      address: output[0],
-      value: output[1],
-      token: output[2],
-      timelock: output[3],
-    };
-
-    if (!hathorLib.transaction.isAddressValid(parsed.address)) {
-      // invalid address
-      return null;
-    }
-
-    if (!Number.isInteger(parsed.value)
-        || typeof parsed.token !== 'string'
-        || (parsed.timelock !== null && !Number.isInteger(parsed.timelock))) {
-      // types are not correct
-      return null;
-    }
-    parsedOutputs.push(parsed);
-  }
-  return parsedOutputs;
-};
-
-/**
- * Validate that received inputs have the correct types and transform to WalletInput interface.
- *
- * @param inputs - The received inputs
- * @returns The parsed inputs, or null if there's been an error
- */
-export const parseValidateInputs = (inputs: unknown[]): IWalletInput[] => {
-  const parsedInputs = [];
-  for (const input of inputs) {
-    const parsed = {
-      txId: input[0],
-      index: input[1],
-    };
-    if (typeof parsed.txId !== 'string' || !Number.isInteger(parsed.index)) {
-      // types are not correct
-      return null;
-    }
-    parsedInputs.push(parsed);
-  }
-  return parsedInputs;
 };
 
 /**
