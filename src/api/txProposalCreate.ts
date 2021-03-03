@@ -49,11 +49,13 @@ const bodySchema = Joi.object({
           .required(),
         value: Joi.number()
           .integer()
+          .positive()
           .required(),
         token: Joi.string()
           .alphanum(),
         timelock: Joi.number()
           .integer()
+          .positive()
           .optional()
           .allow(null),
       }),
@@ -68,7 +70,8 @@ const bodySchema = Joi.object({
           .required(),
         index: Joi.number()
           .integer()
-          .required(),
+          .required()
+          .min(0),
       }).required(),
     ),
   inputSelectionAlgo: Joi.string(),

@@ -641,7 +641,7 @@ test('POST /txproposals outputs error', async () => {
 
   // too many outputs (sent by user)
   let outputs = [];
-  for (let i = 0; i < 300; i++) {
+  for (let i = 1; i < 300; i++) {
     outputs.push({ address: ADDRESSES[0], value: i, token: 'token', timelock: null });
   }
   let event = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet', outputs }));
@@ -651,6 +651,28 @@ test('POST /txproposals outputs error', async () => {
   expect(returnBody.success).toBe(false);
   expect(returnBody.error).toBe(ApiError.TOO_MANY_OUTPUTS);
   expect(returnBody.outputs).toBe(outputs.length);
+
+  // output with value < 0 should fail
+  outputs = [{ address: ADDRESSES[0], value: -1, token: 'token', timelock: null }];
+  event = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet', outputs }));
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+  expect(returnBody.details).toHaveLength(1);
+  expect(returnBody.details[0].message).toStrictEqual('"outputs[0].value" must be a positive number');
+
+  // output with value == 0 should fail
+  outputs = [{ address: ADDRESSES[0], value: 0, token: 'token', timelock: null }];
+  event = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet', outputs }));
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+  expect(returnBody.details).toHaveLength(1);
+  expect(returnBody.details[0].message).toStrictEqual('"outputs[0].value" must be a positive number');
 
   // too many outputs (after adding change output)
   const utxos = [['txBig', 0, 'token2', ADDRESSES[0], 300, 0, null, null, false]];
