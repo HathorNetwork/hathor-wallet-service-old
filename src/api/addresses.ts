@@ -14,9 +14,15 @@ import {
   getWallet,
   getWalletAddresses,
 } from '@src/db';
+import Joi from 'joi';
 import { closeDbConnection, getDbConnection } from '@src/utils';
 
 const mysql = getDbConnection();
+
+const paramsSchema = Joi.object({
+  id: Joi.string()
+    .required(),
+});
 
 /*
  * Get the addresses of a wallet
@@ -24,15 +30,26 @@ const mysql = getDbConnection();
  * This lambda is called by API Gateway on GET /addresses
  */
 export const get: APIGatewayProxyHandler = async (event) => {
-  let walletId: string;
   const params = event.queryStringParameters;
-  if (params && params.id) {
-    walletId = params.id;
-  } else {
-    return closeDbAndGetError(mysql, ApiError.MISSING_PARAMETER, { parameter: 'id' });
+
+  const { value, error } = paramsSchema.validate(params, {
+    abortEarly: false,
+    convert: true,
+  });
+
+  if (error) {
+    const details = error.details.map((err) => ({
+      message: err.message,
+      path: err.path,
+    }));
+
+    return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, { details });
   }
 
+  const walletId: string = value.id;
+
   const status = await getWallet(mysql, walletId);
+
   if (!status) {
     return closeDbAndGetError(mysql, ApiError.WALLET_NOT_FOUND);
   }

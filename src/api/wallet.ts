@@ -16,8 +16,13 @@ import {
 import { WalletStatus } from '@src/types';
 import { closeDbConnection, getDbConnection, getWalletId } from '@src/utils';
 import { closeDbAndGetError } from '@src/api/utils';
+import Joi from 'joi';
 
 const mysql = getDbConnection();
+const getParamsSchema = Joi.object({
+  id: Joi.string()
+    .required(),
+});
 
 /*
  * Get the status of a wallet
@@ -25,13 +30,23 @@ const mysql = getDbConnection();
  * This lambda is called by API Gateway on GET /wallet
  */
 export const get: APIGatewayProxyHandler = async (event) => {
-  let walletId: string;
   const params = event.queryStringParameters;
-  if (params && params.id) {
-    walletId = params.id;
-  } else {
-    return closeDbAndGetError(mysql, ApiError.MISSING_PARAMETER, { parameter: 'id' });
+
+  const { value, error } = getParamsSchema.validate(params, {
+    abortEarly: false,
+    convert: true, // Skip and count will come as query params as strings
+  });
+
+  if (error) {
+    const details = error.details.map((err) => ({
+      message: err.message,
+      path: err.path,
+    }));
+
+    return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, { details });
   }
+
+  const walletId: string = value.id;
 
   const status = await getWallet(mysql, walletId);
   if (!status) {
@@ -46,6 +61,11 @@ export const get: APIGatewayProxyHandler = async (event) => {
   };
 };
 
+const loadBodySchema = Joi.object({
+  xpubkey: Joi.string()
+    .required(),
+});
+
 /*
  * Load a wallet. First checks if the wallet doesn't exist already and then call another
  * lamdba to asynchronously add new wallet info to database
@@ -53,19 +73,29 @@ export const get: APIGatewayProxyHandler = async (event) => {
  * This lambda is called by API Gateway on POST /wallet
  */
 export const load: APIGatewayProxyHandler = async (event) => {
-  let body;
-  try {
-    body = JSON.parse(event.body);
-    // event.body might be null, which is also parsed to null
-    if (!body) throw new Error('body is null');
-  } catch (e) {
-    return closeDbAndGetError(mysql, ApiError.INVALID_PARAMETER, { parameter: 'xpubkey' });
+  const eventBody = (function parseBody(body) {
+    try {
+      return JSON.parse(body);
+    } catch (e) {
+      return null;
+    }
+  }(event.body));
+
+  const { value, error } = loadBodySchema.validate(eventBody, {
+    abortEarly: false,
+    convert: false,
+  });
+
+  if (error) {
+    const details = error.details.map((err) => ({
+      message: err.message,
+      path: err.path,
+    }));
+
+    return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, { details });
   }
 
-  const xpubkey = body.xpubkey;
-  if (!xpubkey) {
-    return closeDbAndGetError(mysql, ApiError.MISSING_PARAMETER, { parameter: 'xpubkey' });
-  }
+  const xpubkey = value.xpubkey;
 
   // is wallet already loaded/loading?
   const walletId = getWalletId(xpubkey);
@@ -86,12 +116,14 @@ export const load: APIGatewayProxyHandler = async (event) => {
       ? 'http://localhost:3002'
       : `https://lambda.${process.env.AWS_REGION}.amazonaws.com`,
   });
+
   const params = {
     // FunctionName is composed of: service name - stage - function name
     FunctionName: `${process.env.SERVICE_NAME}-${process.env.STAGE}-loadWalletAsync`,
     InvocationType: 'Event',
     Payload: JSON.stringify({ xpubkey, maxGap }),
   };
+
   try {
     // TODO setup lambda error handling. It's not an error on lambda.invoke, but an error during lambda execution
     await lambda.invoke(params).promise();

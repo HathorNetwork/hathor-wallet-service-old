@@ -31,24 +31,18 @@ afterAll(async () => {
   await closeDbConnection(mysql);
 });
 
-const _testMissingParam = async (fn: APIGatewayProxyHandler, paramName: string, params = {}) => {
+const _testInvalidPayload = async (fn: APIGatewayProxyHandler, errorMessages: string[] = [], params = {}) => {
   const event = makeGatewayEvent(params);
   const result = await fn(event, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(400);
   expect(returnBody.success).toBe(false);
-  expect(returnBody.error).toBe(ApiError.MISSING_PARAMETER);
-  expect(returnBody.parameter).toBe(paramName);
-};
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
 
-const _testInvalidParam = async (fn: APIGatewayProxyHandler, paramName: string, params) => {
-  const event = makeGatewayEvent(params);
-  const result = await fn(event, null, null) as APIGatewayProxyResult;
-  const returnBody = JSON.parse(result.body as string);
-  expect(result.statusCode).toBe(400);
-  expect(returnBody.success).toBe(false);
-  expect(returnBody.error).toBe(ApiError.INVALID_PARAMETER);
-  expect(returnBody.parameter).toBe(paramName);
+  const messages = returnBody.details.map((detail) => detail.message);
+
+  expect(messages).toHaveLength(errorMessages.length);
+  expect(messages).toStrictEqual(errorMessages);
 };
 
 const _testMissingWallet = async (fn: APIGatewayProxyHandler, walletId: string, body = null) => {
@@ -81,7 +75,7 @@ test('GET /addresses', async () => {
   ]);
 
   // missing param
-  await _testMissingParam(addressesGet, 'id');
+  await _testInvalidPayload(addressesGet, ['"id" is required']);
 
   // missing wallet
   await _testMissingWallet(addressesGet, 'some-wallet');
@@ -118,7 +112,7 @@ test('GET /balances', async () => {
   ]);
 
   // missing param
-  await _testMissingParam(balancesGet, 'id');
+  await _testInvalidPayload(balancesGet, ['"id" is required']);
 
   // missing wallet
   await _testMissingWallet(balancesGet, 'some-wallet');
@@ -130,6 +124,7 @@ test('GET /balances', async () => {
   let event = makeGatewayEvent({ id: 'my-wallet' });
   let result = await balancesGet(event, null, null) as APIGatewayProxyResult;
   let returnBody = JSON.parse(result.body as string);
+
   expect(result.statusCode).toBe(200);
   expect(returnBody.success).toBe(true);
   expect(returnBody.balances).toHaveLength(0);
@@ -291,7 +286,7 @@ test('GET /txhistory', async () => {
   await addToWalletTxHistoryTable(mysql, [['my-wallet', 'tx1', '00', 5, 1000], ['my-wallet', 'tx1', 'token2', '7', 1000], ['my-wallet', 'tx2', '00', 7, 1001]]);
 
   // missing param
-  await _testMissingParam(txHistoryGet, 'id');
+  await _testInvalidPayload(txHistoryGet, ['"id" is required']);
 
   // missing wallet
   await _testMissingWallet(txHistoryGet, 'some-wallet');
@@ -300,10 +295,10 @@ test('GET /txhistory', async () => {
   await _testWalletNotReady(txHistoryGet);
 
   // invalid 'skip' param
-  await _testInvalidParam(txHistoryGet, 'skip', { id: 'my-wallet', skip: 'aaa' });
+  await _testInvalidPayload(txHistoryGet, ['"skip" must be a number'], { id: 'my-wallet', skip: 'aaa' });
 
   // invalid 'count' param
-  await _testInvalidParam(txHistoryGet, 'count', { id: 'my-wallet', count: 'aaa' });
+  await _testInvalidPayload(txHistoryGet, ['"count" must be a number'], { id: 'my-wallet', count: 'aaa' });
 
   // without token in parameters, use htr
   let event = makeGatewayEvent({ id: 'my-wallet' });
@@ -351,7 +346,7 @@ test('GET /wallet', async () => {
   await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
 
   // missing param
-  await _testMissingParam(walletGet, 'id');
+  await _testInvalidPayload(walletGet, ['"id" is required']);
 
   // missing wallet
   await _testMissingWallet(walletGet, 'some-wallet');
@@ -374,16 +369,16 @@ test('POST /wallet', async () => {
   let returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(400);
   expect(returnBody.success).toBe(false);
-  expect(returnBody.error).toBe(ApiError.INVALID_PARAMETER);
-  expect(returnBody.parameter).toBe('xpubkey');
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
 
   event = makeGatewayEvent({}, 'aaa');
   result = await walletLoad(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(400);
   expect(returnBody.success).toBe(false);
-  expect(returnBody.error).toBe(ApiError.INVALID_PARAMETER);
-  expect(returnBody.parameter).toBe('xpubkey');
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+  expect(returnBody.details).toHaveLength(1);
+  expect(returnBody.details[0].message).toStrictEqual('"value" must be of type object');
 
   // missing xpubkey
   event = makeGatewayEvent({}, JSON.stringify({ param1: 'aaa' }));
@@ -391,8 +386,10 @@ test('POST /wallet', async () => {
   returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(400);
   expect(returnBody.success).toBe(false);
-  expect(returnBody.error).toBe(ApiError.MISSING_PARAMETER);
-  expect(returnBody.parameter).toBe('xpubkey');
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+  expect(returnBody.details).toHaveLength(2);
+  expect(returnBody.details[0].message).toStrictEqual('"xpubkey" is required');
+  expect(returnBody.details[1].message).toStrictEqual('"param1" is not allowed');
 
   // already loaded
   const walletId = getWalletId(XPUBKEY);
