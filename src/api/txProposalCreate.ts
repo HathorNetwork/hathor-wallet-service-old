@@ -94,8 +94,8 @@ export const create: APIGatewayProxyHandler = async (event) => {
   }(event.body));
 
   const { value, error } = bodySchema.validate(eventBody, {
-    abortEarly: false,
-    convert: false,
+    abortEarly: false, // We want it to return all the errors not only the first
+    convert: false, // We want it to be strict with the parameters and not parse a string as integer
   });
 
   if (error) {
