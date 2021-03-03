@@ -4,8 +4,6 @@ import {
   getChangeOutputs,
   getInputsBalance,
   getOutputsBalance,
-  parseValidateInputs,
-  parseValidateOutputs,
   useLargerUtxos,
 } from '@src/api/txProposalCreate';
 import { send as txProposalSend } from '@src/api/txProposalSend';
@@ -38,64 +36,6 @@ beforeEach(async () => {
 
 afterAll(async () => {
   await closeDbConnection(mysql);
-});
-
-test('parseValidateOutputs', () => {
-  expect.hasAssertions();
-
-  let outputs = [];
-  expect(parseValidateOutputs(outputs)).toStrictEqual([]);
-
-  // less than 4 elements
-  outputs = [[ADDRESSES[0], 10, 'token1']];
-  expect(parseValidateOutputs(outputs)).toBeNull();
-
-  // wrong address type
-  outputs = [[10, 10, 'token1', 20]];
-  expect(parseValidateOutputs(outputs)).toBeNull();
-
-  // wrong value type
-  outputs = [[ADDRESSES[0], '10', 'token1', 20]];
-  expect(parseValidateOutputs(outputs)).toBeNull();
-
-  // wrong token type
-  outputs = [[ADDRESSES[0], 10, 15, 20]];
-  expect(parseValidateOutputs(outputs)).toBeNull();
-
-  // wrong timelock type
-  outputs = [[ADDRESSES[0], 10, 'token1', '20']];
-  expect(parseValidateOutputs(outputs)).toBeNull();
-
-  // success test
-  outputs = [[ADDRESSES[0], 10, 'token1', 20]];
-  expect(parseValidateOutputs(outputs)).toStrictEqual([{ address: ADDRESSES[0], value: 10, token: 'token1', timelock: 20 }]);
-
-  // success test (null timelock)
-  outputs = [[ADDRESSES[0], 10, 'token1', null]];
-  expect(parseValidateOutputs(outputs)).toStrictEqual([{ address: ADDRESSES[0], value: 10, token: 'token1', timelock: null }]);
-});
-
-test('parseValidateInputs', () => {
-  expect.hasAssertions();
-
-  let inputs = [];
-  expect(parseValidateInputs(inputs)).toStrictEqual([]);
-
-  // less than 2 elements
-  inputs = [['txId']];
-  expect(parseValidateInputs(inputs)).toBeNull();
-
-  // wrong txId type
-  inputs = [[10, 0]];
-  expect(parseValidateInputs(inputs)).toBeNull();
-
-  // wrong index type
-  inputs = [['txId', '0']];
-  expect(parseValidateInputs(inputs)).toBeNull();
-
-  // success test
-  inputs = [['txId', 0]];
-  expect(parseValidateInputs(inputs)).toStrictEqual([{ txId: 'txId', index: 0 }]);
 });
 
 test('getOutputsBalance', () => {
@@ -277,18 +217,6 @@ const _checkTxProposalTables = async (txProposalId, inputs, outputs): Promise<vo
   expect(await getTxProposalOutputs(mysql, txProposalId)).toStrictEqual(outputs);
 };
 
-test('POST /txproposals with null as param should fail with ApiError.INVALID_PAYLOAD', async () => {
-  expect.hasAssertions();
-
-  const event = makeGatewayEvent(null, null);
-  const result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
-  const returnBody = JSON.parse(result.body as string);
-
-  expect(result.statusCode).toBe(200);
-  expect(returnBody.success).toBe(false);
-  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
-});
-
 test('POST /txproposals one output and input', async () => {
   expect.hasAssertions();
 
@@ -305,6 +233,7 @@ test('POST /txproposals one output and input', async () => {
     ['txSuccess1', 0, 'token1', ADDRESSES[0], 100, 0, null, null, false],
     ['txSuccess2', 0, 'token2', ADDRESSES[0], 300, 0, null, null, false],
   ];
+
   await addToUtxoTable(mysql, utxos);
   await addToWalletBalanceTable(mysql, [{
     walletId: 'my-wallet',
@@ -334,7 +263,7 @@ test('POST /txproposals one output and input', async () => {
   }]);
 
   // only one output, spending the whole 300 utxo of token3
-  const outputs = [[ADDRESSES[0], 300, 'token1', null]];
+  const outputs = [{ address: ADDRESSES[0], value: 300, token: 'token1', timelock: null }];
   const event = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet', outputs }));
   const result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(result.body as string);
@@ -393,7 +322,7 @@ test('POST /txproposals with utxos that are already used on another txproposal s
     transactions: 0,
   }]);
 
-  const outputs = [[ADDRESSES[0], 300, 'token1', null]];
+  const outputs = [{ address: ADDRESSES[0], value: 300, token: 'token1', timelock: null }];
   const event = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet', outputs }));
   const result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(result.body as string);
@@ -405,7 +334,7 @@ test('POST /txproposals with utxos that are already used on another txproposal s
   expect(returnBody.outputs).toHaveLength(1);
   expect(returnBody.outputs).toContainEqual({ address: ADDRESSES[0], value: 300, token: 'token1', timelock: null });
 
-  const usedInputsEvent = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet', outputs, inputs: [['txSuccess0', 0]] }));
+  const usedInputsEvent = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet', outputs, inputs: [{ txId: 'txSuccess0', index: 0 }] }));
   const usedInputsResult = await txProposalCreate(usedInputsEvent, null, null) as APIGatewayProxyResult;
   const usedInputsReturnBody = JSON.parse(usedInputsResult.body as string);
 
@@ -458,7 +387,7 @@ test('POST /txproposals with a wallet that is not ready should fail with ApiErro
   }]);
 
   // only one output, spending the whole 300 utxo of token3
-  const outputs = [[ADDRESSES[0], 300, 'token1', null]];
+  const outputs = [{ address: ADDRESSES[0], value: 300, token: 'token1', timelock: null }];
   const event = makeGatewayEvent(null, JSON.stringify({ id: 'not-ready-wallet', outputs }));
   const result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(result.body as string);
@@ -511,7 +440,7 @@ test('POST /txproposals use two UTXOs and add change output', async () => {
 
   const event = makeGatewayEvent(null, JSON.stringify({
     id: 'my-wallet',
-    outputs: [[ADDRESSES[0], 320, 'token1', null]],
+    outputs: [{ address: ADDRESSES[0], value: 320, token: 'token1', timelock: null }],
   }));
 
   const result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
@@ -574,7 +503,7 @@ test('POST /txproposals with invalid inputSelectionAlgo should fail with ApiErro
 
   const event = makeGatewayEvent(null, JSON.stringify({
     id: 'my-wallet',
-    outputs: [[ADDRESSES[0], 320, 'token1', null]],
+    outputs: [{ address: ADDRESSES[0], value: 320, token: 'token1', timelock: null }],
     inputSelectionAlgo: 'INVALID_SELECTION_ALGORITHM',
   }));
 
@@ -633,8 +562,8 @@ test('POST /txproposals two tokens, both with change output', async () => {
   const event = makeGatewayEvent(null, JSON.stringify({
     id: 'my-wallet',
     outputs: [
-      [ADDRESSES[0], 320, 'token1', null],
-      [ADDRESSES[0], 90, 'token2', null],
+      { address: ADDRESSES[0], value: 320, token: 'token1', timelock: null },
+      { address: ADDRESSES[0], value: 90, token: 'token2', timelock: null },
     ],
   }));
   const result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
@@ -728,8 +657,8 @@ test('PUT /txproposals/{proposalId}', async () => {
     JSON.stringify({
       id: 'my-wallet',
       outputs: [
-        [ADDRESSES[0], 320, 'token1', null],
-        [ADDRESSES[0], 90, 'token2', null],
+        { address: ADDRESSES[0], value: 320, token: 'token1', timelock: null },
+        { address: ADDRESSES[0], value: 90, token: 'token2', timelock: null },
       ],
     }));
   const txCreateResult = await txProposalCreate(txCreateEvent, null, null) as APIGatewayProxyResult;
@@ -811,8 +740,8 @@ test('PUT /txproposals/{proposalId} with an empty body should fail with ApiError
     JSON.stringify({
       id: 'my-wallet',
       outputs: [
-        [ADDRESSES[0], 320, 'token1', null],
-        [ADDRESSES[0], 90, 'token2', null],
+        { address: ADDRESSES[0], value: 320, token: 'token1', timelock: null },
+        { address: ADDRESSES[0], value: 90, token: 'token2', timelock: null },
       ],
     }));
   const txCreateResult = await txProposalCreate(txCreateEvent, null, null) as APIGatewayProxyResult;
@@ -911,8 +840,8 @@ test('PUT /txproposals/{proposalId} on a proposal which status is not OPEN or SE
     JSON.stringify({
       id: 'my-wallet',
       outputs: [
-        [ADDRESSES[0], 320, 'token1', null],
-        [ADDRESSES[0], 90, 'token2', null],
+        { address: ADDRESSES[0], value: 320, token: 'token1', timelock: null },
+        { address: ADDRESSES[0], value: 90, token: 'token2', timelock: null },
       ],
     }));
   const txCreateResult = await txProposalCreate(txCreateEvent, null, null) as APIGatewayProxyResult;
@@ -1014,8 +943,8 @@ test('PUT /txproposals/{proposalId} with an invalid weight should fail with ApiE
     JSON.stringify({
       id: 'my-wallet',
       outputs: [
-        [ADDRESSES[0], 320, 'token1', null],
-        [ADDRESSES[0], 90, 'token2', null],
+        { address: ADDRESSES[0], value: 320, token: 'token1', timelock: null },
+        { address: ADDRESSES[0], value: 90, token: 'token2', timelock: null },
       ],
     }));
   const txCreateResult = await txProposalCreate(txCreateEvent, null, null) as APIGatewayProxyResult;
@@ -1119,8 +1048,8 @@ test('PUT /txproposals/{proposalId} with an invalid txHex should fail and update
     JSON.stringify({
       id: 'my-wallet',
       outputs: [
-        [ADDRESSES[0], 320, 'token1', null],
-        [ADDRESSES[0], 90, 'token2', null],
+        { address: ADDRESSES[0], value: 320, token: 'token1', timelock: null },
+        { address: ADDRESSES[0], value: 90, token: 'token2', timelock: null },
       ],
     }));
   const txCreateResult = await txProposalCreate(txCreateEvent, null, null) as APIGatewayProxyResult;
@@ -1224,8 +1153,8 @@ test('PUT /txproposals/{proposalId} should update tx_proposal to SEND_ERROR on f
     JSON.stringify({
       id: 'my-wallet',
       outputs: [
-        [ADDRESSES[0], 320, 'token1', null],
-        [ADDRESSES[0], 90, 'token2', null],
+        { address: ADDRESSES[0], value: 320, token: 'token1', timelock: null },
+        { address: ADDRESSES[0], value: 90, token: 'token2', timelock: null },
       ],
     }));
   const txCreateResult = await txProposalCreate(txCreateEvent, null, null) as APIGatewayProxyResult;
@@ -1306,8 +1235,8 @@ test('DELETE /txproposals/{proposalId} should delete a tx_proposal and remove th
     JSON.stringify({
       id: 'my-wallet',
       outputs: [
-        [ADDRESSES[0], 320, 'token1', null],
-        [ADDRESSES[0], 90, 'token2', null],
+        { address: ADDRESSES[0], value: 320, token: 'token1', timelock: null },
+        { address: ADDRESSES[0], value: 90, token: 'token2', timelock: null },
       ],
     }));
   const txCreateResult = await txProposalCreate(txCreateEvent, null, null) as APIGatewayProxyResult;
