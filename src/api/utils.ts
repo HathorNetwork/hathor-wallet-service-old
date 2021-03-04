@@ -12,6 +12,27 @@ import { ApiError } from '@src/api/errors';
 import { StringMap } from '@src/types';
 import { closeDbConnection } from '@src/utils';
 
+export const STATUS_CODE_TABLE = {
+  [ApiError.MISSING_PARAMETER]: 400,
+  [ApiError.INVALID_BODY]: 400,
+  [ApiError.INVALID_TX_WEIGHT]: 400,
+  [ApiError.INVALID_SELECTION_ALGORITHM]: 400,
+  [ApiError.UNKNOWN_ERROR]: 500,
+  [ApiError.INPUTS_NOT_FOUND]: 400,
+  [ApiError.INPUTS_ALREADY_USED]: 400,
+  [ApiError.INSUFFICIENT_FUNDS]: 400,
+  [ApiError.INSUFFICIENT_INPUTS]: 400,
+  [ApiError.INVALID_PARAMETER]: 400,
+  [ApiError.INVALID_PAYLOAD]: 400,
+  [ApiError.TOO_MANY_INPUTS]: 400,
+  [ApiError.TOO_MANY_OUTPUTS]: 400,
+  [ApiError.TX_PROPOSAL_NOT_FOUND]: 404,
+  [ApiError.TX_PROPOSAL_NOT_OPEN]: 400,
+  [ApiError.WALLET_NOT_FOUND]: 404,
+  [ApiError.WALLET_NOT_READY]: 400,
+  [ApiError.WALLET_ALREADY_LOADED]: 400,
+};
+
 /**
  * Close database connection and get error object.
  *
@@ -28,7 +49,7 @@ export const closeDbAndGetError = async (
   await closeDbConnection(mysql);
   const body = { success: false, error, ...extra };
   return {
-    statusCode: 200,
+    statusCode: STATUS_CODE_TABLE[error],
     body: JSON.stringify(body),
   };
 };

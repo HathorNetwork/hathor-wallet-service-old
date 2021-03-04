@@ -15,6 +15,7 @@ import {
 } from '@src/db';
 import { WalletStatus } from '@src/types';
 import { closeDbConnection, getDbConnection, getWalletId } from '@src/utils';
+import { closeDbAndGetError } from '@src/api/utils';
 
 const mysql = getDbConnection();
 
@@ -29,18 +30,12 @@ export const get: APIGatewayProxyHandler = async (event) => {
   if (params && params.id) {
     walletId = params.id;
   } else {
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ success: false, error: ApiError.MISSING_PARAMETER, parameter: 'id' }),
-    };
+    return closeDbAndGetError(mysql, ApiError.MISSING_PARAMETER, { parameter: 'id' });
   }
 
   const status = await getWallet(mysql, walletId);
   if (!status) {
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ success: false, error: ApiError.WALLET_NOT_FOUND }),
-    };
+    return closeDbAndGetError(mysql, ApiError.WALLET_NOT_FOUND);
   }
 
   await closeDbConnection(mysql);
@@ -64,29 +59,19 @@ export const load: APIGatewayProxyHandler = async (event) => {
     // event.body might be null, which is also parsed to null
     if (!body) throw new Error('body is null');
   } catch (e) {
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ success: false, error: ApiError.INVALID_PARAMETER, parameter: 'xpubkey' }),
-    };
+    return closeDbAndGetError(mysql, ApiError.INVALID_PARAMETER, { parameter: 'xpubkey' });
   }
 
   const xpubkey = body.xpubkey;
   if (!xpubkey) {
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ success: false, error: ApiError.MISSING_PARAMETER, parameter: 'xpubkey' }),
-    };
+    return closeDbAndGetError(mysql, ApiError.MISSING_PARAMETER, { parameter: 'xpubkey' });
   }
 
   // is wallet already loaded/loading?
   const walletId = getWalletId(xpubkey);
   let status = await getWallet(mysql, walletId);
   if (status) {
-    await closeDbConnection(mysql);
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ success: false, error: ApiError.WALLET_ALREADY_LOADED, status }),
-    };
+    return closeDbAndGetError(mysql, ApiError.WALLET_ALREADY_LOADED, { status });
   }
 
   const maxGap = parseInt(process.env.MAX_ADDRESS_GAP, 10);
