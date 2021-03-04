@@ -19,24 +19,47 @@ import {
   getDbConnection,
   getUnixTimestamp,
 } from '@src/utils';
+import Joi from 'joi';
 
 const mysql = getDbConnection();
+
+const paramsSchema = Joi.object({
+  id: Joi.string()
+    .required(),
+  token_id: Joi.string()
+    .alphanum()
+    .optional(),
+});
 
 /*
  * Get the balances of a wallet
  *
  * This lambda is called by API Gateway on GET /balances
+ *
+ * XXX: If token_id is not sent as a filter, we return all token balances
+ * Maybe we should limit the amount of tokens to query the balance to prevent an user
+ * with a lot of different tokens in his wallet from doing an expensive query
  */
 export const get: APIGatewayProxyHandler = async (event) => {
   const params = event.queryStringParameters;
-  let walletId: string;
-  if (params && params.id) {
-    walletId = params.id;
-  } else {
-    return closeDbAndGetError(mysql, ApiError.MISSING_PARAMETER, { parameter: 'id' });
+
+  const { value, error } = paramsSchema.validate(params, {
+    abortEarly: false,
+    convert: false,
+  });
+
+  if (error) {
+    const details = error.details.map((err) => ({
+      message: err.message,
+      path: err.path,
+    }));
+
+    return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, { details });
   }
 
+  const walletId = value.id;
   const status = await getWallet(mysql, walletId);
+
   if (!status) {
     return closeDbAndGetError(mysql, ApiError.WALLET_NOT_FOUND);
   }
@@ -45,9 +68,8 @@ export const get: APIGatewayProxyHandler = async (event) => {
   }
 
   const tokenIds: string[] = [];
-  if (params && params.token_id) {
-    const tokenId = params.token_id;
-    // TODO validate tokenId
+  if (value.token_id) {
+    const tokenId = value.token_id;
     tokenIds.push(tokenId);
   }
 
