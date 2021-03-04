@@ -8,6 +8,7 @@
  */
 
 import hathorLib from '@hathor/wallet-lib';
+// eslint-disable-next-line
 import { isAuthority } from '@src/utils';
 
 export interface StringMap<T> {
@@ -20,6 +21,35 @@ export interface GenerateAddresses {
   addresses: string[];
   existingAddresses: StringMap<number>;
   newAddresses: StringMap<number>;
+}
+
+export enum TxProposalStatus {
+  OPEN = 'open',
+  SENT = 'sent',
+  SEND_ERROR = 'send_error',
+  CANCELLED = 'cancelled',
+}
+
+export interface FullNodeVersionData {
+  timestamp: number;
+  version: string;
+  network: string;
+  minWeight: number;
+  minTxWeight: number;
+  minTxWeightCoefficient: number;
+  minTxWeightK: number;
+  tokenDepositPercentage: number;
+  rewardSpendMinBlocks: number;
+  maxNumberInputs: number;
+  maxNumberOutputs: number;
+}
+
+export interface TxProposal {
+  id: string;
+  walletId: string;
+  status: TxProposalStatus;
+  createdAt: number;
+  updatedAt: number;
 }
 
 export enum WalletStatus {
@@ -59,6 +89,8 @@ export interface Utxo {
   timelock: number | null;
   heightlock: number | null;
   locked: boolean;
+  txProposalId?: string;
+  txProposalIndex?: number;
 }
 
 export class TokenInfo {
@@ -202,7 +234,6 @@ export class Authorities {
   toJSON(): Record<string, unknown> {
     const authorities = this.toInteger();
     return {
-      // TODO get from lib
       mint: (authorities & hathorLib.constants.TOKEN_MINT_MASK) > 0,   // eslint-disable-line no-bitwise
       melt: (authorities & hathorLib.constants.TOKEN_MELT_MASK) > 0,   // eslint-disable-line no-bitwise
     };
@@ -334,6 +365,10 @@ export class TokenBalanceMap {
 
   set(tokenId: string, balance: Balance): void {
     this.map[tokenId] = balance;
+  }
+
+  getTokens(): string[] {
+    return Object.keys(this.map);
   }
 
   iterator(): [string, Balance][] {
@@ -497,4 +532,21 @@ export interface Transaction {
   token_name?: string;
   // eslint-disable-next-line camelcase
   token_symbol?: string;
+}
+
+export interface IWalletOutput {
+  address: string;
+  value: number;
+  token: string;
+  timelock: number;
+}
+
+export interface IWalletInput {
+  txId: string;
+  index: number;
+}
+
+export interface ApiResponse {
+  success: boolean;
+  message: string;
 }

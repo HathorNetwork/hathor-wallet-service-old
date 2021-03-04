@@ -6,8 +6,53 @@
  */
 
 import { createHash, HexBase64Latin1Encoding } from 'crypto';
+
 import serverlessMysql, { ServerlessMysql } from 'serverless-mysql';
 import hathorLib from '@hathor/wallet-lib';
+
+const ACCEPTABLE_WEIGHT_RANGE = 1.1; // 10%
+
+/* TODO: We should remove this as soon as the wallet-lib is refactored
+*  (https://github.com/HathorNetwork/hathor-wallet-lib/issues/122)
+*/
+export class CustomStorage {
+  store: unknown;
+
+  constructor() {
+    this.preStart();
+  }
+
+  getItem(key: string): string {
+    return this.store[key];
+  }
+
+  setItem(key: string, value: string): string {
+    this.store[key] = value;
+
+    return value;
+  }
+
+  removeItem(key: string): string {
+    delete this.store[key];
+
+    return key;
+  }
+
+  clear(): void {
+    this.store = {};
+  }
+
+  preStart(): void {
+    this.store = {
+      'wallet:server': process.env.DEFAULT_SERVER || hathorLib.constants.DEFAULT_SERVER,
+      'wallet:defaultServer': process.env.DEFAULT_SERVER || hathorLib.constants.DEFAULT_SERVER,
+    };
+  }
+}
+
+hathorLib.network.setNetwork(process.env.NETWORK);
+hathorLib.storage.setStore(new CustomStorage());
+
 /**
  * Calculate the double sha256 hash of the data.
  *
@@ -80,4 +125,38 @@ export const closeDbConnection = async (mysql: ServerlessMysql): Promise<void> =
 
 export const isAuthority = (tokenData: number): boolean => (
   (tokenData & hathorLib.constants.TOKEN_AUTHORITY_MASK) > 0    // eslint-disable-line no-bitwise
+);
+
+/**
+ * Shuffle an array in place.
+ *
+ * @remarks
+ * Got it from https://stackoverflow.com/a/6274381.
+ *
+ * @param array - An array containing the items
+ */
+export const arrayShuffle = <T extends unknown>(array: T[]): T[] => {
+  /* eslint-disable no-param-reassign */
+  let j;
+  let x;
+  let i;
+  for (i = array.length - 1; i > 0; i--) {
+    j = Math.floor(Math.random() * (i + 1));
+    x = array[i];
+    array[i] = array[j];
+    array[j] = x;
+  }
+  return array;
+  /* eslint-enable no-param-reassign */
+};
+
+/**
+ * Check if the received weight is in the acceptable weight range.
+ * This is calculated using the calculateTxWeight from the wallet-lib.
+ *
+ * @returns A boolean with the result
+ */
+export const validateWeight = (calculated: number, received: number): boolean => (
+  (received >= calculated)
+  && (received < (calculated * ACCEPTABLE_WEIGHT_RANGE))
 );

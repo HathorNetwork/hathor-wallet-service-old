@@ -4,8 +4,9 @@ import {
   getWalletBalanceMap,
   markLockedOutputs,
   unlockUtxos,
+  maybeRefreshWalletConstants,
 } from '@src/commons';
-import { Authorities, Balance, TokenBalanceMap, Utxo } from '@src/types';
+import { FullNodeVersionData, Authorities, Balance, TokenBalanceMap, Utxo } from '@src/types';
 import { closeDbConnection, getDbConnection } from '@src/utils';
 import {
   addToAddressTable,
@@ -20,6 +21,11 @@ import {
   createInput,
   createOutput,
 } from '@tests/utils';
+import {
+  updateVersionData,
+} from '@src/db';
+
+import hathorLib from '@hathor/wallet-lib';
 
 const mysql = getDbConnection();
 const OLD_ENV = process.env;
@@ -204,17 +210,27 @@ test('unlockUtxos', async () => {
     [walletId, 'xpub', 'ready', 10, now, now + 1],
   ]);
 
-  await addToAddressTable(mysql, [
-    [addr, 0, walletId, 1],
-  ]);
+  await addToAddressTable(mysql, [{
+    address: addr,
+    index: 0,
+    walletId,
+    transactions: 1,
+  }]);
 
   await addToAddressBalanceTable(mysql, [
     [addr, token, 0, 2 * reward + 5000, now, 5, 0, 0b10],
   ]);
 
-  await addToWalletBalanceTable(mysql, [
-    [walletId, token, 0, 2 * reward + 5000, 0, 0b10, now, 5],
-  ]);
+  await addToWalletBalanceTable(mysql, [{
+    walletId,
+    tokenId: token,
+    unlockedBalance: 0,
+    lockedBalance: 2 * reward + 5000,
+    unlockedAuthorities: 0,
+    lockedAuthorities: 0b10,
+    timelockExpires: now,
+    transactions: 5,
+  }]);
 
   const utxo: Utxo = {
     txId: txId1,
@@ -282,4 +298,82 @@ test('unlockUtxos', async () => {
   ).resolves.toBe(true);
   await expect(checkAddressBalanceTable(mysql, 1, addr, token, 2 * reward + 5000, 0, null, 5, 0b10, 0)).resolves.toBe(true);
   await expect(checkWalletBalanceTable(mysql, 1, walletId, token, 2 * reward + 5000, 0, null, 5, 0b10, 0)).resolves.toBe(true);
+});
+
+test('maybeRefreshWalletConstants with an uninitialized version_data database should call hathorLib.version.checkApiVersion()', async () => {
+  expect.hasAssertions();
+
+  const spy = jest.spyOn(hathorLib.axios, 'createRequestInstance');
+
+  const mockGet = jest.fn(() => Promise.resolve({
+    data: {
+      success: true,
+      version: '0.38.0',
+      network: 'mainnet',
+      min_weight: 14,
+      min_tx_weight: 14,
+      min_tx_weight_coefficient: 1.6,
+      min_tx_weight_k: 100,
+      token_deposit_percentage: 0.01,
+      reward_spend_min_blocks: 300,
+      max_number_inputs: 255,
+      max_number_outputs: 255,
+    },
+  }));
+
+  spy.mockReturnValue({
+    post: () => Promise.resolve({
+      data: {
+        success: true,
+      },
+    }),
+    get: mockGet,
+  });
+
+  await maybeRefreshWalletConstants(mysql);
+
+  expect(mockGet).toHaveBeenCalledTimes(1);
+});
+
+test('maybeRefreshWalletConstants with an initialized version_data database should query data from the database', async () => {
+  expect.hasAssertions();
+
+  const axiosSpy = jest.spyOn(hathorLib.axios, 'createRequestInstance');
+  const mockGet = jest.fn(() => Promise.resolve({ data: {} }));
+
+  axiosSpy.mockReturnValue({ get: mockGet });
+
+  const mockedVersionData: FullNodeVersionData = {
+    timestamp: new Date().getTime(),
+    version: '0.38.0',
+    network: 'mainnet',
+    minWeight: 14,
+    minTxWeight: 14,
+    minTxWeightCoefficient: 1.6,
+    minTxWeightK: 100,
+    tokenDepositPercentage: 0.01,
+    rewardSpendMinBlocks: 300,
+    maxNumberInputs: 255,
+    maxNumberOutputs: 255,
+  };
+
+  await updateVersionData(mysql, mockedVersionData);
+
+  await maybeRefreshWalletConstants(mysql);
+
+  const {
+    txMinWeight,
+    txWeightCoefficient,
+    txMinWeightK,
+  } = hathorLib.transaction.getTransactionWeightConstants();
+
+  const maxNumberInputs = hathorLib.transaction.getMaxInputsConstant();
+  const maxNumberOutputs = hathorLib.transaction.getMaxOutputsConstant();
+
+  expect(mockGet).toHaveBeenCalledTimes(0);
+  expect(txMinWeight).toStrictEqual(mockedVersionData.minTxWeight);
+  expect(txWeightCoefficient).toStrictEqual(mockedVersionData.minTxWeightCoefficient);
+  expect(txMinWeightK).toStrictEqual(mockedVersionData.minTxWeightK);
+  expect(maxNumberInputs).toStrictEqual(mockedVersionData.maxNumberInputs);
+  expect(maxNumberOutputs).toStrictEqual(mockedVersionData.maxNumberOutputs);
 });

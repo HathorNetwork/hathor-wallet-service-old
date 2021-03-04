@@ -37,10 +37,10 @@ provider:
 functions:
   onNewTxEvent:
     handler: src/txProcessor.onNewTxEvent
-  createWalletAsync:
-    handler: src/api/wallet.createWallet
-  createWalletApi:
-    handler: src/api/wallet.create
+  loadWalletAsync:
+    handler: src/api/wallet.loadWallet
+  loadWalletApi:
+    handler: src/api/wallet.load
     events:
       - http:
           path: wallet
@@ -74,3 +74,32 @@ functions:
           path: txhistory
           method: get
           cors: true
+  createTxProposalApi:
+    handler: src/api/txProposalCreate.create
+    events:
+      - http:
+          path: txproposals
+          method: post
+          cors: true
+  sendTxProposalApi:
+    handler: src/api/txProposalSend.send
+    events:
+      - http:
+          path: txproposals/{txProposalId}
+          method: put
+          cors: true
+          request:
+            parameters:
+              paths:
+                txProposalId: true
+  deleteTxProposalApi:
+    handler: src/api/txProposalDestroy.destroy
+    events:
+      - http:
+          path: txproposals/{txProposalId}
+          method: delete
+          cors: true
+          request:
+            parameters:
+              paths:
+                txProposalId: true
