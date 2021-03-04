@@ -1,3 +1,10 @@
+/**
+ * Copyright (c) Hathor Labs and its affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 import { ServerlessMysql } from 'serverless-mysql';
 
 import {
@@ -8,8 +15,8 @@ import {
   unlockUtxos as dbUnlockUtxos,
   updateAddressLockedBalance,
   updateWalletLockedBalance,
-  getLastVersionCheck,
-  updateLastVersionCheck,
+  getVersionData,
+  updateVersionData,
 } from '@src/db';
 import {
   DecodedOutput,
@@ -20,6 +27,7 @@ import {
   Utxo,
   Wallet,
   WalletTokenBalance,
+  FullNodeVersionData,
 } from '@src/types';
 
 import { getUnixTimestamp } from '@src/utils';
@@ -191,9 +199,9 @@ export const getWalletBalances = async (
   mysql: ServerlessMysql,
   now: number,
   walletId: string,
-  tokenId: string,
+  tokenIds: string[] = [],
 ): Promise<WalletTokenBalance[]> => {
-  let balances = await dbGetWalletBalances(mysql, walletId, tokenId);
+  let balances = await dbGetWalletBalances(mysql, walletId, tokenIds);
 
   // if any of the balances' timelock has expired, update the tables before returning
   const refreshBalances = balances.some((tb) => {
@@ -207,7 +215,7 @@ export const getWalletBalances = async (
     const currentHeight = await getLatestHeight(mysql);
     const utxos = await getWalletUnlockedUtxos(mysql, walletId, now, currentHeight);
     await unlockUtxos(mysql, utxos, true);
-    balances = await dbGetWalletBalances(mysql, walletId, tokenId);
+    balances = await dbGetWalletBalances(mysql, walletId, tokenIds);
   }
   return balances;
 };
@@ -217,16 +225,37 @@ export const getWalletBalances = async (
  *
  * @returns A promise that resolves when the wallet-lib constants have been set.
  */
-export const maybeRefreshWalletConstants = async (mysql: ServerlessMysql) => {
-  const lastVersionCheck = await getLastVersionCheck(mysql);
+export const maybeRefreshWalletConstants = async (mysql: ServerlessMysql): Promise<void> => {
+  const lastVersionData: FullNodeVersionData = await getVersionData(mysql);
   const now = getUnixTimestamp();
 
-  if (now - lastVersionCheck > VERSION_CHECK_MAX_DIFF) {
+  if (!lastVersionData || now - lastVersionData.timestamp > VERSION_CHECK_MAX_DIFF) {
     // Query and update versions
-    await hathorLib.version.checkApiVersion();
-    await updateLastVersionCheck(mysql, now);
+    const apiResponse = await hathorLib.version.checkApiVersion();
+    const versionData: FullNodeVersionData = {
+      timestamp: now,
+      version: apiResponse.version,
+      network: apiResponse.network,
+      minWeight: apiResponse.min_weight,
+      minTxWeight: apiResponse.min_tx_weight,
+      minTxWeightCoefficient: apiResponse.min_tx_weight_coefficient,
+      minTxWeightK: apiResponse.min_tx_weight_k,
+      tokenDepositPercentage: apiResponse.token_deposit_percentage,
+      rewardSpendMinBlocks: apiResponse.reward_spend_min_blocks,
+      maxNumberInputs: apiResponse.max_number_inputs,
+      maxNumberOutputs: apiResponse.max_number_outputs,
+    };
 
-    // TODO: Maybe when checkApiVersion fails we could use the current values on
-    // the wallet instead of propagating the error
+    await updateVersionData(mysql, versionData);
+  } else {
+    hathorLib.transaction.updateTransactionWeightConstants(
+      lastVersionData.minTxWeight,
+      lastVersionData.minTxWeightCoefficient,
+      lastVersionData.minTxWeightK,
+    );
+    hathorLib.tokens.updateDepositPercentage(lastVersionData.tokenDepositPercentage);
+    hathorLib.transaction.updateMaxInputsConstant(lastVersionData.maxNumberInputs);
+    hathorLib.transaction.updateMaxOutputsConstant(lastVersionData.maxNumberOutputs);
+    hathorLib.wallet.updateRewardLockConstant(lastVersionData.rewardSpendMinBlocks);
   }
 };

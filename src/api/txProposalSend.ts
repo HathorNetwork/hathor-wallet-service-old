@@ -9,20 +9,20 @@ import { ApiError } from '@src/api/errors';
 import {
   getTxProposal,
   getTxProposalInputs,
+  getTxProposalOutputs,
   updateTxProposal,
+  removeTxProposalOutputs,
 } from '@src/db';
-import {
-  TxProposalStatus,
-  ApiResponse,
-} from '@src/types';
+import { TxProposalStatus, ApiResponse } from '@src/types';
 import {
   closeDbConnection,
   getDbConnection,
   getUnixTimestamp,
+  validateWeight,
 } from '@src/utils';
 
 import {
-  walletIdProxyHandler,
+  maybeRefreshWalletConstants,
 } from '@src/commons';
 
 import { closeDbAndGetError } from '@src/api/utils';
@@ -41,7 +41,18 @@ const paramsSchema = Joi.object({
 });
 
 const bodySchema = Joi.object({
-  txHex: Joi.string().alphanum(),
+  timestamp: Joi.number()
+    .required(),
+  parents: Joi.array()
+    .required()
+    .length(2),
+  weight: Joi.number()
+    .required(),
+  nonce: Joi.number()
+    .integer()
+    .required(),
+  inputsSignatures: Joi.array()
+    .required(),
 });
 
 /*
@@ -49,7 +60,7 @@ const bodySchema = Joi.object({
  *
  * This lambda is called by API Gateway on PUT /txproposals/{proposalId}
  */
-export const send: APIGatewayProxyHandler = walletIdProxyHandler(async (walletId, event) => {
+export const send: APIGatewayProxyHandler = async (event) => {
   if (!event.pathParameters) {
     return closeDbAndGetError(mysql, ApiError.MISSING_PARAMETER, { parameter: 'txProposalId' });
   }
@@ -71,15 +82,18 @@ export const send: APIGatewayProxyHandler = walletIdProxyHandler(async (walletId
     return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD);
   }
 
-  const { txHex } = bodyValidation.value;
+  const {
+    timestamp,
+    parents,
+    weight,
+    nonce,
+    inputsSignatures,
+  } = bodyValidation.value;
+
   const txProposal = await getTxProposal(mysql, txProposalId);
 
   if (txProposal === null) {
     return closeDbAndGetError(mysql, ApiError.TX_PROPOSAL_NOT_FOUND);
-  }
-
-  if (txProposal.walletId !== walletId) {
-    return closeDbAndGetError(mysql, ApiError.FORBIDDEN);
   }
 
   // we can only send if it's still open or there was an error sending before
@@ -87,22 +101,60 @@ export const send: APIGatewayProxyHandler = walletIdProxyHandler(async (walletId
     return closeDbAndGetError(mysql, ApiError.TX_PROPOSAL_NOT_OPEN, { status: txProposal.status });
   }
 
+  // TODO validate max input signature size
+  // input: tx_id, index, data
+  const inputs = [];
+  const usedUtxos = await getTxProposalInputs(mysql, txProposalId);
+  for (const [i, utxo] of usedUtxos.entries()) {
+    // Deserialize from base64
+    const inputSignature = Buffer.from(inputsSignatures[i], 'base64');
+
+    inputs.push({
+      tx_id: utxo.txId,
+      index: utxo.index,
+      data: inputSignature,
+    });
+  }
+
+  const proposalOutputs = await getTxProposalOutputs(mysql, txProposalId);
+  const tokensSet = new Set(proposalOutputs.map((output) => (output.token)));
+  tokensSet.delete(hathorLib.constants.HATHOR_TOKEN_CONFIG.uid);
+  const tokens = Array.from(tokensSet);
+
+  // output: value, tokenData, address, timelock
+  const outputs = [];
+  for (const output of proposalOutputs) {
+    outputs.push({
+      value: output.value,
+      address: output.address,
+      timelock: output.timelock,
+      tokenData: output.token === hathorLib.constants.HATHOR_TOKEN_CONFIG.uid ? 0 : tokens.indexOf(output.token) + 1,
+    });
+  }
+
+  const txData = {
+    version: hathorLib.constants.DEFAULT_TX_VERSION,
+    parents,
+    timestamp,
+    weight,
+    nonce,
+    tokens,
+    inputs,
+    outputs,
+  };
+
+  await maybeRefreshWalletConstants(mysql);
+
+  // Validate TX_WEIGHT
+  const calculatedTxWeight = hathorLib.transaction.calculateTxWeight(txData);
+
+  if (!validateWeight(calculatedTxWeight, txData.weight)) {
+    return closeDbAndGetError(mysql, ApiError.INVALID_TX_WEIGHT, { status: txProposal.status });
+  }
+
+  const txHex = hathorLib.transaction.getTxHexFromData(txData);
+
   const now = getUnixTimestamp();
-  const txProposalInputs = await getTxProposalInputs(mysql, txProposalId);
-  const tx = hathorLib.helpersUtils.createTxFromHex(txHex, new hathorLib.Network(process.env.NETWORK));
-
-  if (tx.inputs.length !== txProposalInputs.length) {
-    return closeDbAndGetError(mysql, ApiError.TX_PROPOSAL_NO_MATCH);
-  }
-
-  const txHexInputHashes = tx.inputs.map((input) => input.hash);
-
-  for (let i = 0; i < txProposalInputs.length; i++) {
-    // Validate that the inputs on the txHex are the same as those sent on txProposalCreate
-    if (txHexInputHashes.indexOf(txProposalInputs[i].txId) < 0) {
-      return closeDbAndGetError(mysql, ApiError.TX_PROPOSAL_NO_MATCH);
-    }
-  }
 
   try {
     const response: ApiResponse = await new Promise((resolve) => {
@@ -118,6 +170,7 @@ export const send: APIGatewayProxyHandler = walletIdProxyHandler(async (walletId
       TxProposalStatus.SENT,
     );
 
+    await removeTxProposalOutputs(mysql, txProposalId);
     await closeDbConnection(mysql);
 
     return {
@@ -136,10 +189,6 @@ export const send: APIGatewayProxyHandler = walletIdProxyHandler(async (walletId
       TxProposalStatus.SEND_ERROR,
     );
 
-    return closeDbAndGetError(mysql, ApiError.TX_PROPOSAL_SEND_ERROR, {
-      message: e.message,
-      txProposalId,
-      txHex,
-    });
+    return closeDbAndGetError(mysql, ApiError.TX_PROPOSAL_SEND_ERROR, { message: e.message, txProposalId, txHex });
   }
-});
+};
