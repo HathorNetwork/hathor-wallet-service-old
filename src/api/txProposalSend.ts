@@ -25,6 +25,8 @@ import {
   maybeRefreshWalletConstants,
 } from '@src/commons';
 
+import { closeDbAndGetError } from '@src/api/utils';
+
 const mysql = getDbConnection();
 
 const paramsSchema = Joi.object({
@@ -60,15 +62,7 @@ const bodySchema = Joi.object({
  */
 export const send: APIGatewayProxyHandler = async (event) => {
   if (!event.pathParameters) {
-    await closeDbConnection(mysql);
-    return {
-      statusCode: 200,
-      body: JSON.stringify({
-        success: false,
-        error: ApiError.MISSING_PARAMETER,
-        parameter: 'txProposalId', // this is our only param, so this is safe
-      }),
-    };
+    return closeDbAndGetError(mysql, ApiError.MISSING_PARAMETER, { parameter: 'txProposalId' });
   }
 
   const { value, error } = paramsSchema.validate(event.pathParameters);
@@ -77,15 +71,7 @@ export const send: APIGatewayProxyHandler = async (event) => {
     // There is only one parameter on this API (txProposalId) and it is on path 0
     const parameter = error.details[0].path[0];
 
-    await closeDbConnection(mysql);
-    return {
-      statusCode: 200,
-      body: JSON.stringify({
-        success: false,
-        error: ApiError.INVALID_PARAMETER,
-        parameter,
-      }),
-    };
+    return closeDbAndGetError(mysql, ApiError.INVALID_PARAMETER, { parameter });
   }
 
   const { txProposalId } = value;
@@ -93,11 +79,7 @@ export const send: APIGatewayProxyHandler = async (event) => {
   const bodyValidation = bodySchema.validate(JSON.parse(event.body));
 
   if (bodyValidation.error) {
-    await closeDbConnection(mysql);
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ success: false, error: ApiError.INVALID_PAYLOAD }),
-    };
+    return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD);
   }
 
   const {
@@ -111,20 +93,12 @@ export const send: APIGatewayProxyHandler = async (event) => {
   const txProposal = await getTxProposal(mysql, txProposalId);
 
   if (txProposal === null) {
-    await closeDbConnection(mysql);
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ success: false, error: ApiError.TX_PROPOSAL_NOT_FOUND }),
-    };
+    return closeDbAndGetError(mysql, ApiError.TX_PROPOSAL_NOT_FOUND);
   }
 
+  // we can only send if it's still open or there was an error sending before
   if (txProposal.status !== TxProposalStatus.OPEN && txProposal.status !== TxProposalStatus.SEND_ERROR) {
-    // we can only send if it's still open or there was an error sending before
-    await closeDbConnection(mysql);
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ success: false, error: ApiError.TX_PROPOSAL_NOT_OPEN, status: txProposal.status }),
-    };
+    return closeDbAndGetError(mysql, ApiError.TX_PROPOSAL_NOT_OPEN, { status: txProposal.status });
   }
 
   // TODO validate max input signature size
@@ -175,16 +149,7 @@ export const send: APIGatewayProxyHandler = async (event) => {
   const calculatedTxWeight = hathorLib.transaction.calculateTxWeight(txData);
 
   if (!validateWeight(calculatedTxWeight, txData.weight)) {
-    await closeDbConnection(mysql);
-
-    return {
-      statusCode: 200,
-      body: JSON.stringify({
-        success: false,
-        error: ApiError.INVALID_TX_WEIGHT,
-        message: `Expected weight >= ${calculatedTxWeight}`,
-      }),
-    };
+    return closeDbAndGetError(mysql, ApiError.INVALID_TX_WEIGHT, { status: txProposal.status });
   }
 
   const txHex = hathorLib.transaction.getTxHexFromData(txData);
@@ -206,6 +171,7 @@ export const send: APIGatewayProxyHandler = async (event) => {
     );
 
     await removeTxProposalOutputs(mysql, txProposalId);
+    await closeDbConnection(mysql);
 
     return {
       statusCode: 200,
@@ -223,16 +189,6 @@ export const send: APIGatewayProxyHandler = async (event) => {
       TxProposalStatus.SEND_ERROR,
     );
 
-    return {
-      statusCode: 200,
-      body: JSON.stringify({
-        success: false,
-        message: e.message,
-        txProposalId,
-        txHex,
-      }),
-    };
-  } finally {
-    await closeDbConnection(mysql);
+    return closeDbAndGetError(mysql, ApiError.TX_PROPOSAL_SEND_ERROR, { message: e.message, txProposalId, txHex });
   }
 };

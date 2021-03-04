@@ -23,6 +23,7 @@ import {
   Utxo,
   WalletTokenBalance,
 } from '@src/types';
+import { closeDbAndGetError } from '@src/api/utils';
 import { arrayShuffle, closeDbConnection, getDbConnection, getUnixTimestamp } from '@src/utils';
 import hathorLib from '@hathor/wallet-lib';
 
@@ -99,32 +100,19 @@ export const create: APIGatewayProxyHandler = async (event) => {
   });
 
   if (error) {
-    await closeDbConnection(mysql);
     const details = error.details.map((err) => ({
       message: err.message,
       path: err.path,
     }));
 
-    return {
-      statusCode: 200,
-      body: JSON.stringify({
-        success: false,
-        error: ApiError.INVALID_PAYLOAD,
-        details,
-      }),
-    };
+    return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, { details });
   }
 
   const body = value;
   const walletId = body.id;
 
   if (body.outputs.length > hathorLib.transaction.getMaxOutputsConstant()) {
-    await closeDbConnection(mysql);
-
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ success: false, error: ApiError.TOO_MANY_OUTPUTS, outputs: body.outputs.length }),
-    };
+    return closeDbAndGetError(mysql, ApiError.TOO_MANY_OUTPUTS, { outputs: body.outputs.length });
   }
 
   const outputs: IWalletOutput[] = body.outputs;
@@ -139,30 +127,16 @@ export const create: APIGatewayProxyHandler = async (event) => {
   }());
 
   if (!inputSelectionAlgo) {
-    await closeDbConnection(mysql);
-
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ success: false, error: ApiError.INVALID_SELECTION_ALGORITHM }),
-    };
+    return closeDbAndGetError(mysql, ApiError.INVALID_SELECTION_ALGORITHM);
   }
 
   const status = await getWallet(mysql, walletId);
   if (!status) {
-    await closeDbConnection(mysql);
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ success: false, error: ApiError.WALLET_NOT_FOUND }),
-    };
+    return closeDbAndGetError(mysql, ApiError.WALLET_NOT_FOUND);
   }
 
   if (!status.readyAt) {
-    await closeDbConnection(mysql);
-
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ success: false, error: ApiError.WALLET_NOT_READY }),
-    };
+    return closeDbAndGetError(mysql, ApiError.WALLET_NOT_READY);
   }
 
   const now = getUnixTimestamp();
@@ -172,11 +146,7 @@ export const create: APIGatewayProxyHandler = async (event) => {
   const balances = await getWalletBalances(mysql, now, walletId, outputsBalance.getTokens());
   const insufficientFunds = checkWalletFunds(balances, outputsBalance);
   if (insufficientFunds.length > 0) {
-    await closeDbConnection(mysql);
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ success: false, error: ApiError.INSUFFICIENT_FUNDS, insufficient: insufficientFunds }),
-    };
+    return closeDbAndGetError(mysql, ApiError.INSUFFICIENT_FUNDS, { insufficient: insufficientFunds });
   }
 
   // fetch the utxos that will be used
@@ -187,21 +157,12 @@ export const create: APIGatewayProxyHandler = async (event) => {
     const missing = checkMissingUtxos(inputs, inputUtxos);
 
     if (missing.length > 0) {
-      await closeDbConnection(mysql);
-      return {
-        statusCode: 200,
-        body: JSON.stringify({ success: false, error: ApiError.INPUTS_NOT_FOUND, missing }),
-      };
+      return closeDbAndGetError(mysql, ApiError.INPUTS_NOT_FOUND, { missing });
     }
 
     // check if inputs sent by user are not part of another tx proposal
     if (checkUsedUtxos(inputUtxos)) {
-      await closeDbConnection(mysql);
-
-      return {
-        statusCode: 200,
-        body: JSON.stringify({ success: false, error: ApiError.INPUTS_ALREADY_USED }),
-      };
+      return closeDbAndGetError(mysql, ApiError.INPUTS_ALREADY_USED);
     }
   } else {
     for (const [tokenId, tokenBalance] of outputsBalance.iterator()) {
@@ -211,11 +172,7 @@ export const create: APIGatewayProxyHandler = async (event) => {
   }
 
   if (inputUtxos.length > hathorLib.transaction.getMaxInputsConstant()) {
-    await closeDbConnection(mysql);
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ success: false, error: ApiError.TOO_MANY_INPUTS, inputs: inputUtxos.length }),
-    };
+    return closeDbAndGetError(mysql, ApiError.TOO_MANY_INPUTS, { inputs: inputUtxos.length });
   }
 
   // the difference between inputs and outputs will be the change
@@ -229,11 +186,7 @@ export const create: APIGatewayProxyHandler = async (event) => {
     if (tokenBalance.total() > 0) insufficientInputs.push(token);
   }
   if (insufficientInputs.length > 0) {
-    await closeDbConnection(mysql);
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ success: false, error: ApiError.INSUFFICIENT_INPUTS, insufficient: insufficientInputs }),
-    };
+    return closeDbAndGetError(mysql, ApiError.INSUFFICIENT_INPUTS, { insufficient: insufficientInputs });
   }
 
   const addresses = await getUnusedAddresses(mysql, walletId);
@@ -241,13 +194,9 @@ export const create: APIGatewayProxyHandler = async (event) => {
 
   const finalOutputs = outputs.concat(changeOutputs);
 
+  // we also need to do this check here, as we may have added change outputs
   if (finalOutputs.length > hathorLib.transaction.getMaxOutputsConstant()) {
-    // we also need to do this check here, as we may have added change outputs
-    await closeDbConnection(mysql);
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ success: false, error: ApiError.TOO_MANY_OUTPUTS, outputs: finalOutputs.length }),
-    };
+    return closeDbAndGetError(mysql, ApiError.TOO_MANY_OUTPUTS, { outputs: finalOutputs.length });
   }
 
   /**
@@ -267,7 +216,7 @@ export const create: APIGatewayProxyHandler = async (event) => {
   await closeDbConnection(mysql);
 
   return {
-    statusCode: 200,
+    statusCode: 201,
     body: JSON.stringify({
       success: true,
       txProposalId,
