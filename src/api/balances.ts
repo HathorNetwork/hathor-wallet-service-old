@@ -35,6 +35,10 @@ const paramsSchema = Joi.object({
  * Get the balances of a wallet
  *
  * This lambda is called by API Gateway on GET /balances
+ *
+ * XXX: If token_id is not sent as a filter, we return all token balances
+ * Maybe we should limit the amount of tokens to query the balance to prevent an user
+ * with a lot of different tokens in his wallet from doing an expensive query
  */
 export const get: APIGatewayProxyHandler = async (event) => {
   const params = event.queryStringParameters;
