@@ -21,6 +21,7 @@ import {
   getWalletAddresses,
   getWalletBalances,
   getWalletSortedValueUtxos,
+  getVersionData,
   initWalletBalance,
   initWalletTxHistory,
   markUtxosWithProposalId,
@@ -36,8 +37,16 @@ import {
   updateWalletLockedBalance,
   updateWalletStatus,
   updateWalletTablesWithTx,
+  updateVersionData,
 } from '@src/db';
-import { Authorities, TokenBalanceMap, TokenInfo, TxProposalStatus, WalletStatus } from '@src/types';
+import {
+  Authorities,
+  TokenBalanceMap,
+  TokenInfo,
+  TxProposalStatus,
+  WalletStatus,
+  FullNodeVersionData,
+} from '@src/types';
 import { closeDbConnection, getDbConnection, getUnixTimestamp, isAuthority } from '@src/utils';
 import {
   ADDRESSES,
@@ -53,6 +62,7 @@ import {
   checkAddressBalanceTable,
   checkAddressTable,
   checkAddressTxHistoryTable,
+  checkVersionDataTable,
   checkUtxoTable,
   checkWalletBalanceTable,
   checkWalletTxHistoryTable,
@@ -1064,4 +1074,64 @@ test('addTxProposalOutputs, getTxProposalOutputs, deleteTxProposalOutputs', asyn
   // remove
   await removeTxProposalOutputs(mysql, txProposalId);
   expect(await getTxProposalOutputs(mysql, txProposalId)).toStrictEqual([]);
+});
+
+test('updateVersionData', async () => {
+  expect.hasAssertions();
+
+  const mockData: FullNodeVersionData = {
+    timestamp: 1614875031449,
+    version: '0.38.0',
+    network: 'mainnet',
+    minWeight: 14,
+    minTxWeight: 14,
+    minTxWeightCoefficient: 1.6,
+    minTxWeightK: 100,
+    tokenDepositPercentage: 0.01,
+    rewardSpendMinBlocks: 300,
+    maxNumberInputs: 255,
+    maxNumberOutputs: 255,
+  };
+
+  const mockData2: FullNodeVersionData = {
+    ...mockData,
+    version: '0.39.1',
+  };
+
+  const mockData3: FullNodeVersionData = {
+    ...mockData,
+    version: '0.39.2',
+  };
+
+  await updateVersionData(mysql, mockData);
+  await updateVersionData(mysql, mockData2);
+  await updateVersionData(mysql, mockData3);
+
+  await expect(
+    checkVersionDataTable(mysql, mockData3),
+  ).resolves.toBe(true);
+});
+
+test('getVersionData', async () => {
+  expect.hasAssertions();
+
+  const mockData: FullNodeVersionData = {
+    timestamp: 1614875031449,
+    version: '0.38.0',
+    network: 'mainnet',
+    minWeight: 14,
+    minTxWeight: 14,
+    minTxWeightCoefficient: 1.6,
+    minTxWeightK: 100,
+    tokenDepositPercentage: 0.01,
+    rewardSpendMinBlocks: 300,
+    maxNumberInputs: 255,
+    maxNumberOutputs: 255,
+  };
+
+  await updateVersionData(mysql, mockData);
+
+  const versionData: FullNodeVersionData = await getVersionData(mysql);
+
+  expect(Object.entries(versionData).toString()).toStrictEqual(Object.entries(mockData).toString());
 });

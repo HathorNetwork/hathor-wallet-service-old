@@ -1,7 +1,12 @@
 import { APIGatewayProxyEvent } from 'aws-lambda';
 import { ServerlessMysql } from 'serverless-mysql';
 
-import { DbSelectResult, TxInput, TxOutput } from '@src/types';
+import {
+  DbSelectResult,
+  TxInput,
+  TxOutput,
+  FullNodeVersionData,
+} from '@src/types';
 
 import { WalletBalanceEntry, AddressTableEntry, TokenTableEntry } from '@tests/types';
 
@@ -577,3 +582,56 @@ export const makeGatewayEvent = (params: {
   requestContext: null,
   resource: null,
 });
+
+export const checkVersionDataTable = async (mysql: ServerlessMysql, versionData: FullNodeVersionData): Promise<boolean | Record<string, unknown>> => {
+  // first check the total number of rows in the table
+  let results: DbSelectResult = await mysql.query('SELECT * FROM `version_data`');
+
+  if (results.length > 1) {
+    return {
+      error: 'version_data total results',
+      expected: 1,
+      received: results.length,
+      results,
+    };
+  }
+
+  // now fetch the exact entry
+  const baseQuery = `
+    SELECT *
+      FROM \`version_data\`
+     WHERE \`id\` = 1
+  `;
+
+  results = await mysql.query(baseQuery);
+
+  if (results.length !== 1) {
+    return {
+      error: 'checkVersionDataTable query',
+    };
+  }
+
+  const dbVersionData: FullNodeVersionData = {
+    timestamp: results[0].timestamp as number,
+    version: results[0].version as string,
+    network: results[0].network as string,
+    minWeight: results[0].min_weight as number,
+    minTxWeight: results[0].min_tx_weight as number,
+    minTxWeightCoefficient: results[0].min_tx_weight_coefficient as number,
+    minTxWeightK: results[0].min_tx_weight_k as number,
+    tokenDepositPercentage: results[0].token_deposit_percentage as number,
+    rewardSpendMinBlocks: results[0].reward_spend_min_blocks as number,
+    maxNumberInputs: results[0].max_number_inputs as number,
+    maxNumberOutputs: results[0].max_number_outputs as number,
+  };
+
+  if (Object.entries(dbVersionData).toString() !== Object.entries(versionData).toString()) {
+    return {
+      error: 'checkVersionDataTable results don\'t match',
+      expected: versionData,
+      received: dbVersionData,
+    };
+  }
+
+  return true;
+};

@@ -51,7 +51,10 @@ CREATE TABLE `address_tx_history` (
   PRIMARY KEY (`address`,`tx_id`,`token_id`)
 );
 
+-- This should allow for only one row at a time
+-- We do this by using the
 CREATE TABLE `version_data` (
+  `id` int unsigned NOT NULL DEFAULT 1,
   `timestamp` bigint unsigned NOT NULL,
   `version` varchar(11) NOT NULL,
   `network` varchar(8) NOT NULL,
@@ -63,7 +66,7 @@ CREATE TABLE `version_data` (
   `reward_spend_min_blocks` int unsigned NOT NULL,
   `max_number_inputs` int unsigned NOT NULL,
   `max_number_outputs` int unsigned NOT NULL,
-  PRIMARY KEY (`version`)
+  PRIMARY KEY (`id`)
 );
 
 CREATE TABLE `metadata` (

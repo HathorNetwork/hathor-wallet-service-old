@@ -1152,6 +1152,7 @@ export const maybeUpdateLatestHeight = async (mysql: ServerlessMysql, height: nu
  */
 export const updateVersionData = async (mysql: ServerlessMysql, data: FullNodeVersionData): Promise<void> => {
   const entry = {
+    id: 1,
     timestamp: data.timestamp,
     version: data.version,
     network: data.network,
@@ -1178,7 +1179,7 @@ export const updateVersionData = async (mysql: ServerlessMysql, data: FullNodeVe
  * @returns
  */
 export const getVersionData = async (mysql: ServerlessMysql): Promise<FullNodeVersionData | null> => {
-  const results: DbSelectResult = await mysql.query('SELECT * FROM `version_data`');
+  const results: DbSelectResult = await mysql.query('SELECT * FROM `version_data` WHERE id = 1 LIMIT 1;');
 
   if (results.length > 0) {
     const data = results[0];
