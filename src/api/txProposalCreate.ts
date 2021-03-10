@@ -228,6 +228,9 @@ export const create: APIGatewayProxyHandler = async (event) => {
 
   const retInputs = await Promise.all(inputPromises);
 
+  // We need to return the tokens array as it's needed to assemble the tx for mining
+  const tokens = Array.from(new Set([...outputsBalance.getTokens(), ...inputsBalance.getTokens()]));
+
   return {
     statusCode: 201,
     body: JSON.stringify({
@@ -235,6 +238,7 @@ export const create: APIGatewayProxyHandler = async (event) => {
       txProposalId,
       inputs: retInputs,
       outputs: finalOutputs,
+      tokens,
     }),
   };
 };
