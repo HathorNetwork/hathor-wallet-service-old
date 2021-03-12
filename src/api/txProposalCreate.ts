@@ -229,7 +229,7 @@ export const create: APIGatewayProxyHandler = async (event) => {
   const retInputs = await Promise.all(inputPromises);
 
   // We need to return the tokens array as it's needed to assemble the tx for mining
-  const tokens = Array.from(new Set([...outputsBalance.getTokens(), ...inputsBalance.getTokens()]));
+  const tokens = Array.from(new Set([...outputsBalance.getTokens()]));
 
   return {
     statusCode: 201,
