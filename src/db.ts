@@ -267,7 +267,7 @@ export const updateExistingAddresses = async (mysql: ServerlessMysql, walletId: 
  * @param mysql - Database connection
  * @param walletId - Wallet id
  * @param address - Address to get the detail
- * @returns The details of the address {address, index, transactions}
+ * @returns The details of the address {address, index, transactions} or null if not found
  */
 export const getWalletAddressDetail = async (mysql: ServerlessMysql, walletId: string, address: string): Promise<AddressInfo | null> => {
   const results: DbSelectResult = await mysql.query(`
