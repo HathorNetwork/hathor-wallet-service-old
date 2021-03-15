@@ -262,6 +262,37 @@ export const updateExistingAddresses = async (mysql: ServerlessMysql, walletId: 
 };
 
 /**
+ * Get a wallet's address detail.
+ *
+ * @param mysql - Database connection
+ * @param walletId - Wallet id
+ * @param address - Address to get the detail
+ * @returns The details of the address {address, index, transactions}
+ */
+export const getWalletAddressDetail = async (mysql: ServerlessMysql, walletId: string, address: string): Promise<AddressInfo | null> => {
+  const results: DbSelectResult = await mysql.query(`
+    SELECT *
+      FROM \`address\`
+     WHERE \`wallet_id\` = ?
+         AND \`address\` = ?`,
+  [walletId, address]);
+
+  if (results.length > 0) {
+    const data = results[0];
+
+    const addressDetail: AddressInfo = {
+      address: data.address as string,
+      index: data.index as number,
+      transactions: data.transactions as number,
+    };
+
+    return addressDetail;
+  }
+
+  return null;
+};
+
+/**
  * Initialize a wallet's transaction history.
  *
  * @remarks
