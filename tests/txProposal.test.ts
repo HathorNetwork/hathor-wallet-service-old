@@ -28,6 +28,8 @@ import { ApiError } from '@src/api/errors';
 
 import hathorLib from '@hathor/wallet-lib';
 
+const defaultDerivationPath = `m/44'/${hathorLib.constants.HATHOR_BIP44_CODE}'/0'/`;
+
 const mysql = getDbConnection();
 
 beforeEach(async () => {
@@ -283,7 +285,7 @@ test('POST /txproposals one output and input', async () => {
   expect(returnBody.success).toBe(true);
   expect(returnBody.txProposalId).toHaveLength(36);
   expect(returnBody.inputs).toHaveLength(1);
-  expect(returnBody.inputs).toContainEqual({ txId: 'txSuccess0', index: 0 });
+  expect(returnBody.inputs).toContainEqual({ txId: 'txSuccess0', index: 0, addressPath: `${defaultDerivationPath}0` });
   expect(returnBody.outputs).toHaveLength(1);
   expect(returnBody.outputs).toContainEqual({ address: ADDRESSES[0], value: 300, token: 'token1', timelock: null });
 
@@ -342,7 +344,7 @@ test('POST /txproposals with utxos that are already used on another txproposal s
   expect(returnBody.success).toBe(true);
   expect(returnBody.txProposalId).toHaveLength(36);
   expect(returnBody.inputs).toHaveLength(1);
-  expect(returnBody.inputs).toContainEqual({ txId: 'txSuccess0', index: 0 });
+  expect(returnBody.inputs).toContainEqual({ txId: 'txSuccess0', index: 0, addressPath: `${defaultDerivationPath}0` });
   expect(returnBody.outputs).toHaveLength(1);
   expect(returnBody.outputs).toContainEqual({ address: ADDRESSES[0], value: 300, token: 'token1', timelock: null });
 
@@ -416,12 +418,19 @@ test('POST /txproposals use two UTXOs and add change output', async () => {
     address: ADDRESSES[0],
     index: 0,
     walletId: 'my-wallet',
-    transactions: 2,
+    transactions: 1,
+  }]);
+
+  await addToAddressTable(mysql, [{
+    address: ADDRESSES[3],
+    index: 3,
+    walletId: 'my-wallet',
+    transactions: 1,
   }]);
 
   const utxos = [
     ['txSuccess0', 0, 'token1', ADDRESSES[0], 300, 0, null, null, false],
-    ['txSuccess1', 0, 'token1', ADDRESSES[0], 100, 0, null, null, false],
+    ['txSuccess1', 0, 'token1', ADDRESSES[3], 100, 0, null, null, false],
   ];
   await addToUtxoTable(mysql, utxos);
   await addToWalletBalanceTable(mysql, [{
@@ -461,8 +470,8 @@ test('POST /txproposals use two UTXOs and add change output', async () => {
   expect(returnBody.success).toBe(true);
   expect(returnBody.txProposalId).toHaveLength(36);
   expect(returnBody.inputs).toHaveLength(2);
-  expect(returnBody.inputs).toContainEqual({ txId: 'txSuccess0', index: 0 });
-  expect(returnBody.inputs).toContainEqual({ txId: 'txSuccess1', index: 0 });
+  expect(returnBody.inputs).toContainEqual({ txId: 'txSuccess0', index: 0, addressPath: `${defaultDerivationPath}0` });
+  expect(returnBody.inputs).toContainEqual({ txId: 'txSuccess1', index: 0, addressPath: `${defaultDerivationPath}3` });
   expect(returnBody.outputs).toHaveLength(2);
   expect(returnBody.outputs).toContainEqual({ address: ADDRESSES[0], value: 320, token: 'token1', timelock: null });
   expect(returnBody.outputs).toContainEqual({ address: ADDRESSES[1], value: 80, token: 'token1', timelock: null });
@@ -585,9 +594,9 @@ test('POST /txproposals two tokens, both with change output', async () => {
   expect(returnBody.success).toBe(true);
   expect(returnBody.txProposalId).toHaveLength(36);
   expect(returnBody.inputs).toHaveLength(3);
-  expect(returnBody.inputs).toContainEqual({ txId: 'txSuccess0', index: 0 });
-  expect(returnBody.inputs).toContainEqual({ txId: 'txSuccess1', index: 0 });
-  expect(returnBody.inputs).toContainEqual({ txId: 'txSuccess2', index: 0 });
+  expect(returnBody.inputs).toContainEqual({ txId: 'txSuccess0', index: 0, addressPath: `${defaultDerivationPath}0` });
+  expect(returnBody.inputs).toContainEqual({ txId: 'txSuccess1', index: 0, addressPath: `${defaultDerivationPath}0` });
+  expect(returnBody.inputs).toContainEqual({ txId: 'txSuccess2', index: 0, addressPath: `${defaultDerivationPath}0` });
   expect(returnBody.outputs).toHaveLength(4);
   expect(returnBody.outputs).toContainEqual({ address: ADDRESSES[0], value: 320, token: 'token1', timelock: null });
   expect(returnBody.outputs).toContainEqual({ address: ADDRESSES[1], value: 80, token: 'token1', timelock: null });
