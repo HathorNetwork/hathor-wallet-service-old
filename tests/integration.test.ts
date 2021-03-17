@@ -132,7 +132,7 @@ test('receive blocks and txs and then start wallet', async () => {
   await loadWallet({ xpubkey: XPUBKEY, maxGap }, null, null);
 
   await checkAfterReceivingTx2(true);
-}, 30000);
+}, 60000);
 
 // eslint-disable-next-line jest/prefer-expect-assertions, jest/expect-expect
 test('start wallet and then receive blocks and txs', async () => {
@@ -165,7 +165,7 @@ test('start wallet and then receive blocks and txs', async () => {
    */
   await txProcessor.onNewTxEvent(txEvent2);
   await checkAfterReceivingTx2(true);
-}, 30000);
+}, 60000);
 
 // eslint-disable-next-line jest/prefer-expect-assertions, jest/expect-expect
 test('receive blocks, start wallet and then receive transactions', async () => {

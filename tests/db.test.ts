@@ -18,6 +18,7 @@ import {
   getUtxos,
   getUtxosLockedAtHeight,
   getWallet,
+  getWalletAddressDetail,
   getWalletAddresses,
   getWalletBalances,
   getWalletSortedValueUtxos,
@@ -664,6 +665,36 @@ test('getWalletAddresses', async () => {
     expect(i).toBe(address.index);
     expect(address.address).toBe(ADDRESSES[i]);
   }
+});
+
+test('getWalletAddressDetail', async () => {
+  expect.hasAssertions();
+  const walletId = 'walletId';
+  const lastIndex = 5;
+  // add some addresses into db
+  const entries = [];
+  for (let i = 0; i < lastIndex; i++) {
+    entries.push({
+      address: ADDRESSES[i],
+      index: i,
+      walletId,
+      transactions: 0,
+    });
+  }
+  await addToAddressTable(mysql, entries);
+
+  const detail0 = await getWalletAddressDetail(mysql, walletId, ADDRESSES[0]);
+  expect(detail0.address).toBe(ADDRESSES[0]);
+  expect(detail0.index).toBe(0);
+  expect(detail0.transactions).toBe(0);
+
+  const detail3 = await getWalletAddressDetail(mysql, walletId, ADDRESSES[3]);
+  expect(detail3.address).toBe(ADDRESSES[3]);
+  expect(detail3.index).toBe(3);
+  expect(detail3.transactions).toBe(0);
+
+  const detailNull = await getWalletAddressDetail(mysql, walletId, ADDRESSES[8]);
+  expect(detailNull).toBeNull();
 });
 
 test('getWalletBalances', async () => {
