@@ -281,6 +281,7 @@ test('POST /txproposals one output and input', async () => {
   const event = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet', outputs }));
   const result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(result.body as string);
+
   expect(result.statusCode).toBe(201);
   expect(returnBody.success).toBe(true);
   expect(returnBody.txProposalId).toHaveLength(36);
@@ -288,6 +289,7 @@ test('POST /txproposals one output and input', async () => {
   expect(returnBody.inputs).toContainEqual({ txId: 'txSuccess0', index: 0, addressPath: `${defaultDerivationPath}0` });
   expect(returnBody.outputs).toHaveLength(1);
   expect(returnBody.outputs).toContainEqual({ address: ADDRESSES[0], value: 300, token: 'token1', timelock: null });
+  expect(returnBody.tokens).toContainEqual('token1');
 
   await _checkTxProposalTables(returnBody.txProposalId, returnBody.inputs, returnBody.outputs);
 });
@@ -602,6 +604,8 @@ test('POST /txproposals two tokens, both with change output', async () => {
   expect(returnBody.outputs).toContainEqual({ address: ADDRESSES[1], value: 80, token: 'token1', timelock: null });
   expect(returnBody.outputs).toContainEqual({ address: ADDRESSES[0], value: 90, token: 'token2', timelock: null });
   expect(returnBody.outputs).toContainEqual({ address: ADDRESSES[1], value: 210, token: 'token2', timelock: null });
+  expect(returnBody.tokens).toContainEqual('token1');
+  expect(returnBody.tokens).toContainEqual('token2');
 
   await _checkTxProposalTables(returnBody.txProposalId, returnBody.inputs, returnBody.outputs);
 });
