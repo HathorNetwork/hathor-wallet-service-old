@@ -24,6 +24,7 @@ import { WalletStatus } from '@src/types';
 import { closeDbConnection, getDbConnection, getWalletId } from '@src/utils';
 import { closeDbAndGetError } from '@src/api/utils';
 import Joi from 'joi';
+import hathorLib from '@hathor/wallet-lib';
 
 const mysql = getDbConnection();
 const getParamsSchema = Joi.object({
@@ -71,6 +72,8 @@ export const get: APIGatewayProxyHandler = async (event) => {
 const loadBodySchema = Joi.object({
   xpubkey: Joi.string()
     .required(),
+  address0: Joi.string()
+    .required(),
 });
 
 /*
@@ -109,6 +112,15 @@ export const load: APIGatewayProxyHandler = async (event) => {
   let status = await getWallet(mysql, walletId);
   if (status) {
     return closeDbAndGetError(mysql, ApiError.WALLET_ALREADY_LOADED, { status });
+  }
+
+  const expectedAddress0 = value.address0;
+
+  const address0 = hathorLib.walletUtils.getAddressAtIndex(xpubkey, 0, 0, 'mainnet');
+  if (address0 !== expectedAddress0) {
+    return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, {
+      message: `Expected first address to be ${expectedAddress0} but it is ${address0}`,
+    });
   }
 
   const maxGap = parseInt(process.env.MAX_ADDRESS_GAP, 10);
