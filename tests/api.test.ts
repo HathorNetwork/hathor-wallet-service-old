@@ -381,7 +381,7 @@ test('POST /wallet', async () => {
   expect(returnBody.details[0].message).toStrictEqual('"value" must be of type object');
 
   // missing xpubkey
-  event = makeGatewayEvent({}, JSON.stringify({ param1: 'aaa', address0: 'a' }));
+  event = makeGatewayEvent({}, JSON.stringify({ param1: 'aaa', firstAddress: 'a' }));
   result = await walletLoad(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(400);
@@ -391,18 +391,8 @@ test('POST /wallet', async () => {
   expect(returnBody.details[0].message).toStrictEqual('"xpubkey" is required');
   expect(returnBody.details[1].message).toStrictEqual('"param1" is not allowed');
 
-  // missing address0 parameter
-  event = makeGatewayEvent({}, JSON.stringify({ xpubkey: 'a' }));
-  result = await walletLoad(event, null, null) as APIGatewayProxyResult;
-  returnBody = JSON.parse(result.body as string);
-  expect(result.statusCode).toBe(400);
-  expect(returnBody.success).toBe(false);
-  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
-  expect(returnBody.details).toHaveLength(1);
-  expect(returnBody.details[0].message).toStrictEqual('"address0" is required');
-
   // Wrong first address
-  event = makeGatewayEvent({}, JSON.stringify({ xpubkey: XPUBKEY, address0: 'a' }));
+  event = makeGatewayEvent({}, JSON.stringify({ xpubkey: XPUBKEY, firstAddress: 'a' }));
   result = await walletLoad(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(400);
@@ -411,12 +401,12 @@ test('POST /wallet', async () => {
   expect(returnBody.message).toStrictEqual('Expected first address to be a but it is HNwiHGHKBNbeJPo9ToWvFWeNQkJrpicYci');
 
   // Load success
-  event = makeGatewayEvent({}, JSON.stringify({ xpubkey: XPUBKEY, address0: 'HNwiHGHKBNbeJPo9ToWvFWeNQkJrpicYci' }));
+  event = makeGatewayEvent({}, JSON.stringify({ xpubkey: XPUBKEY, firstAddress: 'HNwiHGHKBNbeJPo9ToWvFWeNQkJrpicYci' }));
   result = await walletLoad(event, null, null) as APIGatewayProxyResult;
   expect(result.statusCode).toBe(200);
 
   // already loaded
-  event = makeGatewayEvent({}, JSON.stringify({ xpubkey: XPUBKEY, address0: 'HNwiHGHKBNbeJPo9ToWvFWeNQkJrpicYci' }));
+  event = makeGatewayEvent({}, JSON.stringify({ xpubkey: XPUBKEY, firstAddress: 'HNwiHGHKBNbeJPo9ToWvFWeNQkJrpicYci' }));
   result = await walletLoad(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(400);

@@ -72,8 +72,7 @@ export const get: APIGatewayProxyHandler = async (event) => {
 const loadBodySchema = Joi.object({
   xpubkey: Joi.string()
     .required(),
-  address0: Joi.string()
-    .required(),
+  firstAddress: Joi.string(),
 });
 
 /*
@@ -114,16 +113,18 @@ export const load: APIGatewayProxyHandler = async (event) => {
     return closeDbAndGetError(mysql, ApiError.WALLET_ALREADY_LOADED, { status });
   }
 
-  const expectedAddress0 = value.address0;
+  if (process.env.CONFIRM_FIRST_ADDRESS === 'true') {
+    const expectedFirstAddress = value.firstAddress;
 
-  // First derive xpub to change 0 path
-  const derivedXpub = walletUtils.xpubDeriveChild(xpubkey, 0);
-  // Then get first address
-  const address0 = walletUtils.getAddressAtIndex(derivedXpub, 0, process.env.NETWORK);
-  if (address0 !== expectedAddress0) {
-    return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, {
-      message: `Expected first address to be ${expectedAddress0} but it is ${address0}`,
-    });
+    // First derive xpub to change 0 path
+    const derivedXpub = walletUtils.xpubDeriveChild(xpubkey, 0);
+    // Then get first address
+    const firstAddress = walletUtils.getAddressAtIndex(derivedXpub, 0, process.env.NETWORK);
+    if (firstAddress !== expectedFirstAddress) {
+      return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, {
+        message: `Expected first address to be ${expectedFirstAddress} but it is ${firstAddress}`,
+      });
+    }
   }
 
   const maxGap = parseInt(process.env.MAX_ADDRESS_GAP, 10);
