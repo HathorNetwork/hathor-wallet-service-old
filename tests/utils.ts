@@ -31,7 +31,7 @@ export const ADDRESSES = [
   'HHRUPc7H7wSbwwRpsoPP1m3bnBmjc5DNNq',
   'HTYFyEtzE9z4oW42k7DXFVPA6wqwBhKPQZ',
   'HKxw4Am1ecoTbKoVaJNL1xnNxY8dLpPggN',
-  'HSUwYnnRYVnm4bLzV5dsBdqoSvZhunxPKr'
+  'HSUwYnnRYVnm4bLzV5dsBdqoSvZhunxPKr',
 ];
 
 export const cleanDatabase = async (mysql: ServerlessMysql): Promise<void> => {

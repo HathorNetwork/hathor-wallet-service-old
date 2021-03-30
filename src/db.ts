@@ -55,11 +55,11 @@ export const generateAddresses = async (mysql: ServerlessMysql, xpubkey: string,
   const allAddresses: string[] = [];
 
   // We currently generate only addresses in change derivation path 0
+  // (more details in https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki#Change)
   // so we derive our xpub to this path and use it to get the addresses
   const derivedXpub = walletUtils.xpubDeriveChild(xpubkey, 0);
 
   do {
-
     const addrMap = walletUtils.getAddresses(derivedXpub, highestCheckedIndex + 1, maxGap, process.env.NETWORK);
     allAddresses.push(...Object.keys(addrMap));
 
