@@ -7,6 +7,7 @@ import {
   getTxProposal,
   updateTxProposal,
   removeTxProposalOutputs,
+  releaseTxProposalUtxos,
 } from '@src/db';
 import { TxProposalStatus } from '@src/types';
 import { closeDbConnection, getDbConnection, getUnixTimestamp } from '@src/utils';
@@ -48,7 +49,11 @@ export const destroy: APIGatewayProxyHandler = async (event) => {
     TxProposalStatus.CANCELLED,
   );
 
+  // Delete elements from tx proposal outputs table
   await removeTxProposalOutputs(mysql, txProposalId);
+
+  // Remove tx_proposal_id and tx_proposal_index from utxo table
+  await releaseTxProposalUtxos(mysql, txProposalId);
 
   await closeDbConnection(mysql);
 

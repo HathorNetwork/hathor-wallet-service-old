@@ -451,7 +451,7 @@ test('POST /txproposals params validation', async () => {
   expect(returnBody.details[0].message).toStrictEqual('"outputs" is required');
 
   // empty outputs
-  event = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet', outputs: [] }));
+  event = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet', outputs: [], inputs: [] }));
   result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(400);
@@ -502,9 +502,8 @@ test('POST /txproposals params validation', async () => {
   expect(result.statusCode).toBe(400);
   expect(returnBody.success).toBe(false);
   expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
-  expect(returnBody.details).toHaveLength(2);
+  expect(returnBody.details).toHaveLength(1);
   expect(returnBody.details[0].message).toStrictEqual('"inputs[0].index" must be a number');
-  expect(returnBody.details[1].message).toStrictEqual('"inputs" does not contain 1 required value(s)');
 
   // invalid inputs 2
   event = makeGatewayEvent(null, JSON.stringify({
@@ -517,9 +516,8 @@ test('POST /txproposals params validation', async () => {
   expect(result.statusCode).toBe(400);
   expect(returnBody.success).toBe(false);
   expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
-  expect(returnBody.details).toHaveLength(2);
+  expect(returnBody.details).toHaveLength(1);
   expect(returnBody.details[0].message).toStrictEqual('"inputs[0].index" is required');
-  expect(returnBody.details[1].message).toStrictEqual('"inputs" does not contain 1 required value(s)');
 
   // missing wallet
   event = makeGatewayEvent(null, JSON.stringify({ id: 'other-wallet', outputs: [{ address: ADDRESSES[0], value: 10, token: 'token', timelock: 100000 }] }));
