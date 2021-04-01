@@ -9,7 +9,7 @@ import {
 import { send as txProposalSend } from '@src/api/txProposalSend';
 import { destroy as txProposalDestroy } from '@src/api/txProposalDestroy';
 import { getTxProposal, getTxProposalOutputs, getUtxos, updateTxProposal } from '@src/db';
-import { TxProposalStatus, Balance, TokenBalanceMap, TokenInfo, WalletTokenBalance } from '@src/types';
+import { TxProposalStatus, Balance, IWalletInput, TokenBalanceMap, TokenInfo, WalletTokenBalance } from '@src/types';
 import { closeDbConnection, getDbConnection, getUnixTimestamp } from '@src/utils';
 import {
   addToWalletBalanceTable,
@@ -28,7 +28,7 @@ import { ApiError } from '@src/api/errors';
 
 import hathorLib from '@hathor/wallet-lib';
 
-const defaultDerivationPath = `m/44'/${hathorLib.constants.HATHOR_BIP44_CODE}'/0'/`;
+const defaultDerivationPath = `m/44'/${hathorLib.constants.HATHOR_BIP44_CODE}'/0'/0/`;
 
 const mysql = getDbConnection();
 
@@ -1266,6 +1266,26 @@ test('DELETE /txproposals/{proposalId} should delete a tx_proposal and remove th
     }));
   const txCreateResult = await txProposalCreate(txCreateEvent, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(txCreateResult.body as string);
+  const txProposalId = returnBody.txProposalId;
+
+  const inputs: IWalletInput[] = [
+    {
+      txId: '00000000000000001650cd208a2bcff09dce8af88d1b07097ef0efdba4aacbaa',
+      index: 0,
+    },
+    {
+      txId: '000000000000000042fb8ae48accbc48561729e2359838751e11f837ca9a5746',
+      index: 0,
+    },
+    {
+      txId: '0000000000000000cfd3dea4c689aa4c863bf6e6aea4518abcfe7d5ff6769aef',
+      index: 0,
+    },
+  ];
+  const utxosAfterProposal = await getUtxos(mysql, inputs);
+  for (const u of utxosAfterProposal) {
+    expect(u.txProposalId).toBe(txProposalId);
+  }
 
   const txDeleteEvent = makeGatewayEvent({ txProposalId: returnBody.txProposalId }, null);
   const txDeleteResult = await txProposalDestroy(txDeleteEvent, null, null) as APIGatewayProxyResult;
@@ -1275,6 +1295,12 @@ test('DELETE /txproposals/{proposalId} should delete a tx_proposal and remove th
   const txProposal = await getTxProposal(mysql, returnBody.txProposalId);
 
   expect(txProposal.status).toStrictEqual(TxProposalStatus.CANCELLED);
+
+  const utxosAfterDestoyProposal = await getUtxos(mysql, inputs);
+  for (const u of utxosAfterDestoyProposal) {
+    expect(u.txProposalId).toBeNull();
+    expect(u.txProposalIndex).toBeNull();
+  }
 
   // TODO: Verify if outputs were deleted from tx_proposal
 });

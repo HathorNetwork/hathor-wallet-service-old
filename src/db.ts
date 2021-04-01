@@ -1466,6 +1466,22 @@ export const removeTxProposalOutputs = async (
 };
 
 /**
+ * When a tx proposal is cancelled we must release the utxos to be used by others
+ *
+ * @param mysql - Database connection
+ * @param txProposalId - The transaction proposal id
+ */
+export const releaseTxProposalUtxos = async (
+  mysql: ServerlessMysql,
+  txProposalId: string,
+): Promise<void> => {
+  await mysql.query(
+    'UPDATE `utxo` SET `tx_proposal` = NULL, `tx_proposal_index` = NULL WHERE `tx_proposal` = ?',
+    [txProposalId],
+  );
+};
+
+/**
  * Get tx proposal inputs.
  *
  * @remarks
