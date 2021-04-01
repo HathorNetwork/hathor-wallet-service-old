@@ -75,7 +75,7 @@ const bodySchema = Joi.object({
           .integer()
           .required()
           .min(0),
-      }).required(),
+      }),
     ),
   inputSelectionAlgo: Joi.string(),
 });
@@ -222,7 +222,7 @@ export const create: APIGatewayProxyHandler = async (event) => {
     // XXX We should store in address table the path of the address, not the index
     // For now we return the hardcoded path with only the address index as variable
     // The client will be prepared to receive any path when we add this in the service in the future
-    const addressPath = `m/44'/${hathorLib.constants.HATHOR_BIP44_CODE}'/0'/${addressDetail.index}`;
+    const addressPath = `m/44'/${hathorLib.constants.HATHOR_BIP44_CODE}'/0'/0/${addressDetail.index}`;
     return { txId: utxo.txId, index: utxo.index, addressPath };
   });
 
