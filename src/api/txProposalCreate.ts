@@ -153,7 +153,7 @@ export const create: APIGatewayProxyHandler = async (event) => {
 
   // fetch the utxos that will be used
   let inputUtxos = [];
-  if (inputs) {
+  if (inputs && inputs.length > 0) {
     inputUtxos = await getUtxos(mysql, inputs);
 
     const missing = checkMissingUtxos(inputs, inputUtxos);
