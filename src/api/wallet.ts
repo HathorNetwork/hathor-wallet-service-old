@@ -69,14 +69,10 @@ export const get: APIGatewayProxyHandler = async (event) => {
   };
 };
 
-let firstAddressJoi;
 // If the env requires to validate the first address
-// then we must se the firstAddress field as required
-if (process.env.CONFIRM_FIRST_ADDRESS === 'true') {
-  firstAddressJoi = Joi.string().required();
-} else {
-  firstAddressJoi = Joi.string();
-}
+// then we must set the firstAddress field as required
+const confirmFirstAddress = process.env.CONFIRM_FIRST_ADDRESS === 'true';
+const firstAddressJoi = confirmFirstAddress ? Joi.string().required() : Joi.string();
 
 const loadBodySchema = Joi.object({
   xpubkey: Joi.string()
