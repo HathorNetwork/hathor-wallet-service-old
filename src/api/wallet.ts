@@ -69,10 +69,19 @@ export const get: APIGatewayProxyHandler = async (event) => {
   };
 };
 
+let firstAddressJoi;
+// If the env requires to validate the first address
+// then we must se the firstAddress field as required
+if (process.env.CONFIRM_FIRST_ADDRESS === 'true') {
+  firstAddressJoi = Joi.string().required();
+} else {
+  firstAddressJoi = Joi.string();
+}
+
 const loadBodySchema = Joi.object({
   xpubkey: Joi.string()
     .required(),
-  firstAddress: Joi.string(),
+  firstAddress: firstAddressJoi,
 });
 
 /*
@@ -115,9 +124,6 @@ export const load: APIGatewayProxyHandler = async (event) => {
 
   if (process.env.CONFIRM_FIRST_ADDRESS === 'true') {
     const expectedFirstAddress = value.firstAddress;
-    if (!expectedFirstAddress) {
-      return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, { error: '"firstAddress" is required.' });
-    }
 
     // First derive xpub to change 0 path
     const derivedXpub = walletUtils.xpubDeriveChild(xpubkey, 0);
