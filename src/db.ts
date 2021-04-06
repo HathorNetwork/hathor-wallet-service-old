@@ -7,7 +7,7 @@
 
 import { strict as assert } from 'assert';
 import { ServerlessMysql } from 'serverless-mysql';
-import hathorLib from '@hathor/wallet-lib';
+import { walletUtils } from '@hathor/wallet-lib';
 
 import {
   AddressIndexMap,
@@ -54,8 +54,13 @@ export const generateAddresses = async (mysql: ServerlessMysql, xpubkey: string,
   const newAddresses: AddressIndexMap = {};
   const allAddresses: string[] = [];
 
+  // We currently generate only addresses in change derivation path 0
+  // (more details in https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki#Change)
+  // so we derive our xpub to this path and use it to get the addresses
+  const derivedXpub = walletUtils.xpubDeriveChild(xpubkey, 0);
+
   do {
-    const addrMap = hathorLib.helpers.getAddresses(xpubkey, highestCheckedIndex + 1, maxGap, 'mainnet');
+    const addrMap = walletUtils.getAddresses(derivedXpub, highestCheckedIndex + 1, maxGap, process.env.NETWORK);
     allAddresses.push(...Object.keys(addrMap));
 
     const results: DbSelectResult = await mysql.query(
@@ -1456,6 +1461,22 @@ export const removeTxProposalOutputs = async (
 ): Promise<void> => {
   await mysql.query(
     'DELETE FROM `tx_proposal_outputs` WHERE `tx_proposal_id` = ?',
+    [txProposalId],
+  );
+};
+
+/**
+ * When a tx proposal is cancelled we must release the utxos to be used by others
+ *
+ * @param mysql - Database connection
+ * @param txProposalId - The transaction proposal id
+ */
+export const releaseTxProposalUtxos = async (
+  mysql: ServerlessMysql,
+  txProposalId: string,
+): Promise<void> => {
+  await mysql.query(
+    'UPDATE `utxo` SET `tx_proposal` = NULL, `tx_proposal_index` = NULL WHERE `tx_proposal` = ?',
     [txProposalId],
   );
 };
