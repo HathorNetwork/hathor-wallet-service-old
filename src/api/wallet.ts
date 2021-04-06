@@ -115,6 +115,9 @@ export const load: APIGatewayProxyHandler = async (event) => {
 
   if (process.env.CONFIRM_FIRST_ADDRESS === 'true') {
     const expectedFirstAddress = value.firstAddress;
+    if (!expectedFirstAddress) {
+      return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, { error: '"firstAddress" is required.' });
+    }
 
     // First derive xpub to change 0 path
     const derivedXpub = walletUtils.xpubDeriveChild(xpubkey, 0);
