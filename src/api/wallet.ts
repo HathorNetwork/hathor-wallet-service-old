@@ -24,6 +24,7 @@ import { WalletStatus } from '@src/types';
 import { closeDbConnection, getDbConnection, getWalletId } from '@src/utils';
 import { closeDbAndGetError } from '@src/api/utils';
 import Joi from 'joi';
+import { walletUtils } from '@hathor/wallet-lib';
 
 const mysql = getDbConnection();
 const getParamsSchema = Joi.object({
@@ -68,9 +69,15 @@ export const get: APIGatewayProxyHandler = async (event) => {
   };
 };
 
+// If the env requires to validate the first address
+// then we must set the firstAddress field as required
+const confirmFirstAddress = process.env.CONFIRM_FIRST_ADDRESS === 'true';
+const firstAddressJoi = confirmFirstAddress ? Joi.string().required() : Joi.string();
+
 const loadBodySchema = Joi.object({
   xpubkey: Joi.string()
     .required(),
+  firstAddress: firstAddressJoi,
 });
 
 /*
@@ -109,6 +116,20 @@ export const load: APIGatewayProxyHandler = async (event) => {
   let status = await getWallet(mysql, walletId);
   if (status) {
     return closeDbAndGetError(mysql, ApiError.WALLET_ALREADY_LOADED, { status });
+  }
+
+  if (process.env.CONFIRM_FIRST_ADDRESS === 'true') {
+    const expectedFirstAddress = value.firstAddress;
+
+    // First derive xpub to change 0 path
+    const derivedXpub = walletUtils.xpubDeriveChild(xpubkey, 0);
+    // Then get first address
+    const firstAddress = walletUtils.getAddressAtIndex(derivedXpub, 0, process.env.NETWORK);
+    if (firstAddress !== expectedFirstAddress) {
+      return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, {
+        message: `Expected first address to be ${expectedFirstAddress} but it is ${firstAddress}`,
+      });
+    }
   }
 
   const maxGap = parseInt(process.env.MAX_ADDRESS_GAP, 10);
