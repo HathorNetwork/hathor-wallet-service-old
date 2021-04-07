@@ -17,6 +17,7 @@ export enum ApiError {
   INSUFFICIENT_INPUTS = 'insufficient-inputs',
   INVALID_PARAMETER = 'invalid-parameter',
   INVALID_PAYLOAD = 'invalid-payload',
+  INVALID_SIGNATURE = 'invalid-signature',
   TOO_MANY_INPUTS = 'too-many-inputs',
   TOO_MANY_OUTPUTS = 'too-many-outputs',
   TX_PROPOSAL_NOT_FOUND = 'tx-proposal-not-found',

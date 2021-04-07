@@ -46,6 +46,7 @@ functions:
           path: wallet
           method: post
           cors: true
+          authorizer: authorizerHandler
   getWalletStatusApi:
     handler: src/api/wallet.get
     events:
@@ -53,6 +54,7 @@ functions:
           path: wallet
           method: get
           cors: true
+          authorizer: authorizerHandler
   getAddressesApi:
     handler: src/api/addresses.get
     events:
@@ -60,6 +62,7 @@ functions:
           path: addresses
           method: get
           cors: true
+          authorizer: authorizerHandler
   getBalanceApi:
     handler: src/api/balances.get
     events:
@@ -67,6 +70,7 @@ functions:
           path: balances
           method: get
           cors: true
+          authorizer: authorizerHandler
   getTxHistoryApi:
     handler: src/api/txhistory.get
     events:
@@ -74,6 +78,7 @@ functions:
           path: txhistory
           method: get
           cors: true
+          authorizer: authorizerHandler
   createTxProposalApi:
     handler: src/api/txProposalCreate.create
     events:
@@ -81,6 +86,7 @@ functions:
           path: txproposals
           method: post
           cors: true
+          authorizer: authorizerHandler
   sendTxProposalApi:
     handler: src/api/txProposalSend.send
     events:
@@ -88,6 +94,7 @@ functions:
           path: txproposals/{txProposalId}
           method: put
           cors: true
+          authorizer: authorizerHandler
           request:
             parameters:
               paths:
@@ -99,7 +106,17 @@ functions:
           path: txproposals/{txProposalId}
           method: delete
           cors: true
+          authorizer: authorizerHandler
           request:
             parameters:
               paths:
                 txProposalId: true
+  postAuthApi:
+    handler: src/api/auth.login
+    events:
+      - http:
+          path: auth/login
+          method: post
+          cors: true
+  authorizerHandler:
+    handler: src/api/auth.authorizer
