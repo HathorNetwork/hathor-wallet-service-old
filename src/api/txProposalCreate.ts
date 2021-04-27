@@ -2,8 +2,9 @@ import { APIGatewayProxyHandler } from 'aws-lambda';
 import { ServerlessMysql } from 'serverless-mysql';
 import 'source-map-support/register';
 import { v4 as uuidv4 } from 'uuid';
-import Joi from 'joi';
-
+import {
+  txProposalCreateSchema,
+} from '@src/api/schemas';
 import { ApiError } from '@src/api/errors';
 import { getWalletBalances, maybeRefreshWalletConstants } from '@src/commons';
 import {
@@ -41,45 +42,6 @@ interface IWalletInsufficientFunds {
   available: number;
 }
 
-const bodySchema = Joi.object({
-  id: Joi.string()
-    .required(),
-  outputs: Joi.array()
-    .items(
-      Joi.object({
-        address: Joi.string()
-          .alphanum()
-          .required(),
-        value: Joi.number()
-          .integer()
-          .positive()
-          .required(),
-        token: Joi.string()
-          .alphanum(),
-        timelock: Joi.number()
-          .integer()
-          .positive()
-          .optional()
-          .allow(null),
-      }),
-    )
-    .min(1)
-    .required(),
-  inputs: Joi.array()
-    .items(
-      Joi.object({
-        txId: Joi.string()
-          .alphanum()
-          .required(),
-        index: Joi.number()
-          .integer()
-          .required()
-          .min(0),
-      }),
-    ),
-  inputSelectionAlgo: Joi.string(),
-});
-
 /*
  * Create a tx-proposal.
  *
@@ -96,7 +58,7 @@ export const create: APIGatewayProxyHandler = async (event) => {
     }
   }(event.body));
 
-  const { value, error } = bodySchema.validate(eventBody, {
+  const { value, error } = txProposalCreateSchema.validate(eventBody, {
     abortEarly: false, // We want it to return all the errors not only the first
     convert: false, // We want it to be strict with the parameters and not parse a string as integer
   });
