@@ -105,6 +105,45 @@ test('spend "locked" utxo', async () => {
   await expect(checkWalletBalanceTable(mysql, 1, walletId, token, 2000, 0, null, 2)).resolves.toBe(true);
 });
 
+test('Genesis transactions should throw', async () => {
+  expect.hasAssertions();
+
+  const evt = JSON.parse(JSON.stringify(eventTemplate));
+  const tx = evt.Records[0].body;
+
+  tx.inputs = [];
+  tx.outputs = [];
+  tx.parents = [];
+
+  process.env.NETWORK = 'mainnet';
+
+  tx.tx_id = txProcessor.IGNORE_TXS.mainnet[0];
+
+  await expect(() => txProcessor.onNewTxEvent(evt)).rejects.toThrow('Rejecting tx as it is part of the genesis transactions.');
+
+  tx.tx_id = txProcessor.IGNORE_TXS.mainnet[1];
+
+  await expect(() => txProcessor.onNewTxEvent(evt)).rejects.toThrow('Rejecting tx as it is part of the genesis transactions.');
+
+  tx.tx_id = txProcessor.IGNORE_TXS.mainnet[2];
+
+  await expect(() => txProcessor.onNewTxEvent(evt)).rejects.toThrow('Rejecting tx as it is part of the genesis transactions.');
+
+  process.env.NETWORK = 'testnet';
+
+  tx.tx_id = txProcessor.IGNORE_TXS.testnet[0];
+
+  await expect(() => txProcessor.onNewTxEvent(evt)).rejects.toThrow('Rejecting tx as it is part of the genesis transactions.');
+
+  tx.tx_id = txProcessor.IGNORE_TXS.testnet[1];
+
+  await expect(() => txProcessor.onNewTxEvent(evt)).rejects.toThrow('Rejecting tx as it is part of the genesis transactions.');
+
+  tx.tx_id = txProcessor.IGNORE_TXS.testnet[2];
+
+  await expect(() => txProcessor.onNewTxEvent(evt)).rejects.toThrow('Rejecting tx as it is part of the genesis transactions.');
+});
+
 /*
  * receive some transactions and blocks and make sure database is correct
  */
