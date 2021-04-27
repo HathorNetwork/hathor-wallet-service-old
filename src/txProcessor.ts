@@ -98,7 +98,8 @@ const addNewTx = async (tx: Transaction, now: number, blockRewardLock: number) =
   const txId = tx.tx_id;
   const network = process.env.NETWORK;
 
-  // we should ignore genesis transactions as they have no parents, inputs and outputs
+  // we should ignore genesis transactions as they have no parents, inputs and outputs and we expect the service
+  // to already have the pre-mine utxos on its database.
   if (network in IGNORE_TXS) {
     if (IGNORE_TXS[network].includes(txId)) {
       throw new Error('Rejecting tx as it is part of the genesis transactions.');
