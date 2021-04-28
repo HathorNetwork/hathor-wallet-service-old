@@ -1,9 +1,15 @@
-import { APIGatewayProxyHandler } from 'aws-lambda';
+import { APIGatewayProxyHandler, APIGatewayProxyResult } from 'aws-lambda';
 import { ServerlessMysql } from 'serverless-mysql';
 import 'source-map-support/register';
 import { v4 as uuidv4 } from 'uuid';
 import {
-  txProposalCreateSchema,
+  baseActionSchema,
+  createTxSchema,
+  createTokenSchema,
+  mintTokenSchema,
+  meltTokenSchema,
+  delegateAuthoritySchema,
+  destroyAuthoritySchema,
 } from '@src/api/schemas';
 import { ApiError } from '@src/api/errors';
 import { getWalletBalances, maybeRefreshWalletConstants } from '@src/commons';
@@ -25,6 +31,8 @@ import {
   TokenBalanceMap,
   Utxo,
   WalletTokenBalance,
+  ValidationResult,
+  TokenActionType,
 } from '@src/types';
 import { closeDbAndGetError } from '@src/api/utils';
 import { arrayShuffle, closeDbConnection, getDbConnection, getUnixTimestamp } from '@src/utils';
@@ -42,39 +50,113 @@ interface IWalletInsufficientFunds {
   available: number;
 }
 
-/*
- * Create a tx-proposal.
- *
- * This lambda is called by API Gateway on POST /txproposals
- */
-export const create: APIGatewayProxyHandler = async (event) => {
-  await maybeRefreshWalletConstants(mysql);
+export const createToken = async (body, walletId): Promise<APIGatewayProxyResult> => {
+  // const inputs: IWalletInput[] = body.inputs;
+  const status = await getWallet(mysql, walletId);
+  console.log(body);
 
-  const eventBody = (function parseBody(body) {
-    try {
-      return JSON.parse(body);
-    } catch (e) {
-      return null;
-    }
-  }(event.body));
-
-  const { value, error } = txProposalCreateSchema.validate(eventBody, {
-    abortEarly: false, // We want it to return all the errors not only the first
-    convert: false, // We want it to be strict with the parameters and not parse a string as integer
-  });
-
-  if (error) {
-    const details = error.details.map((err) => ({
-      message: err.message,
-      path: err.path,
-    }));
-
-    return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, { details });
+  if (!status) {
+    return closeDbAndGetError(mysql, ApiError.WALLET_NOT_FOUND);
   }
 
-  const body = value;
-  const walletId = body.id;
+  if (!status.readyAt) {
+    return closeDbAndGetError(mysql, ApiError.WALLET_NOT_READY);
+  }
 
+  return {
+    statusCode: 501,
+    body: JSON.stringify({
+      success: false,
+      message: 'Not yet implemented.',
+    }),
+  };
+};
+
+export const mintToken = async (body, walletId): Promise<APIGatewayProxyResult> => {
+  const status = await getWallet(mysql, walletId);
+  console.log(body);
+
+  if (!status) {
+    return closeDbAndGetError(mysql, ApiError.WALLET_NOT_FOUND);
+  }
+
+  if (!status.readyAt) {
+    return closeDbAndGetError(mysql, ApiError.WALLET_NOT_READY);
+  }
+
+  return {
+    statusCode: 501,
+    body: JSON.stringify({
+      success: false,
+      message: 'Not yet implemented.',
+    }),
+  };
+};
+
+export const meltToken = async (body, walletId): Promise<APIGatewayProxyResult> => {
+  const status = await getWallet(mysql, walletId);
+  console.log(body);
+
+  if (!status) {
+    return closeDbAndGetError(mysql, ApiError.WALLET_NOT_FOUND);
+  }
+
+  if (!status.readyAt) {
+    return closeDbAndGetError(mysql, ApiError.WALLET_NOT_READY);
+  }
+
+  return {
+    statusCode: 501,
+    body: JSON.stringify({
+      success: false,
+      message: 'Not yet implemented.',
+    }),
+  };
+};
+
+export const delegateAuthority = async (body, walletId): Promise<APIGatewayProxyResult> => {
+  const status = await getWallet(mysql, walletId);
+  console.log(body);
+
+  if (!status) {
+    return closeDbAndGetError(mysql, ApiError.WALLET_NOT_FOUND);
+  }
+
+  if (!status.readyAt) {
+    return closeDbAndGetError(mysql, ApiError.WALLET_NOT_READY);
+  }
+
+  return {
+    statusCode: 501,
+    body: JSON.stringify({
+      success: false,
+      message: 'Not yet implemented.',
+    }),
+  };
+};
+
+export const destroyAuthority = async (body, walletId): Promise<APIGatewayProxyResult> => {
+  const status = await getWallet(mysql, walletId);
+  console.log(body);
+
+  if (!status) {
+    return closeDbAndGetError(mysql, ApiError.WALLET_NOT_FOUND);
+  }
+
+  if (!status.readyAt) {
+    return closeDbAndGetError(mysql, ApiError.WALLET_NOT_READY);
+  }
+
+  return {
+    statusCode: 501,
+    body: JSON.stringify({
+      success: false,
+      message: 'Not yet implemented.',
+    }),
+  };
+};
+
+export const createRegularTx = async (body, walletId): Promise<APIGatewayProxyResult> => {
   if (body.outputs.length > hathorLib.transaction.getMaxOutputsConstant()) {
     return closeDbAndGetError(mysql, ApiError.TOO_MANY_OUTPUTS, { outputs: body.outputs.length });
   }
@@ -203,6 +285,81 @@ export const create: APIGatewayProxyHandler = async (event) => {
       tokens,
     }),
   };
+};
+
+/*
+ * Create a tx-proposal.
+ *
+ * This lambda is called by API Gateway on POST /txproposals
+ */
+export const create: APIGatewayProxyHandler = async (event) => {
+  await maybeRefreshWalletConstants(mysql);
+
+  // Validate actionType and walletId:
+  const baseTx = validateBody(event, 'base');
+
+  if (baseTx.error) {
+    const details = baseTx.error.details.map((err) => ({
+      message: err.message,
+      path: err.path,
+    }));
+
+    return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, { details });
+  }
+
+  // Validate the body, using the actionType
+  const { value, error } = validateBody(event, baseTx.value.actionType);
+
+  if (error) {
+    const details = error.details.map((err) => ({
+      message: err.message,
+      path: err.path,
+    }));
+
+    return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, { details });
+  }
+
+  const body = value;
+  const walletId = baseTx.value.id;
+
+  let response: APIGatewayProxyResult = {
+    statusCode: 500,
+    body: JSON.stringify({
+      success: false,
+      message: 'Invalid action type',
+    }),
+  };
+
+  switch (baseTx.value.actionType) {
+    case TokenActionType.REGULAR_TRANSACTION:
+      response = await createRegularTx(body, walletId);
+      break;
+    case TokenActionType.CREATE_TOKEN:
+      response = await createToken(body, walletId);
+      break;
+    case TokenActionType.MINT_TOKEN:
+      response = await mintToken(body, walletId);
+      break;
+    case TokenActionType.MELT_TOKEN:
+      response = await meltToken(body, walletId);
+      break;
+    case TokenActionType.DELEGATE_MINT:
+      response = await delegateAuthority(body, walletId);
+      break;
+    case TokenActionType.DELEGATE_MELT:
+      response = await delegateAuthority(body, walletId);
+      break;
+    case TokenActionType.DESTROY_MINT:
+      response = await destroyAuthority(body, walletId);
+      break;
+    case TokenActionType.DESTROY_MELT:
+      response = await destroyAuthority(body, walletId);
+      break;
+    default:
+      break;
+  }
+
+  return response;
 };
 
 /**
@@ -400,4 +557,52 @@ export const checkUsedUtxos = (utxos: Utxo[]): boolean => {
   }
 
   return false;
+};
+
+/**
+ * Uses diferent Joi schema validators depending on the TokenActionType
+ * Will also accept 'base' to validate if the transaction contains the actionType parameter before
+ * validating the rest of the body
+ *
+ * @param event - The received tx action event
+ * @returns The validated object depending on the Schema rules
+ */
+export const validateBody = (event: any, actionType: TokenActionType | string): ValidationResult => {
+  const eventBody = (function parseBody(body) {
+    try {
+      return JSON.parse(body);
+    } catch (e) {
+      return null;
+    }
+  }(event.body));
+
+  const options = {
+    abortEarly: false, // We want it to return all the errors not only the first
+    convert: false, // We want it to be strict with the parameters and not parse a string as integer
+  };
+
+  if (actionType === 'base') {
+    return baseActionSchema.validate(eventBody, options) as ValidationResult;
+  }
+
+  switch (actionType) {
+    case TokenActionType.REGULAR_TRANSACTION:
+      return createTxSchema.validate(eventBody, options) as ValidationResult;
+    case TokenActionType.CREATE_TOKEN:
+      return createTokenSchema.validate(eventBody, options) as ValidationResult;
+    case TokenActionType.MINT_TOKEN:
+      return mintTokenSchema.validate(eventBody, options) as ValidationResult;
+    case TokenActionType.MELT_TOKEN:
+      return meltTokenSchema.validate(eventBody, options) as ValidationResult;
+    case TokenActionType.DELEGATE_MINT:
+      return delegateAuthoritySchema.validate(eventBody, options) as ValidationResult;
+    case TokenActionType.DELEGATE_MELT:
+      return delegateAuthoritySchema.validate(eventBody, options) as ValidationResult;
+    case TokenActionType.DESTROY_MINT:
+      return destroyAuthoritySchema.validate(eventBody, options) as ValidationResult;
+    case TokenActionType.DESTROY_MELT:
+      return destroyAuthoritySchema.validate(eventBody, options) as ValidationResult;
+    default:
+      throw new Error('Unhandled action type.');
+  }
 };

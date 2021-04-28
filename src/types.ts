@@ -23,6 +23,24 @@ export interface GenerateAddresses {
   newAddresses: StringMap<number>;
 }
 
+export enum TxVersion {
+  REGULAR_BLOCK = 0,
+  REGULAR_TRANSACTION = 1,
+  TOKEN_CREATION_TRANSACTION = 2,
+  MERGE_MINED_BLOCK = 3,
+}
+
+export enum TokenActionType {
+  REGULAR_TRANSACTION = 'regular-transaction',
+  CREATE_TOKEN = 'create-token',
+  MINT_TOKEN = 'mint-token',
+  MELT_TOKEN = 'melt-token',
+  DELEGATE_MINT = 'delegate-mint',
+  DELEGATE_MELT = 'delegate-melt',
+  DESTROY_MINT = 'destroy-mint',
+  DESTROY_MELT = 'destroy-melt',
+}
+
 export enum TxProposalStatus {
   OPEN = 'open',
   SENT = 'sent',
@@ -549,4 +567,9 @@ export interface IWalletInput {
 export interface ApiResponse {
   success: boolean;
   message: string;
+}
+
+export interface ValidationResult {
+  value: any;
+  error: any;
 }

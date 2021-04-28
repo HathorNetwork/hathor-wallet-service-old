@@ -20,6 +20,7 @@ import {
   cleanDatabase,
   makeGatewayEvent,
 } from '@tests/utils';
+import { TokenActionType } from '@src/types';
 
 const mysql = getDbConnection();
 
@@ -414,7 +415,7 @@ test('POST /wallet', async () => {
   expect(returnBody.error).toBe(ApiError.WALLET_ALREADY_LOADED);
 });
 
-test('POST /txproposals params validation', async () => {
+test('POST /txproposals params validation on a regular transaction', async () => {
   expect.hasAssertions();
 
   await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
@@ -441,16 +442,15 @@ test('POST /txproposals params validation', async () => {
   expect(returnBody.success).toBe(false);
   expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
 
-  // missing id
+  // missing id should complain about id on baseActionSchema
   event = makeGatewayEvent(null, '{}');
   result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(400);
   expect(returnBody.success).toBe(false);
   expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
-  expect(returnBody.details).toHaveLength(2); // id and outputs are required parameters
+  expect(returnBody.details).toHaveLength(1); // id and outputs are required parameters
   expect(returnBody.details[0].message).toStrictEqual('"id" is required');
-  expect(returnBody.details[1].message).toStrictEqual('"outputs" is required');
 
   // missing outputs
   event = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet' }));
@@ -533,6 +533,813 @@ test('POST /txproposals params validation', async () => {
 
   // missing wallet
   event = makeGatewayEvent(null, JSON.stringify({ id: 'other-wallet', outputs: [{ address: ADDRESSES[0], value: 10, token: 'token', timelock: 100000 }] }));
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(404);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.WALLET_NOT_FOUND);
+});
+
+test('POST /txproposals params validation on CREATE_TOKEN', async () => {
+  expect.hasAssertions();
+
+  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToAddressTable(mysql, [{
+    address: 'address',
+    index: 0,
+    walletId: 'my-wallet',
+    transactions: 2,
+  }]);
+
+  // invalid body
+  let event = makeGatewayEvent({ id: 'my-wallet', actionType: TokenActionType.CREATE_TOKEN });
+  let result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  let returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+
+  event = makeGatewayEvent({ id: 'my-wallet', actionType: TokenActionType.CREATE_TOKEN }, 'aaa');
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+
+  // missing id should complain about id on baseActionSchema
+  event = makeGatewayEvent(null, '{}');
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+  expect(returnBody.details).toHaveLength(1); // id and outputs are required parameters
+  expect(returnBody.details[0].message).toStrictEqual('"id" is required');
+
+  // missing name, symbol and amount
+  event = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet', actionType: TokenActionType.CREATE_TOKEN }));
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+  expect(returnBody.details).toHaveLength(3);
+  expect(returnBody.details[0].message).toStrictEqual('"name" is required');
+  expect(returnBody.details[1].message).toStrictEqual('"symbol" is required');
+  expect(returnBody.details[2].message).toStrictEqual('"amount" is required');
+
+  // missing symbol
+  event = makeGatewayEvent(null, JSON.stringify({
+    id: 'my-wallet',
+    amount: 500,
+    name: 'TEST TOKEN',
+    actionType: TokenActionType.CREATE_TOKEN,
+  }));
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+  expect(returnBody.details).toHaveLength(1);
+  expect(returnBody.details[0].message).toStrictEqual('"symbol" is required');
+
+  // invalid symbol
+  event = makeGatewayEvent(null, JSON.stringify({
+    id: 'my-wallet',
+    amount: 500,
+    name: 'TEST TOKEN',
+    symbol: 'TTTTTTTTTTTTT',
+    actionType: TokenActionType.CREATE_TOKEN,
+  }));
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+  expect(returnBody.details).toHaveLength(1);
+  expect(returnBody.details[0].message).toStrictEqual('"symbol" length must be less than or equal to 5 characters long');
+
+  // invalid inputs
+  event = makeGatewayEvent(null, JSON.stringify({
+    id: 'my-wallet',
+    amount: 500,
+    name: 'TEST TOKEN',
+    symbol: 'TSTKN',
+    actionType: TokenActionType.CREATE_TOKEN,
+    inputs: [{ txId: 'txId', index: '0' }],
+  }));
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+  expect(returnBody.details).toHaveLength(1);
+  expect(returnBody.details[0].message).toStrictEqual('"inputs[0].index" must be a number');
+
+  // invalid inputs 2
+  event = makeGatewayEvent(null, JSON.stringify({
+    id: 'my-wallet',
+    amount: 500,
+    name: 'TEST TOKEN',
+    symbol: 'TSTKN',
+    actionType: TokenActionType.CREATE_TOKEN,
+    inputs: [{ txId: 'txId' }],
+  }));
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+  expect(returnBody.details).toHaveLength(1);
+  expect(returnBody.details[0].message).toStrictEqual('"inputs[0].index" is required');
+
+  // missing wallet
+  event = makeGatewayEvent(null, JSON.stringify({
+    id: 'other-wallet',
+    amount: 500,
+    name: 'TEST TOKEN',
+    symbol: 'TSTKN',
+    actionType: TokenActionType.CREATE_TOKEN,
+  }));
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(404);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.WALLET_NOT_FOUND);
+});
+
+test('POST /txproposals params validation on MINT_TOKEN', async () => {
+  expect.hasAssertions();
+
+  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToAddressTable(mysql, [{
+    address: 'address',
+    index: 0,
+    walletId: 'my-wallet',
+    transactions: 2,
+  }]);
+
+  // invalid body
+  let event = makeGatewayEvent({ id: 'my-wallet', actionType: TokenActionType.MINT_TOKEN });
+  let result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  let returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+
+  event = makeGatewayEvent({ id: 'my-wallet', actionType: TokenActionType.MINT_TOKEN }, 'aaa');
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+
+  // missing id should complain about id on baseActionSchema
+  event = makeGatewayEvent(null, '{}');
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+  expect(returnBody.details).toHaveLength(1); // id and outputs are required parameters
+  expect(returnBody.details[0].message).toStrictEqual('"id" is required');
+
+  // missing amount and token
+  event = makeGatewayEvent(null, JSON.stringify({
+    id: 'my-wallet',
+    actionType: TokenActionType.MINT_TOKEN,
+  }));
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+  expect(returnBody.details).toHaveLength(2);
+  expect(returnBody.details[0].message).toStrictEqual('"amount" is required');
+  expect(returnBody.details[1].message).toStrictEqual('"token" is required');
+
+  // missing token
+  event = makeGatewayEvent(null, JSON.stringify({
+    id: 'my-wallet',
+    actionType: TokenActionType.MINT_TOKEN,
+    amount: 500,
+  }));
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+  expect(returnBody.details).toHaveLength(1);
+  expect(returnBody.details[0].message).toStrictEqual('"token" is required');
+
+  // invalid inputs
+  event = makeGatewayEvent(null, JSON.stringify({
+    id: 'my-wallet',
+    actionType: TokenActionType.MINT_TOKEN,
+    amount: 500,
+    token: '00',
+    inputs: [{ txId: 'txId', index: '0' }],
+  }));
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+  expect(returnBody.details).toHaveLength(1);
+  expect(returnBody.details[0].message).toStrictEqual('"inputs[0].index" must be a number');
+
+  // invalid inputs 2
+  event = makeGatewayEvent(null, JSON.stringify({
+    id: 'my-wallet',
+    actionType: TokenActionType.MINT_TOKEN,
+    amount: 500,
+    token: '00',
+    inputs: [{ txId: 'txId' }],
+  }));
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+  expect(returnBody.details).toHaveLength(1);
+  expect(returnBody.details[0].message).toStrictEqual('"inputs[0].index" is required');
+
+  // missing wallet
+  event = makeGatewayEvent(null, JSON.stringify({
+    id: 'other-wallet',
+    actionType: TokenActionType.MINT_TOKEN,
+    amount: 500,
+    token: '00',
+  }));
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(404);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.WALLET_NOT_FOUND);
+});
+
+test('POST /txproposals params validation on MELT_TOKEN', async () => {
+  expect.hasAssertions();
+
+  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToAddressTable(mysql, [{
+    address: 'address',
+    index: 0,
+    walletId: 'my-wallet',
+    transactions: 2,
+  }]);
+
+  // invalid body
+  let event = makeGatewayEvent({ id: 'my-wallet', actionType: TokenActionType.MELT_TOKEN });
+  let result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  let returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+
+  event = makeGatewayEvent({ id: 'my-wallet', actionType: TokenActionType.MELT_TOKEN }, 'aaa');
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+
+  // missing id should complain about id on baseActionSchema
+  event = makeGatewayEvent(null, '{}');
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+  expect(returnBody.details).toHaveLength(1); // id and outputs are required parameters
+  expect(returnBody.details[0].message).toStrictEqual('"id" is required');
+
+  // missing amount and token
+  event = makeGatewayEvent(null, JSON.stringify({
+    id: 'my-wallet',
+    actionType: TokenActionType.MELT_TOKEN,
+  }));
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+  expect(returnBody.details).toHaveLength(2);
+  expect(returnBody.details[0].message).toStrictEqual('"amount" is required');
+  expect(returnBody.details[1].message).toStrictEqual('"token" is required');
+
+  // missing token
+  event = makeGatewayEvent(null, JSON.stringify({
+    id: 'my-wallet',
+    actionType: TokenActionType.MELT_TOKEN,
+    amount: 500,
+  }));
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+  expect(returnBody.details).toHaveLength(1);
+  expect(returnBody.details[0].message).toStrictEqual('"token" is required');
+
+  // invalid inputs
+  event = makeGatewayEvent(null, JSON.stringify({
+    id: 'my-wallet',
+    actionType: TokenActionType.MELT_TOKEN,
+    amount: 500,
+    token: '00',
+    inputs: [{ txId: 'txId', index: '0' }],
+  }));
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+  expect(returnBody.details).toHaveLength(1);
+  expect(returnBody.details[0].message).toStrictEqual('"inputs[0].index" must be a number');
+
+  // invalid inputs 2
+  event = makeGatewayEvent(null, JSON.stringify({
+    id: 'my-wallet',
+    actionType: TokenActionType.MELT_TOKEN,
+    amount: 500,
+    token: '00',
+    inputs: [{ txId: 'txId' }],
+  }));
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+  expect(returnBody.details).toHaveLength(1);
+  expect(returnBody.details[0].message).toStrictEqual('"inputs[0].index" is required');
+
+  // missing wallet
+  event = makeGatewayEvent(null, JSON.stringify({
+    id: 'other-wallet',
+    actionType: TokenActionType.MELT_TOKEN,
+    amount: 500,
+    token: '00',
+  }));
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(404);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.WALLET_NOT_FOUND);
+});
+
+test('POST /txproposals params validation on DELEGATE_MINT', async () => {
+  expect.hasAssertions();
+
+  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToAddressTable(mysql, [{
+    address: 'address',
+    index: 0,
+    walletId: 'my-wallet',
+    transactions: 2,
+  }]);
+
+  // invalid body
+  let event = makeGatewayEvent({ id: 'my-wallet', actionType: TokenActionType.DELEGATE_MINT });
+  let result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  let returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+
+  event = makeGatewayEvent({ id: 'my-wallet', actionType: TokenActionType.DELEGATE_MINT }, 'aaa');
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+
+  // missing id should complain about id on baseActionSchema
+  event = makeGatewayEvent(null, '{}');
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+  expect(returnBody.details).toHaveLength(1); // id and outputs are required parameters
+  expect(returnBody.details[0].message).toStrictEqual('"id" is required');
+
+  // missing amount, token and destinationAddress
+  event = makeGatewayEvent(null, JSON.stringify({
+    id: 'my-wallet',
+    actionType: TokenActionType.DELEGATE_MINT,
+  }));
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+  expect(returnBody.details).toHaveLength(3);
+  expect(returnBody.details[0].message).toStrictEqual('"destinationAddress" is required');
+  expect(returnBody.details[1].message).toStrictEqual('"token" is required');
+  expect(returnBody.details[2].message).toStrictEqual('"amount" is required');
+
+  // missing token
+  event = makeGatewayEvent(null, JSON.stringify({
+    id: 'my-wallet',
+    actionType: TokenActionType.DELEGATE_MINT,
+    destinationAddress: ADDRESSES[0],
+    amount: 500,
+  }));
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+  expect(returnBody.details).toHaveLength(1);
+  expect(returnBody.details[0].message).toStrictEqual('"token" is required');
+
+  // invalid inputs
+  event = makeGatewayEvent(null, JSON.stringify({
+    id: 'my-wallet',
+    actionType: TokenActionType.DELEGATE_MINT,
+    destinationAddress: ADDRESSES[0],
+    amount: 500,
+    token: '00',
+    inputs: [{ txId: 'txId', index: '0' }],
+  }));
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+  expect(returnBody.details).toHaveLength(1);
+  expect(returnBody.details[0].message).toStrictEqual('"inputs[0].index" must be a number');
+
+  // invalid inputs 2
+  event = makeGatewayEvent(null, JSON.stringify({
+    id: 'my-wallet',
+    actionType: TokenActionType.DELEGATE_MINT,
+    destinationAddress: ADDRESSES[0],
+    amount: 500,
+    token: '00',
+    inputs: [{ txId: 'txId' }],
+  }));
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+  expect(returnBody.details).toHaveLength(1);
+  expect(returnBody.details[0].message).toStrictEqual('"inputs[0].index" is required');
+
+  // missing wallet
+  event = makeGatewayEvent(null, JSON.stringify({
+    id: 'other-wallet',
+    destinationAddress: ADDRESSES[0],
+    actionType: TokenActionType.DELEGATE_MINT,
+    amount: 500,
+    token: '00',
+  }));
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(404);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.WALLET_NOT_FOUND);
+});
+
+test('POST /txproposals params validation on DELEGATE_MELT', async () => {
+  expect.hasAssertions();
+
+  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToAddressTable(mysql, [{
+    address: 'address',
+    index: 0,
+    walletId: 'my-wallet',
+    transactions: 2,
+  }]);
+
+  // invalid body
+  let event = makeGatewayEvent({ id: 'my-wallet', actionType: TokenActionType.DELEGATE_MELT });
+  let result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  let returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+
+  event = makeGatewayEvent({ id: 'my-wallet', actionType: TokenActionType.DELEGATE_MELT }, 'aaa');
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+
+  // missing id should complain about id on baseActionSchema
+  event = makeGatewayEvent(null, '{}');
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+  expect(returnBody.details).toHaveLength(1); // id and outputs are required parameters
+  expect(returnBody.details[0].message).toStrictEqual('"id" is required');
+
+  // missing amount, token and destinationAddress
+  event = makeGatewayEvent(null, JSON.stringify({
+    id: 'my-wallet',
+    actionType: TokenActionType.DELEGATE_MELT,
+  }));
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+  expect(returnBody.details).toHaveLength(3);
+  expect(returnBody.details[0].message).toStrictEqual('"destinationAddress" is required');
+  expect(returnBody.details[1].message).toStrictEqual('"token" is required');
+  expect(returnBody.details[2].message).toStrictEqual('"amount" is required');
+
+  // missing token
+  event = makeGatewayEvent(null, JSON.stringify({
+    id: 'my-wallet',
+    actionType: TokenActionType.DELEGATE_MELT,
+    destinationAddress: ADDRESSES[0],
+    amount: 500,
+  }));
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+  expect(returnBody.details).toHaveLength(1);
+  expect(returnBody.details[0].message).toStrictEqual('"token" is required');
+
+  // invalid inputs
+  event = makeGatewayEvent(null, JSON.stringify({
+    id: 'my-wallet',
+    actionType: TokenActionType.DELEGATE_MELT,
+    destinationAddress: ADDRESSES[0],
+    amount: 500,
+    token: '00',
+    inputs: [{ txId: 'txId', index: '0' }],
+  }));
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+  expect(returnBody.details).toHaveLength(1);
+  expect(returnBody.details[0].message).toStrictEqual('"inputs[0].index" must be a number');
+
+  // invalid inputs 2
+  event = makeGatewayEvent(null, JSON.stringify({
+    id: 'my-wallet',
+    actionType: TokenActionType.DELEGATE_MELT,
+    destinationAddress: ADDRESSES[0],
+    amount: 500,
+    token: '00',
+    inputs: [{ txId: 'txId' }],
+  }));
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+  expect(returnBody.details).toHaveLength(1);
+  expect(returnBody.details[0].message).toStrictEqual('"inputs[0].index" is required');
+
+  // missing wallet
+  event = makeGatewayEvent(null, JSON.stringify({
+    id: 'other-wallet',
+    destinationAddress: ADDRESSES[0],
+    actionType: TokenActionType.DELEGATE_MELT,
+    amount: 500,
+    token: '00',
+  }));
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(404);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.WALLET_NOT_FOUND);
+});
+
+test('POST /txproposals params validation on DESTROY_MINT', async () => {
+  expect.hasAssertions();
+
+  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToAddressTable(mysql, [{
+    address: 'address',
+    index: 0,
+    walletId: 'my-wallet',
+    transactions: 2,
+  }]);
+
+  // invalid body
+  let event = makeGatewayEvent({ id: 'my-wallet', actionType: TokenActionType.DESTROY_MINT });
+  let result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  let returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+
+  event = makeGatewayEvent({ id: 'my-wallet', actionType: TokenActionType.DESTROY_MINT }, 'aaa');
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+
+  // missing id should complain about id on baseActionSchema
+  event = makeGatewayEvent(null, '{}');
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+  expect(returnBody.details).toHaveLength(1); // id and outputs are required parameters
+  expect(returnBody.details[0].message).toStrictEqual('"id" is required');
+
+  // missing quantity and token
+  event = makeGatewayEvent(null, JSON.stringify({
+    id: 'my-wallet',
+    actionType: TokenActionType.DESTROY_MINT,
+  }));
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+  expect(returnBody.details).toHaveLength(2);
+  expect(returnBody.details[0].message).toStrictEqual('"token" is required');
+  expect(returnBody.details[1].message).toStrictEqual('"amount" is required');
+
+  // missing token
+  event = makeGatewayEvent(null, JSON.stringify({
+    id: 'my-wallet',
+    actionType: TokenActionType.DESTROY_MINT,
+    amount: 500,
+  }));
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+  expect(returnBody.details).toHaveLength(1);
+  expect(returnBody.details[0].message).toStrictEqual('"token" is required');
+
+  // invalid inputs
+  event = makeGatewayEvent(null, JSON.stringify({
+    id: 'my-wallet',
+    actionType: TokenActionType.DESTROY_MINT,
+    amount: 500,
+    token: '00',
+    inputs: [{ txId: 'txId', index: '0' }],
+  }));
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+  expect(returnBody.details).toHaveLength(1);
+  expect(returnBody.details[0].message).toStrictEqual('"inputs[0].index" must be a number');
+
+  // invalid inputs 2
+  event = makeGatewayEvent(null, JSON.stringify({
+    id: 'my-wallet',
+    actionType: TokenActionType.DESTROY_MINT,
+    destinationAddress: ADDRESSES[0],
+    amount: 500,
+    token: '00',
+    inputs: [{ txId: 'txId' }],
+  }));
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+  expect(returnBody.details).toHaveLength(1);
+  expect(returnBody.details[0].message).toStrictEqual('"inputs[0].index" is required');
+
+  // missing wallet
+  event = makeGatewayEvent(null, JSON.stringify({
+    id: 'other-wallet',
+    actionType: TokenActionType.DESTROY_MINT,
+    amount: 500,
+    token: '00',
+  }));
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(404);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.WALLET_NOT_FOUND);
+});
+
+test('POST /txproposals params validation on DESTROY_MELT', async () => {
+  expect.hasAssertions();
+
+  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToAddressTable(mysql, [{
+    address: 'address',
+    index: 0,
+    walletId: 'my-wallet',
+    transactions: 2,
+  }]);
+
+  // invalid body
+  let event = makeGatewayEvent({ id: 'my-wallet', actionType: TokenActionType.DESTROY_MELT });
+  let result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  let returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+
+  event = makeGatewayEvent({ id: 'my-wallet', actionType: TokenActionType.DESTROY_MELT }, 'aaa');
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+
+  // missing id should complain about id on baseActionSchema
+  event = makeGatewayEvent(null, '{}');
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+  expect(returnBody.details).toHaveLength(1); // id and outputs are required parameters
+  expect(returnBody.details[0].message).toStrictEqual('"id" is required');
+
+  // missing quantity and token
+  event = makeGatewayEvent(null, JSON.stringify({
+    id: 'my-wallet',
+    actionType: TokenActionType.DESTROY_MELT,
+  }));
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+  expect(returnBody.details).toHaveLength(2);
+  expect(returnBody.details[0].message).toStrictEqual('"token" is required');
+  expect(returnBody.details[1].message).toStrictEqual('"amount" is required');
+
+  // missing token
+  event = makeGatewayEvent(null, JSON.stringify({
+    id: 'my-wallet',
+    actionType: TokenActionType.DESTROY_MELT,
+    amount: 500,
+  }));
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+  expect(returnBody.details).toHaveLength(1);
+  expect(returnBody.details[0].message).toStrictEqual('"token" is required');
+
+  // invalid inputs
+  event = makeGatewayEvent(null, JSON.stringify({
+    id: 'my-wallet',
+    actionType: TokenActionType.DESTROY_MELT,
+    amount: 500,
+    token: '00',
+    inputs: [{ txId: 'txId', index: '0' }],
+  }));
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+  expect(returnBody.details).toHaveLength(1);
+  expect(returnBody.details[0].message).toStrictEqual('"inputs[0].index" must be a number');
+
+  // invalid inputs 2
+  event = makeGatewayEvent(null, JSON.stringify({
+    id: 'my-wallet',
+    actionType: TokenActionType.DESTROY_MELT,
+    destinationAddress: ADDRESSES[0],
+    amount: 500,
+    token: '00',
+    inputs: [{ txId: 'txId' }],
+  }));
+  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+  expect(returnBody.details).toHaveLength(1);
+  expect(returnBody.details[0].message).toStrictEqual('"inputs[0].index" is required');
+
+  // missing wallet
+  event = makeGatewayEvent(null, JSON.stringify({
+    id: 'other-wallet',
+    actionType: TokenActionType.DESTROY_MELT,
+    amount: 500,
+    token: '00',
+  }));
   result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(404);
