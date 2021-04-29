@@ -66,6 +66,7 @@ export interface TxProposal {
   id: string;
   walletId: string;
   status: TxProposalStatus;
+  type: TokenActionType,
   createdAt: number;
   updatedAt: number;
 }
@@ -583,4 +584,23 @@ export interface ApiResponse {
 export interface ValidationResult {
   value: any;
   error: any;
+}
+
+export interface TxProposalTokenInfo {
+  txProposalId: string;
+  symbol: string;
+  name: string;
+}
+
+export interface TxData {
+  version: any;
+  name?: string;
+  symbol?: string;
+  parents: any;
+  timestamp: any;
+  weight: any;
+  nonce: any;
+  tokens: string[];
+  inputs: any[];
+  outputs: any[];
 }
