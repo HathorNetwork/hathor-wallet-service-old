@@ -21,6 +21,7 @@ import {
   cleanDatabase,
   ADDRESSES,
 } from '@tests/utils';
+import { TokenActionType } from '@src/types';
 import { APIGatewayProxyResult } from 'aws-lambda';
 import buffer from 'buffer';
 
@@ -1339,4 +1340,62 @@ test('DELETE /txproposals/{proposalId} shoudl fail with ApiError.TX_PROPOSAL_NOT
 
   expect(txDeleteResultBody.success).toStrictEqual(false);
   expect(txDeleteResultBody.error).toStrictEqual(ApiError.TX_PROPOSAL_NOT_OPEN);
+});
+
+// Token actions:
+
+test('POST /txproposals CREATE_TOKEN', async () => {
+  expect.hasAssertions();
+
+  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToAddressTable(mysql, [{
+    address: ADDRESSES[0],
+    index: 0,
+    walletId: 'my-wallet',
+    transactions: 2,
+  }]);
+
+  const utxos = [
+    ['txSuccess0', 0, '00', ADDRESSES[0], 300, 0, null, null, false],
+    ['txSuccess1', 0, '00', ADDRESSES[0], 100, 0, null, null, false],
+  ];
+
+  await addToUtxoTable(mysql, utxos);
+  await addToWalletBalanceTable(mysql, [{
+    walletId: 'my-wallet',
+    tokenId: '00',
+    unlockedBalance: 400,
+    lockedBalance: 0,
+    unlockedAuthorities: 0,
+    lockedAuthorities: 0,
+    timelockExpires: null,
+    transactions: 2,
+  }]);
+
+  await addToAddressTable(mysql, [{
+    address: ADDRESSES[1],
+    index: 1,
+    walletId: 'my-wallet',
+    transactions: 0,
+  }, {
+    address: ADDRESSES[2],
+    index: 2,
+    walletId: 'my-wallet',
+    transactions: 0,
+  }]);
+
+  const event = makeGatewayEvent(null, JSON.stringify({
+    id: 'my-wallet',
+    actionType: TokenActionType.CREATE_TOKEN,
+    name: 'TestToken',
+    symbol: 'TSTKN',
+    amount: 1
+  }));
+
+  const result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  const returnBody = JSON.parse(result.body as string);
+
+  console.log('Return body: ', returnBody);
+
+  // await _checkTxProposalTables(returnBody.txProposalId, returnBody.inputs, returnBody.outputs);
 });

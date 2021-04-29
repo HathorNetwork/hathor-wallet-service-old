@@ -50,112 +50,6 @@ interface IWalletInsufficientFunds {
   available: number;
 }
 
-export const createToken = async (body, walletId): Promise<APIGatewayProxyResult> => {
-  // const inputs: IWalletInput[] = body.inputs;
-  const status = await getWallet(mysql, walletId);
-  console.log(body);
-
-  if (!status) {
-    return closeDbAndGetError(mysql, ApiError.WALLET_NOT_FOUND);
-  }
-
-  if (!status.readyAt) {
-    return closeDbAndGetError(mysql, ApiError.WALLET_NOT_READY);
-  }
-
-  return {
-    statusCode: 501,
-    body: JSON.stringify({
-      success: false,
-      message: 'Not yet implemented.',
-    }),
-  };
-};
-
-export const mintToken = async (body, walletId): Promise<APIGatewayProxyResult> => {
-  const status = await getWallet(mysql, walletId);
-  console.log(body);
-
-  if (!status) {
-    return closeDbAndGetError(mysql, ApiError.WALLET_NOT_FOUND);
-  }
-
-  if (!status.readyAt) {
-    return closeDbAndGetError(mysql, ApiError.WALLET_NOT_READY);
-  }
-
-  return {
-    statusCode: 501,
-    body: JSON.stringify({
-      success: false,
-      message: 'Not yet implemented.',
-    }),
-  };
-};
-
-export const meltToken = async (body, walletId): Promise<APIGatewayProxyResult> => {
-  const status = await getWallet(mysql, walletId);
-  console.log(body);
-
-  if (!status) {
-    return closeDbAndGetError(mysql, ApiError.WALLET_NOT_FOUND);
-  }
-
-  if (!status.readyAt) {
-    return closeDbAndGetError(mysql, ApiError.WALLET_NOT_READY);
-  }
-
-  return {
-    statusCode: 501,
-    body: JSON.stringify({
-      success: false,
-      message: 'Not yet implemented.',
-    }),
-  };
-};
-
-export const delegateAuthority = async (body, walletId): Promise<APIGatewayProxyResult> => {
-  const status = await getWallet(mysql, walletId);
-  console.log(body);
-
-  if (!status) {
-    return closeDbAndGetError(mysql, ApiError.WALLET_NOT_FOUND);
-  }
-
-  if (!status.readyAt) {
-    return closeDbAndGetError(mysql, ApiError.WALLET_NOT_READY);
-  }
-
-  return {
-    statusCode: 501,
-    body: JSON.stringify({
-      success: false,
-      message: 'Not yet implemented.',
-    }),
-  };
-};
-
-export const destroyAuthority = async (body, walletId): Promise<APIGatewayProxyResult> => {
-  const status = await getWallet(mysql, walletId);
-  console.log(body);
-
-  if (!status) {
-    return closeDbAndGetError(mysql, ApiError.WALLET_NOT_FOUND);
-  }
-
-  if (!status.readyAt) {
-    return closeDbAndGetError(mysql, ApiError.WALLET_NOT_READY);
-  }
-
-  return {
-    statusCode: 501,
-    body: JSON.stringify({
-      success: false,
-      message: 'Not yet implemented.',
-    }),
-  };
-};
-
 export const createRegularTx = async (body, walletId): Promise<APIGatewayProxyResult> => {
   if (body.outputs.length > hathorLib.transaction.getMaxOutputsConstant()) {
     return closeDbAndGetError(mysql, ApiError.TOO_MANY_OUTPUTS, { outputs: body.outputs.length });
@@ -283,6 +177,181 @@ export const createRegularTx = async (body, walletId): Promise<APIGatewayProxyRe
       inputs: retInputs,
       outputs: finalOutputs,
       tokens,
+    }),
+  };
+};
+
+export const createToken = async (body, walletId): Promise<APIGatewayProxyResult> => {
+  const status = await getWallet(mysql, walletId);
+
+  if (!status) {
+    return closeDbAndGetError(mysql, ApiError.WALLET_NOT_FOUND);
+  }
+
+  if (!status.readyAt) {
+    return closeDbAndGetError(mysql, ApiError.WALLET_NOT_READY);
+  }
+
+  const inputs: IWalletInput[] = body.inputs;
+
+  /* const destinationAddress: string = await (async function getDestinationAddress() {
+    if (!body.destinationAddress) {
+      const unusedAddresses = await getUnusedAddresses(mysql, walletId);
+
+      return unusedAddresses[0];
+    }
+
+    return body.destinationAddress;
+  }()); */
+
+  const inputSelectionAlgo = (function getInputAlgoFromBody() {
+    if (!body.inputSelectionAlgo) {
+      return InputSelectionAlgo.USE_LARGER_UTXOS;
+    }
+
+    return InputSelectionAlgo[body.inputSelectionAlgo];
+  }());
+
+  const {
+    amount,
+  } = body;
+
+  const { uid } = hathorLib.constants.HATHOR_TOKEN_CONFIG;
+
+  const necessaryDepositAmount = amount / 100 > 0 ? amount / 100 : 1; // 1% deposit, min amount of hathor deposit is 0.01.
+  // we create a fake output to get available utxos from the database to fill it
+  const necessaryHtrBalance = new TokenBalanceMap();
+  necessaryHtrBalance.set(uid, new Balance(necessaryDepositAmount, 0)); // 1% deposit
+
+  // If inputs were sent, we must validate if they are enough for the amount of tokens we want to create.
+  let inputUtxos = [];
+  if (inputs && inputs.length > 0) {
+    inputUtxos = await getUtxos(mysql, inputs);
+
+    const missing = checkMissingUtxos(inputs, inputUtxos);
+
+    if (missing.length > 0) {
+      return closeDbAndGetError(mysql, ApiError.INPUTS_NOT_FOUND, { missing });
+    }
+
+    // check if inputs sent by user are not part of another tx proposal
+    if (checkUsedUtxos(inputUtxos)) {
+      return closeDbAndGetError(mysql, ApiError.INPUTS_ALREADY_USED);
+    }
+  } else {
+    const utxos = await getUtxosForTokenBalance(mysql, inputSelectionAlgo, walletId, uid, new Balance(necessaryDepositAmount, 0));
+    inputUtxos.push(...utxos);
+  }
+
+  if (inputUtxos.length > hathorLib.transaction.getMaxInputsConstant()) {
+    return closeDbAndGetError(mysql, ApiError.TOO_MANY_INPUTS, { inputs: inputUtxos.length });
+  }
+
+  // Here we should check if we selected enough hathor for the deposit
+  const inputsBalance = getInputsBalance(inputUtxos);
+  const htrInputBalance = inputsBalance.get(uid);
+
+  if ((htrInputBalance.unlockedAmount * -1) < necessaryDepositAmount) {
+    return closeDbAndGetError(mysql, ApiError.INSUFFICIENT_INPUTS, { insufficient: [uid] });
+  }
+
+  const diff = TokenBalanceMap.merge(necessaryHtrBalance, inputsBalance);
+  const addresses = await getUnusedAddresses(mysql, walletId);
+  const changeOutputs = getChangeOutputs(diff, addresses);
+
+  console.log(addresses, changeOutputs);
+
+  // Here we should create the outputs with the mint and melt authorities
+
+  return {
+    statusCode: 501,
+    body: JSON.stringify({
+      success: false,
+      message: 'Not yet implemented.',
+    }),
+  };
+};
+
+export const mintToken = async (body, walletId): Promise<APIGatewayProxyResult> => {
+  const status = await getWallet(mysql, walletId);
+  console.log(body);
+
+  if (!status) {
+    return closeDbAndGetError(mysql, ApiError.WALLET_NOT_FOUND);
+  }
+
+  if (!status.readyAt) {
+    return closeDbAndGetError(mysql, ApiError.WALLET_NOT_READY);
+  }
+
+  return {
+    statusCode: 501,
+    body: JSON.stringify({
+      success: false,
+      message: 'Not yet implemented.',
+    }),
+  };
+};
+
+export const meltToken = async (body, walletId): Promise<APIGatewayProxyResult> => {
+  const status = await getWallet(mysql, walletId);
+  console.log(body);
+
+  if (!status) {
+    return closeDbAndGetError(mysql, ApiError.WALLET_NOT_FOUND);
+  }
+
+  if (!status.readyAt) {
+    return closeDbAndGetError(mysql, ApiError.WALLET_NOT_READY);
+  }
+
+  return {
+    statusCode: 501,
+    body: JSON.stringify({
+      success: false,
+      message: 'Not yet implemented.',
+    }),
+  };
+};
+
+export const delegateAuthority = async (body, walletId): Promise<APIGatewayProxyResult> => {
+  const status = await getWallet(mysql, walletId);
+  console.log(body);
+
+  if (!status) {
+    return closeDbAndGetError(mysql, ApiError.WALLET_NOT_FOUND);
+  }
+
+  if (!status.readyAt) {
+    return closeDbAndGetError(mysql, ApiError.WALLET_NOT_READY);
+  }
+
+  return {
+    statusCode: 501,
+    body: JSON.stringify({
+      success: false,
+      message: 'Not yet implemented.',
+    }),
+  };
+};
+
+export const destroyAuthority = async (body, walletId): Promise<APIGatewayProxyResult> => {
+  const status = await getWallet(mysql, walletId);
+  console.log(body);
+
+  if (!status) {
+    return closeDbAndGetError(mysql, ApiError.WALLET_NOT_FOUND);
+  }
+
+  if (!status.readyAt) {
+    return closeDbAndGetError(mysql, ApiError.WALLET_NOT_READY);
+  }
+
+  return {
+    statusCode: 501,
+    body: JSON.stringify({
+      success: false,
+      message: 'Not yet implemented.',
     }),
   };
 };
