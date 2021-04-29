@@ -1445,8 +1445,8 @@ test('PUT /txproposals/{proposalId} a createToken action', async () => {
   }]);
 
   const utxos = [
-    ['txSuccess0', 0, '00', ADDRESSES[0], 300, 0, null, null, false],
-    ['txSuccess1', 0, '00', ADDRESSES[0], 100, 0, null, null, false],
+    ['00000000000000001650cd208a2bcff09dce8af88d1b07097ef0efdba4aacbaa', 0, '00', ADDRESSES[0], 300, 0, null, null, false],
+    ['000000000000000042fb8ae48accbc48561729e2359838751e11f837ca9a5746', 0, '00', ADDRESSES[0], 100, 0, null, null, false],
   ];
 
   await addToUtxoTable(mysql, utxos);

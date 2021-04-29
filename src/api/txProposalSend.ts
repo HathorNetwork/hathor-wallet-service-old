@@ -155,11 +155,12 @@ export const send: APIGatewayProxyHandler = async (event) => {
 
       txData = {
         ...txData,
-        tokens: undefined,
         version: hathorLib.constants.CREATE_TOKEN_TX_VERSION,
         name: tokenInfo.name,
         symbol: tokenInfo.symbol,
       };
+
+      delete txData.tokens;
 
       break;
     default:
