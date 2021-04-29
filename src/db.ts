@@ -33,6 +33,7 @@ import {
   WalletTokenBalance,
   FullNodeVersionData,
   TokenActionType,
+  TxProposalTokenInfo,
 } from '@src/types';
 
 import { getUnixTimestamp, isAuthority } from '@src/utils';
@@ -1399,11 +1400,14 @@ export const getTxProposal = async (
     'SELECT * FROM `tx_proposal` WHERE `id` = ?',
     [txProposalId],
   );
+
   if (results.length === 0) return null;
+
   return {
     id: txProposalId,
     walletId: results[0].wallet_id as string,
     status: results[0].status as TxProposalStatus,
+    type: results[0].type as TokenActionType,
     createdAt: results[0].created_at as number,
     updatedAt: results[0].updated_at as number,
   };
@@ -1431,6 +1435,29 @@ export const addTxProposalTokenInfo = async (
     'INSERT INTO `tx_proposal_token_info` VALUES ?',
     [entry],
   );
+};
+
+/**
+ * Get tx proposal token info
+ *
+ * @param mysql - Database connection
+ * @param txProposalId - The transaction proposal id
+ * @returns Information about the new token
+ */
+export const getTxProposalTokenInfo = async (
+  mysql: ServerlessMysql,
+  txProposalId: string,
+): Promise<TxProposalTokenInfo> => {
+  const results: DbSelectResult = await mysql.query(
+    'SELECT * FROM `tx_proposal_token_info` WHERE `tx_proposal_id` = ?',
+    [txProposalId],
+  );
+
+  return {
+    txProposalId: results[0].tx_proposal_id as string,
+    name: results[0].name as string,
+    symbol: results[0].symbol as string,
+  };
 };
 
 /**
