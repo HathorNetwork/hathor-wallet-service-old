@@ -215,7 +215,7 @@ export const createToken = async (body, walletId): Promise<APIGatewayProxyResult
 
   const { uid } = hathorLib.constants.HATHOR_TOKEN_CONFIG;
 
-  const necessaryDepositAmount = body.amount / 100 > 0 ? body.amount / 100 : 1; // 1% deposit, min amount of hathor deposit is 0.01.
+  const necessaryDepositAmount = body.amount / 100 > 99 ? body.amount / 100 : 1; // 1% deposit, min amount of hathor deposit is 0.01.
   // we create a fake output to get available utxos from the database to fill it
   const necessaryHtrBalance = new TokenBalanceMap();
   necessaryHtrBalance.set(uid, new Balance(necessaryDepositAmount, 0)); // 1% deposit
@@ -324,6 +324,7 @@ export const createToken = async (body, walletId): Promise<APIGatewayProxyResult
   markUtxosWithProposalId(mysql, txProposalId, inputUtxos);
 
   const now = getUnixTimestamp();
+
   await createTxProposal(mysql, txProposalId, walletId, now, TokenActionType.CREATE_TOKEN);
   await addTxProposalOutputs(mysql, txProposalId, finalOutputs);
   await addTxProposalTokenInfo(mysql, txProposalId, body.name, body.symbol);
