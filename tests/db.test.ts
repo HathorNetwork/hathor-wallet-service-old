@@ -39,6 +39,7 @@ import {
   updateWalletStatus,
   updateWalletTablesWithTx,
   updateVersionData,
+  getAuthorityUtxoForToken,
 } from '@src/db';
 import {
   Authorities,
@@ -70,6 +71,7 @@ import {
   createOutput,
   createInput,
 } from '@tests/utils';
+import hathorLib from '@hathor/wallet-lib';
 
 const mysql = getDbConnection();
 
@@ -1165,4 +1167,63 @@ test('getVersionData', async () => {
   const versionData: FullNodeVersionData = await getVersionData(mysql);
 
   expect(Object.entries(versionData).toString()).toStrictEqual(Object.entries(mockData).toString());
+});
+
+test('getAuthorityUtxoForToken', async () => {
+  expect.hasAssertions();
+
+  const addr1 = 'addr1';
+  const addr2 = 'addr2';
+  const walletId = 'walletId';
+  const tokenId = 'tokenId';
+  const txId = 'txId';
+
+  await addToAddressTable(mysql, [{
+    address: addr1,
+    index: 0,
+    walletId,
+    transactions: 1,
+  }, {
+    address: addr2,
+    index: 1,
+    walletId,
+    transactions: 1,
+  }]);
+
+  await addToUtxoTable(mysql, [
+    // mint authority
+    [txId, 0, tokenId, addr1, 0, 0b01, null, null, false],
+    // melt authority
+    [txId, 1, tokenId, addr2, 0, 0b10, null, null, false],
+  ]);
+
+  const mintUtxo = await getAuthorityUtxoForToken(mysql, walletId, tokenId, hathorLib.constants.TOKEN_MINT_MASK);
+  const meltUtxo = await getAuthorityUtxoForToken(mysql, walletId, tokenId, hathorLib.constants.TOKEN_MELT_MASK);
+  const invalidUtxo = await getAuthorityUtxoForToken(mysql, walletId, tokenId, 0b111);
+
+  expect(mintUtxo).toStrictEqual({
+    txId,
+    index: 0,
+    tokenId,
+    address: addr1,
+    value: 0,
+    authorities: 0b01,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+  });
+
+  expect(meltUtxo).toStrictEqual({
+    txId,
+    index: 1,
+    tokenId,
+    address: addr2,
+    value: 0,
+    authorities: 0b10,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+  });
+
+  expect(invalidUtxo).toStrictEqual(null);
 });
