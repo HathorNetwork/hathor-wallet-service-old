@@ -1579,3 +1579,46 @@ export const getTxProposalInputs = async (
   }
   return inputs;
 };
+
+export const getAuthorityUtxoForToken = async (
+  mysql: ServerlessMysql,
+  walletId: string,
+  tokenId: string,
+  authority: number,
+): Promise<Utxo> => {
+  const results: DbSelectResult = await mysql.query(
+    `SELECT *
+       FROM \`utxo\`
+      WHERE \`address\`
+         IN (
+           SELECT \`address\`
+             FROM \`address\`
+            WHERE \`wallet_id\` = ?
+         )
+        AND \`token_id\` = ?
+        AND \`authorities\` = ?
+        AND \`locked\` = FALSE
+        AND \`tx_proposal\` IS NULL
+      LIMIT 1;
+       `,
+    [walletId, tokenId, authority],
+  );
+
+  if (results.length === 0) {
+    return null;
+  }
+
+  const utxo: Utxo = {
+    txId: results[0].tx_id as string,
+    index: results[0].index as number,
+    tokenId: results[0].token_id as string,
+    address: results[0].address as string,
+    value: results[0].value as number,
+    authorities: results[0].authorities as number,
+    timelock: results[0].timelock as number,
+    heightlock: results[0].heightlock as number,
+    locked: results[0].locked > 0,
+  };
+
+  return utxo;
+};
