@@ -552,11 +552,22 @@ export interface Transaction {
   token_symbol?: string;
 }
 
+export interface IWalletCreateTokenOutput {
+  address: string;
+  // eslint-disable-next-line camelcase
+  token_data: number;
+  value: number;
+  token?: string;
+  timelock?: number;
+}
+
 export interface IWalletOutput {
   address: string;
   value: number;
   token: string;
   timelock: number;
+  // eslint-disable-next-line camelcase
+  token_data?: number;
 }
 
 export interface IWalletInput {

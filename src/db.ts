@@ -18,6 +18,7 @@ import {
   GenerateAddresses,
   IWalletInput,
   IWalletOutput,
+  IWalletCreateTokenOutput,
   StringMap,
   TokenBalanceMap,
   TokenInfo,
@@ -31,6 +32,7 @@ import {
   WalletStatus,
   WalletTokenBalance,
   FullNodeVersionData,
+  TokenActionType,
 } from '@src/types';
 
 import { getUnixTimestamp, isAuthority } from '@src/utils';
@@ -1347,8 +1349,15 @@ export const createTxProposal = async (
   txProposalId: string,
   walletId: string,
   now: number,
+  type: TokenActionType = TokenActionType.REGULAR_TRANSACTION,
 ): Promise<void> => {
-  const entry = { id: txProposalId, wallet_id: walletId, status: TxProposalStatus.OPEN, created_at: now };
+  const entry = {
+    id: txProposalId,
+    wallet_id: walletId,
+    status: TxProposalStatus.OPEN,
+    created_at: now,
+    type,
+  };
   await mysql.query(
     'INSERT INTO `tx_proposal` SET ?',
     [entry],
@@ -1401,6 +1410,30 @@ export const getTxProposal = async (
 };
 
 /**
+ * Add tx proposal token information
+ *
+ * @param mysql - Database connection
+ * @param txProposalId - The transaction proposal id
+ * @param name - The token name
+ * @param symbol - The token symbol
+ */
+export const addTxProposalTokenInfo = async (
+  mysql: ServerlessMysql,
+  txProposalId: string,
+  name: string,
+  symbol: string,
+): Promise<void> => {
+  const entry = [
+    [ txProposalId, name, symbol ]
+  ];
+
+  await mysql.query(
+    'INSERT INTO `tx_proposal_token_info` VALUES ?',
+    [entry],
+  );
+};
+
+/**
  * Add tx proposal outputs to the database.
  *
  * @param mysql - Database connection
@@ -1410,12 +1443,21 @@ export const getTxProposal = async (
 export const addTxProposalOutputs = async (
   mysql: ServerlessMysql,
   txProposalId: string,
-  outputs: IWalletOutput[],
+  outputs: (IWalletOutput|IWalletCreateTokenOutput)[],
 ): Promise<void> => {
   const entries = [];
   for (const [index, output] of outputs.entries()) {
-    entries.push([txProposalId, index, output.address, output.token, output.value, output.timelock]);
+    entries.push([
+      txProposalId,
+      index,
+      output.address,
+      output.token || null,
+      output.token_data || null,
+      output.value,
+      output.timelock,
+    ]);
   }
+
   await mysql.query(
     'INSERT INTO `tx_proposal_outputs` VALUES ?',
     [entries],
@@ -1444,6 +1486,7 @@ export const getTxProposalOutputs = async (
       token: result.token_id as string,
       value: result.value as number,
       timelock: result.timelock as number,
+      token_data: result.token_data as number,
     });
   }
   return outputs;

@@ -15,6 +15,7 @@ import { ApiError } from '@src/api/errors';
 import { getWalletBalances, maybeRefreshWalletConstants } from '@src/commons';
 import {
   addTxProposalOutputs,
+  addTxProposalTokenInfo,
   createTxProposal,
   getUnusedAddresses,
   getUtxos,
@@ -28,6 +29,7 @@ import {
   Balance,
   IWalletInput,
   IWalletOutput,
+  IWalletCreateTokenOutput,
   TokenBalanceMap,
   Utxo,
   WalletTokenBalance,
@@ -131,7 +133,6 @@ export const createRegularTx = async (body, walletId): Promise<APIGatewayProxyRe
 
   const addresses = await getUnusedAddresses(mysql, walletId);
   const changeOutputs = getChangeOutputs(diff, addresses);
-
   const finalOutputs = outputs.concat(changeOutputs);
 
   // we also need to do this check here, as we may have added change outputs
@@ -194,7 +195,7 @@ export const createToken = async (body, walletId): Promise<APIGatewayProxyResult
 
   const inputs: IWalletInput[] = body.inputs;
 
-  /* const destinationAddress: string = await (async function getDestinationAddress() {
+  const destinationAddress: string = await (async function getDestinationAddress() {
     if (!body.destinationAddress) {
       const unusedAddresses = await getUnusedAddresses(mysql, walletId);
 
@@ -202,7 +203,7 @@ export const createToken = async (body, walletId): Promise<APIGatewayProxyResult
     }
 
     return body.destinationAddress;
-  }()); */
+  }());
 
   const inputSelectionAlgo = (function getInputAlgoFromBody() {
     if (!body.inputSelectionAlgo) {
@@ -212,13 +213,9 @@ export const createToken = async (body, walletId): Promise<APIGatewayProxyResult
     return InputSelectionAlgo[body.inputSelectionAlgo];
   }());
 
-  const {
-    amount,
-  } = body;
-
   const { uid } = hathorLib.constants.HATHOR_TOKEN_CONFIG;
 
-  const necessaryDepositAmount = amount / 100 > 0 ? amount / 100 : 1; // 1% deposit, min amount of hathor deposit is 0.01.
+  const necessaryDepositAmount = body.amount / 100 > 0 ? body.amount / 100 : 1; // 1% deposit, min amount of hathor deposit is 0.01.
   // we create a fake output to get available utxos from the database to fill it
   const necessaryHtrBalance = new TokenBalanceMap();
   necessaryHtrBalance.set(uid, new Balance(necessaryDepositAmount, 0)); // 1% deposit
@@ -255,19 +252,103 @@ export const createToken = async (body, walletId): Promise<APIGatewayProxyResult
     return closeDbAndGetError(mysql, ApiError.INSUFFICIENT_INPUTS, { insufficient: [uid] });
   }
 
-  const diff = TokenBalanceMap.merge(necessaryHtrBalance, inputsBalance);
+  // Get unused addresses to be used on change and authority outputs
   const addresses = await getUnusedAddresses(mysql, walletId);
+
+  // Create the deposit change without creating an deposit output
+  const diff = TokenBalanceMap.merge(necessaryHtrBalance, inputsBalance);
   const changeOutputs = getChangeOutputs(diff, addresses);
 
-  console.log(addresses, changeOutputs);
+  const tokenIndex = 1; // We only allow the creation of 1 token per api call, so this can be fixed.
 
-  // Here we should create the outputs with the mint and melt authorities
+  // Create the output with the token to be created
+  const tokensOutputs: IWalletCreateTokenOutput[] = [{
+    value: body.amount,
+    token_data: tokenIndex,
+    address: destinationAddress,
+  }];
+
+  // Create the outputs with the mint and melt authorities if necessary
+
+  // Mint
+  if (body.createMint) {
+    const mintDestination: string = (function getMintDestinationAddress() {
+      if (!body.mintDestination) {
+        // TODO: Make sure we are not already using this address on change outputs
+        return addresses[1];
+      }
+
+      return body.mintDestination;
+    }());
+
+    const mintOutput: IWalletCreateTokenOutput = {
+      value: hathorLib.constants.TOKEN_MINT_MASK,
+      // eslint-disable-next-line no-bitwise
+      token_data: hathorLib.constants.TOKEN_AUTHORITY_MASK | tokenIndex,
+      address: mintDestination,
+    };
+
+    tokensOutputs.push(mintOutput);
+  }
+
+  // Melt
+  if (body.createMelt) {
+    const meltDestination: string = (function getMeltDestinationAddress() {
+      if (!body.meltDestination) {
+        // TODO: Make sure we are not already using this address on change outputs
+        return addresses[2];
+      }
+
+      return body.meltDestination;
+    }());
+
+    const meltOutput: IWalletCreateTokenOutput = {
+      value: hathorLib.constants.TOKEN_MELT_MASK,
+      // eslint-disable-next-line no-bitwise
+      token_data: hathorLib.constants.TOKEN_AUTHORITY_MASK | tokenIndex,
+      address: meltDestination,
+    };
+
+    tokensOutputs.push(meltOutput);
+  }
+
+  const finalOutputs = [...changeOutputs, ...tokensOutputs];
+
+  // we also need to do this check here, as we may have added change outputs and the full-node will reject
+  // the tx with too many outputs
+  if (finalOutputs.length > hathorLib.transaction.getMaxOutputsConstant()) {
+    return closeDbAndGetError(mysql, ApiError.TOO_MANY_OUTPUTS, { outputs: finalOutputs.length });
+  }
+
+  const txProposalId = uuidv4();
+  markUtxosWithProposalId(mysql, txProposalId, inputUtxos);
+
+  const now = getUnixTimestamp();
+  await createTxProposal(mysql, txProposalId, walletId, now, TokenActionType.CREATE_TOKEN);
+  await addTxProposalOutputs(mysql, txProposalId, finalOutputs);
+  await addTxProposalTokenInfo(mysql, txProposalId, body.name, body.symbol);
+
+  // DB operations are over, close the mysql conn:
+  await closeDbConnection(mysql);
+
+  const inputPromises = inputUtxos.map(async (utxo) => {
+    const addressDetail: AddressInfo = await getWalletAddressDetail(mysql, walletId, utxo.address);
+    // XXX We should store in address table the path of the address, not the index
+    // For now we return the hardcoded path with only the address index as variable
+    // The client will be prepared to receive any path when we add this in the service in the future
+    const addressPath = `m/44'/${hathorLib.constants.HATHOR_BIP44_CODE}'/0'/0/${addressDetail.index}`;
+    return { txId: utxo.txId, index: utxo.index, addressPath };
+  });
+
+  const retInputs = await Promise.all(inputPromises);
 
   return {
-    statusCode: 501,
+    statusCode: 201,
     body: JSON.stringify({
-      success: false,
-      message: 'Not yet implemented.',
+      success: true,
+      txProposalId,
+      inputs: retInputs,
+      outputs: finalOutputs,
     }),
   };
 };
