@@ -90,7 +90,7 @@ export const createTokenSchema = Joi.object({
 }).unknown(true);
 
 export const mintTokenSchema = Joi.object({
-  amount: Joi.number().required(),
+  amount: Joi.number().required().min(1),
   token: Joi.string().alphanum().required(),
   createAnotherAuthority: Joi.boolean().default(true),
   destinationAddress: Joi.string().alphanum().max(34),
@@ -114,7 +114,7 @@ export const mintTokenSchema = Joi.object({
 }).unknown(true);
 
 export const meltTokenSchema = Joi.object({
-  amount: Joi.number().required(),
+  amount: Joi.number().required().min(1),
   token: Joi.string().alphanum().required(),
   createAnotherAuthority: Joi.boolean().default(true),
   destinationAddress: Joi.string().alphanum().max(34),
