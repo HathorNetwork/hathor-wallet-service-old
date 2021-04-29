@@ -23,6 +23,7 @@ import {
   getWalletAddressDetail,
   getWalletSortedValueUtxos,
   markUtxosWithProposalId,
+  getAuthorityUtxoForToken,
 } from '@src/db';
 import {
   AddressInfo,
@@ -121,8 +122,9 @@ export const createRegularTx = async (body, walletId): Promise<APIGatewayProxyRe
   const inputsBalance = getInputsBalance(inputUtxos);
   const diff = TokenBalanceMap.merge(outputsBalance, inputsBalance);
 
-  // Make sure diff is 0 or lower, which means inputs sum is greater than (or equal to) outputs sum.
-  // This should only happen when we receive the inputs from user and he didn't select enough inputs.
+  /* Make sure diff is 0 or lower, which means inputs sum is greater than (or equal to) outputs sum.
+   * This should only happen when we receive the inputs from user and he didn't select enough inputs.
+   */
   const insufficientInputs = [];
   for (const [token, tokenBalance] of diff.iterator()) {
     if (tokenBalance.total() > 0) insufficientInputs.push(token);
@@ -356,7 +358,6 @@ export const createToken = async (body, walletId): Promise<APIGatewayProxyResult
 
 export const mintToken = async (body, walletId): Promise<APIGatewayProxyResult> => {
   const status = await getWallet(mysql, walletId);
-  console.log(body);
 
   if (!status) {
     return closeDbAndGetError(mysql, ApiError.WALLET_NOT_FOUND);
@@ -366,11 +367,164 @@ export const mintToken = async (body, walletId): Promise<APIGatewayProxyResult> 
     return closeDbAndGetError(mysql, ApiError.WALLET_NOT_READY);
   }
 
+  const inputs: IWalletInput[] = body.inputs;
+
+  const destinationAddress: string = await (async function getDestinationAddress() {
+    if (!body.destinationAddress) {
+      const unusedAddresses = await getUnusedAddresses(mysql, walletId);
+
+      return unusedAddresses[0];
+    }
+
+    return body.destinationAddress;
+  }());
+
+  const inputSelectionAlgo = (function getInputAlgoFromBody() {
+    if (!body.inputSelectionAlgo) {
+      return InputSelectionAlgo.USE_LARGER_UTXOS;
+    }
+
+    return InputSelectionAlgo[body.inputSelectionAlgo];
+  }());
+
+  const { uid } = hathorLib.constants.HATHOR_TOKEN_CONFIG;
+
+  const necessaryDepositAmount = body.amount / 100 > 99 ? body.amount / 100 : 1; // 1% deposit, min amount of hathor deposit is 0.01.
+  // we create a fake output to get available utxos from the database to fill it
+  const necessaryHtrBalance = new TokenBalanceMap();
+  necessaryHtrBalance.set(uid, new Balance(necessaryDepositAmount, 0)); // 1% deposit
+
+  // If inputs were sent, we must validate if they contain an mint Authority
+  let inputUtxos = [];
+  if (inputs && inputs.length > 0) {
+    inputUtxos = await getUtxos(mysql, inputs);
+
+    const missing = checkMissingUtxos(inputs, inputUtxos);
+
+    if (missing.length > 0) {
+      return closeDbAndGetError(mysql, ApiError.INPUTS_NOT_FOUND, { missing });
+    }
+
+    // check if inputs sent by user are not part of another tx proposal
+    if (checkUsedUtxos(inputUtxos)) {
+      return closeDbAndGetError(mysql, ApiError.INPUTS_ALREADY_USED);
+    }
+  } else {
+    const utxos = await getUtxosForTokenBalance(mysql, inputSelectionAlgo, walletId, uid, new Balance(necessaryDepositAmount, 0));
+    const mintAuthorityUtxo = await getAuthorityUtxoForToken(mysql, walletId, body.token, hathorLib.constants.TOKEN_MINT_MASK);
+
+    if (mintAuthorityUtxo) {
+      inputUtxos.push(mintAuthorityUtxo);
+    }
+
+    inputUtxos.push(...utxos);
+  }
+
+  if (inputUtxos.length > hathorLib.transaction.getMaxInputsConstant()) {
+    return closeDbAndGetError(mysql, ApiError.TOO_MANY_INPUTS, { inputs: inputUtxos.length });
+  }
+
+  // check if we have exactly one mint authority for exactly the token we want to mint
+  const mintAuthorities = inputUtxos.filter((utxo) => {
+    return utxo.authorities === hathorLib.constants.TOKEN_MINT_MASK && utxo.tokenId === body.token;
+  });
+
+  // more than one authority was sent from the user
+  if (mintAuthorities.length > 1) {
+    return closeDbAndGetError(mysql, ApiError.TOO_MANY_AUTHORITIES, {
+      authorities: mintAuthorities.length,
+      expected: 1,
+    });
+  }
+
+  // user has no authority or no authority was sent on inputs
+  if (mintAuthorities.length <= 0) {
+    return closeDbAndGetError(mysql, ApiError.MISSING_AUTHORITY_INPUT, {
+      authority: hathorLib.constants.TOKEN_MINT_MASK,
+    });
+  }
+
+  // check if we selected enough hathor for the deposit
+  const inputsBalance = getInputsBalance(inputUtxos);
+  const htrInputBalance = inputsBalance.get(uid);
+
+  if ((htrInputBalance.unlockedAmount * -1) < necessaryDepositAmount) {
+    return closeDbAndGetError(mysql, ApiError.INSUFFICIENT_INPUTS, { insufficient: [uid] });
+  }
+
+  // get unused addresses to be used on change outputs
+  const addresses = await getUnusedAddresses(mysql, walletId);
+
+  // create the deposit change without creating an deposit output
+  const diff = TokenBalanceMap.merge(necessaryHtrBalance, inputsBalance);
+  const changeOutputs = getChangeOutputs(diff, addresses);
+
+  // create the output with the newly minted tokens
+  const tokensOutputs: IWalletCreateTokenOutput[] = [{
+    value: body.amount,
+    token_data: 1,
+    address: destinationAddress,
+  }];
+
+  // re-create the outputs with the mint authority if necessary
+  if (body.createAnotherAuthority) {
+    const mintDestination: string = (function getMintDestinationAddress() {
+      if (!body.authorityAddress) {
+        // TODO: Make sure we are not already using this address on change outputs
+        return addresses[1];
+      }
+
+      return body.authorityAddress;
+    }());
+
+    const mintOutput: IWalletCreateTokenOutput = {
+      value: hathorLib.constants.TOKEN_MINT_MASK,
+      // eslint-disable-next-line no-bitwise
+      token_data: hathorLib.constants.TOKEN_AUTHORITY_MASK | 1,
+      address: mintDestination,
+    };
+
+    tokensOutputs.push(mintOutput);
+  }
+
+  const finalOutputs = [...changeOutputs, ...tokensOutputs];
+
+  /* we also need to do this check here, as we may have added change outputs and the full-node will reject
+   * the tx with too many outputs
+   */
+  if (finalOutputs.length > hathorLib.transaction.getMaxOutputsConstant()) {
+    return closeDbAndGetError(mysql, ApiError.TOO_MANY_OUTPUTS, { outputs: finalOutputs.length });
+  }
+
+  const txProposalId = uuidv4();
+  markUtxosWithProposalId(mysql, txProposalId, inputUtxos);
+
+  const now = getUnixTimestamp();
+
+  await createTxProposal(mysql, txProposalId, walletId, now, TokenActionType.MINT_TOKEN);
+  await addTxProposalOutputs(mysql, txProposalId, finalOutputs);
+
+  // DB operations are over, close the mysql conn:
+  await closeDbConnection(mysql);
+
+  const inputPromises = inputUtxos.map(async (utxo) => {
+    const addressDetail: AddressInfo = await getWalletAddressDetail(mysql, walletId, utxo.address);
+    // XXX We should store in address table the path of the address, not the index
+    // For now we return the hardcoded path with only the address index as variable
+    // The client will be prepared to receive any path when we add this in the service in the future
+    const addressPath = `m/44'/${hathorLib.constants.HATHOR_BIP44_CODE}'/0'/0/${addressDetail.index}`;
+    return { txId: utxo.txId, index: utxo.index, addressPath };
+  });
+
+  const retInputs = await Promise.all(inputPromises);
+
   return {
-    statusCode: 501,
+    statusCode: 201,
     body: JSON.stringify({
-      success: false,
-      message: 'Not yet implemented.',
+      success: true,
+      txProposalId,
+      inputs: retInputs,
+      outputs: finalOutputs,
     }),
   };
 };
