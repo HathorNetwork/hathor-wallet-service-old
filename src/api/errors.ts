@@ -19,6 +19,8 @@ export enum ApiError {
   INVALID_PAYLOAD = 'invalid-payload',
   TOO_MANY_INPUTS = 'too-many-inputs',
   TOO_MANY_OUTPUTS = 'too-many-outputs',
+  TOO_MANY_AUTHORITIES = 'too-many-authorities',
+  MISSING_AUTHORITY_INPUT = 'missing-authority-input',
   TX_PROPOSAL_NOT_FOUND = 'tx-proposal-not-found',
   TX_PROPOSAL_NOT_OPEN = 'tx-proposal-not-open',
   TX_PROPOSAL_SEND_ERROR = 'tx-proposal-send-error',
