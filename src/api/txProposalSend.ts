@@ -12,8 +12,14 @@ import {
   getTxProposalOutputs,
   updateTxProposal,
   removeTxProposalOutputs,
+  getTxProposalTokenInfo,
 } from '@src/db';
-import { TxProposalStatus, ApiResponse } from '@src/types';
+import {
+  TxProposalStatus,
+  TokenActionType,
+  ApiResponse,
+  TxData,
+} from '@src/types';
 import {
   closeDbConnection,
   getDbConnection,
@@ -132,7 +138,7 @@ export const send: APIGatewayProxyHandler = async (event) => {
     });
   }
 
-  const txData = {
+  let txData: TxData = {
     version: hathorLib.constants.DEFAULT_TX_VERSION,
     parents,
     timestamp,
@@ -142,6 +148,23 @@ export const send: APIGatewayProxyHandler = async (event) => {
     inputs,
     outputs,
   };
+
+  switch (txProposal.type) {
+    case TokenActionType.CREATE_TOKEN:
+      const tokenInfo = await getTxProposalTokenInfo(mysql, txProposalId);
+
+      txData = {
+        ...txData,
+        tokens: undefined,
+        version: hathorLib.constants.CREATE_TOKEN_TX_VERSION,
+        name: tokenInfo.name,
+        symbol: tokenInfo.symbol,
+      };
+
+      break;
+    default:
+      break;
+  }
 
   await maybeRefreshWalletConstants(mysql);
 
