@@ -1428,7 +1428,7 @@ export const addTxProposalTokenInfo = async (
   symbol: string,
 ): Promise<void> => {
   const entry = [
-    [ txProposalId, name, symbol ]
+    [txProposalId, name, symbol],
   ];
 
   await mysql.query(

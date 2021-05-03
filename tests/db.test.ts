@@ -1225,5 +1225,5 @@ test('getAuthorityUtxoForToken', async () => {
     locked: false,
   });
 
-  expect(invalidUtxo).toStrictEqual(null);
+  expect(invalidUtxo).toBeNull();
 });
