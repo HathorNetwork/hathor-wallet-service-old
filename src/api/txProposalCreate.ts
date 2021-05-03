@@ -713,9 +713,8 @@ export const meltToken = async (body, walletId): Promise<APIGatewayProxyResult> 
   };
 };
 
-export const delegateAuthority = async (body, walletId): Promise<APIGatewayProxyResult> => {
+export const delegateAuthority = async (body, walletId, authority): Promise<APIGatewayProxyResult> => {
   const status = await getWallet(mysql, walletId);
-  console.log(body);
 
   if (!status) {
     return closeDbAndGetError(mysql, ApiError.WALLET_NOT_FOUND);
@@ -725,11 +724,99 @@ export const delegateAuthority = async (body, walletId): Promise<APIGatewayProxy
     return closeDbAndGetError(mysql, ApiError.WALLET_NOT_READY);
   }
 
+  const inputs: IWalletInput[] = body.inputs;
+  const destinationAddress: string = body.destinationAddress;
+
+  let inputUtxos = [];
+  if (inputs && inputs.length > 0) {
+    // Fetch user-sent inputs
+    inputUtxos = await getUtxos(mysql, inputs);
+
+    const missing = checkMissingUtxos(inputs, inputUtxos);
+
+    if (missing.length > 0) {
+      return closeDbAndGetError(mysql, ApiError.INPUTS_NOT_FOUND, { missing });
+    }
+
+    // check if inputs sent by user are not part of another tx proposal
+    if (checkUsedUtxos(inputUtxos)) {
+      return closeDbAndGetError(mysql, ApiError.INPUTS_ALREADY_USED);
+    }
+  } else {
+    const authorityUtxo = await getAuthorityUtxoForToken(mysql, walletId, body.token, authority);
+
+    if (authorityUtxo) {
+      inputUtxos.push(authorityUtxo);
+    }
+  }
+
+  if (inputUtxos.length > hathorLib.transaction.getMaxInputsConstant()) {
+    return closeDbAndGetError(mysql, ApiError.TOO_MANY_INPUTS, { inputs: inputUtxos.length });
+  }
+
+  // check if we have exactly one authority
+  const authorities = inputUtxos.filter((utxo) => (
+    utxo.authorities === authority
+    && utxo.tokenId === body.token
+  ));
+
+  // more than one authority was sent from the user
+  if (authorities.length > 1) {
+    return closeDbAndGetError(mysql, ApiError.TOO_MANY_AUTHORITIES, {
+      authorities: authorities.length,
+      expected: 1,
+    });
+  }
+
+  // user has no authority or no authority was sent on inputs
+  if (authorities.length <= 0) {
+    return closeDbAndGetError(mysql, ApiError.MISSING_AUTHORITY_INPUT, {
+      authority,
+    });
+  }
+
+  // get unused addresses to be used on outputs
+  const tokenIndex = 1; // We only allow the delegation of 1 token per api call, so this can be fixed.
+
+  // the delegated authority will be the final output
+
+  const finalOutputs: IWalletOutput[] = [{
+    value: authority,
+    // eslint-disable-next-line no-bitwise
+    token_data: hathorLib.constants.TOKEN_AUTHORITY_MASK | tokenIndex,
+    address: destinationAddress,
+    timelock: null,
+  }];
+
+  const txProposalId = uuidv4();
+  markUtxosWithProposalId(mysql, txProposalId, inputUtxos);
+
+  const now = getUnixTimestamp();
+
+  await createTxProposal(mysql, txProposalId, walletId, now, TokenActionType.MINT_TOKEN);
+  await addTxProposalOutputs(mysql, txProposalId, finalOutputs);
+
+  // DB operations are over, close the mysql conn:
+  await closeDbConnection(mysql);
+
+  const inputPromises = inputUtxos.map(async (utxo) => {
+    const addressDetail: AddressInfo = await getWalletAddressDetail(mysql, walletId, utxo.address);
+    // XXX We should store in address table the path of the address, not the index
+    // For now we return the hardcoded path with only the address index as variable
+    // The client will be prepared to receive any path when we add this in the service in the future
+    const addressPath = `m/44'/${hathorLib.constants.HATHOR_BIP44_CODE}'/0'/0/${addressDetail.index}`;
+    return { txId: utxo.txId, index: utxo.index, addressPath };
+  });
+
+  const retInputs = await Promise.all(inputPromises);
+
   return {
-    statusCode: 501,
+    statusCode: 201,
     body: JSON.stringify({
-      success: false,
-      message: 'Not yet implemented.',
+      success: true,
+      txProposalId,
+      inputs: retInputs,
+      outputs: finalOutputs,
     }),
   };
 };
@@ -812,10 +899,10 @@ export const create: APIGatewayProxyHandler = async (event) => {
       response = await meltToken(body, walletId);
       break;
     case TokenActionType.DELEGATE_MINT:
-      response = await delegateAuthority(body, walletId);
+      response = await delegateAuthority(body, walletId, hathorLib.constants.TOKEN_MINT_MASK);
       break;
     case TokenActionType.DELEGATE_MELT:
-      response = await delegateAuthority(body, walletId);
+      response = await delegateAuthority(body, walletId, hathorLib.constants.TOKEN_MELT_MASK);
       break;
     case TokenActionType.DESTROY_MINT:
       response = await destroyAuthority(body, walletId);
