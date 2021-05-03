@@ -23,7 +23,7 @@ import {
   getWalletAddressDetail,
   getWalletSortedValueUtxos,
   markUtxosWithProposalId,
-  getAuthorityUtxoForToken,
+  getAuthorityUtxosForToken,
 } from '@src/db';
 import {
   AddressInfo,
@@ -411,10 +411,10 @@ export const mintToken = async (body, walletId): Promise<APIGatewayProxyResult> 
     }
   } else {
     const utxos = await getUtxosForTokenBalance(mysql, inputSelectionAlgo, walletId, uid, new Balance(necessaryDepositAmount, 0));
-    const mintAuthorityUtxo = await getAuthorityUtxoForToken(mysql, walletId, body.token, hathorLib.constants.TOKEN_MINT_MASK);
+    const mintAuthorityUtxos = await getAuthorityUtxosForToken(mysql, walletId, body.token, hathorLib.constants.TOKEN_MINT_MASK);
 
-    if (mintAuthorityUtxo) {
-      inputUtxos.push(mintAuthorityUtxo);
+    if (mintAuthorityUtxos.length > 0) {
+      inputUtxos.push(mintAuthorityUtxos[0]);
     }
 
     inputUtxos.push(...utxos);
@@ -586,10 +586,10 @@ export const meltToken = async (body, walletId): Promise<APIGatewayProxyResult> 
   } else {
     // fetch token utxos to melt
     const utxos = await getUtxosForTokenBalance(mysql, inputSelectionAlgo, walletId, body.token, new Balance(body.amount, 0));
-    const meltAuthorityUtxo = await getAuthorityUtxoForToken(mysql, walletId, body.token, hathorLib.constants.TOKEN_MELT_MASK);
+    const meltAuthorityUtxos = await getAuthorityUtxosForToken(mysql, walletId, body.token, hathorLib.constants.TOKEN_MELT_MASK);
 
-    if (meltAuthorityUtxo) {
-      inputUtxos.push(meltAuthorityUtxo);
+    if (meltAuthorityUtxos.length > 0) {
+      inputUtxos.push(meltAuthorityUtxos[0]);
     }
 
     inputUtxos.push(...utxos);
