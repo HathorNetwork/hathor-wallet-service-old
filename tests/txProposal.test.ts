@@ -1851,7 +1851,68 @@ test('POST /txproposals DELEGATE_MINT', async () => {
   const result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(result.body as string);
 
-  console.log('Return body: ', returnBody);
+  await _checkTxProposalTables(returnBody.txProposalId, returnBody.inputs, returnBody.outputs);
+});
+
+test('POST /txproposals DELEGATE_MELT', async () => {
+  expect.hasAssertions();
+
+  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToAddressTable(mysql, [{
+    address: ADDRESSES[0],
+    index: 0,
+    walletId: 'my-wallet',
+    transactions: 2,
+  }]);
+
+  const utxos = [
+    ['txSuccess1', 0, 'token1', ADDRESSES[0], 0, 0b10, null, null, false],
+  ];
+
+  await addToUtxoTable(mysql, utxos);
+  await addToWalletBalanceTable(mysql, [{
+    walletId: 'my-wallet',
+    tokenId: 'token1',
+    unlockedBalance: 0,
+    lockedBalance: 0,
+    unlockedAuthorities: 0b01,
+    lockedAuthorities: 0,
+    timelockExpires: null,
+    transactions: 1,
+  }]);
+
+  await addToAddressTable(mysql, [{
+    address: ADDRESSES[1],
+    index: 1,
+    walletId: 'my-wallet',
+    transactions: 0,
+  }, {
+    address: ADDRESSES[2],
+    index: 2,
+    walletId: 'my-wallet',
+    transactions: 0,
+  }, {
+    address: ADDRESSES[3],
+    index: 3,
+    walletId: 'my-wallet',
+    transactions: 0,
+  }, {
+    address: ADDRESSES[4],
+    index: 4,
+    walletId: 'my-wallet',
+    transactions: 0,
+  }]);
+
+  const event = makeGatewayEvent(null, JSON.stringify({
+    id: 'my-wallet',
+    actionType: TokenActionType.DELEGATE_MELT,
+    destinationAddress: ADDRESSES[5],
+    token: 'token1',
+    amount: 300,
+  }));
+
+  const result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  const returnBody = JSON.parse(result.body as string);
 
   await _checkTxProposalTables(returnBody.txProposalId, returnBody.inputs, returnBody.outputs);
 });
