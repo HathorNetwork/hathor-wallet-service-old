@@ -149,22 +149,17 @@ export const send: APIGatewayProxyHandler = async (event) => {
     outputs,
   };
 
-  switch (txProposal.type) {
-    case TokenActionType.CREATE_TOKEN:
-      const tokenInfo = await getTxProposalTokenInfo(mysql, txProposalId);
+  if (txProposal.type === TokenActionType.CREATE_TOKEN) {
+    const tokenInfo = await getTxProposalTokenInfo(mysql, txProposalId);
 
-      txData = {
-        ...txData,
-        version: hathorLib.constants.CREATE_TOKEN_TX_VERSION,
-        name: tokenInfo.name,
-        symbol: tokenInfo.symbol,
-      };
+    txData = {
+      ...txData,
+      version: hathorLib.constants.CREATE_TOKEN_TX_VERSION,
+      name: tokenInfo.name,
+      symbol: tokenInfo.symbol,
+    };
 
-      delete txData.tokens;
-
-      break;
-    default:
-      break;
+    delete txData.tokens;
   }
 
   await maybeRefreshWalletConstants(mysql);
