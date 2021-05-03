@@ -48,6 +48,7 @@ import {
   TxProposalStatus,
   WalletStatus,
   FullNodeVersionData,
+  TokenActionType,
 } from '@src/types';
 import { closeDbConnection, getDbConnection, getUnixTimestamp, isAuthority } from '@src/utils';
 import {
@@ -1080,12 +1081,26 @@ test('createTxProposal, updateTxProposal and getTxProposal', async () => {
 
   await createTxProposal(mysql, txProposalId, walletId, now);
   let txProposal = await getTxProposal(mysql, txProposalId);
-  expect(txProposal).toStrictEqual({ id: txProposalId, walletId, status: TxProposalStatus.OPEN, createdAt: now, updatedAt: null });
+  expect(txProposal).toStrictEqual({
+    id: txProposalId,
+    walletId,
+    status: TxProposalStatus.OPEN,
+    type: TokenActionType.REGULAR_TRANSACTION,
+    createdAt: now,
+    updatedAt: null,
+  });
 
   // update
   await updateTxProposal(mysql, txProposalId, now + 7, TxProposalStatus.SENT);
   txProposal = await getTxProposal(mysql, txProposalId);
-  expect(txProposal).toStrictEqual({ id: txProposalId, walletId, status: TxProposalStatus.SENT, createdAt: now, updatedAt: now + 7 });
+  expect(txProposal).toStrictEqual({
+    id: txProposalId,
+    walletId,
+    status: TxProposalStatus.SENT,
+    createdAt: now,
+    updatedAt: now + 7,
+    type: TokenActionType.REGULAR_TRANSACTION,
+  });
 
   // tx proposal not found
   expect(await getTxProposal(mysql, 'aaa')).toBeNull();
@@ -1096,9 +1111,9 @@ test('addTxProposalOutputs, getTxProposalOutputs, deleteTxProposalOutputs', asyn
 
   const txProposalId = uuidv4();
   const outputs = [
-    { address: 'addr1', token: 'token1', value: 5, timelock: null },
-    { address: 'addr2', token: 'token2', value: 10, timelock: null },
-    { address: 'addr2', token: 'token1', value: 15, timelock: 10000 },
+    { address: 'addr1', token: 'token1', value: 5, timelock: null, token_data: null, },
+    { address: 'addr2', token: 'token2', value: 10, timelock: null, token_data: null, },
+    { address: 'addr2', token: 'token1', value: 15, timelock: 10000, token_data: null, },
   ];
 
   await addTxProposalOutputs(mysql, txProposalId, outputs);
