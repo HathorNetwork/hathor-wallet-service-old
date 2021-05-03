@@ -1580,12 +1580,13 @@ export const getTxProposalInputs = async (
   return inputs;
 };
 
-export const getAuthorityUtxoForToken = async (
+export const getAuthorityUtxosForToken = async (
   mysql: ServerlessMysql,
   walletId: string,
   tokenId: string,
   authority: number,
-): Promise<Utxo> => {
+  quantity: number = 1,
+): Promise<Utxo[]> => {
   const results: DbSelectResult = await mysql.query(
     `SELECT *
        FROM \`utxo\`
@@ -1599,26 +1600,22 @@ export const getAuthorityUtxoForToken = async (
         AND \`authorities\` = ?
         AND \`locked\` = FALSE
         AND \`tx_proposal\` IS NULL
-      LIMIT 1;
+      LIMIT ?;
        `,
-    [walletId, tokenId, authority],
+    [walletId, tokenId, authority, quantity],
   );
 
-  if (results.length === 0) {
-    return null;
-  }
+  const utxos: Utxo[] = results.map((utxo) => ({
+    txId: utxo.tx_id as string,
+    index: utxo.index as number,
+    tokenId: utxo.token_id as string,
+    address: utxo.address as string,
+    value: utxo.value as number,
+    authorities: utxo.authorities as number,
+    timelock: utxo.timelock as number,
+    heightlock: utxo.heightlock as number,
+    locked: utxo.locked > 0,
+  }));
 
-  const utxo: Utxo = {
-    txId: results[0].tx_id as string,
-    index: results[0].index as number,
-    tokenId: results[0].token_id as string,
-    address: results[0].address as string,
-    value: results[0].value as number,
-    authorities: results[0].authorities as number,
-    timelock: results[0].timelock as number,
-    heightlock: results[0].heightlock as number,
-    locked: results[0].locked > 0,
-  };
-
-  return utxo;
+  return utxos;
 };

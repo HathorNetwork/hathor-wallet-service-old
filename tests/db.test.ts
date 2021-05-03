@@ -39,7 +39,7 @@ import {
   updateWalletStatus,
   updateWalletTablesWithTx,
   updateVersionData,
-  getAuthorityUtxoForToken,
+  getAuthorityUtxosForToken,
 } from '@src/db';
 import {
   Authorities,
@@ -1169,7 +1169,7 @@ test('getVersionData', async () => {
   expect(Object.entries(versionData).toString()).toStrictEqual(Object.entries(mockData).toString());
 });
 
-test('getAuthorityUtxoForToken', async () => {
+test('getAuthorityUtxosForToken', async () => {
   expect.hasAssertions();
 
   const addr1 = 'addr1';
@@ -1197,11 +1197,11 @@ test('getAuthorityUtxoForToken', async () => {
     [txId, 1, tokenId, addr2, 0, 0b10, null, null, false],
   ]);
 
-  const mintUtxo = await getAuthorityUtxoForToken(mysql, walletId, tokenId, hathorLib.constants.TOKEN_MINT_MASK);
-  const meltUtxo = await getAuthorityUtxoForToken(mysql, walletId, tokenId, hathorLib.constants.TOKEN_MELT_MASK);
-  const invalidUtxo = await getAuthorityUtxoForToken(mysql, walletId, tokenId, 0b111);
+  const mintUtxo = await getAuthorityUtxosForToken(mysql, walletId, tokenId, hathorLib.constants.TOKEN_MINT_MASK);
+  const meltUtxo = await getAuthorityUtxosForToken(mysql, walletId, tokenId, hathorLib.constants.TOKEN_MELT_MASK);
+  const invalidUtxo = await getAuthorityUtxosForToken(mysql, walletId, tokenId, 0b111);
 
-  expect(mintUtxo).toStrictEqual({
+  expect(mintUtxo).toStrictEqual([{
     txId,
     index: 0,
     tokenId,
@@ -1211,9 +1211,9 @@ test('getAuthorityUtxoForToken', async () => {
     timelock: null,
     heightlock: null,
     locked: false,
-  });
+  }]);
 
-  expect(meltUtxo).toStrictEqual({
+  expect(meltUtxo).toStrictEqual([{
     txId,
     index: 1,
     tokenId,
@@ -1223,7 +1223,7 @@ test('getAuthorityUtxoForToken', async () => {
     timelock: null,
     heightlock: null,
     locked: false,
-  });
+  }]);
 
-  expect(invalidUtxo).toBeNull();
+  expect(invalidUtxo).toStrictEqual([]);
 });
