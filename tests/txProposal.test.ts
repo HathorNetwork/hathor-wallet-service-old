@@ -214,17 +214,14 @@ test('checkWalletFunds', () => {
  * simply not send the key (because it is undefined), so we need to
  * "normalize" the objects
  */
-const formatOutputs = (outputs = []) => {
-  console.log('outputs: ', outputs);
-  return outputs.map((output) => ({
-    address: null,
-    timelock: null,
-    token: null,
-    token_data: null,
-    value: null,
-    ...output,
-  }));
-};
+const formatOutputs = (outputs = []) => outputs.map((output) => ({
+  address: null,
+  timelock: null,
+  token: null,
+  token_data: null,
+  value: null,
+  ...output,
+}));
 
 const _checkTxProposalTables = async (txProposalId, inputs, outputs): Promise<void> => {
   const utxos = await getUtxos(mysql, inputs);
@@ -238,7 +235,7 @@ const _checkTxProposalTables = async (txProposalId, inputs, outputs): Promise<vo
   const formattedTxProposalOutputs = formatOutputs(txProposalOutputs);
   const formattedOutputs = formatOutputs(outputs);
 
-  expect(formattedTxProposalOutputs).toEqual(formattedOutputs);
+  expect(formattedTxProposalOutputs).toStrictEqual(formattedOutputs);
 };
 
 test('POST /txproposals with null as param should fail with ApiError.INVALID_PAYLOAD', async () => {
@@ -1710,6 +1707,8 @@ test('PUT /txproposals/{proposalId} a mintToken action', async () => {
   const sendReturnBody = JSON.parse(txSendResult.body as string);
   const txProposal = await getTxProposal(mysql, sendReturnBody.txProposalId);
 
+  console.log('send return body: ', sendReturnBody);
+
   expect(sendReturnBody.success).toStrictEqual(true);
   expect(txProposal.status).toStrictEqual(TxProposalStatus.SENT);
 
@@ -1845,7 +1844,7 @@ test('POST /txproposals DELEGATE_MINT', async () => {
     actionType: TokenActionType.DELEGATE_MINT,
     destinationAddress: ADDRESSES[5],
     token: 'token1',
-    amount: 300,
+    amount: 3,
   }));
 
   const result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
@@ -1854,7 +1853,7 @@ test('POST /txproposals DELEGATE_MINT', async () => {
   await _checkTxProposalTables(returnBody.txProposalId, returnBody.inputs, returnBody.outputs);
 });
 
-test('POST /txproposals DELEGATE_MELT', async () => {
+test('POST /txproposals DESTROY_MELT', async () => {
   expect.hasAssertions();
 
   await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
@@ -1866,7 +1865,7 @@ test('POST /txproposals DELEGATE_MELT', async () => {
   }]);
 
   const utxos = [
-    ['txSuccess1', 0, 'token1', ADDRESSES[0], 0, 0b10, null, null, false],
+    ['txSuccess1', 0, 'token1', ADDRESSES[0], 0, 0b01, null, null, false],
   ];
 
   await addToUtxoTable(mysql, utxos);
@@ -1909,6 +1908,47 @@ test('POST /txproposals DELEGATE_MELT', async () => {
     destinationAddress: ADDRESSES[5],
     token: 'token1',
     amount: 300,
+  }));
+
+  const result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  const returnBody = JSON.parse(result.body as string);
+
+  await _checkTxProposalTables(returnBody.txProposalId, returnBody.inputs, returnBody.outputs);
+});
+
+test('POST /txproposals DESTROY_MINT', async () => {
+  expect.hasAssertions();
+
+  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToAddressTable(mysql, [{
+    address: ADDRESSES[0],
+    index: 0,
+    walletId: 'my-wallet',
+    transactions: 1,
+  }]);
+
+  const utxos = [
+    ['txSuccess1', 0, 'token1', ADDRESSES[0], 0, 0b01, null, null, false],
+  ];
+
+  await addToUtxoTable(mysql, utxos);
+  await addToWalletBalanceTable(mysql, [{
+    walletId: 'my-wallet',
+    tokenId: 'token1',
+    unlockedBalance: 0,
+    lockedBalance: 0,
+    unlockedAuthorities: 0b01,
+    lockedAuthorities: 0,
+    timelockExpires: null,
+    transactions: 1,
+  }]);
+
+  const event = makeGatewayEvent(null, JSON.stringify({
+    id: 'my-wallet',
+    actionType: TokenActionType.DESTROY_MINT,
+    destinationAddress: ADDRESSES[5],
+    token: 'token1',
+    amount: 1,
   }));
 
   const result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
