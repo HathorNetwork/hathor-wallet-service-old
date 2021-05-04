@@ -132,7 +132,16 @@ export const createRegularTx = async (body, walletId: string): Promise<APIGatewa
     return closeDbAndGetError(mysql, ApiError.INSUFFICIENT_INPUTS, { insufficient: insufficientInputs });
   }
 
-  const addresses = await getUnusedAddresses(mysql, walletId);
+  const addresses: string[] = await (async function getChangeAddresses() {
+    if (!body.destinationAddress) {
+      const destinationAddresses = await getUnusedAddresses(mysql, walletId);
+
+      return destinationAddresses;
+    }
+
+    return [body.destinationAddress];
+  }());
+
   const changeOutputs = getChangeOutputs(diff, addresses);
   const finalOutputs = outputs.concat(changeOutputs);
 
@@ -1079,6 +1088,9 @@ export const getChangeOutputs = (diff: TokenBalanceMap, addresses: string[]): IW
         // this treats an unlikely case, where we have more change outputs than addresses. In this case,
         // we will repeat some addresses. Ideally, we should just generate more, but it's so unlikely
         // that this happens that we can handle it later
+
+        // This can also happen when the user sent a destinationAddress and the tx contains more than one
+        // token.
         addressToUse = 0;
       }
     }

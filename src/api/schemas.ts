@@ -26,6 +26,7 @@ export const baseActionSchema = Joi.object({
 }).unknown(true);
 
 export const createTxSchema = Joi.object({
+  destinationAddress: Joi.string().alphanum().max(34),
   outputs: Joi.array()
     .items(
       Joi.object({
