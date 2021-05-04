@@ -1584,7 +1584,7 @@ export const getAuthorityUtxosForToken = async (
   walletId: string,
   tokenId: string,
   authority: number,
-  quantity: number = 1,
+  quantity = 1,
 ): Promise<Utxo[]> => {
   const results: DbSelectResult = await mysql.query(
     `SELECT *

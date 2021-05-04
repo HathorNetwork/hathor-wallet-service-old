@@ -111,6 +111,7 @@ export const send: APIGatewayProxyHandler = async (event) => {
   // input: tx_id, index, data
   const inputs = [];
   const usedUtxos = await getTxProposalInputs(mysql, txProposalId);
+
   for (const [i, utxo] of usedUtxos.entries()) {
     // Deserialize from base64
     const inputSignature = Buffer.from(inputsSignatures[i], 'base64');
@@ -125,6 +126,7 @@ export const send: APIGatewayProxyHandler = async (event) => {
   const proposalOutputs = await getTxProposalOutputs(mysql, txProposalId);
   const tokensSet = new Set(proposalOutputs.map((output) => (output.token)));
   tokensSet.delete(hathorLib.constants.HATHOR_TOKEN_CONFIG.uid);
+
   const tokens = Array.from(tokensSet);
 
   // output: value, tokenData, address, timelock
