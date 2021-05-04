@@ -465,6 +465,7 @@ export const mintToken = async (body, walletId): Promise<APIGatewayProxyResult> 
   // create the output with the newly minted tokens
   const tokensOutputs: IWalletOutput[] = [{
     value: body.amount,
+    token: body.token,
     token_data: 1,
     address: destinationAddress,
     timelock: null,
@@ -483,6 +484,7 @@ export const mintToken = async (body, walletId): Promise<APIGatewayProxyResult> 
 
     const mintOutput: IWalletOutput = {
       value: hathorLib.constants.TOKEN_MINT_MASK,
+      token: body.token,
       // eslint-disable-next-line no-bitwise
       token_data: hathorLib.constants.TOKEN_AUTHORITY_MASK | 1,
       address: mintDestination,
