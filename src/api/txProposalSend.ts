@@ -165,7 +165,6 @@ export const send: APIGatewayProxyHandler = async (event) => {
   }
 
   await maybeRefreshWalletConstants(mysql);
-
   // Validate TX_WEIGHT
   const calculatedTxWeight = hathorLib.transaction.calculateTxWeight(txData);
 
