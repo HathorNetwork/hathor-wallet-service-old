@@ -676,6 +676,7 @@ export const meltToken = async (body, walletId): Promise<APIGatewayProxyResult> 
 
     const meltOutput: IWalletOutput = {
       value: hathorLib.constants.TOKEN_MELT_MASK,
+      token: body.token,
       // eslint-disable-next-line no-bitwise
       token_data: hathorLib.constants.TOKEN_AUTHORITY_MASK | 1,
       address: meltDestination,
