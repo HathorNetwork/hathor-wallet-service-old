@@ -18,7 +18,6 @@ import {
   GenerateAddresses,
   IWalletInput,
   IWalletOutput,
-  IWalletCreateTokenOutput,
   StringMap,
   TokenBalanceMap,
   TokenInfo,
@@ -1470,7 +1469,7 @@ export const getTxProposalTokenInfo = async (
 export const addTxProposalOutputs = async (
   mysql: ServerlessMysql,
   txProposalId: string,
-  outputs: (IWalletOutput|IWalletCreateTokenOutput)[],
+  outputs: IWalletOutput[],
 ): Promise<void> => {
   const entries = [];
   for (const [index, output] of outputs.entries()) {

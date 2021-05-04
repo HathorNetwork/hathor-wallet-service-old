@@ -1111,9 +1111,9 @@ test('addTxProposalOutputs, getTxProposalOutputs, deleteTxProposalOutputs', asyn
 
   const txProposalId = uuidv4();
   const outputs = [
-    { address: 'addr1', token: 'token1', value: 5, timelock: null, token_data: null, },
-    { address: 'addr2', token: 'token2', value: 10, timelock: null, token_data: null, },
-    { address: 'addr2', token: 'token1', value: 15, timelock: 10000, token_data: null, },
+    { address: 'addr1', token: 'token1', value: 5, timelock: null, token_data: null },
+    { address: 'addr2', token: 'token2', value: 10, timelock: null, token_data: null },
+    { address: 'addr2', token: 'token1', value: 15, timelock: 10000, token_data: null },
   ];
 
   await addTxProposalOutputs(mysql, txProposalId, outputs);
