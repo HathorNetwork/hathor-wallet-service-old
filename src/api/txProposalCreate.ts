@@ -792,6 +792,7 @@ export const delegateAuthority = async (body, walletId, authority, actionType): 
   for (let i = 0; i < body.amount; i++) {
     finalOutputs.push({
       value: authority,
+      token: body.token,
       // eslint-disable-next-line no-bitwise
       token_data: hathorLib.constants.TOKEN_AUTHORITY_MASK | tokenIndex,
       address: destinationAddress,
