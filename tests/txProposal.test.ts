@@ -1638,7 +1638,8 @@ test('PUT /txproposals/{proposalId} a mintToken action', async () => {
 
   const utxos = [
     ['00000000000000001650cd208a2bcff09dce8af88d1b07097ef0efdba4aacbaa', 0, '00', ADDRESSES[0], 300, 0, null, null, false],
-    ['000000000000000042fb8ae48accbc48561729e2359838751e11f837ca9a5746', 0, '00', ADDRESSES[0], 100, 0, null, null, false],
+    ['000000000000000042fb8ae48accbc48561729e2359838751e11f837ca9a5746', 0, 'token1', ADDRESSES[0], 0, 0b01, null, null, false],
+    ['002234dadf7d1b31f86234847af93c20e751d458dceca741f397154a229de1a3', 0, 'token1', ADDRESSES[0], 0, 0b01, null, null, false],
   ];
 
   await addToUtxoTable(mysql, utxos);
@@ -1648,7 +1649,7 @@ test('PUT /txproposals/{proposalId} a mintToken action', async () => {
     unlockedBalance: 400,
     lockedBalance: 0,
     unlockedAuthorities: 0,
-    lockedAuthorities: 0,
+    lockedAuthorities: 0b01,
     timelockExpires: null,
     transactions: 2,
   }]);
@@ -1678,9 +1679,8 @@ test('PUT /txproposals/{proposalId} a mintToken action', async () => {
   const event = makeGatewayEvent(null, JSON.stringify({
     id: 'my-wallet',
     actionType: TokenActionType.MINT_TOKEN,
-    name: 'TestToken',
-    symbol: 'TSTKN',
-    amount: 1,
+    token: 'token1',
+    amount: 100,
   }));
 
   const result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
@@ -1692,6 +1692,7 @@ test('PUT /txproposals/{proposalId} a mintToken action', async () => {
   const txSendEvent = makeGatewayEvent({ txProposalId: returnBody.txProposalId }, JSON.stringify({
     inputsSignatures: [
       1,
+      2,
     ].map(() => hathorLib.transaction.createInputData(signature, pubkeyBytes).toString('base64')),
     nonce: 28,
     parents: [
@@ -1703,11 +1704,8 @@ test('PUT /txproposals/{proposalId} a mintToken action', async () => {
   }));
 
   const txSendResult = await txProposalSend(txSendEvent, null, null) as APIGatewayProxyResult;
-
   const sendReturnBody = JSON.parse(txSendResult.body as string);
   const txProposal = await getTxProposal(mysql, sendReturnBody.txProposalId);
-
-  console.log('send return body: ', sendReturnBody);
 
   expect(sendReturnBody.success).toStrictEqual(true);
   expect(txProposal.status).toStrictEqual(TxProposalStatus.SENT);
@@ -1865,7 +1863,7 @@ test('POST /txproposals DESTROY_MELT', async () => {
   }]);
 
   const utxos = [
-    ['txSuccess1', 0, 'token1', ADDRESSES[0], 0, 0b01, null, null, false],
+    ['txSuccess1', 0, 'token1', ADDRESSES[0], 0, 0b10, null, null, false],
   ];
 
   await addToUtxoTable(mysql, utxos);
@@ -1904,10 +1902,9 @@ test('POST /txproposals DESTROY_MELT', async () => {
 
   const event = makeGatewayEvent(null, JSON.stringify({
     id: 'my-wallet',
-    actionType: TokenActionType.DELEGATE_MELT,
-    destinationAddress: ADDRESSES[5],
+    actionType: TokenActionType.DESTROY_MELT,
     token: 'token1',
-    amount: 300,
+    amount: 1,
   }));
 
   const result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
