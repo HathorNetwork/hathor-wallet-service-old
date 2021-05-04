@@ -1976,6 +1976,127 @@ test('POST /txproposals DELEGATE_MINT', async () => {
   await _checkTxProposalTables(returnBody.txProposalId, returnBody.inputs, returnBody.outputs);
 });
 
+test('PUT /txproposals/{proposalId} a delegateMint action', async () => {
+  expect.hasAssertions();
+
+  // Create the spy to mock wallet-lib
+  const spy = jest.spyOn(hathorLib.axios, 'createRequestInstance');
+  spy.mockReturnValue({
+    post: () => Promise.resolve({
+      data: { success: true },
+    }),
+    get: () => Promise.resolve({
+      data: {
+        success: true,
+        version: '0.38.0',
+        network: 'mainnet',
+        min_weight: 14,
+        min_tx_weight: 14,
+        min_tx_weight_coefficient: 1.6,
+        min_tx_weight_k: 100,
+        token_deposit_percentage: 0.01,
+        reward_spend_min_blocks: 300,
+        max_number_inputs: 255,
+        max_number_outputs: 255,
+      },
+    }),
+  });
+
+  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToAddressTable(mysql, [{
+    address: ADDRESSES[0],
+    index: 0,
+    walletId: 'my-wallet',
+    transactions: 2,
+  }]);
+
+  const utxos = [
+    ['00000000000000001650cd208a2bcff09dce8af88d1b07097ef0efdba4aacbaa', 0, '00', ADDRESSES[0], 1, 0, null, null, false],
+    ['000000000000000042fb8ae48accbc48561729e2359838751e11f837ca9a5746', 0, 'token1', ADDRESSES[0], 0, 1, null, null, false],
+  ];
+
+  await addToUtxoTable(mysql, utxos);
+  await addToWalletBalanceTable(mysql, [{
+    walletId: 'my-wallet',
+    tokenId: '00',
+    unlockedBalance: 1,
+    lockedBalance: 0,
+    unlockedAuthorities: 0,
+    lockedAuthorities: 0,
+    timelockExpires: null,
+    transactions: 1,
+  }]);
+  await addToWalletBalanceTable(mysql, [{
+    walletId: 'my-wallet',
+    tokenId: 'token1',
+    unlockedBalance: 300,
+    lockedBalance: 0,
+    unlockedAuthorities: 1,
+    lockedAuthorities: 0,
+    timelockExpires: null,
+    transactions: 1,
+  }]);
+
+  await addToAddressTable(mysql, [{
+    address: ADDRESSES[1],
+    index: 1,
+    walletId: 'my-wallet',
+    transactions: 0,
+  }, {
+    address: ADDRESSES[2],
+    index: 2,
+    walletId: 'my-wallet',
+    transactions: 0,
+  }, {
+    address: ADDRESSES[3],
+    index: 3,
+    walletId: 'my-wallet',
+    transactions: 0,
+  }, {
+    address: ADDRESSES[4],
+    index: 4,
+    walletId: 'my-wallet',
+    transactions: 0,
+  }]);
+
+  const event = makeGatewayEvent(null, JSON.stringify({
+    id: 'my-wallet',
+    actionType: TokenActionType.DELEGATE_MINT,
+    token: 'token1',
+    amount: 1,
+    destinationAddress: ADDRESSES[5],
+  }));
+
+  const result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  const returnBody = JSON.parse(result.body as string);
+
+  const signature = new buffer.Buffer(20);
+  const pubkeyBytes = new buffer.Buffer(30);
+
+  const txSendEvent = makeGatewayEvent({ txProposalId: returnBody.txProposalId }, JSON.stringify({
+    inputsSignatures: [
+      1,
+      2,
+    ].map(() => hathorLib.transaction.createInputData(signature, pubkeyBytes).toString('base64')),
+    nonce: 28,
+    parents: [
+      '00000000204080e1b7563558869e39d169efae5008d2158cc3cb6c0c3812ff2a',
+      '00000000414ede4aad9e08e3a336191e2b0510d9f74c7b5e94b68e653bcbf42e',
+    ],
+    timestamp: 1609881763,
+    weight: 17,
+  }));
+
+  const txSendResult = await txProposalSend(txSendEvent, null, null) as APIGatewayProxyResult;
+  const sendReturnBody = JSON.parse(txSendResult.body as string);
+  const txProposal = await getTxProposal(mysql, sendReturnBody.txProposalId);
+
+  expect(sendReturnBody.success).toStrictEqual(true);
+  expect(txProposal.status).toStrictEqual(TxProposalStatus.SENT);
+
+  spy.mockRestore();
+});
+
 test('POST /txproposals DESTROY_MELT', async () => {
   expect.hasAssertions();
 
