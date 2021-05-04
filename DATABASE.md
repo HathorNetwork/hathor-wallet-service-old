@@ -145,3 +145,34 @@ CREATE TABLE `wallet_tx_history` (
   PRIMARY KEY (`wallet_id`,`token_id`,`tx_id`)
 );
 ```
+
+# Genesis transactions
+
+We need to add the genesis transactions to the database as the service expects to already have them.
+
+## Mainnet
+```
+INSERT INTO `metadata` (`key`, `value`) VALUES ('height', 0);
+INSERT INTO `blocks` (`tx_id`, `height`) VALUES ('000006cb93385b8b87a545a1cbb6197e6caff600c12cc12fc54250d39c8088fc', 0);
+INSERT INTO `utxo` (`tx_id`, `index`, `token_id`, `address`, `value`)
+     VALUES ('000006cb93385b8b87a545a1cbb6197e6caff600c12cc12fc54250d39c8088fc',
+              0,
+              '00',
+              'HJB2yxxsHtudGGy3jmVeadwMfRi2zNCKKD',
+              100000000000
+              );
+```
+
+## Testnet
+
+```
+INSERT INTO `metadata` (`key`, `value`) VALUES ('height', 0);
+INSERT INTO `blocks` (`tx_id`, `height`) VALUES ('0000033139d08176d1051fb3a272c3610457f0c7f686afbe0afe3d37f966db85', 0);
+INSERT INTO `utxo` (`tx_id`, `index`, `token_id`, `address`, `value`)
+     VALUES ('0000033139d08176d1051fb3a272c3610457f0c7f686afbe0afe3d37f966db85',
+              0,
+              '00',
+              'WdmDUMp8KvzhWB7KLgguA2wBiKsh4Ha8eX',
+              100000000000
+              );
+```
