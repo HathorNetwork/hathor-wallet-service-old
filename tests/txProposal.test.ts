@@ -2212,7 +2212,7 @@ test('PUT /txproposals/{proposalId} a delegateMelt action', async () => {
   const pubkeyBytes = new buffer.Buffer(30);
 
   const txSendEvent = makeGatewayEvent({ txProposalId: returnBody.txProposalId }, JSON.stringify({
-    inputsSignatures: [ 1, 2 ].map(() => hathorLib.transaction.createInputData(signature, pubkeyBytes).toString('base64')),
+    inputsSignatures: [1, 2].map(() => hathorLib.transaction.createInputData(signature, pubkeyBytes).toString('base64')),
     nonce: 28,
     parents: [
       '00000000204080e1b7563558869e39d169efae5008d2158cc3cb6c0c3812ff2a',
@@ -2294,6 +2294,50 @@ test('POST /txproposals DESTROY_MELT', async () => {
   const returnBody = JSON.parse(result.body as string);
 
   await _checkTxProposalTables(returnBody.txProposalId, returnBody.inputs, returnBody.outputs);
+});
+
+test('POST /txproposals DESTROY_AUTHORITY with missing authority should fail with ApiError.MISSING_AUTHORITY_INPUT', async () => {
+  expect.hasAssertions();
+
+  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToAddressTable(mysql, [{
+    address: ADDRESSES[0],
+    index: 0,
+    walletId: 'my-wallet',
+    transactions: 2,
+  }]);
+
+  // Mint authority but will try to delegate a melt authority
+  const utxos = [
+    ['txSuccess1', 0, 'token1', ADDRESSES[0], 0, 0b01, null, null, false],
+  ];
+
+  await addToUtxoTable(mysql, utxos);
+  await addToWalletBalanceTable(mysql, [{
+    walletId: 'my-wallet',
+    tokenId: 'token1',
+    unlockedBalance: 0,
+    lockedBalance: 0,
+    unlockedAuthorities: 0b01,
+    lockedAuthorities: 0,
+    timelockExpires: null,
+    transactions: 1,
+  }]);
+
+  const event = makeGatewayEvent(null, JSON.stringify({
+    id: 'my-wallet',
+    actionType: TokenActionType.DESTROY_MELT,
+    token: 'token1',
+    inputs: [],
+    amount: 1,
+  }));
+
+  const result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  const returnBody = JSON.parse(result.body as string);
+
+  expect(returnBody.success).toStrictEqual(false);
+  expect(returnBody.error).toStrictEqual(ApiError.MISSING_AUTHORITY_INPUT);
+  expect(returnBody.authority).toStrictEqual(hathorLib.constants.TOKEN_MELT_MASK);
 });
 
 test('PUT /txproposals/{proposalId} a destroyMelt action', async () => {

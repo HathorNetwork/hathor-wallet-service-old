@@ -1,4 +1,4 @@
-import { APIGatewayProxyHandler, APIGatewayProxyResult } from 'aws-lambda';
+import { APIGatewayProxyHandler, APIGatewayProxyResult, APIGatewayProxyEvent } from 'aws-lambda';
 import { ServerlessMysql } from 'serverless-mysql';
 import 'source-map-support/register';
 import { v4 as uuidv4 } from 'uuid';
@@ -33,9 +33,18 @@ import {
   TokenBalanceMap,
   Utxo,
   WalletTokenBalance,
-  ValidationResult,
   TokenActionType,
+  IWalletInsufficientFunds,
+  // Body
+  TxBody,
+  DestroyAuthorityBody,
+  DelegateAuthorityBody,
+  MeltTokenBody,
+  MintTokenBody,
+  CreateTokenBody,
+  CreateTxBody,
 } from '@src/types';
+import { ValidationResult } from 'joi';
 import { closeDbAndGetError } from '@src/api/utils';
 import { arrayShuffle, closeDbConnection, getDbConnection, getUnixTimestamp } from '@src/utils';
 import hathorLib from '@hathor/wallet-lib';
@@ -46,13 +55,10 @@ enum InputSelectionAlgo {
   USE_LARGER_UTXOS = 'use-larger-utxos',
 }
 
-interface IWalletInsufficientFunds {
-  tokenId: string;
-  requested: number;
-  available: number;
-}
-
-export const createRegularTx = async (body, walletId: string): Promise<APIGatewayProxyResult> => {
+export const createRegularTx = async (
+  body: CreateTxBody,
+  walletId: string,
+): Promise<APIGatewayProxyResult> => {
   if (body.outputs.length > hathorLib.transaction.getMaxOutputsConstant()) {
     return closeDbAndGetError(mysql, ApiError.TOO_MANY_OUTPUTS, { outputs: body.outputs.length });
   }
@@ -192,7 +198,10 @@ export const createRegularTx = async (body, walletId: string): Promise<APIGatewa
   };
 };
 
-export const createToken = async (body, walletId): Promise<APIGatewayProxyResult> => {
+export const createToken = async (
+  body: CreateTokenBody,
+  walletId: string,
+): Promise<APIGatewayProxyResult> => {
   const status = await getWallet(mysql, walletId);
 
   if (!status) {
@@ -368,7 +377,10 @@ export const createToken = async (body, walletId): Promise<APIGatewayProxyResult
   };
 };
 
-export const mintToken = async (body, walletId): Promise<APIGatewayProxyResult> => {
+export const mintToken = async (
+  body: MintTokenBody,
+  walletId: string,
+): Promise<APIGatewayProxyResult> => {
   const status = await getWallet(mysql, walletId);
 
   if (!status) {
@@ -545,7 +557,10 @@ export const mintToken = async (body, walletId): Promise<APIGatewayProxyResult> 
   };
 };
 
-export const meltToken = async (body, walletId): Promise<APIGatewayProxyResult> => {
+export const meltToken = async (
+  body: MeltTokenBody,
+  walletId: string,
+): Promise<APIGatewayProxyResult> => {
   const status = await getWallet(mysql, walletId);
 
   if (!status) {
@@ -725,7 +740,12 @@ export const meltToken = async (body, walletId): Promise<APIGatewayProxyResult> 
   };
 };
 
-export const delegateAuthority = async (body, walletId, authority, actionType): Promise<APIGatewayProxyResult> => {
+export const delegateAuthority = async (
+  body: DelegateAuthorityBody,
+  walletId: string,
+  authority: number,
+  actionType: TokenActionType,
+): Promise<APIGatewayProxyResult> => {
   const status = await getWallet(mysql, walletId);
 
   if (!status) {
@@ -838,7 +858,12 @@ export const delegateAuthority = async (body, walletId, authority, actionType): 
   };
 };
 
-export const destroyAuthority = async (body, walletId, authority, actionType): Promise<APIGatewayProxyResult> => {
+export const destroyAuthority = async (
+  body: DestroyAuthorityBody,
+  walletId: string,
+  authority: number,
+  actionType: TokenActionType,
+): Promise<APIGatewayProxyResult> => {
   const status = await getWallet(mysql, walletId);
 
   if (!status) {
@@ -939,7 +964,7 @@ export const destroyAuthority = async (body, walletId, authority, actionType): P
  *
  * This lambda is called by API Gateway on POST /txproposals
  */
-export const create: APIGatewayProxyHandler = async (event) => {
+export const create: APIGatewayProxyHandler = async (event: APIGatewayProxyEvent) => {
   await maybeRefreshWalletConstants(mysql);
 
   // Validate actionType and walletId:
@@ -966,7 +991,7 @@ export const create: APIGatewayProxyHandler = async (event) => {
     return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, { details });
   }
 
-  const body = value;
+  const body: TxBody = value;
   const walletId = baseTx.value.id;
 
   let response: APIGatewayProxyResult = {
@@ -981,30 +1006,31 @@ export const create: APIGatewayProxyHandler = async (event) => {
 
   switch (baseTx.value.actionType) {
     case TokenActionType.REGULAR_TRANSACTION:
-      response = await createRegularTx(body, walletId);
+      response = await createRegularTx(body as CreateTxBody, walletId);
       break;
     case TokenActionType.CREATE_TOKEN:
-      response = await createToken(body, walletId);
+      response = await createToken(body as CreateTokenBody, walletId);
       break;
     case TokenActionType.MINT_TOKEN:
-      response = await mintToken(body, walletId);
+      response = await mintToken(body as MintTokenBody, walletId);
       break;
     case TokenActionType.MELT_TOKEN:
-      response = await meltToken(body, walletId);
+      response = await meltToken(body as MeltTokenBody, walletId);
       break;
     case TokenActionType.DELEGATE_MINT:
-      response = await delegateAuthority(body, walletId, hathorLib.constants.TOKEN_MINT_MASK, actionType);
+      response = await delegateAuthority(body as DelegateAuthorityBody, walletId, hathorLib.constants.TOKEN_MINT_MASK, actionType);
       break;
     case TokenActionType.DELEGATE_MELT:
-      response = await delegateAuthority(body, walletId, hathorLib.constants.TOKEN_MELT_MASK, actionType);
+      response = await delegateAuthority(body as DelegateAuthorityBody, walletId, hathorLib.constants.TOKEN_MELT_MASK, actionType);
       break;
     case TokenActionType.DESTROY_MINT:
-      response = await destroyAuthority(body, walletId, hathorLib.constants.TOKEN_MINT_MASK, actionType);
+      response = await destroyAuthority(body as DestroyAuthorityBody, walletId, hathorLib.constants.TOKEN_MINT_MASK, actionType);
       break;
     case TokenActionType.DESTROY_MELT:
-      response = await destroyAuthority(body, walletId, hathorLib.constants.TOKEN_MELT_MASK, actionType);
+      response = await destroyAuthority(body as DestroyAuthorityBody, walletId, hathorLib.constants.TOKEN_MELT_MASK, actionType);
       break;
     default:
+      // This will never be reached as Joi will validate possible actionTypes on validateBody(...);
       break;
   }
 
@@ -1219,7 +1245,7 @@ export const checkUsedUtxos = (utxos: Utxo[]): boolean => {
  * @param event - The received tx action event
  * @returns The validated object depending on the Schema rules
  */
-export const validateBody = (event: any, actionType: TokenActionType | string): ValidationResult => {
+export const validateBody = (event: APIGatewayProxyEvent, actionType: TokenActionType | string): ValidationResult => {
   const eventBody = (function parseBody(body) {
     try {
       return JSON.parse(body);
@@ -1255,6 +1281,7 @@ export const validateBody = (event: any, actionType: TokenActionType | string): 
     case TokenActionType.DESTROY_MELT:
       return destroyAuthoritySchema.validate(eventBody, options) as ValidationResult;
     default:
+      // This should never be reached.
       throw new Error('Unhandled action type.');
   }
 };

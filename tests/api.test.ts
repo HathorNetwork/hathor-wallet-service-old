@@ -1347,6 +1347,26 @@ test('POST /txproposals params validation on DESTROY_MELT', async () => {
   expect(returnBody.error).toBe(ApiError.WALLET_NOT_FOUND);
 });
 
+test('POST /txproposals params validation on invalid action', async () => {
+  expect.hasAssertions();
+
+  const event = makeGatewayEvent(null, JSON.stringify({
+    id: 'my-wallet',
+    actionType: 'MULTIPLICATE_MELT',
+    destinationAddress: ADDRESSES[0],
+    amount: 500,
+    token: '00',
+    inputs: [{ txId: 'txId' }],
+  }));
+  const result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  const returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+  expect(returnBody.details[0].message).toStrictEqual('"actionType" must be one of [regular-transaction, create-token, mint-token, melt-token, delegate-mint, delegate-melt, destroy-mint, destroy-melt]');
+});
+
 test('POST /txproposals inputs error', async () => {
   expect.hasAssertions();
 

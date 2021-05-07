@@ -572,11 +572,6 @@ export interface ApiResponse {
   message: string;
 }
 
-export interface ValidationResult {
-  value: any;
-  error: any;
-}
-
 export interface TxProposalTokenInfo {
   txProposalId: string;
   symbol: string;
@@ -584,14 +579,91 @@ export interface TxProposalTokenInfo {
 }
 
 export interface TxData {
-  version: any;
+  version: number;
   name?: string;
   symbol?: string;
-  parents: any;
-  timestamp: any;
-  weight: any;
-  nonce: any;
+  parents: string[];
+  timestamp: number;
+  weight: number;
+  nonce: string;
   tokens: string[];
-  inputs: any[];
-  outputs: any[];
+  inputs: TxInput[];
+  outputs: TxOutput[];
 }
+
+export interface IWalletInsufficientFunds {
+  tokenId: string;
+  requested: number;
+  available: number;
+}
+
+export interface BaseTxBody {
+  version?: number;
+  inputSelectionAlgo?: string;
+}
+
+export interface CreateTxBody extends BaseTxBody {
+  destinationAddress?: string;
+  inputs?: IWalletInput[];
+  outputs: IWalletOutput[];
+}
+
+export interface CreateTokenBody extends BaseTxBody {
+  name: string;
+  symbol: string;
+  amount: number;
+  destinationAddress?: string;
+  changeAddress?: string;
+  createMint?: boolean;
+  createMelt?: boolean;
+  mintDestination?: string;
+  meltDestination?: string;
+  authorityAddress?: string;
+  version?: number;
+  inputs?: IWalletInput[];
+}
+
+export interface MintTokenBody extends BaseTxBody {
+  amount: number;
+  token: string;
+  createAnotherAuthority?: boolean;
+  destinationAddress?: string;
+  changeAddress?: string;
+  authorityAddress?: string;
+  version?: number;
+  inputs?: IWalletInput[];
+}
+
+export interface MeltTokenBody extends BaseTxBody {
+  amount: number;
+  token: string;
+  createAnotherAuthority?: boolean;
+  destinationAddress?: string;
+  authorityAddress?: string;
+  version?: number;
+  inputs?: IWalletInput[];
+}
+
+export interface DelegateAuthorityBody extends BaseTxBody {
+  createAnotherAuthority?: boolean;
+  destinationAddress?: string;
+  token: string;
+  amount: number;
+  version?: number;
+  inputs?: IWalletInput[];
+}
+
+export interface DestroyAuthorityBody extends BaseTxBody {
+  token: string;
+  amount: number;
+  version?: number;
+  inputs?: IWalletInput[];
+}
+
+export type TxBody =
+  | DestroyAuthorityBody
+  | DelegateAuthorityBody
+  | MeltTokenBody
+  | MintTokenBody
+  | CreateTokenBody
+  | CreateTxBody
