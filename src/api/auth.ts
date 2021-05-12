@@ -1,0 +1,203 @@
+/**
+ * Copyright (c) Hathor Labs and its affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+import {
+  APIGatewayProxyHandler,
+  APIGatewayTokenAuthorizerHandler,
+  CustomAuthorizerResult,
+  PolicyDocument,
+  Statement,
+} from 'aws-lambda';
+import { v4 as uuid4 } from 'uuid';
+import {
+  getWalletId,
+} from '@src/utils';
+import Joi from 'joi';
+import jwt from 'jsonwebtoken';
+import bitcore from 'bitcore-lib';
+import { ApiError } from '@src/api/errors';
+import hathorLib from '@hathor/wallet-lib';
+
+const EXPIRATION_TIME_IN_SECONDS = 30 * 60;
+const MAX_TIMESTAMP_SHIFT_IN_SECONDS = 30;
+
+hathorLib.network.setNetwork(process.env.NETWORK);
+
+const bodySchema = Joi.object({
+  ts: Joi.number().positive().required(),
+  xpub: Joi.string().required(),
+  sign: Joi.string().required(),
+});
+
+function parseBody(body) {
+  try {
+    return JSON.parse(body);
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * Verify a signature for a given timestamp and xpubkey
+ *
+ * @param signature - The signature done by the xpriv of the wallet
+ * @param xpub - The xpubkey of the wallet as a string
+ * @param timestamp - Unix Timestamp of the signature
+ * @returns true if the timestamp, the xpubkey and signature matches
+ */
+export const verifySignature = (
+  signature: string,
+  timestamp: number,
+  address: bitcore.Address,
+  walletId: string,
+): boolean => {
+  const message = String(timestamp).concat(walletId).concat(address);
+  return new bitcore.Message(message).verify(address, signature);
+};
+
+export const tokenHandler: APIGatewayProxyHandler = async (event) => {
+  const eventBody = parseBody(event.body);
+
+  const { value, error } = bodySchema.validate(eventBody, {
+    abortEarly: false,
+    convert: false,
+  });
+
+  if (error) {
+    const details = error.details.map((err) => ({
+      message: err.message,
+      path: err.path,
+    }));
+
+    return {
+      statusCode: 400,
+      body: JSON.stringify({
+        success: false,
+        error: ApiError.INVALID_PAYLOAD,
+        details,
+      }),
+    };
+  }
+
+  const signature = value.sign;
+  const timestamp = value.ts;
+  const xpubkeyStr = value.xpub;
+
+  const timestampShiftInSeconds = Math.abs(
+    Math.floor(Date.now() / 1000) - timestamp,
+  );
+  if (timestampShiftInSeconds >= MAX_TIMESTAMP_SHIFT_IN_SECONDS) {
+    const details = [{
+      message: `The timestamp is shifted ${timestampShiftInSeconds}(s). Limit is ${MAX_TIMESTAMP_SHIFT_IN_SECONDS}(s).`,
+    }];
+
+    return {
+      statusCode: 400,
+      body: JSON.stringify({
+        success: false,
+        error: ApiError.AUTH_INVALID_SIGNATURE,
+        details,
+      }),
+    };
+  }
+
+  const xpubkey = bitcore.HDPublicKey(xpubkeyStr);
+  const address = xpubkey.publicKey.toAddress(hathorLib.network.getNetwork());
+  const walletId = getWalletId(xpubkeyStr);
+
+  if (!verifySignature(signature, timestamp, address, walletId.toString())) {
+    const details = {
+      message: `The signature ${signature} does not match with the xpubkey ${xpubkeyStr} and the timestamp ${timestamp}`,
+    };
+
+    return {
+      statusCode: 400,
+      body: JSON.stringify({
+        success: false,
+        error: ApiError.AUTH_INVALID_SIGNATURE,
+        details,
+      }),
+    };
+  }
+
+  // To understand the other options to the sign method: https://github.com/auth0/node-jsonwebtoken#readme
+  const token = jwt.sign(
+    {
+      sign: signature,
+      ts: timestamp,
+      addr: address.toString(),
+      wid: walletId,
+    },
+    process.env.AUTH_SECRET,
+    {
+      expiresIn: EXPIRATION_TIME_IN_SECONDS,
+      jwtid: uuid4(),
+    },
+  );
+
+  return {
+    statusCode: 200,
+    body: JSON.stringify({ success: true, token }),
+  };
+};
+
+/**
+ * Generates a aws policy document to allow/deny access to the resource
+ */
+const _generatePolicy = (principalId: string, effect: string, resource: string) => {
+  const policyDocument: PolicyDocument = {
+    Version: '2012-10-17',
+    Statement: [],
+  };
+
+  const statementOne: Statement = {
+    Action: 'execute-api:Invoke',
+    Effect: effect,
+    Resource: resource,
+  };
+
+  policyDocument.Statement[0] = statementOne;
+
+  const authResponse: CustomAuthorizerResult = {
+    policyDocument,
+    principalId,
+  };
+
+  const context = { walletId: principalId };
+  authResponse.context = context;
+
+  return authResponse;
+};
+
+export const bearerAuthorizer: APIGatewayTokenAuthorizerHandler = async (event) => {
+  const { authorizationToken } = event;
+  if (!authorizationToken) {
+    throw new Error('Unauthorized'); // returns a 401
+  }
+  const sanitizedToken = authorizationToken.replace(/Bearer /gi, '');
+  const data = jwt.verify(
+    sanitizedToken,
+    process.env.AUTH_SECRET,
+  );
+  // signature data
+  const signature = data.sign;
+  const timestamp = data.ts;
+  const addr = data.addr;
+  const walletId = data.wid;
+
+  // header data
+  const expirationTs = data.exp;
+
+  const address = new bitcore.Address(addr, hathorLib.network.getNetwork());
+  const verified = verifySignature(signature, timestamp, address, walletId);
+
+  if (verified && Math.floor(Date.now() / 1000) <= expirationTs) {
+    return _generatePolicy(walletId, 'Allow', event.methodArn);
+  }
+
+  return _generatePolicy(walletId, 'Deny', event.methodArn);
+};

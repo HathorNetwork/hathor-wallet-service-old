@@ -516,7 +516,8 @@ export const addUtxos = async (
   mysql: ServerlessMysql,
   txId: string,
   outputs: TxOutput[],
-  heightlock: number = null): Promise<void> => {
+  heightlock: number = null,
+): Promise<void> => {
   // outputs might be empty if we're destroying authorities
   if (outputs.length === 0) return;
 
