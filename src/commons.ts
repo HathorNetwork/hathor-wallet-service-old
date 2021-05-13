@@ -17,6 +17,7 @@ import {
   updateWalletLockedBalance,
   getVersionData,
   updateVersionData,
+  getBlockByHeight,
 } from '@src/db';
 import {
   DecodedOutput,
@@ -26,11 +27,15 @@ import {
   TxOutput,
   Utxo,
   Wallet,
+  Block,
   WalletTokenBalance,
   FullNodeVersionData,
 } from '@src/types';
 
-import { getUnixTimestamp } from '@src/utils';
+import {
+  getUnixTimestamp,
+  checkBlockForVoided,
+} from '@src/utils';
 
 import hathorLib from '@hathor/wallet-lib';
 
@@ -258,4 +263,38 @@ export const maybeRefreshWalletConstants = async (mysql: ServerlessMysql): Promi
     hathorLib.transaction.updateMaxOutputsConstant(lastVersionData.maxNumberOutputs);
     hathorLib.wallet.updateRewardLockConstant(lastVersionData.rewardSpendMinBlocks);
   }
+};
+
+/**
+ * Searches our blocks database for the last block that is not voided.
+ *
+ * @returns A Block instance with the last block that is not voided.
+ */
+export const searchForLatestValidBlock = async (mysql: ServerlessMysql): Promise<Block> => {
+  // Get our current best block.
+  const latestHeight: number = await getLatestHeight(mysql);
+  const bestBlock: Block = await getBlockByHeight(mysql, latestHeight);
+
+  let start = 0;
+  let end = bestBlock.height;
+  let latestValidBlock = bestBlock;
+
+  while (start < end) {
+    const midHeight = Math.floor((start + end) / 2);
+
+    // Check if the block at middle position is voided
+    const middleBlock: Block = await getBlockByHeight(mysql, midHeight);
+    const isVoided: boolean = await checkBlockForVoided(middleBlock.txId);
+
+    if (!isVoided) {
+      // Not voided, discard left half as all blocks to the left should
+      // be valid, the reorg happened after this height.
+      start = midHeight + 1;
+    } else {
+      latestValidBlock = middleBlock;
+      end = midHeight - 1;
+    }
+  }
+
+  return latestValidBlock;
 };
