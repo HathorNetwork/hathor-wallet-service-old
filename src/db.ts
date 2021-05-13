@@ -545,6 +545,33 @@ export const addUtxos = async (
 };
 
 /**
+ * Add a tx to the transaction table.
+ *
+ * @remarks
+ * This method adds a transaction to the transaction table
+ *
+ * @param mysql - Database connection
+ * @param txId - Transaction id
+ * @param timestamp - The transaction timestamp
+ * @param version - The transaction version
+ */
+export const addTx = async (
+  mysql: ServerlessMysql,
+  txId: string,
+  confirmedAtHeight: number,
+  timestamp: number,
+  version: number,
+): Promise<void> => {
+  const entry = [txId, confirmedAtHeight, timestamp, version];
+
+  await mysql.query(
+    `INSERT INTO \`transaction\` (tx_id, confirmed_at_height, timestamp, version)
+     VALUES ?`,
+    [[entry]],
+  );
+};
+
+/**
  * Remove a tx inputs from the utxo table.
  *
  * @param mysql - Database connection
