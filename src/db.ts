@@ -31,6 +31,7 @@ import {
   WalletStatus,
   WalletTokenBalance,
   FullNodeVersionData,
+  Block,
 } from '@src/types';
 
 import { getUnixTimestamp, isAuthority } from '@src/utils';
@@ -1253,6 +1254,27 @@ export const getLatestHeight = async (mysql: ServerlessMysql): Promise<number> =
   }
   // it should never come here, as genesis block should be added at startup
   return 0;
+};
+
+/**
+ * Get block by height
+ *
+ * @param mysql - Database connection
+ * @param height - The height to query
+ *
+ * @returns The latest height
+ */
+export const getBlockByHeight = async (mysql: ServerlessMysql, height: number): Promise<Block> => {
+  const results: DbSelectResult = await mysql.query('SELECT * FROM `blocks` WHERE `height` = ? LIMIT 1', [height]);
+
+  if (results.length > 0) {
+    return {
+      txId: results[0].tx_id as string,
+      height: results[0].height as number,
+    };
+  }
+
+  return null;
 };
 
 /**
