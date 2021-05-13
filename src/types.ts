@@ -89,6 +89,7 @@ export interface Utxo {
   timelock: number | null;
   heightlock: number | null;
   locked: boolean;
+  spentBy?: string | null;
   txProposalId?: string;
   txProposalIndex?: number;
 }
@@ -561,3 +562,11 @@ export type RedisConfig = {
   port?: number;
   password?: string;
 };
+
+export interface Tx {
+  txId: string;
+  timestamp: number;
+  version: number;
+  voided: boolean;
+  height: number;
+}

@@ -7,7 +7,7 @@
 
 import { strict as assert } from 'assert';
 import { ServerlessMysql } from 'serverless-mysql';
-import { walletUtils } from '@hathor/wallet-lib';
+import { constants, walletUtils } from '@hathor/wallet-lib';
 
 import {
   AddressIndexMap,
@@ -32,6 +32,7 @@ import {
   WalletTokenBalance,
   FullNodeVersionData,
   Block,
+  Tx,
 } from '@src/types';
 
 import { getUnixTimestamp, isAuthority } from '@src/utils';
@@ -1560,4 +1561,181 @@ export const getTxProposalInputs = async (
     inputs.push(input);
   }
   return inputs;
+};
+
+/**
+ * Get txs after a given height
+ *
+ * @param mysql - Database connection
+ * @param height - The height to search
+
+ * @returns A list of txs
+ */
+export const getTxsAfterHeight = async (
+  mysql: ServerlessMysql,
+  height: number,
+): Promise<Tx> => {
+  const results: DbSelectResult = await mysql.query(
+    `SELECT *
+       FROM \`transaction\`
+      WHERE \`height\` > ?`,
+    [height],
+  );
+  const transactions = [];
+
+  for (const result in results) {
+    const tx: Tx  = {
+      txId: result.tx_id,
+      timestamp: result.timestamp,
+      version: result.version,
+      voided: result.voided,
+      height: result.height,
+    };
+
+    transactions.push(tx);
+  }
+
+  return transactions;
+};
+
+/**
+ * Deletes transactions from the database
+ *
+ * @param mysql - Database connection
+ * @param transactions - The list of transactions to remove from database
+ */
+export const removeTxs = async (
+  mysql: ServerlessMysql,
+  transactions: Tx[],
+): Promise<void> => {
+  const txIds = transactions.map((tx) => tx.txId);
+  const results: DbSelectResult = await mysql.query(
+    `DELETE
+       FROM \`transaction\`
+      WHERE \`tx_id\` IN (?)`,
+    [txIds],
+  );
+};
+
+export const getTxOutputs = async (
+  mysql: ServerlessMysql,
+  transactions: Tx[],
+): Promise<Utxo[]> => {
+  const txIds = transactions.map((tx) => tx.txId);
+  const results: DbSelectResult = await mysql.query(
+    `SELECT *
+       FROM \`utxo\`
+      WHERE \`tx_id\` IN (?)`,
+    [txIds],
+  );
+
+  const utxos = [];
+  for (const result of results) {
+    const utxo: Utxo = {
+      txId: result.tx_id as string,
+      index: result.index as number,
+      tokenId: result.token_id as string,
+      address: result.address as string,
+      value: result.value as number,
+      authorities: result.authorities as number,
+      timelock: result.timelock as number,
+      heightlock: result.heightlock as number,
+      locked: result.locked > 0,
+      txProposalId: result.tx_proposal as string,
+      txProposalIndex: result.tx_proposal_index as number,
+      spentBy: result.spent_by ? result.spent_by as string : null,
+    };
+    utxos.push(utxo);
+  }
+
+  return utxos;
+};
+
+export const getTransactionsById = async (
+  mysql: ServerlessMysql,
+  txIds: string[],
+): Promise<Tx[]> => {
+  const results: DbSelectResult = await mysql.query(
+    `SELECT *
+       FROM \`transaction\`
+      WHERE \`tx_id\` IN (?)`,
+    [txIds],
+  );
+  const transactions = [];
+
+  for (const result in results) {
+    const tx: Tx  = {
+      txId: result.tx_id,
+      timestamp: result.timestamp,
+      version: result.version,
+      voided: result.voided,
+      height: result.height,
+    };
+
+    transactions.push(tx);
+  }
+
+  return transactions;
+};
+
+export const getTxOutputsBySpent = async (
+  mysql: ServerlessMysql,
+  txIds: string[],
+): Promise<Utxo[]> => {
+  const results: DbSelectResult = await mysql.query(
+    `SELECT *
+       FROM \`utxo\`
+      WHERE \`spent_by\` IN (?)`,
+    [txIds],
+  );
+
+  const utxos = [];
+  for (const result of results) {
+    const utxo: Utxo = {
+      txId: result.tx_id as string,
+      index: result.index as number,
+      tokenId: result.token_id as string,
+      address: result.address as string,
+      value: result.value as number,
+      authorities: result.authorities as number,
+      timelock: result.timelock as number,
+      heightlock: result.heightlock as number,
+      locked: result.locked > 0,
+      txProposalId: result.tx_proposal as string,
+      txProposalIndex: result.tx_proposal_index as number,
+      spentBy: result.spent_by ? result.spent_by as string : null,
+    };
+
+    utxos.push(utxo);
+  }
+
+  return utxos;
+};
+
+export const unspendUtxos = async (
+  mysql: ServerlessMysql,
+  utxos: Utxo[],
+): Promise<void> => {
+  const txIds = utxos.map((utxo) => utxo.txId);
+
+  await mysql.query(
+    `UPDATE \`utxo\`
+        SET \`spent_by\` = NULL
+      WHERE \`tx_id\` IN (?)`,
+    [txIds],
+  );
+};
+
+export const removeTxsHeight = async (
+  mysql: ServerlessMysql,
+  txs: Tx[],
+): Promise<void> => {
+  const txIds = txs.map((tx) => tx.txId);
+
+  await mysql.query(
+    `UPDATE \`transaction\`
+        SET \`height\` = NULL
+      WHERE \`tx_id\` IN (?)`,
+    [txIds],
+  );
 };
