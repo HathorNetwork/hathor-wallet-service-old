@@ -19,6 +19,7 @@ import {
 import {
   addNewAddresses,
   addUtxos,
+  addTx,
   generateAddresses,
   getAddressWalletInfo,
   getLockedUtxoFromInputs,
@@ -133,6 +134,7 @@ const addNewTx = async (tx: Transaction, now: number, blockRewardLock: number) =
 
   // add outputs to utxo table
   markLockedOutputs(tx.outputs, now, heightlock !== null);
+  await addTx(mysql, txId, tx.height, tx.timestamp, tx.version);
   await addUtxos(mysql, txId, tx.outputs, heightlock);
 
   // remove inputs from utxo table
