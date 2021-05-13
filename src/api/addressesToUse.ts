@@ -25,7 +25,7 @@ const paramsSchema = Joi.object({
 });
 
 /*
- * Get the addresses of a wallet to be used in a new transactions
+ * Get the addresses of a wallet to be used in new transactions
  * It returns the empty addresses after the last used one
  *
  * This lambda is called by API Gateway on GET /addressestouse
