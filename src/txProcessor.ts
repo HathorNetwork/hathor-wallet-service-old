@@ -137,7 +137,7 @@ const addNewTx = async (tx: Transaction, now: number, blockRewardLock: number) =
   await addUtxos(mysql, txId, tx.outputs, heightlock);
 
   // remove inputs from utxo table
-  await removeUtxos(mysql, tx.inputs);
+  await removeUtxos(mysql, tx.inputs, txId);
 
   // get balance of each token for each address
   const addressBalanceMap: StringMap<TokenBalanceMap> = getAddressBalanceMap(tx.inputs, tx.outputs);
