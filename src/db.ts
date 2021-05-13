@@ -576,18 +576,19 @@ export const addTx = async (
  *
  * @param mysql - Database connection
  * @param inputs - The transaction inputs
+ * @param txId - The transaction that spent these utxos
  */
-export const removeUtxos = async (mysql: ServerlessMysql, inputs: TxInput[]): Promise<void> => {
+export const removeUtxos = async (mysql: ServerlessMysql, inputs: TxInput[], txId: string): Promise<void> => {
   const entries = inputs.map((input) => [input.tx_id, input.index]);
   // entries might be empty if there are no inputs
   if (entries.length) {
     // get the rows before deleting
     await mysql.query(
-      `DELETE
-         FROM \`utxo\`
+      `UPDATE \`utxo\`
+          SET \`spent_by\` = ?
         WHERE (\`tx_id\` ,\`index\`)
            IN (?)`,
-      [entries],
+      [txId, entries],
     );
   }
 };
@@ -1120,6 +1121,7 @@ export const getUtxosLockedAtHeight = async (
       `SELECT *
          FROM \`utxo\`
         WHERE \`heightlock\` <= ?
+          AND \`spent_by\` IS NULL
           AND (\`timelock\` <= ?
                OR \`timelock\` is NULL)
           AND \`locked\` = 1`,
@@ -1171,6 +1173,7 @@ export const getWalletUnlockedUtxos = async (
         AND (\`timelock\` <= ?
              OR \`timelock\` is NULL)
         AND \`locked\` = 1
+        AND \`spent_by\` IS NULL
         AND \`address\` IN (
           SELECT \`address\`
             FROM \`address\`
