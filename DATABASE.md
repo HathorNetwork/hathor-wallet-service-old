@@ -111,6 +111,7 @@ CREATE TABLE `utxo` (
   `locked` tinyint unsigned NOT NULL DEFAULT '0',
   `tx_proposal` varchar(36) DEFAULT NULL,
   `tx_proposal_index` tinyint unsigned DEFAULT NULL,
+  `spent_by` varchar(64) DEFAULT NULL,
   PRIMARY KEY (`tx_id`,`index`)
 );
 
@@ -143,6 +144,15 @@ CREATE TABLE `wallet_tx_history` (
   `balance` bigint NOT NULL,
   `timestamp` int unsigned NOT NULL,
   PRIMARY KEY (`wallet_id`,`token_id`,`tx_id`)
+);
+
+CREATE TABLE `transaction` (
+  `tx_id` varchar(64) NOT NULL,
+  `timestamp` int unsigned NOT NULL,
+  `version` tinyint unsigned NOT NULL,
+  `voided` boolean NOT NULL DEFAULT false,
+  `confirmed_at_height` int unsigned DEFAULT NULL,
+  PRIMARY KEY (`tx_id`)
 );
 ```
 
