@@ -18,6 +18,11 @@ import {
   getVersionData,
   updateVersionData,
   getBlockByHeight,
+  getTxsAfterHeight,
+  removeTxs,
+  getTxOutputs,
+  getTxOutputsBySpent,
+  removeTxsHeight,
 } from '@src/db';
 import {
   DecodedOutput,
@@ -26,6 +31,7 @@ import {
   TxInput,
   TxOutput,
   Utxo,
+  Tx,
   Wallet,
   Block,
   WalletTokenBalance,
@@ -297,4 +303,41 @@ export const searchForLatestValidBlock = async (mysql: ServerlessMysql): Promise
   }
 
   return latestValidBlock;
+};
+
+export const handleReorg = async (mysql: ServerlessMysql): Promise<void> => {
+  const { height } = await searchForLatestValidBlock(mysql);
+
+  // step 1: fetch all block transactions where height > latestValidBlock
+  const allTxsAfterHeight = await getTxsAfterHeight(mysql, height);
+  let txs: Tx[] = allTxsAfterHeight.filter((tx) => {
+    // only blocks:
+    return [
+      constants.BLOCK_VERSION,
+      constants.MERGED_MINED_BLOCK_VERSION,
+    ].indexOf(tx.version) > -1;
+  });
+
+  while (txs.length > 0) {
+    await removeTxs(mysql, txs);
+
+    const txOutputs: Utxo[] = await getTxOutputs(mysql, txs); // "A" Outputs
+
+    // txOutputs might contain more than one output that spend from the same tx
+    const txIds = txOutputs.reduce((acc, utxo) => acc.add(utxo.spentBy), new Set()); // "B"
+
+    // delete tx outputs:
+    await deleteUtxos(mysql, txOutputs);
+
+    // get outputs that were spent in txOutputs
+    const spentOutputs: Utxo[] = await getTxOutputsBySpent(mysql, txIds);
+    await unspendUtxos(mysqo, spentOutputs);
+
+    // fetch all transactions that spend those voided txs outputs:
+    txs = await getTransactionsById(mysql, txIds);
+  }
+
+  // get all remaining txs and set height = null (mempool)
+  const remainingTxs: Tx[] = await getTxsAfterHeight(mysql, height);
+  await removeTxsHeight(mysql, remainingTxs);
 };

@@ -89,6 +89,7 @@ export interface Utxo {
   timelock: number | null;
   heightlock: number | null;
   locked: boolean;
+  spentBy?: string | null;
   txProposalId?: string;
   txProposalIndex?: number;
 }
@@ -553,5 +554,13 @@ export interface ApiResponse {
 
 export interface Block {
   txId: string;
+  height: number;
+}
+
+export interface Tx {
+  txId: string;
+  timestamp: number;
+  version: number;
+  voided: boolean;
   height: number;
 }
