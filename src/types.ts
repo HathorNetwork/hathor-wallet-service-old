@@ -550,3 +550,8 @@ export interface ApiResponse {
   success: boolean;
   message: string;
 }
+
+export interface Block {
+  txId: string;
+  height: number;
+}
