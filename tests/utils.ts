@@ -102,7 +102,7 @@ export const checkUtxoTable = async (
   locked?: boolean,
 ): Promise<boolean | Record<string, unknown>> => {
   // first check the total number of rows in the table
-  let results: DbSelectResult = await mysql.query('SELECT * FROM `utxo`');
+  let results: DbSelectResult = await mysql.query('SELECT * FROM `utxo` WHERE spent_by IS NULL');
   if (results.length !== totalResults) {
     return {
       error: 'checkUtxoTable total results',
