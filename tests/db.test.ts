@@ -515,7 +515,7 @@ test('addUtxos, getUtxos, unlockUtxos and removeUtxos', async () => {
 
   // remove from utxo table
   const inputs = utxos.map((utxo, index) => createInput(utxo.value, utxo.address, txId, index, utxo.token, utxo.timelock));
-  await removeUtxos(mysql, inputs);
+  await removeUtxos(mysql, inputs, txId);
   await expect(checkUtxoTable(mysql, 0)).resolves.toBe(true);
 });
 
