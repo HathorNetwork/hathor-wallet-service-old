@@ -73,6 +73,11 @@ export interface AddressInfo {
   transactions: number;
 }
 
+export interface ShortAddressInfo {
+  address: string;
+  index: number;
+}
+
 export interface TokenBalance {
   tokenId: string;
   balance: Balance;

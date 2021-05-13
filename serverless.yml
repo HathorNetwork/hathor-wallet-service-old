@@ -60,6 +60,13 @@ functions:
           path: addresses
           method: get
           cors: true
+  getAddressesToUseApi:
+    handler: src/api/addressesToUse.get
+    events:
+      - http:
+          path: addressestouse
+          method: get
+          cors: true
   getBalanceApi:
     handler: src/api/balances.get
     events:

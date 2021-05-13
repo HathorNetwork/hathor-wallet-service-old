@@ -18,6 +18,7 @@ import {
   GenerateAddresses,
   IWalletInput,
   IWalletOutput,
+  ShortAddressInfo,
   StringMap,
   TokenBalanceMap,
   TokenInfo,
@@ -974,6 +975,40 @@ export const getWalletAddresses = async (mysql: ServerlessMysql, walletId: strin
       address: result.address as string,
       index: result.index as number,
       transactions: result.transactions as number,
+    };
+    addresses.push(address);
+  }
+  return addresses;
+};
+
+/**
+ * Get the empty addresses of a wallet after the last used address
+ *
+ * @param mysql - Database connection
+ * @param walletId - Wallet id
+ * @returns A list of addresses and their indexes
+ */
+export const getAddressesToUse = async (mysql: ServerlessMysql, walletId: string): Promise<ShortAddressInfo[]> => {
+  const addresses: ShortAddressInfo[] = [];
+  // Select all addresses that are empty and the index is bigger than the last used address index
+  const results: DbSelectResult = await mysql.query(`
+    SELECT *
+      FROM \`address\`
+     WHERE \`wallet_id\` = ?
+       AND \`transactions\` = 0
+       AND \`index\` > (
+         SELECT MAX(\`index\`)
+           FROM \`address\`
+           WHERE \`wallet_id\` = ?
+           AND \`transactions\` > 0
+       )
+  ORDER BY \`index\`
+       ASC`, [walletId, walletId]);
+
+  for (const result of results) {
+    const address = {
+      address: result.address as string,
+      index: result.index as number,
     };
     addresses.push(address);
   }
