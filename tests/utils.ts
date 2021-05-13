@@ -6,6 +6,7 @@ import {
   TxInput,
   TxOutput,
   FullNodeVersionData,
+  Block,
 } from '@src/types';
 
 import { WalletBalanceEntry, AddressTableEntry, TokenTableEntry } from '@tests/types';
@@ -14,6 +15,16 @@ import { RedisClient } from 'redis';
 
 // we'll use this xpubkey and corresponding addresses in some tests
 export const XPUBKEY = 'xpub6EcBoi2vDFcCW5sPAiQpXDYYtXd1mKhUJD64tUi8CPRG1VQFDkAbL8G5gqTmSZD6oq4Yhr5PZ8pKf3Xmb3W3pGcgqzUdFNaCRKL7TZa3res';
+
+export const TX_IDS = [
+  '0000033139d08176d1051fb3a272c3610457f0c7f686afbe0afe3d37f966db85',
+  '000003ae3be32b9df13157a27b77cf8e5fed3c20ad309a843002a10c5430c9cc',
+  '000005cbcb8b29f74446a260cd7d36fab3cba1295ac9fe904795d7b064e0e53c',
+  '0000000f1fbb4bd8a8e71735af832be210ac9a6c1e2081b21faeea3c0f5797f7',
+  '00000649d769de25fcca204faaa23d4974d00fcb01130ab3f736fade4013598d',
+  '000002e185a37162bbcb1ec43576056638f0fad43648ae070194d1e1105f339a',
+  '00000597288221301f856e245579e7d32cea3e257330f9cb10178bb487b343e5',
+];
 
 export const ADDRESSES = [
   'HNwiHGHKBNbeJPo9ToWvFWeNQkJrpicYci',
