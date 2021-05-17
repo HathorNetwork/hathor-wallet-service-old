@@ -163,4 +163,6 @@ const addNewTx = async (tx: Transaction, now: number, blockRewardLock: number) =
   // update wallet_balance and wallet_tx_history tables
   const walletBalanceMap: StringMap<TokenBalanceMap> = getWalletBalanceMap(addressWalletMap, addressBalanceMap);
   await updateWalletTablesWithTx(mysql, txId, tx.timestamp, walletBalanceMap);
+
+  // TODO send new_tx (ws)event for all walletIds on addressWalletMap
 };
