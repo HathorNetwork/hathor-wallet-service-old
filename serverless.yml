@@ -116,6 +116,10 @@ functions:
           route: $default
       - websocket:
           route: ping
+      - websocket:
+          route: join
+      - websocket:
+          route: joinWallet
   wsForceReload:
     handler: src/ws/forceReload.handler
     events:
@@ -123,5 +127,7 @@ functions:
           path: force/reload
           method: get
           cors: true
-  wsNotifyNewTx:
-    handler: src/ws/newTx.handler
+  wsTxNotifyNew:
+    handler: src/ws/txNotify.onNewTx
+  wsTxNotifyUpdate:
+    handler: src/ws/txNotify.onUpdateTx

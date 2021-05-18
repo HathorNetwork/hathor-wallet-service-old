@@ -13,10 +13,10 @@ import { wsGetAllConnections } from '@src/redis';
 export const handler = async (): Promise<{statusCode: number}> => {
   const proms = [];
   const connections = await wsGetAllConnections();
-  const payload = {message: 'force-full-reload'}
+  const payload = { message: 'force-full-reload' };
 
   connections.forEach((connInfo) => {
-    proms.push(sendMessageToClient(connInfo.url, connInfo.id, payload));
+    proms.push(sendMessageToClient(connInfo, payload));
   });
   await Promise.all(proms);
   return { statusCode: 200 };

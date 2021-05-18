@@ -1,20 +1,10 @@
+import {
+  WsConnectionInfo,
+  RedisConfig,
+} from '@src/types';
+
 import redis from 'redis';
 import { promisify } from 'util';
-// const { promisify } = require('util');
-
-const connKeyTTL = 1200; // 20 minutes
-
-type RedisConfig = {
-  host: string;
-  port?: number;
-  password?: string;
-};
-
-// type ConnectionInfo = string[];
-type ConnectionInfo = {
-  id: string;
-  url: string;
-};
 
 const redisConfig: RedisConfig = {
   host: process.env.REDIS_HOST,
@@ -29,7 +19,7 @@ export const client = redis.createClient(redisConfig);
 const scanAsync = promisify(client.scan).bind(client);
 // const sscanAsync = promisify(client.sscan).bind(client);
 const getAsync = promisify(client.get).bind(client);
-// export const asyncSet = promisify(client.set).bind(client);
+const setAsync = promisify(client.set).bind(client);
 // export const asyncKeys = promisify(client.keys).bind(client);
 // export const asyncHgetall = promisify(client.hgetall).bind(client);
 // export const asyncScan = promisify(client.scan).bind(client);
@@ -75,24 +65,13 @@ const scanAll = async (pattern) => {
  *  If this function is called when the fields already exists:
  *  - same parameters: TTL is refreshed
  *  - other params: updates connection keys
- *
  */
 export const initWsConnection = async (
   // walletID: string,
-  connectionID: string,
-  connectionURL: string,
-): Promise<void> => {
-  // client.multi()
-  //   .setex(`walletsvc:chan:wallet-${walletID}:${connectionID}`, connKeyTTL, connectionURL)
-  //   .setex(`walletsvc:conn:${connectionID}`, connKeyTTL, connectionURL)
-  //   .exec();
-  client.setex(`walletsvc:conn:${connectionID}`, connKeyTTL, connectionURL);
-  // client.setex(`walletsvc:chan:wallet-${walletID}:${connectionID}`, connKeyTTL, connectionURL);
-  // client.setex(`walletsvc:conn:${connectionID}`, connKeyTTL, connectionURL);
-};
+  connInfo: WsConnectionInfo,
+): Promise<string> => setAsync(`walletsvc:conn:${connInfo.id}`, connInfo.url);
 
 /* Delete all keys for the connection
- *
  * */
 export const endWsConnection = async (
   connectionID: string,
@@ -116,33 +95,31 @@ export const endWsConnection = async (
 export const wsJoinChannel = async (
   channel: string,
   connectionID: string,
-): Promise<void> => {
-  // find connectionURL from connectionID
-  await wsGetConnection(connectionID).then((connectionURL) => {
-    client.setex(`walletsvc:chan:${channel}:${connectionID}`, connKeyTTL, connectionURL);
-  });
-};
+): Promise<void> => wsGetConnection(connectionID).then(
+  (connectionURL) => setAsync(
+    `walletsvc:chan:${channel}:${connectionID}`,
+    connectionURL,
+  ),
+);
 
+// maybe some wallet validation?
 export const wsJoinWallet = async (
   walletID: string,
   connectionID: string,
-): Promise<void> => {
-  // return?
-  await wsJoinChannel(`wallet-${walletID}`, connectionID);
-};
+): Promise<void> => wsJoinChannel(`wallet-${walletID}`, connectionID);
 
 export const wsGetConnection = async (
   connectionID: string,
 ): Promise<string> => getAsync(`walletsvc:conn:${connectionID}`);
 
 // get all connections
-export const wsGetAllConnections = async (): Promise<ConnectionInfo[]> => {
-  const found: ConnectionInfo[] = [];
+export const wsGetAllConnections = async (): Promise<WsConnectionInfo[]> => {
+  const found: WsConnectionInfo[] = [];
   const keys = await scanAll('walletsvc:conn:*');
   for (const key of keys) {
     const value = await getAsync(key);
     // found.push([key.split(':').pop(), value]);
-    found.push({id: key.split(':').pop(), url: value});
+    found.push({ id: key.split(':').pop(), url: value });
   }
   return found;
 };
@@ -150,13 +127,13 @@ export const wsGetAllConnections = async (): Promise<ConnectionInfo[]> => {
 // get all connections listening to a channel
 export const wsGetChannelConnections = async (
   channel: string,
-): Promise<ConnectionInfo[]> => {
-  const found: ConnectionInfo[] = [];
+): Promise<WsConnectionInfo[]> => {
+  const found: WsConnectionInfo[] = [];
   const keys = await scanAll(`walletsvc:chan:${channel}:*`);
   for (const key of keys) {
     const value = await getAsync(key);
     // found.push([key.split(':').pop(), value]);
-    found.push({id: key.split(':').pop(), url: value});
+    found.push({ id: key.split(':').pop(), url: value });
   }
   return found;
 };
@@ -164,4 +141,4 @@ export const wsGetChannelConnections = async (
 // get all connections related to a walletID
 export const wsGetWalletConnections = async (
   walletID: string,
-): Promise<ConnectionInfo[]> => wsGetChannelConnections(`wallet-${walletID}`);
+): Promise<WsConnectionInfo[]> => wsGetChannelConnections(`wallet-${walletID}`);

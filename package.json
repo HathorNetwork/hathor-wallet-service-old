@@ -5,7 +5,7 @@
   "scripts": {
     "postinstall": "npm dedupe",
     "jest": "jest --runInBand --collectCoverage",
-    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "lint": "eslint src/ tests/ --ext .js,.jsx,.ts,.tsx",
     "check-types": "tsc --noemit",
     "test": "run-s check-types lint jest",
     "offline": "./node_modules/.bin/sls offline --printOutput --noPrependStageInUrl"
