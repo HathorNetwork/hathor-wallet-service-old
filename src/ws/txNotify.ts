@@ -6,9 +6,15 @@
  */
 
 import { APIGatewayProxyResult, SQSEvent } from 'aws-lambda';
-import { sendMessageToClient } from '@src/ws/utils';
-import { wsGetWalletConnections } from '@src/redis';
+import { RedisClient } from 'redis';
 import Joi from 'joi';
+
+import { sendMessageToClient } from '@src/ws/utils';
+import {
+  wsGetWalletConnections,
+  getRedisClient,
+  closeRedisClient,
+} from '@src/redis';
 
 const newTxbodySchema = Joi.object({
   wallets: Joi.array()
@@ -42,6 +48,7 @@ export const onNewTx = async (
   event: SQSEvent,
 ): Promise<APIGatewayProxyResult> => {
   // const eventBody = parseBody(event.body);
+  const redisClient = getRedisClient();
 
   for (const evt of event.Records) {
     const { value, error } = newTxbodySchema.validate(evt.body, {
@@ -51,6 +58,7 @@ export const onNewTx = async (
 
     if (error) {
       // extract error message
+      await closeRedisClient(redisClient);
       return {
         statusCode: 400,
         body: JSON.stringify({ error: true, message: 'error' }),
@@ -59,9 +67,10 @@ export const onNewTx = async (
 
     const wallets = value.wallets;
     const tx = value.tx;
-    await Promise.all(wallets.map((wallet) => notifyWallet(wallet, tx)));
+    await Promise.all(wallets.map((wallet) => notifyWallet(redisClient, wallet, tx)));
   }
 
+  await closeRedisClient(redisClient);
   return {
     statusCode: 200,
     body: JSON.stringify({ message: 'Sent notifications' }),
@@ -72,6 +81,7 @@ export const onUpdateTx = async (
   event: SQSEvent,
 ): Promise<APIGatewayProxyResult> => {
   // const eventBody = parseBody(event.body);
+  const redisClient = getRedisClient();
 
   for (const evt of event.Records) {
     const { value, error } = updateTxbodySchema.validate(evt.body, {
@@ -81,6 +91,7 @@ export const onUpdateTx = async (
 
     if (error) {
       // extract error message
+      await closeRedisClient(redisClient);
       return {
         statusCode: 400,
         body: JSON.stringify({ error: true, message: 'error' }),
@@ -89,9 +100,9 @@ export const onUpdateTx = async (
 
     const wallets = value.wallets;
     const updateBody = value.update;
-    await Promise.all(wallets.map((wallet) => notifyWallet(wallet, updateBody)));
+    await Promise.all(wallets.map((wallet) => notifyWallet(redisClient, wallet, updateBody)));
   }
-
+  await closeRedisClient(redisClient);
   return {
     statusCode: 200,
     body: JSON.stringify({ message: 'Sent notifications' }),
@@ -99,10 +110,11 @@ export const onUpdateTx = async (
 };
 
 const notifyWallet = async (
+  client: RedisClient,
   walletID: string,
   payload: any, // eslint-disable-line @typescript-eslint/no-explicit-any
 ): Promise<any> => { // eslint-disable-line @typescript-eslint/no-explicit-any
-  const connections = await wsGetWalletConnections(walletID);
+  const connections = await wsGetWalletConnections(client, walletID);
   const proms = [];
   connections.forEach((connInfo) => {
     proms.push(sendMessageToClient(connInfo, payload));

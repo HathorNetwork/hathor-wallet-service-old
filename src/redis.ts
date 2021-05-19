@@ -13,18 +13,32 @@ const redisConfig: RedisConfig = {
 };
 
 export default redis;
-export const client = redis.createClient(redisConfig);
+
+// export const client = redis.createClient(redisConfig);
+
+export const getRedisClient = (): redis.RedisClient => redis.createClient(redisConfig);
+
+export const closeRedisClient = (
+  client: redis.RedisClient,
+): Promise<boolean> => {
+  const quit = promisify(client.quit).bind(client);
+  return quit();
+};
 
 // define async versions of API
-const scanAsync = promisify(client.scan).bind(client);
+// const scanAsync = promisify(client.scan).bind(client);
 // const sscanAsync = promisify(client.sscan).bind(client);
-const getAsync = promisify(client.get).bind(client);
-const setAsync = promisify(client.set).bind(client);
+// const getAsync = promisify(client.get).bind(client);
+// const setAsync = promisify(client.set).bind(client);
 // export const asyncKeys = promisify(client.keys).bind(client);
 // export const asyncHgetall = promisify(client.hgetall).bind(client);
 // export const asyncScan = promisify(client.scan).bind(client);
 
-const scanAll = async (pattern) => {
+export const scanAll = async (
+  client: redis.RedisClient,
+  pattern: string,
+) => {
+  const scanAsync = promisify(client.scan).bind(client);
   const found = [];
   let cursor = '0';
   do {
@@ -68,12 +82,17 @@ const scanAll = async (pattern) => {
  */
 export const initWsConnection = async (
   // walletID: string,
+  client: redis.RedisClient,
   connInfo: WsConnectionInfo,
-): Promise<string> => setAsync(`walletsvc:conn:${connInfo.id}`, connInfo.url);
+): Promise<string> => {
+  const setAsync = promisify(client.set).bind(client);
+  return setAsync(`walletsvc:conn:${connInfo.id}`, connInfo.url);
+};
 
 /* Delete all keys for the connection
  * */
 export const endWsConnection = async (
+  client: redis.RedisClient,
   connectionID: string,
 ): Promise<void> => {
   // multi not exactly needed (mainly used for transactions)
@@ -84,41 +103,50 @@ export const endWsConnection = async (
   const multi = client.multi();
   multi.del(`walletsvc:conn:${connectionID}`);
   // with scanGen: for await (const key of scanGen(patt)) multi.del(key);
-  await scanAll(`walletsvc:chan:*:${connectionID}`).then((keys) => {
+  await scanAll(client, `walletsvc:chan:*:${connectionID}`).then((keys) => {
     for (const key of keys) {
       multi.del(key);
     }
   });
-  multi.exec();
+  multi.exec((err, replies) => {
+    console.log(`Multi err ${err}`);
+    console.log(`Multi replies ${replies}`);
+  });
 };
 
 export const wsJoinChannel = async (
+  client: redis.RedisClient,
+  connInfo: WsConnectionInfo,
   channel: string,
-  connectionID: string,
-): Promise<void> => wsGetConnection(connectionID).then(
-  (connectionURL) => setAsync(
-    `walletsvc:chan:${channel}:${connectionID}`,
-    connectionURL,
-  ),
-);
+): Promise<string> => {
+  const setAsync = promisify(client.set).bind(client);
+  return setAsync(`walletsvc:chan:${channel}:${connInfo.id}`, connInfo.url);
+};
 
 // maybe some wallet validation?
 export const wsJoinWallet = async (
+  client: redis.RedisClient,
+  connInfo: WsConnectionInfo,
   walletID: string,
-  connectionID: string,
-): Promise<void> => wsJoinChannel(`wallet-${walletID}`, connectionID);
+): Promise<string> => wsJoinChannel(client, connInfo, `wallet-${walletID}`);
 
 export const wsGetConnection = async (
+  client: redis.RedisClient,
   connectionID: string,
-): Promise<string> => getAsync(`walletsvc:conn:${connectionID}`);
+): Promise<string> => {
+  const getAsync = promisify(client.get).bind(client);
+  return getAsync(`walletsvc:conn:${connectionID}`);
+};
 
 // get all connections
-export const wsGetAllConnections = async (): Promise<WsConnectionInfo[]> => {
+export const wsGetAllConnections = async (
+  client: redis.RedisClient,
+): Promise<WsConnectionInfo[]> => {
+  const getAsync = promisify(client.get).bind(client);
   const found: WsConnectionInfo[] = [];
-  const keys = await scanAll('walletsvc:conn:*');
+  const keys = await scanAll(client, 'walletsvc:conn:*');
   for (const key of keys) {
     const value = await getAsync(key);
-    // found.push([key.split(':').pop(), value]);
     found.push({ id: key.split(':').pop(), url: value });
   }
   return found;
@@ -126,13 +154,14 @@ export const wsGetAllConnections = async (): Promise<WsConnectionInfo[]> => {
 
 // get all connections listening to a channel
 export const wsGetChannelConnections = async (
+  client: redis.RedisClient,
   channel: string,
 ): Promise<WsConnectionInfo[]> => {
+  const getAsync = promisify(client.get).bind(client);
   const found: WsConnectionInfo[] = [];
-  const keys = await scanAll(`walletsvc:chan:${channel}:*`);
+  const keys = await scanAll(client, `walletsvc:chan:${channel}:*`);
   for (const key of keys) {
     const value = await getAsync(key);
-    // found.push([key.split(':').pop(), value]);
     found.push({ id: key.split(':').pop(), url: value });
   }
   return found;
@@ -140,5 +169,6 @@ export const wsGetChannelConnections = async (
 
 // get all connections related to a walletID
 export const wsGetWalletConnections = async (
+  client: redis.RedisClient,
   walletID: string,
-): Promise<WsConnectionInfo[]> => wsGetChannelConnections(`wallet-${walletID}`);
+): Promise<WsConnectionInfo[]> => wsGetChannelConnections(client, `wallet-${walletID}`);

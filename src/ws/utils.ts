@@ -1,8 +1,13 @@
 import { APIGatewayProxyEvent } from 'aws-lambda';
+import { ServerlessMysql } from 'serverless-mysql';
+import { RedisClient } from 'redis';
 
-import { WsConnectionInfo } from '@src/types';
 import AWS from 'aws-sdk';
 import util from 'util';
+
+import { WsConnectionInfo } from '@src/types';
+import { closeDbConnection } from '@src/utils';
+import { closeRedisClient } from '@src/redis';
 
 /*
  * TODO: make sure this would format connection url properly on the lambda
@@ -23,7 +28,7 @@ export const connectionInfoFromEvent = (
   // return util.format(util.format('https://%s/%s', domain, stage));
   return {
     id: connID,
-    url: util.format(util.format('https://%s/%s/@connections/%s', domain, stage, connID)),
+    url: util.format(util.format('https://%s/%s', domain, stage)),
   };
 };
 
@@ -73,7 +78,15 @@ export const sendAndReturn = async (
   connInfo: WsConnectionInfo,
   statusCode: number,
   payload: any, // eslint-disable-line @typescript-eslint/explicit-module-boundary-types, @typescript-eslint/no-explicit-any
+  redisClient?: RedisClient,
+  mysql?: ServerlessMysql,
 ): Promise<{statusCode: number}> => {
+  if (redisClient) {
+    await closeRedisClient(redisClient);
+  }
+  if (mysql) {
+    await closeDbConnection(mysql);
+  }
   await sendMessageToClient(connInfo, payload);
   return { statusCode };
 };

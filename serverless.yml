@@ -116,18 +116,28 @@ functions:
           route: $default
       - websocket:
           route: ping
+  wsJoinChannel:
+    handler: src/ws/joinChannel.handler
+    events:
       - websocket:
           route: join
       - websocket:
           route: joinWallet
-  wsForceReload:
-    handler: src/ws/forceReload.handler
-    events:
-      - http:
-          path: force/reload
-          method: get
-          cors: true
   wsTxNotifyNew:
     handler: src/ws/txNotify.onNewTx
   wsTxNotifyUpdate:
     handler: src/ws/txNotify.onUpdateTx
+  wsAdminBroadcast:
+    handler: src/ws/admin.broadcast
+    events:
+      - http:
+          path: admin/broadcast
+          method: post
+          cors: true
+  wsAdminMulticast:
+    handler: src/ws/admin.multicast
+    events:
+      - http:
+          path: admin/multicast
+          method: post
+          cors: true
