@@ -32,6 +32,8 @@ export const STATUS_CODE_TABLE = {
   [ApiError.WALLET_NOT_FOUND]: 404,
   [ApiError.WALLET_NOT_READY]: 400,
   [ApiError.WALLET_ALREADY_LOADED]: 400,
+  [ApiError.FORBIDDEN]: 403,
+  [ApiError.UNAUTHORIZED]: 401,
 };
 
 /**

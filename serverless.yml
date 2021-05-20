@@ -141,3 +141,10 @@ functions:
           path: admin/multicast
           method: post
           cors: true
+  wsAdminDisconnect:
+    handler: src/ws/admin.disconnect
+    events:
+      - http:
+          path: admin/disconnect
+          method: post
+          cors: true

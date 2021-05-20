@@ -37,7 +37,7 @@ export const closeRedisClient = (
 export const scanAll = async (
   client: redis.RedisClient,
   pattern: string,
-) => {
+): Promise<string[]> => {
   const scanAsync = promisify(client.scan).bind(client);
   const found = [];
   let cursor = '0';
@@ -108,10 +108,7 @@ export const endWsConnection = async (
       multi.del(key);
     }
   });
-  multi.exec((err, replies) => {
-    console.log(`Multi err ${err}`);
-    console.log(`Multi replies ${replies}`);
-  });
+  multi.exec();
 };
 
 export const wsJoinChannel = async (

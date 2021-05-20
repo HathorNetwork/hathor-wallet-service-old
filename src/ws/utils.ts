@@ -7,7 +7,7 @@ import util from 'util';
 
 import { WsConnectionInfo } from '@src/types';
 import { closeDbConnection } from '@src/utils';
-import { closeRedisClient } from '@src/redis';
+import { closeRedisClient, endWsConnection } from '@src/redis';
 
 /*
  * TODO: make sure this would format connection url properly on the lambda
@@ -34,6 +34,7 @@ export const connectionInfoFromEvent = (
 
 export const sendMessageToClient = async (
   connInfo: WsConnectionInfo,
+  client: RedisClient,
   payload: any, // eslint-disable-line @typescript-eslint/explicit-module-boundary-types, @typescript-eslint/no-explicit-any
 ): Promise<any> => new Promise((resolve, reject) => { // eslint-disable-line @typescript-eslint/no-explicit-any
   const apigatewaymanagementapi = new AWS.ApiGatewayManagementApi({
@@ -47,6 +48,11 @@ export const sendMessageToClient = async (
     },
     (err, data) => {
       if (err) {
+        // http GONE(410) means client is disconnected, but still exists on our connection store
+        if (err.statusCode === 410) {
+          // cleanup connection and subscriptions from redis if GONE
+          resolve(endWsConnection(client, connInfo.id));
+        }
         reject(err);
       }
       resolve(data);
@@ -56,6 +62,7 @@ export const sendMessageToClient = async (
 
 export const disconnectClient = async (
   connInfo: WsConnectionInfo,
+  client: RedisClient,
 ): Promise<any> => new Promise((resolve, reject) => { // eslint-disable-line @typescript-eslint/no-explicit-any
   const apigatewaymanagementapi = new AWS.ApiGatewayManagementApi({
     apiVersion: '2018-11-29',
@@ -67,6 +74,11 @@ export const disconnectClient = async (
     },
     (err, data) => {
       if (err) {
+        // http GONE(410) means client is disconnected, but still exists on our connection store
+        if (err.statusCode === 410) {
+          // cleanup connection and subscriptions from redis if GONE
+          resolve(endWsConnection(client, connInfo.id));
+        }
         reject(err);
       }
       resolve(data);
@@ -81,12 +93,13 @@ export const sendAndReturn = async (
   redisClient?: RedisClient,
   mysql?: ServerlessMysql,
 ): Promise<{statusCode: number}> => {
-  if (redisClient) {
-    await closeRedisClient(redisClient);
-  }
   if (mysql) {
     await closeDbConnection(mysql);
   }
-  await sendMessageToClient(connInfo, payload);
+  await sendMessageToClient(connInfo, redisClient, payload);
+  // sendMessage may use redisClient, so we need to close after sending message
+  if (redisClient) {
+    await closeRedisClient(redisClient);
+  }
   return { statusCode };
 };

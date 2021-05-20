@@ -117,7 +117,7 @@ const notifyWallet = async (
   const connections = await wsGetWalletConnections(client, walletID);
   const proms = [];
   connections.forEach((connInfo) => {
-    proms.push(sendMessageToClient(connInfo, payload));
+    proms.push(sendMessageToClient(connInfo, client, payload));
   });
   return Promise.all(proms);
 };
