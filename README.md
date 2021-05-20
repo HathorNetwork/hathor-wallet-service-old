@@ -44,10 +44,18 @@ Create a `.env` file on the top project folder. It should have the following var
 ```
 STAGE=local
 MAX_ADDRESS_GAP=10
+NETWORK=mainnet
+BLOCK_REWARD_LOCK=300
 DB_ENDPOINT=localhost
 DB_NAME=wallet_service
 DB_USER=my_user
 DB_PASS=password123
+CONFIRM_FIRST_ADDRESS=true
+SERVICE_NAME=hathor-wallet-service
+DEFAULT_SERVER=https://node1.mainnet.hathor.network/v1a/
+REDIS_HOST=localhost
+REDIS_PORT=6379
+ADMINTOKEN=foobar
 ```
 
 Do not modify the `STAGE` variable. The other variables should be updated accordingly.
@@ -125,6 +133,57 @@ curl --header "Content-Type: application/json" \
   --data '{ "timestamp": 1599051796, "parents": ["0002ad8d1519daaddc8e1a37b14aac0b045129c01832281fb1c02d873c7abbf9", "0002d4d2a15def7604688e1878ab681142a7b155cbe52a6b4e031250ae96db0a"], "weight": 1, "nonce": 700, "inputsSignatures": ["aaaa"] }' \
   http://localhost:3000/txproposals/{txProposalId}/
 ```
+
+### WebSocket API
+
+It's designed to run on AWS serverless environment and uses Redis for ephemeral data (connection store).
+API Gateway will manage connections while the lambda functions will handle incoming and outcoming messages.
+If the lambda is responding to a client sent event it will have the information needed to respond to the client that initiated the call,
+but if the event is not client initiated, the connection store should hold an updated list of connected clients and what information they are requesting
+so the lambda can filter and send the message to the right clients.
+
+
+```
+                                               +───────────+
+                      +─────────────+          |           |
+                      |             |         +───────────+|        +───────────────────+
+ ◀──────────────────▶ | API GATEWAY |         |           ||        |                   |
+    ws connections    |             | ◀─────▶ | Lambda fn |+  ◀──── |        SQS        |
+                      |             |         |           |         | (Real Time event) |
+                      +─────────────+         +───────────+         |                   |
+                                                    |               +───────────────────+
+                                                    |
+                                                    ▼
+                                          +────────────────────+
+                                          |       Redis        |
+                                          | (Connection store) |
+                                          +────────────────────+
+```
+
+#### WebSocket Action: PING
+- Trigger: Client initiated
+- body: `{"action":"ping"}`
+- response: `{"message":"PONG"}`
+
+This action is idempotent, the lambda just responds with a `PONG` message.
+
+#### WebSocket Action: Join Wallet
+- Trigger: Client initiated
+- body: `{"action":"joinWallet", "wallet":"my-wallet-id"}`
+
+This action will subscribe the client to any updates of the wallet identified by the id on the body.
+
+#### WebSocker Action: New TX
+- Trigger: SQS Event
+- When: A new tx is processed by the wallet-service
+- To: All wallets affected by the tx
+- body: The tx in JSON format
+
+#### WebSocker Action: New TX
+- Trigger: SQS Event
+- When: An update is made to a tx that was already processed
+- To: All wallets affected by the tx
+- body: The update information and tx id
 
 ### Troubleshooting
 
