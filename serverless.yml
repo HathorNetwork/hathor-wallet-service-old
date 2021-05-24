@@ -38,7 +38,11 @@ functions:
   getLatestBlock:
     handler: src/height.getLatestBlock
   onNewTxRequest:
-      handler: src/txProcessor.onNewTxRequest
+    handler: src/txProcessor.onNewTxRequest
+  onHandleReorgRequest:
+    handler: src/txProcessor.onHandleReorgRequest
+  onSearchForLatestValidBlockRequest:
+    handler: src/txProcessor.onSearchForLatestValidBlockRequest
   onNewTxEvent:
     handler: src/txProcessor.onNewTxEvent
   loadWalletAsync:
