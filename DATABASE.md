@@ -151,7 +151,7 @@ CREATE TABLE `transaction` (
   `timestamp` int unsigned NOT NULL,
   `version` tinyint unsigned NOT NULL,
   `voided` boolean NOT NULL DEFAULT false,
-  `confirmed_at_height` int unsigned DEFAULT NULL,
+  `height` int unsigned DEFAULT NULL,
   PRIMARY KEY (`tx_id`)
 );
 ```
