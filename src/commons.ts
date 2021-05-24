@@ -23,6 +23,9 @@ import {
   getTxOutputs,
   getTxOutputsBySpent,
   removeTxsHeight,
+  unspendUtxos,
+  deleteUtxos,
+  getTransactionsById,
 } from '@src/db';
 import {
   DecodedOutput,
@@ -282,22 +285,24 @@ export const searchForLatestValidBlock = async (mysql: ServerlessMysql): Promise
   const bestBlock: Block = await getBlockByHeight(mysql, latestHeight);
 
   let start = 0;
-  let end = bestBlock.height;
-  let latestValidBlock = bestBlock;
+  let end = bestBlock.height; // 63
+  let latestValidBlock = bestBlock; // 63
 
-  while (start < end) {
+  while (start <= end) {
     const midHeight = Math.floor((start + end) / 2);
 
     // Check if the block at middle position is voided
     const middleBlock: Block = await getBlockByHeight(mysql, midHeight);
     const isVoided: boolean = await checkBlockForVoided(middleBlock.txId);
 
+    console.log(middleBlock.txId, middleBlock.height, isVoided);
+
     if (!isVoided) {
       // Not voided, discard left half as all blocks to the left should
       // be valid, the reorg happened after this height.
+      latestValidBlock = middleBlock;
       start = midHeight + 1;
     } else {
-      latestValidBlock = middleBlock;
       end = midHeight - 1;
     }
   }
@@ -310,34 +315,46 @@ export const handleReorg = async (mysql: ServerlessMysql): Promise<void> => {
 
   // step 1: fetch all block transactions where height > latestValidBlock
   const allTxsAfterHeight = await getTxsAfterHeight(mysql, height);
-  let txs: Tx[] = allTxsAfterHeight.filter((tx) => {
-    // only blocks:
-    return [
-      constants.BLOCK_VERSION,
-      constants.MERGED_MINED_BLOCK_VERSION,
-    ].indexOf(tx.version) > -1;
-  });
+  let txs: Tx[] = allTxsAfterHeight.filter((tx) => [
+    hathorLib.constants.BLOCK_VERSION,
+    hathorLib.constants.MERGED_MINED_BLOCK_VERSION,
+  ].indexOf(tx.version) > -1);
+
+  console.log(`All blocks where height > ${height}`);
+  console.log(txs);
 
   while (txs.length > 0) {
+    console.log(`Removing ${txs.length} transactions...`);
     await removeTxs(mysql, txs);
 
     const txOutputs: Utxo[] = await getTxOutputs(mysql, txs); // "A" Outputs
 
     // txOutputs might contain more than one output that spend from the same tx
-    const txIds = txOutputs.reduce((acc, utxo) => acc.add(utxo.spentBy), new Set()); // "B"
+    const txIds = txOutputs.reduce((acc: Set<string>, utxo: Utxo) => {
+      acc.add(utxo.spentBy);
+
+      return acc;
+    }, new Set<string>());
 
     // delete tx outputs:
+    console.log(`Deleting ${txOutputs.length} utxos...`);
     await deleteUtxos(mysql, txOutputs);
 
     // get outputs that were spent in txOutputs
-    const spentOutputs: Utxo[] = await getTxOutputsBySpent(mysql, txIds);
-    await unspendUtxos(mysqo, spentOutputs);
+    const spentOutputs: Utxo[] = await getTxOutputsBySpent(mysql, [...txIds]);
+    if (spentOutputs.length > 0) {
+      console.log(`Unspending ${spentOutputs.length} outputs...`);
+      await unspendUtxos(mysql, spentOutputs);
+    }
 
     // fetch all transactions that spend those voided txs outputs:
-    txs = await getTransactionsById(mysql, txIds);
+    txs = await getTransactionsById(mysql, [...txIds]);
   }
 
   // get all remaining txs and set height = null (mempool)
   const remainingTxs: Tx[] = await getTxsAfterHeight(mysql, height);
-  await removeTxsHeight(mysql, remainingTxs);
+  if (remainingTxs.length > 0) {
+    console.log(`Removing ${remainingTxs.length} remainingTxs...`);
+    await removeTxsHeight(mysql, remainingTxs);
+  }
 };
