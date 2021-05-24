@@ -6,7 +6,7 @@
  */
 
 import AWS from 'aws-sdk';
-import { APIGatewayProxyResult, SQSEvent } from 'aws-lambda';
+import { APIGatewayProxyHandler, APIGatewayProxyResult, SQSEvent } from 'aws-lambda';
 import 'source-map-support/register';
 import hathorLib from '@hathor/wallet-lib';
 
@@ -20,6 +20,7 @@ import {
   addNewAddresses,
   addUtxos,
   addTx,
+  addBlock,
   generateAddresses,
   getAddressWalletInfo,
   getLockedUtxoFromInputs,
@@ -35,8 +36,10 @@ import {
   Transaction,
   TokenBalanceMap,
   Wallet,
+  Block,
 } from '@src/types';
 import { closeDbConnection, getDbConnection, getUnixTimestamp } from '@src/utils';
+import { searchForLatestValidBlock, handleReorg } from '@src/commons';
 
 const mysql = getDbConnection();
 
@@ -87,6 +90,42 @@ export const onNewTxEvent = async (event: SQSEvent): Promise<APIGatewayProxyResu
   };
 };
 
+export const onNewTxRequest: APIGatewayProxyHandler = async (event) => {
+  const now = getUnixTimestamp();
+  const blockRewardLock = parseInt(process.env.BLOCK_REWARD_LOCK, 10);
+
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  await addNewTx(event.body, now, blockRewardLock);
+
+  return {
+    statusCode: 200,
+    body: JSON.stringify({ success: true }),
+  };
+};
+
+export const onHandleReorgRequest: APIGatewayProxyHandler = async () => {
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  await handleReorg(mysql);
+
+  return {
+    statusCode: 200,
+    body: JSON.stringify({ success: true }),
+  };
+};
+
+export const onSearchForLatestValidBlockRequest: APIGatewayProxyHandler = async () => {
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  const latestValidBlock = await searchForLatestValidBlock(mysql);
+
+  return {
+    statusCode: 200,
+    body: JSON.stringify({ success: true, latestValidBlock }),
+  };
+};
+
 /**
  * Add a new transaction or block, updating the proper tables.
  *
@@ -94,11 +133,15 @@ export const onNewTxEvent = async (event: SQSEvent): Promise<APIGatewayProxyResu
  * @param now - Current timestamp
  * @param blockRewardLock - The block reward lock
  */
-const addNewTx = async (tx: Transaction, now: number, blockRewardLock: number) => {
+export const addNewTx = async (tx: Transaction, now: number, blockRewardLock: number): Promise<void> => {
   // TODO mysql error treatment
 
   const txId = tx.tx_id;
   const network = process.env.NETWORK;
+
+  if (txId === '4d0989ff58c5abe4bf19c58645923f4afbd0c3e88d4e40b1ac6f6c87a0ec63f0') {
+    process.exit(1);
+  }
 
   // we should ignore genesis transactions as they have no parents, inputs and outputs and we expect the service
   // to already have the pre-mine utxos on its database.
@@ -118,6 +161,13 @@ const addNewTx = async (tx: Transaction, now: number, blockRewardLock: number) =
     // set heightlock
     heightlock = tx.height + blockRewardLock;
 
+    const block: Block = {
+      txId: tx.tx_id as string,
+      height: tx.height as number,
+    };
+
+    await addBlock(mysql, block);
+
     // update height on database
     await maybeUpdateLatestHeight(mysql, tx.height);
   }
@@ -134,6 +184,7 @@ const addNewTx = async (tx: Transaction, now: number, blockRewardLock: number) =
 
   // add outputs to utxo table
   markLockedOutputs(tx.outputs, now, heightlock !== null);
+  // console.log('TX HEIGHT: ', tx.height);
   await addTx(mysql, txId, tx.height, tx.timestamp, tx.version);
   await addUtxos(mysql, txId, tx.outputs, heightlock);
 
