@@ -25,7 +25,6 @@ export const connectionInfoFromEvent = (
   }
   const domain = event.requestContext.domainName;
   const stage = event.requestContext.stage;
-  // return util.format(util.format('https://%s/%s', domain, stage));
   return {
     id: connID,
     url: util.format(util.format('https://%s/%s', domain, stage)),

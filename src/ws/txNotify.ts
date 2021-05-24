@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { APIGatewayProxyResult, SQSEvent } from 'aws-lambda';
+import { SQSHandler } from 'aws-lambda';
 import { RedisClient } from 'redis';
 import Joi from 'joi';
 
@@ -15,6 +15,14 @@ import {
   getRedisClient,
   closeRedisClient,
 } from '@src/redis';
+
+const parseBody = (body: string) => {
+  try {
+    return JSON.parse(body);
+  } catch (e) {
+    return null;
+  }
+};
 
 const newTxbodySchema = Joi.object({
   wallets: Joi.array()
@@ -36,84 +44,62 @@ const updateTxbodySchema = Joi.object({
     .required(),
 });
 
-// const parseBody = (body: string) => {
-//   try {
-//     return JSON.parse(body);
-//   } catch (e) {
-//     return null;
-//   }
-// };
-
-export const onNewTx = async (
-  event: SQSEvent,
-): Promise<APIGatewayProxyResult> => {
-  // const eventBody = parseBody(event.body);
+export const onNewTx: SQSHandler = async (event) => {
   const redisClient = getRedisClient();
+  const promises = [];
 
   for (const evt of event.Records) {
-    const { value, error } = newTxbodySchema.validate(evt.body, {
+    const body = parseBody(evt.body);
+    const { value, error } = newTxbodySchema.validate(body, {
       abortEarly: false,
       convert: true,
     });
 
     if (error) {
-      // extract error message
-      await closeRedisClient(redisClient);
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: true, message: 'error' }),
-      };
+      // invalid event bodies will noop
+      // maybe log errors
+      continue;
     }
 
     const wallets = value.wallets;
     const tx = value.tx;
-    await Promise.all(wallets.map((wallet) => notifyWallet(redisClient, wallet, tx)));
+    promises.push(Promise.all(wallets.map((wallet) => notifyWallet(redisClient, wallet, tx))));
   }
-
+  await Promise.all(promises);
   await closeRedisClient(redisClient);
-  return {
-    statusCode: 200,
-    body: JSON.stringify({ message: 'Sent notifications' }),
-  };
 };
 
-export const onUpdateTx = async (
-  event: SQSEvent,
-): Promise<APIGatewayProxyResult> => {
-  // const eventBody = parseBody(event.body);
+export const onUpdateTx: SQSHandler = async (event) => {
   const redisClient = getRedisClient();
+  const promises = [];
 
   for (const evt of event.Records) {
-    const { value, error } = updateTxbodySchema.validate(evt.body, {
+    const body = parseBody(evt.body);
+    const { value, error } = updateTxbodySchema.validate(body, {
       abortEarly: false,
       convert: true,
     });
 
     if (error) {
-      // extract error message
-      await closeRedisClient(redisClient);
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: true, message: 'error' }),
-      };
+      // invalid event bodies will noop
+      // maybe log errors
+      continue;
     }
 
     const wallets = value.wallets;
     const updateBody = value.update;
-    await Promise.all(wallets.map((wallet) => notifyWallet(redisClient, wallet, updateBody)));
+    promises.push(Promise.all(wallets.map((wallet) => notifyWallet(redisClient, wallet, updateBody))));
   }
+  // await all messages from all events to be sent
+  await Promise.all(promises);
   await closeRedisClient(redisClient);
-  return {
-    statusCode: 200,
-    body: JSON.stringify({ message: 'Sent notifications' }),
-  };
 };
 
 const notifyWallet = async (
   client: RedisClient,
   walletID: string,
   payload: any, // eslint-disable-line @typescript-eslint/no-explicit-any
-): Promise<any> => { // eslint-disable-line @typescript-eslint/no-explicit-any
+): Promise<void[]> => {
   const connections = await wsGetWalletConnections(client, walletID);
   const proms = [];
   connections.forEach((connInfo) => {

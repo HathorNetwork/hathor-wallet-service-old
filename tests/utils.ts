@@ -653,14 +653,4 @@ export const redisCleanup = (
   client: RedisClient,
 ): void => {
   client.flushdb();
-  // client.keys('*', (err, keys) => {
-  //   if (err) {
-  //     throw err;
-  //   }
-  //   const multi = client.multi();
-  //   for (const key of keys) {
-  //     multi.del(key);
-  //   }
-  //   multi.exec();
-  // });
 };

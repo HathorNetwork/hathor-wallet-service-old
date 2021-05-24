@@ -12,9 +12,7 @@ const redisConfig: RedisConfig = {
   password: process.env.REDIS_PASSWORD,
 };
 
-export default redis;
-
-// export const client = redis.createClient(redisConfig);
+export const svcPrefix = 'walletsvc';
 
 export const getRedisClient = (): redis.RedisClient => redis.createClient(redisConfig);
 
@@ -24,15 +22,6 @@ export const closeRedisClient = (
   const quit = promisify(client.quit).bind(client);
   return quit();
 };
-
-// define async versions of API
-// const scanAsync = promisify(client.scan).bind(client);
-// const sscanAsync = promisify(client.sscan).bind(client);
-// const getAsync = promisify(client.get).bind(client);
-// const setAsync = promisify(client.set).bind(client);
-// export const asyncKeys = promisify(client.keys).bind(client);
-// export const asyncHgetall = promisify(client.hgetall).bind(client);
-// export const asyncScan = promisify(client.scan).bind(client);
 
 export const scanAll = async (
   client: redis.RedisClient,
@@ -86,7 +75,7 @@ export const initWsConnection = async (
   connInfo: WsConnectionInfo,
 ): Promise<string> => {
   const setAsync = promisify(client.set).bind(client);
-  return setAsync(`walletsvc:conn:${connInfo.id}`, connInfo.url);
+  return setAsync(`${svcPrefix}:conn:${connInfo.id}`, connInfo.url);
 };
 
 /* Delete all keys for the connection
@@ -101,9 +90,9 @@ export const endWsConnection = async (
   // and: https://redis.io/topics/transactions
   // alternative: execute each command and check for errors individually
   const multi = client.multi();
-  multi.del(`walletsvc:conn:${connectionID}`);
+  multi.del(`${svcPrefix}:conn:${connectionID}`);
   // with scanGen: for await (const key of scanGen(patt)) multi.del(key);
-  await scanAll(client, `walletsvc:chan:*:${connectionID}`).then((keys) => {
+  await scanAll(client, `${svcPrefix}:chan:*:${connectionID}`).then((keys) => {
     for (const key of keys) {
       multi.del(key);
     }
@@ -117,7 +106,7 @@ export const wsJoinChannel = async (
   channel: string,
 ): Promise<string> => {
   const setAsync = promisify(client.set).bind(client);
-  return setAsync(`walletsvc:chan:${channel}:${connInfo.id}`, connInfo.url);
+  return setAsync(`${svcPrefix}:chan:${channel}:${connInfo.id}`, connInfo.url);
 };
 
 // maybe some wallet validation?
@@ -132,7 +121,7 @@ export const wsGetConnection = async (
   connectionID: string,
 ): Promise<string> => {
   const getAsync = promisify(client.get).bind(client);
-  return getAsync(`walletsvc:conn:${connectionID}`);
+  return getAsync(`${svcPrefix}:conn:${connectionID}`);
 };
 
 // get all connections
@@ -141,7 +130,7 @@ export const wsGetAllConnections = async (
 ): Promise<WsConnectionInfo[]> => {
   const getAsync = promisify(client.get).bind(client);
   const found: WsConnectionInfo[] = [];
-  const keys = await scanAll(client, 'walletsvc:conn:*');
+  const keys = await scanAll(client, `${svcPrefix}:conn:*`);
   for (const key of keys) {
     const value = await getAsync(key);
     found.push({ id: key.split(':').pop(), url: value });
@@ -156,7 +145,7 @@ export const wsGetChannelConnections = async (
 ): Promise<WsConnectionInfo[]> => {
   const getAsync = promisify(client.get).bind(client);
   const found: WsConnectionInfo[] = [];
-  const keys = await scanAll(client, `walletsvc:chan:${channel}:*`);
+  const keys = await scanAll(client, `${svcPrefix}:chan:${channel}:*`);
   for (const key of keys) {
     const value = await getAsync(key);
     found.push({ id: key.split(':').pop(), url: value });

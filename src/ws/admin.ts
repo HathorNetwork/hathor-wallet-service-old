@@ -5,9 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-// import AWS from 'aws-sdk';
-
-import { APIGatewayProxyHandler } from 'aws-lambda';
+import { Handler } from 'aws-lambda';
 import Joi from 'joi';
 
 import { ApiError } from '@src/api/errors';
@@ -32,8 +30,6 @@ const parseBody = (body: string) => {
 };
 
 const multicastSchema = Joi.object({
-  // addresses: Joi.array()
-  //   .items(Joi.string()),
   wallets: Joi.array()
     .items(Joi.string())
     .required(),
@@ -41,42 +37,21 @@ const multicastSchema = Joi.object({
 });
 
 const disconnectSchema = Joi.object({
-  // addresses: Joi.array()
-  //   .items(Joi.string()),
   wallets: Joi.array()
     .items(Joi.string())
     .required(),
 });
 
-const validateAdminToken = (authHeader: string): boolean => {
-  const sanitizedToken = authHeader.replace(/Bearer /gi, '');
-  return sanitizedToken === process.env.ADMINTOKEN;
-};
-
-export const broadcast: APIGatewayProxyHandler = async (event) => {
+export const broadcast: Handler = async (event) => {
   if (process.env.IS_OFFLINE) {
     console.log(event); // eslint-disable-line no-console
-  }
-
-  const authHeader = event.headers && event.headers.Authorization;
-  if (!(authHeader && validateAdminToken(authHeader))) {
-    return {
-      statusCode: 403,
-      body: JSON.stringify({
-        success: false,
-        error: ApiError.FORBIDDEN,
-      }),
-    };
   }
 
   const payload = parseBody(event.body);
   if (!payload) {
     return {
-      statusCode: 400,
-      body: JSON.stringify({
-        success: false,
-        error: ApiError.INVALID_BODY,
-      }),
+      success: false,
+      message: ApiError.INVALID_BODY,
     };
   }
 
@@ -88,21 +63,13 @@ export const broadcast: APIGatewayProxyHandler = async (event) => {
   });
   await Promise.all(proms);
   await closeRedisClient(redisClient);
-  return { statusCode: 200, body: JSON.stringify({ message: 'ok' }) };
+  return {
+    success: true,
+    message: 'ok',
+  };
 };
 
-export const multicast: APIGatewayProxyHandler = async (event) => {
-  const authHeader = event.headers && event.headers.Authorization;
-  if (!(authHeader && validateAdminToken(authHeader))) {
-    return {
-      statusCode: 403,
-      body: JSON.stringify({
-        success: false,
-        error: ApiError.FORBIDDEN,
-      }),
-    };
-  }
-
+export const multicast: Handler = async (event) => {
   const body = parseBody(event.body);
   const { value, error } = multicastSchema.validate(body, {
     abortEarly: false,
@@ -110,17 +77,9 @@ export const multicast: APIGatewayProxyHandler = async (event) => {
   });
 
   if (error) {
-    const details = error.details.map((err) => ({
-      message: err.message,
-      path: err.path,
-    }));
     return {
-      statusCode: 400,
-      body: JSON.stringify({
-        success: false,
-        error: ApiError.INVALID_BODY,
-        details,
-      }),
+      success: false,
+      message: ApiError.INVALID_BODY,
     };
   }
 
@@ -140,52 +99,31 @@ export const multicast: APIGatewayProxyHandler = async (event) => {
     }));
   }
 
-  // maybe Promise.all().then(() => return)?
   await Promise.all(proms);
   await closeRedisClient(redisClient);
   return {
-    statusCode: 200,
-    body: JSON.stringify({ message: 'sent' }),
+    success: true,
+    message: 'ok',
   };
 };
 
 // maybe allow disconnecting a single connection by id and not all wallet connections
-export const disconnect: APIGatewayProxyHandler = async (event) => {
-  const authHeader = event.headers && event.headers.Authorization;
-  if (!(authHeader && validateAdminToken(authHeader))) {
-    return {
-      statusCode: 403,
-      body: JSON.stringify({
-        success: false,
-        error: ApiError.FORBIDDEN,
-      }),
-    };
-  }
-
-  const body = parseBody(event.body);
-  const { value, error } = disconnectSchema.validate(body, {
+export const disconnect: Handler = async (event) => {
+  const { value, error } = disconnectSchema.validate(event, {
     abortEarly: false,
     convert: false,
   });
 
   if (error) {
-    const details = error.details.map((err) => ({
-      message: err.message,
-      path: err.path,
-    }));
     return {
-      statusCode: 400,
-      body: JSON.stringify({
-        success: false,
-        error: ApiError.INVALID_BODY,
-        details,
-      }),
+      success: false,
+      message: ApiError.INVALID_BODY,
     };
   }
 
   const wallets = value.wallets;
 
-  // for each wallet, get connections and send payload to each connection of each wallet
+  // for each wallet, get connections and disconnect each one
   const redisClient = getRedisClient();
   const proms = [];
   for (const walletId of wallets) {
@@ -197,12 +135,10 @@ export const disconnect: APIGatewayProxyHandler = async (event) => {
       return Promise.all(p);
     }));
   }
-
-  // maybe Promise.all().then(() => return)?
   await Promise.all(proms);
   await closeRedisClient(redisClient);
   return {
-    statusCode: 200,
-    body: JSON.stringify({ message: 'sent' }),
+    success: true,
+    message: 'ok',
   };
 };

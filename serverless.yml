@@ -113,14 +113,10 @@ functions:
       - websocket:
           route: $disconnect
       - websocket:
-          route: $default
-      - websocket:
           route: ping
   wsJoinChannel:
     handler: src/ws/joinChannel.handler
     events:
-      - websocket:
-          route: join
       - websocket:
           route: joinWallet
   wsTxNotifyNew:

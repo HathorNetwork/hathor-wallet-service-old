@@ -173,13 +173,13 @@ This action is idempotent, the lambda just responds with a `PONG` message.
 
 This action will subscribe the client to any updates of the wallet identified by the id on the body.
 
-#### WebSocker Action: New TX
+#### WebSocket Action: New TX
 - Trigger: SQS Event
 - When: A new tx is processed by the wallet-service
 - To: All wallets affected by the tx
 - body: The tx in JSON format
 
-#### WebSocker Action: New TX
+#### WebSocket Action: Update TX
 - Trigger: SQS Event
 - When: An update is made to a tx that was already processed
 - To: All wallets affected by the tx

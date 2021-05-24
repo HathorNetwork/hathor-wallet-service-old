@@ -6,7 +6,6 @@
  */
 
 import { APIGatewayProxyEvent } from 'aws-lambda';
-// import { APIGatewayProxyHandler } from 'aws-lambda';
 import { ServerlessMysql } from 'serverless-mysql';
 import { RedisClient } from 'redis';
 import Joi from 'joi';
@@ -14,7 +13,7 @@ import Joi from 'joi';
 import { closeDbConnection, getDbConnection } from '@src/utils';
 import {
   connectionInfoFromEvent,
-  sendAndReturn,
+  sendMessageToClient,
 } from '@src/ws/utils';
 import {
   getRedisClient,
@@ -51,23 +50,21 @@ const parseBody = (body: string) => {
 
 export const handler = async (
   event: APIGatewayProxyEvent,
-): Promise<{statusCode: number}> => {
+): Promise<void> => {
   const redisClient = getRedisClient();
   const routeKey = event.requestContext.routeKey;
   const connInfo = connectionInfoFromEvent(event);
 
   if (routeKey === 'join') {
-    await closeDbConnection(mysql);
-    return joinChannel(event, connInfo, redisClient);
+    await joinChannel(event, connInfo, redisClient);
   }
 
   if (routeKey === 'joinWallet') {
-    return joinWallet(event, connInfo, mysql, redisClient);
+    await joinWallet(event, connInfo, mysql, redisClient);
   }
 
   await closeDbConnection(mysql);
   await closeRedisClient(redisClient);
-  return { statusCode: 200 };
 };
 
 const joinWallet = async (
@@ -75,7 +72,7 @@ const joinWallet = async (
   connInfo: WsConnectionInfo,
   _mysql: ServerlessMysql,
   _client: RedisClient,
-): Promise<{statusCode: number}> => {
+): Promise<void> => {
   // parse body and extract wallet
   const body = parseBody(event.body);
   const { value, error } = joinWalletSchema.validate(body, {
@@ -84,11 +81,11 @@ const joinWallet = async (
   });
 
   if (error) {
-    // extract better error msg?
-    return sendAndReturn(connInfo, 400, {
+    await sendMessageToClient(connInfo, _client, {
       error: true,
       message: 'Invalid parameters',
-    }, _client, _mysql);
+    });
+    return;
   }
 
   const walletId = value.wallet;
@@ -98,23 +95,24 @@ const joinWallet = async (
   const wallet = getWallet(_mysql, walletId);
   if (wallet === null) {
     // wallet does not exist, but should we return an error?
-    return sendAndReturn(connInfo, 400, {
+    await sendMessageToClient(connInfo, _client, {
       error: true,
       message: 'Invalid parameters',
-    }, _client, _mysql);
+    });
+    return;
   }
 
   await wsJoinWallet(_client, connInfo, walletId);
-  return sendAndReturn(connInfo, 200, {
+  await sendMessageToClient(connInfo, _client, {
     message: `listening on events for ${walletId}`,
-  }, _client, _mysql);
+  });
 };
 
 const joinChannel = async (
   event: APIGatewayProxyEvent,
   connInfo: WsConnectionInfo,
   _client: RedisClient,
-): Promise<{statusCode: number}> => {
+): Promise<void> => {
   const body = parseBody(event.body);
   const { value, error } = joinSchema.validate(body, {
     abortEarly: false,
@@ -123,10 +121,11 @@ const joinChannel = async (
 
   if (error) {
     // extract better error msg?
-    return sendAndReturn(connInfo, 400, {
+    await sendMessageToClient(connInfo, _client, {
       error: true,
       message: 'Invalid parameters',
-    }, _client);
+    });
+    return;
   }
 
   const channel = value.channel;
@@ -136,15 +135,16 @@ const joinChannel = async (
   const protectedPrefixes = ['wallet-'];
   for (const prefix of protectedPrefixes) {
     if (channel.startsWith(prefix)) {
-      return sendAndReturn(connInfo, 400, {
+      await sendMessageToClient(connInfo, _client, {
         error: true,
-        message: 'Protected prefix',
-      }, _client);
+        message: 'Invalid parameters',
+      });
+      return;
     }
   }
 
   await wsJoinChannel(_client, connInfo, body.channel);
-  return sendAndReturn(connInfo, 200, {
+  await sendMessageToClient(connInfo, _client, {
     message: `joined channel ${body.channel}`,
-  }, _client);
+  });
 };
