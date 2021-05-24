@@ -412,12 +412,10 @@ test('searchForLatestValidBlock should find the first voided block', async () =>
 
   spy.mockImplementation(mockImplementation);
 
-  const mockData: Block[] = TX_IDS.map((tx, index) => {
-    return {
-      txId: tx,
-      height: index
-    };
-  });
+  const mockData: Block[] = TX_IDS.map((tx, index) => ({
+    txId: tx,
+    height: index,
+  }));
 
   await addToBlocksTable(mysql, mockData);
   await maybeUpdateLatestHeight(mysql, mockData.length - 1);

@@ -654,5 +654,5 @@ export const addToBlocksTable = async (
   await mysql.query(`
     INSERT INTO \`blocks\` (\`tx_id\`, \`height\`)
     VALUES ?`,
-  [entries.map(entry => [entry.txId, entry.height])]);
+  [entries.map((entry) => [entry.txId, entry.height])]);
 };
