@@ -10,7 +10,7 @@ import axios from 'axios';
 export const BASE_URL = process.env.DEFAULT_SERVER;
 export const TIMEOUT = 10000;
 
-export const create = (baseURL = BASE_URL) => {
+export const create = (baseURL = BASE_URL): any => {
   const api = axios.create({
     baseURL,
     headers: {},
@@ -27,6 +27,6 @@ export const create = (baseURL = BASE_URL) => {
   };
 
   return { downloadTx };
-}
+};
 
 export default create();
