@@ -7,7 +7,7 @@
 
 import { strict as assert } from 'assert';
 import { ServerlessMysql } from 'serverless-mysql';
-import { constants, walletUtils } from '@hathor/wallet-lib';
+import { walletUtils } from '@hathor/wallet-lib';
 
 import {
   AddressIndexMap,
@@ -566,7 +566,7 @@ export const addTx = async (
   const entry = [txId, confirmedAtHeight, timestamp, version];
 
   await mysql.query(
-    `INSERT INTO \`transaction\` (tx_id, confirmed_at_height, timestamp, version)
+    `INSERT INTO \`transaction\` (tx_id, height, timestamp, version)
      VALUES ?`,
     [[entry]],
   );
@@ -1574,7 +1574,7 @@ export const getTxProposalInputs = async (
 export const getTxsAfterHeight = async (
   mysql: ServerlessMysql,
   height: number,
-): Promise<Tx> => {
+): Promise<Tx[]> => {
   const results: DbSelectResult = await mysql.query(
     `SELECT *
        FROM \`transaction\`
@@ -1583,13 +1583,13 @@ export const getTxsAfterHeight = async (
   );
   const transactions = [];
 
-  for (const result in results) {
-    const tx: Tx  = {
-      txId: result.tx_id,
-      timestamp: result.timestamp,
-      version: result.version,
-      voided: result.voided,
-      height: result.height,
+  for (const result of results) {
+    const tx: Tx = {
+      txId: result.tx_id as string,
+      timestamp: result.timestamp as number,
+      version: result.version as number,
+      voided: result.voided as boolean,
+      height: result.height as number,
     };
 
     transactions.push(tx);
@@ -1609,7 +1609,8 @@ export const removeTxs = async (
   transactions: Tx[],
 ): Promise<void> => {
   const txIds = transactions.map((tx) => tx.txId);
-  const results: DbSelectResult = await mysql.query(
+
+  await mysql.query(
     `DELETE
        FROM \`transaction\`
       WHERE \`tx_id\` IN (?)`,
@@ -1663,13 +1664,13 @@ export const getTransactionsById = async (
   );
   const transactions = [];
 
-  for (const result in results) {
-    const tx: Tx  = {
-      txId: result.tx_id,
-      timestamp: result.timestamp,
-      version: result.version,
-      voided: result.voided,
-      height: result.height,
+  for (const result of results) {
+    const tx: Tx = {
+      txId: result.tx_id as string,
+      timestamp: result.timestamp as number,
+      version: result.version as number,
+      voided: result.voided as boolean,
+      height: result.height as number,
     };
 
     transactions.push(tx);
@@ -1737,5 +1738,31 @@ export const removeTxsHeight = async (
         SET \`height\` = NULL
       WHERE \`tx_id\` IN (?)`,
     [txIds],
+  );
+};
+
+export const deleteUtxos = async (
+  mysql: ServerlessMysql,
+  utxos: Utxo[],
+): Promise<void> => {
+  const txIds = utxos.map((tx) => tx.txId);
+
+  await mysql.query(`
+    DELETE
+      FROM \`utxo\`
+     WHERE \`tx_id\` IN (?)`,
+  [txIds]);
+};
+
+export const addBlock = async (
+  mysql: ServerlessMysql,
+  block: Block,
+): Promise<void> => {
+  const entry = { tx_id: block.txId, height: block.height };
+
+  await mysql.query(
+    `INSERT INTO \`blocks\`
+        SET ?`,
+    [entry],
   );
 };
