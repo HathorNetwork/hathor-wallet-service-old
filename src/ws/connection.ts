@@ -23,9 +23,6 @@ const mysql = getDbConnection();
 export const connect = async (
   event: APIGatewayProxyEvent,
 ): Promise<void> => {
-  if (process.env.IS_OFFLINE === 'true') {
-    console.log(event); // eslint-disable-line no-console
-  }
   const redisClient = getRedisClient();
   const routeKey = event.requestContext.routeKey;
   // info needed to send response to client
@@ -36,7 +33,6 @@ export const connect = async (
   }
 
   if (routeKey === '$disconnect') {
-    // remove connection from connPool
     await endWsConnection(redisClient, connInfo.id);
   }
 

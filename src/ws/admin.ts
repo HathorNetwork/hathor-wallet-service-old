@@ -44,10 +44,6 @@ const disconnectSchema = Joi.object({
 });
 
 export const broadcast: Handler = async (event) => {
-  if (process.env.IS_OFFLINE) {
-    console.log(event); // eslint-disable-line no-console
-  }
-
   const payload = parseBody(event.body);
   if (!payload) {
     return {
@@ -85,9 +81,9 @@ export const multicast: Handler = async (event) => {
   const wallets = value.wallets;
   const payload = value.payload;
 
-  // for each wallet, get connections and send payload to each connection of each wallet
   const redisClient = getRedisClient();
 
+  // for each wallet, get connections and send payload to each connection of each wallet
   await Promise.all(wallets.map((walletId) => (
     wsGetWalletConnections(redisClient, walletId).then((connections) => (
       Promise.all(connections.map((connInfo) => (
@@ -102,7 +98,6 @@ export const multicast: Handler = async (event) => {
   };
 };
 
-// maybe allow disconnecting a single connection by id and not all wallet connections
 export const disconnect: Handler = async (event) => {
   const { value, error } = disconnectSchema.validate(event, {
     abortEarly: false,

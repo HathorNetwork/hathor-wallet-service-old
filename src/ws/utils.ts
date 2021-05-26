@@ -7,15 +7,12 @@ import util from 'util';
 import { WsConnectionInfo } from '@src/types';
 import { endWsConnection } from '@src/redis';
 
-/*
- * TODO: make sure this would format connection url properly on the lambda
- *
- * */
 export const connectionInfoFromEvent = (
   event: APIGatewayProxyEvent,
 ): WsConnectionInfo => {
   const connID = event.requestContext.connectionId;
   if (process.env.IS_OFFLINE === 'true') {
+    // This will enter when running the service on serverless offline mode
     return {
       id: connID,
       url: 'http://localhost:3001',

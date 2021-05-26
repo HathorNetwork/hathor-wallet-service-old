@@ -64,9 +64,22 @@ export const onNewTx: SQSHandler = async (event) => {
 
     const wallets = value.wallets;
     const tx = value.tx;
-    promises.push(Promise.all(wallets.map((wallet) => notifyWallet(redisClient, wallet, tx))));
+
+    // This will create a promise that for each walletId on wallets it will search for all open connections
+    // and for each connection send the payload (the JSON representation of the tx) using sendMessageToClient
+    promises.push(
+      Promise.all(wallets.map((walletId) => (
+        wsGetWalletConnections(redisClient, walletId).then((connections) => (
+          Promise.all(connections.map((connInfo) => (
+            sendMessageToClient(redisClient, connInfo, tx)
+          )))
+        ))
+      ))),
+    );
   }
+  // Wait all messages from all events to be sent
   await Promise.all(promises);
+  // And close the redisClient
   await closeRedisClient(redisClient);
 };
 
@@ -89,22 +102,19 @@ export const onUpdateTx: SQSHandler = async (event) => {
 
     const wallets = value.wallets;
     const updateBody = value.update;
-    promises.push(Promise.all(wallets.map((wallet) => notifyWallet(redisClient, wallet, updateBody))));
+
+    // Same logic as onNewTx, but sending `updateBody` as payload
+    promises.push(
+      Promise.all(wallets.map((walletId) => (
+        wsGetWalletConnections(redisClient, walletId).then((connections) => (
+          Promise.all(connections.map((connInfo) => (
+            sendMessageToClient(redisClient, connInfo, updateBody)
+          )))
+        ))
+      ))),
+    );
   }
-  // await all messages from all events to be sent
+  // Wait all messages from all events to be sent
   await Promise.all(promises);
   await closeRedisClient(redisClient);
-};
-
-const notifyWallet = async (
-  client: RedisClient,
-  walletID: string,
-  payload: Transaction,
-): Promise<void[]> => {
-  const connections = await wsGetWalletConnections(client, walletID);
-  const proms = [];
-  connections.forEach((connInfo) => {
-    proms.push(sendMessageToClient(client, connInfo, payload));
-  });
-  return Promise.all(proms);
 };
