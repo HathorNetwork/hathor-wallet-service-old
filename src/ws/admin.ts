@@ -17,6 +17,7 @@ import {
 import {
   getRedisClient,
   closeRedisClient,
+  wsGetConnection,
   wsGetAllConnections,
   wsGetWalletConnections,
 } from '@src/redis';
@@ -37,7 +38,7 @@ const multicastSchema = Joi.object({
 });
 
 const disconnectSchema = Joi.object({
-  wallets: Joi.array()
+  connections: Joi.array()
     .items(Joi.string())
     .required(),
 });
@@ -57,11 +58,9 @@ export const broadcast: Handler = async (event) => {
 
   const redisClient = getRedisClient();
   const connections = await wsGetAllConnections(redisClient);
-  const proms = [];
-  connections.forEach((connInfo) => {
-    proms.push(sendMessageToClient(connInfo, redisClient, payload));
-  });
-  await Promise.all(proms);
+  await Promise.all(connections.map((connInfo) => (
+    sendMessageToClient(redisClient, connInfo, payload)
+  )));
   await closeRedisClient(redisClient);
   return {
     success: true,
@@ -88,18 +87,14 @@ export const multicast: Handler = async (event) => {
 
   // for each wallet, get connections and send payload to each connection of each wallet
   const redisClient = getRedisClient();
-  const proms = [];
-  for (const walletId of wallets) {
-    proms.push(wsGetWalletConnections(redisClient, walletId).then((connections) => {
-      const p = [];
-      connections.forEach((connInfo) => {
-        p.push(sendMessageToClient(connInfo, redisClient, payload));
-      });
-      return Promise.all(p);
-    }));
-  }
 
-  await Promise.all(proms);
+  await Promise.all(wallets.map((walletId) => (
+    wsGetWalletConnections(redisClient, walletId).then((connections) => (
+      Promise.all(connections.map((connInfo) => (
+        sendMessageToClient(redisClient, connInfo, payload)
+      )))
+    ))
+  )));
   await closeRedisClient(redisClient);
   return {
     success: true,
@@ -121,21 +116,12 @@ export const disconnect: Handler = async (event) => {
     };
   }
 
-  const wallets = value.wallets;
+  const connectionIds = value.connections;
 
-  // for each wallet, get connections and disconnect each one
   const redisClient = getRedisClient();
-  const proms = [];
-  for (const walletId of wallets) {
-    proms.push(wsGetWalletConnections(redisClient, walletId).then((connections) => {
-      const p = [];
-      connections.forEach((connInfo) => {
-        p.push(disconnectClient(connInfo, redisClient));
-      });
-      return Promise.all(p);
-    }));
-  }
-  await Promise.all(proms);
+  await Promise.all(connectionIds.map((connId) => (
+    wsGetConnection(redisClient, connId).then((connURL) => disconnectClient(redisClient, { id: connId, url: connURL }))
+  )));
   await closeRedisClient(redisClient);
   return {
     success: true,

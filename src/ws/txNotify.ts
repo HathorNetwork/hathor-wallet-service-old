@@ -10,6 +10,7 @@ import { RedisClient } from 'redis';
 import Joi from 'joi';
 
 import { sendMessageToClient } from '@src/ws/utils';
+import { Transaction } from '@src/types';
 import {
   wsGetWalletConnections,
   getRedisClient,
@@ -98,12 +99,12 @@ export const onUpdateTx: SQSHandler = async (event) => {
 const notifyWallet = async (
   client: RedisClient,
   walletID: string,
-  payload: any, // eslint-disable-line @typescript-eslint/no-explicit-any
+  payload: Transaction,
 ): Promise<void[]> => {
   const connections = await wsGetWalletConnections(client, walletID);
   const proms = [];
   connections.forEach((connInfo) => {
-    proms.push(sendMessageToClient(connInfo, client, payload));
+    proms.push(sendMessageToClient(client, connInfo, payload));
   });
   return Promise.all(proms);
 };

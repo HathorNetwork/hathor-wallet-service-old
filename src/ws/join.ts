@@ -19,24 +19,16 @@ import {
   getRedisClient,
   closeRedisClient,
   wsJoinWallet,
-  wsJoinChannel,
 } from '@src/redis';
 import { WsConnectionInfo } from '@src/types';
 import { getWallet } from '@src/db';
 
 const mysql = getDbConnection();
 
-const joinWalletSchema = Joi.object({
-  action: Joi.string()
-    .required(),
-  wallet: Joi.string()
-    .required(),
-});
-
 const joinSchema = Joi.object({
   action: Joi.string()
     .required(),
-  channel: Joi.string()
+  id: Joi.string()
     .required(),
 });
 
@@ -56,10 +48,6 @@ export const handler = async (
   const connInfo = connectionInfoFromEvent(event);
 
   if (routeKey === 'join') {
-    await joinChannel(event, connInfo, redisClient);
-  }
-
-  if (routeKey === 'joinWallet') {
     await joinWallet(event, connInfo, mysql, redisClient);
   }
 
@@ -75,76 +63,37 @@ const joinWallet = async (
 ): Promise<void> => {
   // parse body and extract wallet
   const body = parseBody(event.body);
-  const { value, error } = joinWalletSchema.validate(body, {
-    abortEarly: false,
-    convert: true,
-  });
-
-  if (error) {
-    await sendMessageToClient(connInfo, _client, {
-      error: true,
-      message: 'Invalid parameters',
-    });
-    return;
-  }
-
-  const walletId = value.wallet;
-
-  // validate walletID
-  // verify ownership of wallet
-  const wallet = getWallet(_mysql, walletId);
-  if (wallet === null) {
-    // wallet does not exist, but should we return an error?
-    await sendMessageToClient(connInfo, _client, {
-      error: true,
-      message: 'Invalid parameters',
-    });
-    return;
-  }
-
-  await wsJoinWallet(_client, connInfo, walletId);
-  await sendMessageToClient(connInfo, _client, {
-    message: `listening on events for ${walletId}`,
-  });
-};
-
-const joinChannel = async (
-  event: APIGatewayProxyEvent,
-  connInfo: WsConnectionInfo,
-  _client: RedisClient,
-): Promise<void> => {
-  const body = parseBody(event.body);
   const { value, error } = joinSchema.validate(body, {
     abortEarly: false,
     convert: true,
   });
 
   if (error) {
-    // extract better error msg?
-    await sendMessageToClient(connInfo, _client, {
-      error: true,
+    await sendMessageToClient(_client, connInfo, {
+      success: false,
       message: 'Invalid parameters',
     });
     return;
   }
 
-  const channel = value.channel;
+  const walletId = value.id;
 
-  // TODO: validate channel
-  // Protected prefixes: 'wallet-'
-  const protectedPrefixes = ['wallet-'];
-  for (const prefix of protectedPrefixes) {
-    if (channel.startsWith(prefix)) {
-      await sendMessageToClient(connInfo, _client, {
-        error: true,
-        message: 'Invalid parameters',
-      });
-      return;
-    }
+  // validate walletID
+  // verify ownership of wallet
+  const wallet = await getWallet(_mysql, walletId);
+  if (wallet === null) {
+    // wallet does not exist, but should we return an error?
+    await sendMessageToClient(_client, connInfo, {
+      success: false,
+      message: 'Invalid parameters',
+    });
+    return;
   }
 
-  await wsJoinChannel(_client, connInfo, body.channel);
-  await sendMessageToClient(connInfo, _client, {
-    message: `joined channel ${body.channel}`,
+  await wsJoinWallet(_client, connInfo, walletId);
+  await sendMessageToClient(_client, connInfo, {
+    success: true,
+    message: 'Listening',
+    id: walletId,
   });
 };

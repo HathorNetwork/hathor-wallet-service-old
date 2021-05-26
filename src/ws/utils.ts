@@ -1,13 +1,11 @@
 import { APIGatewayProxyEvent } from 'aws-lambda';
-import { ServerlessMysql } from 'serverless-mysql';
 import { RedisClient } from 'redis';
 
 import AWS from 'aws-sdk';
 import util from 'util';
 
 import { WsConnectionInfo } from '@src/types';
-import { closeDbConnection } from '@src/utils';
-import { closeRedisClient, endWsConnection } from '@src/redis';
+import { endWsConnection } from '@src/redis';
 
 /*
  * TODO: make sure this would format connection url properly on the lambda
@@ -32,15 +30,15 @@ export const connectionInfoFromEvent = (
 };
 
 export const sendMessageToClient = async (
-  connInfo: WsConnectionInfo,
   client: RedisClient,
+  connInfo: WsConnectionInfo,
   payload: any, // eslint-disable-line @typescript-eslint/explicit-module-boundary-types, @typescript-eslint/no-explicit-any
 ): Promise<any> => new Promise((resolve, reject) => { // eslint-disable-line @typescript-eslint/no-explicit-any
-  const apigatewaymanagementapi = new AWS.ApiGatewayManagementApi({
+  const apiGwClient = new AWS.ApiGatewayManagementApi({
     apiVersion: '2018-11-29',
     endpoint: connInfo.url,
   });
-  apigatewaymanagementapi.postToConnection(
+  apiGwClient.postToConnection(
     {
       ConnectionId: connInfo.id,
       Data: JSON.stringify(payload),
@@ -60,14 +58,14 @@ export const sendMessageToClient = async (
 });
 
 export const disconnectClient = async (
-  connInfo: WsConnectionInfo,
   client: RedisClient,
+  connInfo: WsConnectionInfo,
 ): Promise<any> => new Promise((resolve, reject) => { // eslint-disable-line @typescript-eslint/no-explicit-any
-  const apigatewaymanagementapi = new AWS.ApiGatewayManagementApi({
+  const apiGwClient = new AWS.ApiGatewayManagementApi({
     apiVersion: '2018-11-29',
     endpoint: connInfo.url,
   });
-  apigatewaymanagementapi.deleteConnection(
+  apiGwClient.deleteConnection(
     {
       ConnectionId: connInfo.id,
     },
@@ -84,21 +82,3 @@ export const disconnectClient = async (
     },
   );
 });
-
-export const sendAndReturn = async (
-  connInfo: WsConnectionInfo,
-  statusCode: number,
-  payload: any, // eslint-disable-line @typescript-eslint/explicit-module-boundary-types, @typescript-eslint/no-explicit-any
-  redisClient?: RedisClient,
-  mysql?: ServerlessMysql,
-): Promise<{statusCode: number}> => {
-  if (mysql) {
-    await closeDbConnection(mysql);
-  }
-  await sendMessageToClient(connInfo, redisClient, payload);
-  // sendMessage may use redisClient, so we need to close after sending message
-  if (redisClient) {
-    await closeRedisClient(redisClient);
-  }
-  return { statusCode };
-};

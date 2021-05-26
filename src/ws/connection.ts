@@ -6,7 +6,6 @@
  */
 
 import { APIGatewayProxyEvent } from 'aws-lambda';
-
 import {
   connectionInfoFromEvent,
   sendMessageToClient,
@@ -17,6 +16,9 @@ import {
   initWsConnection,
   endWsConnection,
 } from '@src/redis';
+import { closeDbConnection, getDbConnection } from '@src/utils';
+
+const mysql = getDbConnection();
 
 export const connect = async (
   event: APIGatewayProxyEvent,
@@ -39,8 +41,9 @@ export const connect = async (
   }
 
   if (routeKey === 'ping') {
-    await sendMessageToClient(connInfo, redisClient, { message: 'PONG' });
+    await sendMessageToClient(redisClient, connInfo, { message: 'PONG' });
   }
 
   await closeRedisClient(redisClient);
+  await closeDbConnection(mysql);
 };
