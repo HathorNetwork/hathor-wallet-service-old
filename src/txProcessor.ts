@@ -29,6 +29,7 @@ import {
   storeTokenInformation,
   updateAddressTablesWithTx,
   updateWalletTablesWithTx,
+  fetchTx,
 } from '@src/db';
 import {
   StringMap,
@@ -36,6 +37,7 @@ import {
   TokenBalanceMap,
   Wallet,
   Block,
+  Tx,
 } from '@src/types';
 import { closeDbConnection, getDbConnection, getUnixTimestamp } from '@src/utils';
 import { searchForLatestValidBlock, handleReorg } from '@src/commons';
@@ -138,16 +140,30 @@ export const addNewTx = async (tx: Transaction, now: number, blockRewardLock: nu
   const txId = tx.tx_id;
   const network = process.env.NETWORK;
 
-  if (txId === '4d0989ff58c5abe4bf19c58645923f4afbd0c3e88d4e40b1ac6f6c87a0ec63f0') {
-    process.exit(1);
-  }
-
   // we should ignore genesis transactions as they have no parents, inputs and outputs and we expect the service
   // to already have the pre-mine utxos on its database.
   if (network in IGNORE_TXS) {
     if (IGNORE_TXS[network].includes(txId)) {
       throw new Error('Rejecting tx as it is part of the genesis transactions.');
     }
+  }
+
+  const dbTx: Tx = await fetchTx(mysql, txId);
+
+  // check if we already have the tx on our database:
+  if (dbTx) {
+    // ignore tx if we already have it confirmed on our database
+    if (dbTx.height) {
+      console.log(`Ignoring txid: ${txId} as we already have it confirmed on our database`);
+      return;
+    }
+
+    // set height and break out because it was already on the mempool
+    // so we can consider that our balances have already been calculated
+    // and the utxos were already inserted
+    await addTx(mysql, txId, tx.height, tx.timestamp, tx.version);
+
+    return;
   }
 
   let heightlock = null;
@@ -183,7 +199,6 @@ export const addNewTx = async (tx: Transaction, now: number, blockRewardLock: nu
 
   // add outputs to utxo table
   markLockedOutputs(tx.outputs, now, heightlock !== null);
-  // console.log('TX HEIGHT: ', tx.height);
   await addTx(mysql, txId, tx.height, tx.timestamp, tx.version);
   await addUtxos(mysql, txId, tx.outputs, heightlock);
 
