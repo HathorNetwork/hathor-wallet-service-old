@@ -33,6 +33,8 @@ import {
   FullNodeVersionData,
   Block,
   Tx,
+  AddressBalance,
+  AddressTotalBalance,
 } from '@src/types';
 
 import { getUnixTimestamp, isAuthority } from '@src/utils';
@@ -536,11 +538,13 @@ export const addUtxos = async (
     },
   );
 
+  // we are safe to ignore duplicates because our transaction might have already been in the mempool
   await mysql.query(
     `INSERT INTO \`utxo\` (\`tx_id\`, \`index\`, \`token_id\`,
                            \`value\`, \`authorities\`, \`address\`,
                            \`timelock\`, \`heightlock\`, \`locked\`)
-     VALUES ?`,
+     VALUES ?
+     ON DUPLICATE KEY UPDATE tx_id=tx_id`,
     [entries],
   );
 };
@@ -559,16 +563,17 @@ export const addUtxos = async (
 export const addTx = async (
   mysql: ServerlessMysql,
   txId: string,
-  confirmedAtHeight: number,
+  height: number,
   timestamp: number,
   version: number,
 ): Promise<void> => {
-  const entry = [txId, confirmedAtHeight, timestamp, version];
+  const entries = [[txId, height, timestamp, version]];
 
   await mysql.query(
     `INSERT INTO \`transaction\` (tx_id, height, timestamp, version)
-     VALUES ?`,
-    [[entry]],
+     VALUES ?
+         ON DUPLICATE KEY UPDATE height = ?`,
+    [entries, height],
   );
 };
 
@@ -839,6 +844,7 @@ export const updateAddressTablesWithTx = async (
       entries.push([address, txId, token, tokenBalance.total(), timestamp]);
     }
   }
+
   await mysql.query(
     `INSERT INTO \`address_tx_history\`(\`address\`, \`tx_id\`,
                                         \`token_id\`, \`balance\`,
@@ -1279,7 +1285,7 @@ export const getVersionData = async (mysql: ServerlessMysql): Promise<FullNodeVe
  * @returns The latest height
  */
 export const getLatestHeight = async (mysql: ServerlessMysql): Promise<number> => {
-  const results: DbSelectResult = await mysql.query('SELECT * FROM `metadata` WHERE `key` = \'height\'');
+  const results: DbSelectResult = await mysql.query('SELECT MAX(`height`) as value FROM `blocks`');
   if (results.length > 0) {
     return results[0].value as number;
   }
@@ -1598,26 +1604,6 @@ export const getTxsAfterHeight = async (
   return transactions;
 };
 
-/**
- * Deletes transactions from the database
- *
- * @param mysql - Database connection
- * @param transactions - The list of transactions to remove from database
- */
-export const removeTxs = async (
-  mysql: ServerlessMysql,
-  transactions: Tx[],
-): Promise<void> => {
-  const txIds = transactions.map((tx) => tx.txId);
-
-  await mysql.query(
-    `DELETE
-       FROM \`transaction\`
-      WHERE \`tx_id\` IN (?)`,
-    [txIds],
-  );
-};
-
 export const getTxOutputs = async (
   mysql: ServerlessMysql,
   transactions: Tx[],
@@ -1765,4 +1751,215 @@ export const addBlock = async (
         SET ?`,
     [entry],
   );
+};
+
+export const deleteBlocksAfterHeight = async (
+  mysql: ServerlessMysql,
+  height: number,
+): Promise<void> => {
+  await mysql.query(
+    `DELETE FROM \`blocks\`
+      WHERE height > ?`,
+    [height],
+  );
+};
+
+/**
+ * Deletes transactions from the database
+ *
+ * @param mysql - Database connection
+ * @param transactions - The list of transactions to remove from database
+ */
+export const removeTxs = async (
+  mysql: ServerlessMysql,
+  transactions: Tx[],
+): Promise<void> => {
+  const txIds = transactions.map((tx) => tx.txId);
+
+  await mysql.query(
+    `DELETE
+       FROM \`transaction\`
+      WHERE \`tx_id\` IN (?)`,
+    [txIds],
+  );
+};
+
+export const removeAddressTxHistory = async (
+  mysql: ServerlessMysql,
+  transactions: Tx[],
+): Promise<void> => {
+  const txIds = transactions.map((tx) => tx.txId);
+
+  await mysql.query(
+    `DELETE
+       FROM \`address_tx_history\`
+      WHERE \`tx_id\` IN (?)`,
+    [txIds],
+  );
+};
+
+export const removeWalletTxHistory = async (
+  mysql: ServerlessMysql,
+  transactions: Tx[],
+): Promise<void> => {
+  const txIds = transactions.map((tx) => tx.txId);
+
+  await mysql.query(
+    `DELETE
+       FROM \`wallet_tx_history\`
+      WHERE \`tx_id\` IN (?)`,
+    [txIds],
+  );
+};
+
+export const rebuildAddressBalancesFromUtxos = async (
+  mysql: ServerlessMysql,
+  addresses: string[],
+): Promise<void> => {
+  // delete affected address_balances
+  await mysql.query(
+    `DELETE
+       FROM \`address_balance\`
+      WHERE \`address\` IN (?)`,
+    [addresses],
+  );
+
+  // update address balances with unlocked utxos
+  await mysql.query(`
+    INSERT INTO address_balance (
+      \`address\`,
+      \`token_id\`,
+      \`unlocked_balance\`,
+      \`locked_balance\`,
+      \`unlocked_authorities\`,
+      \`locked_authorities\`,
+      \`timelock_expires\`,
+      \`transactions\`
+    )
+     SELECT address,
+            token_id,
+            SUM(\`value\`), -- unlocked_balance
+            0,
+            BIT_OR(\`authorities\`), -- unlocked_authorities
+            0, -- locked_authorities
+            0, -- timelock_expires
+            COUNT(\`tx_id\`) -- transactions
+       FROM utxo
+      WHERE heightlock IS NULL
+        AND timelock IS NULL
+        AND spent_by IS NULL
+        AND address IN (?)
+   GROUP BY address, token_id
+  `, [addresses]);
+
+  // update address balances with locked utxos
+  await mysql.query(`
+    INSERT INTO \`address_balance\` (
+      \`address\`,
+      \`token_id\`,
+      \`unlocked_balance\`,
+      \`locked_balance\`,
+      \`locked_authorities\`,
+      \`timelock_expires\`,
+      \`transactions\`
+    )
+       SELECT address,
+              token_id,
+              0 AS unlocked_balance,
+              SUM(\`value\`) AS locked_balance,
+              BIT_OR(\`authorities\`) AS locked_authorities,
+              MIN(\`timelock\`) AS timelock_expires,
+              0 as transactions
+         FROM \`utxo\`
+        WHERE (\`heightlock\` IS NOT NULL
+           OR \`timelock\` IS NOT NULL)
+          AND spent_by IS NULL
+          AND address IN (?)
+     GROUP BY \`address\`, \`token_id\`
+   ON DUPLICATE KEY UPDATE
+    locked_balance = VALUES(locked_balance),
+    locked_authorities = VALUES(locked_authorities),
+    timelock_expires = VALUES(timelock_expires),
+    transactions = transactions + 1
+   `, [addresses]);
+};
+
+export const fetchTx = async (
+  mysql: ServerlessMysql,
+  txId: string,
+): Promise<Tx> => {
+  const results: DbSelectResult = await mysql.query(
+    `SELECT *
+       FROM \`transaction\`
+      WHERE \`tx_id\` = ?`,
+    [txId],
+  );
+
+  if (results.length === 0) {
+    return null;
+  }
+
+  const result = results[0];
+
+  const tx: Tx = {
+    txId: result.tx_id as string,
+    timestamp: result.timestamp as number,
+    version: result.version as number,
+    voided: result.voided as boolean,
+    height: result.height as number,
+  };
+
+  return tx;
+};
+
+export const fetchAddressBalance = async (
+  mysql: ServerlessMysql,
+  addresses: string[],
+): Promise<AddressBalance[]> => {
+  const results: DbSelectResult = await mysql.query(
+    `SELECT *
+       FROM \`address_balance\`
+      WHERE \`address\` IN (?)
+   ORDER BY \`address\`, \`token_id\``,
+    [addresses],
+  );
+
+  return results.map((result): AddressBalance => {
+    return {
+      address: result.address as string,
+      tokenId: result.token_id as string,
+      unlockedBalance: result.unlocked_balance as number,
+      lockedBalance: result.locked_balance as number,
+      lockedAuthorities: result.locked_authorities as number,
+      unlockedAuthorities: result.unlocked_authorities as number,
+      timelockExpires: result.timelock_expires as number,
+      transactions: result.transactions as number,
+    };
+  });
+};
+
+export const fetchAddressTxHistorySum = async (
+  mysql: ServerlessMysql,
+  addresses: string[],
+): Promise<AddressTotalBalance[]> => {
+  const results: DbSelectResult = await mysql.query(
+    `SELECT address,
+            token_id,
+            SUM(\`balance\`) AS balance,
+            COUNT(\`tx_id\`) AS transactions
+       FROM \`address_tx_history\`
+      WHERE \`address\` IN (?)
+   GROUP BY address, token_id
+   ORDER BY address, token_id`,
+    [addresses],
+  );
+
+  return results.map((result): AddressTotalBalance => {
+    return {
+      address: result.address as string,
+      tokenId: result.token_id as string,
+      balance: result.balance as number,
+      transactions: result.transactions as number,
+    };
+  });
 };
