@@ -6,6 +6,7 @@
  */
 
 import { ServerlessMysql } from 'serverless-mysql';
+import { strict as assert } from 'assert';
 
 import {
   getAddressWalletInfo,
@@ -26,6 +27,12 @@ import {
   unspendUtxos,
   deleteUtxos,
   getTransactionsById,
+  deleteBlocksAfterHeight,
+  removeWalletTxHistory,
+  removeAddressTxHistory,
+  rebuildAddressBalancesFromUtxos,
+  fetchAddressBalance,
+  fetchAddressTxHistorySum,
 } from '@src/db';
 import {
   DecodedOutput,
@@ -39,6 +46,8 @@ import {
   Block,
   WalletTokenBalance,
   FullNodeVersionData,
+  AddressBalance,
+  AddressTotalBalance,
 } from '@src/types';
 
 import {
@@ -313,19 +322,24 @@ export const searchForLatestValidBlock = async (mysql: ServerlessMysql): Promise
 export const handleReorg = async (mysql: ServerlessMysql): Promise<void> => {
   const { height } = await searchForLatestValidBlock(mysql);
 
-  // step 1: fetch all block transactions where height > latestValidBlock
+  console.log('Deleting blocks after height', height);
+  // remove blocks where height > latestValidBlock
+  await deleteBlocksAfterHeight(mysql, height);
+
+  // fetch all block transactions where height > latestValidBlock
   const allTxsAfterHeight = await getTxsAfterHeight(mysql, height);
   let txs: Tx[] = allTxsAfterHeight.filter((tx) => [
     hathorLib.constants.BLOCK_VERSION,
     hathorLib.constants.MERGED_MINED_BLOCK_VERSION,
   ].indexOf(tx.version) > -1);
 
-  console.log(`All blocks where height > ${height}`);
-  console.log(txs);
+  let removedUtxoList: Utxo[] = [];
 
   while (txs.length > 0) {
     console.log(`Removing ${txs.length} transactions...`);
     await removeTxs(mysql, txs);
+    await removeWalletTxHistory(mysql, txs);
+    await removeAddressTxHistory(mysql, txs);
 
     const txOutputs: Utxo[] = await getTxOutputs(mysql, txs); // "A" Outputs
 
@@ -339,6 +353,8 @@ export const handleReorg = async (mysql: ServerlessMysql): Promise<void> => {
     // delete tx outputs:
     console.log(`Deleting ${txOutputs.length} utxos...`);
     await deleteUtxos(mysql, txOutputs);
+
+    removedUtxoList = [...removedUtxoList, ...txOutputs];
 
     // get outputs that were spent in txOutputs
     const spentOutputs: Utxo[] = await getTxOutputsBySpent(mysql, [...txIds]);
@@ -356,5 +372,29 @@ export const handleReorg = async (mysql: ServerlessMysql): Promise<void> => {
   if (remainingTxs.length > 0) {
     console.log(`Removing ${remainingTxs.length} remainingTxs...`);
     await removeTxsHeight(mysql, remainingTxs);
+  }
+
+  // fetch all addresses affected by the reorg
+  const affectedAddresses = removedUtxoList.reduce((acc: Set<string>, utxo: Utxo) => acc.add(utxo.address), new Set<string>());
+
+  if (affectedAddresses.size > 0) {
+    const addresses = [...affectedAddresses];
+    await rebuildAddressBalancesFromUtxos(mysql, addresses);
+
+    const addressBalances: AddressBalance[] = await fetchAddressBalance(mysql, addresses);
+    const addressTxHistorySums: AddressTotalBalance[] = await fetchAddressTxHistorySum(mysql, addresses);
+
+    // if we have the full history of transactions, the number of rows must match:
+    assert.strictEqual(addressBalances.length, addressTxHistorySums.length);
+
+    for (let i = 0; i < addressTxHistorySums.length; i++) {
+      const addressBalance: AddressBalance = addressBalances[i];
+      const addressTxHistorySum: AddressTotalBalance = addressTxHistorySums[i];
+
+      assert.strictEqual(addressBalance.tokenId, addressTxHistorySum.tokenId);
+
+      // balances must match
+      assert.strictEqual(addressBalance.unlockedBalance + addressBalance.lockedBalance, addressTxHistorySum.balance);
+    }
   }
 };

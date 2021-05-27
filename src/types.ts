@@ -562,5 +562,23 @@ export interface Tx {
   timestamp: number;
   version: number;
   voided: boolean;
-  height: number;
+  height?: number | null;
+}
+
+export interface AddressBalance {
+  address: string;
+  tokenId: string;
+  unlockedBalance: number;
+  lockedBalance: number;
+  unlockedAuthorities: number;
+  lockedAuthorities: number;
+  timelockExpires: number;
+  transactions: number;
+}
+
+export interface AddressTotalBalance {
+  address: string;
+  tokenId: string;
+  balance: number;
+  transactions: number;
 }
