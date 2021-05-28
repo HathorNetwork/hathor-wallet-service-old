@@ -613,7 +613,11 @@ export const getUtxos = async (
   const utxos = [];
   const entries = utxosInfo.map((utxo) => [utxo.txId, utxo.index]);
   const results: DbSelectResult = await mysql.query(
-    'SELECT * FROM `utxo` WHERE (`tx_id`, `index`) IN (?)',
+    `SELECT *
+       FROM \`utxo\`
+      WHERE (\`tx_id\`, \`index\`)
+         IN (?)
+        AND \`spent_by\` IS NULL`,
     [entries],
   );
   for (const result of results) {
@@ -665,6 +669,7 @@ export const getWalletSortedValueUtxos = async (
         AND \`authorities\` = 0
         AND \`locked\` = FALSE
         AND \`tx_proposal\` IS NULL
+        AND \`spent_by\` IS NULL
    ORDER BY \`value\`
        DESC`,
     [walletId, tokenId],
@@ -699,7 +704,8 @@ export const unlockUtxos = async (mysql: ServerlessMysql, utxos: Utxo[]): Promis
     `UPDATE \`utxo\`
         SET \`locked\` = FALSE
       WHERE (\`tx_id\` ,\`index\`)
-         IN (?)`,
+         IN (?)
+        AND \`spent_by\` IS NULL`,
     [entries],
   );
 };
@@ -729,7 +735,8 @@ export const getLockedUtxoFromInputs = async (mysql: ServerlessMysql, inputs: Tx
          FROM \`utxo\`
         WHERE (\`tx_id\` ,\`index\`)
            IN (?)
-          AND \`locked\` = TRUE`,
+          AND \`locked\` = TRUE
+          AND \`spent_by\` IS NULL`,
       [entries],
     );
 
@@ -830,6 +837,7 @@ export const updateAddressTablesWithTx = async (
                  WHERE \`address\` = ?
                    AND \`token_id\` = ?
                    AND \`locked\` = FALSE
+                   AND \`spent_by\` IS NULL
               )
             WHERE \`address\` = ?
               AND \`token_id\` = ?`,
@@ -896,7 +904,8 @@ export const updateAddressLockedBalance = async (
                   FROM \`utxo\`
                  WHERE \`address\` = ?
                    AND \`token_id\` = ?
-                   AND \`locked\` = TRUE)
+                   AND \`locked\` = TRUE
+                   AND \`spent_by\` IS NULL)
                  WHERE \`address\` = ?
                    AND \`token_id\` = ?`,
           [address, token, address, token],
@@ -913,6 +922,7 @@ export const updateAddressLockedBalance = async (
                 WHERE \`address\` = ?
                   AND \`token_id\` = ?
                   AND \`locked\` = TRUE
+                  AND \`spent_by\` IS NULL
              )
            WHERE \`address\` = ?
              AND \`token_id\` = ?`,
