@@ -33,7 +33,6 @@ import {
 } from '@tests/utils';
 import {
   updateVersionData,
-  maybeUpdateLatestHeight,
 } from '@src/db';
 
 import * as Utils from '@src/utils';
@@ -418,7 +417,6 @@ test('searchForLatestValidBlock should find the first voided block', async () =>
   }));
 
   await addToBlocksTable(mysql, mockData);
-  await maybeUpdateLatestHeight(mysql, mockData.length - 1);
 
   const result = await searchForLatestValidBlock(mysql);
 
