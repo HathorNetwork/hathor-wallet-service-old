@@ -420,5 +420,5 @@ test('searchForLatestValidBlock should find the first voided block', async () =>
 
   const result = await searchForLatestValidBlock(mysql);
 
-  expect(result.txId).toStrictEqual('0000000f1fbb4bd8a8e71735af832be210ac9a6c1e2081b21faeea3c0f5797f7');
+  expect(result.txId).toStrictEqual('000005cbcb8b29f74446a260cd7d36fab3cba1295ac9fe904795d7b064e0e53c');
 });
