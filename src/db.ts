@@ -1934,18 +1934,16 @@ export const fetchAddressBalance = async (
     [addresses],
   );
 
-  return results.map((result): AddressBalance => {
-    return {
-      address: result.address as string,
-      tokenId: result.token_id as string,
-      unlockedBalance: result.unlocked_balance as number,
-      lockedBalance: result.locked_balance as number,
-      lockedAuthorities: result.locked_authorities as number,
-      unlockedAuthorities: result.unlocked_authorities as number,
-      timelockExpires: result.timelock_expires as number,
-      transactions: result.transactions as number,
-    };
-  });
+  return results.map((result): AddressBalance => ({
+    address: result.address as string,
+    tokenId: result.token_id as string,
+    unlockedBalance: result.unlocked_balance as number,
+    lockedBalance: result.locked_balance as number,
+    lockedAuthorities: result.locked_authorities as number,
+    unlockedAuthorities: result.unlocked_authorities as number,
+    timelockExpires: result.timelock_expires as number,
+    transactions: result.transactions as number,
+  }));
 };
 
 export const fetchAddressTxHistorySum = async (
@@ -1964,12 +1962,10 @@ export const fetchAddressTxHistorySum = async (
     [addresses],
   );
 
-  return results.map((result): AddressTotalBalance => {
-    return {
-      address: result.address as string,
-      tokenId: result.token_id as string,
-      balance: result.balance as number,
-      transactions: result.transactions as number,
-    };
-  });
+  return results.map((result): AddressTotalBalance => ({
+    address: result.address as string,
+    tokenId: result.token_id as string,
+    balance: result.balance as number,
+    transactions: result.transactions as number,
+  }));
 };
