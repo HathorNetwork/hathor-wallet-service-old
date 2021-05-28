@@ -12,7 +12,7 @@ import {
   Authorities,
   Balance,
   TokenBalanceMap,
-  Utxo,
+  DbTxOutput,
   Block,
 } from '@src/types';
 import { closeDbConnection, getDbConnection } from '@src/utils';
@@ -244,7 +244,7 @@ test('unlockUtxos', async () => {
     transactions: 5,
   }]);
 
-  const utxo: Utxo = {
+  const utxo: DbTxOutput = {
     txId: txId1,
     index: 0,
     tokenId: token,

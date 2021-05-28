@@ -79,21 +79,6 @@ export interface TokenBalance {
   transactions: number;
 }
 
-export interface Utxo {
-  txId: string;
-  index: number;
-  tokenId: string;
-  address: string;
-  value: number;
-  authorities: number;
-  timelock: number | null;
-  heightlock: number | null;
-  locked: boolean;
-  spentBy?: string | null;
-  txProposalId?: string;
-  txProposalIndex?: number;
-}
-
 export class TokenInfo {
   id: string;
 
@@ -581,4 +566,19 @@ export interface AddressTotalBalance {
   tokenId: string;
   balance: number;
   transactions: number;
+}
+
+export interface DbTxOutput {
+  txId: string;
+  index: number;
+  tokenId: string;
+  address: string;
+  value: number;
+  authorities: number;
+  timelock: number | null;
+  heightlock: number | null;
+  locked: boolean;
+  spentBy?: string | null;
+  txProposalId?: string;
+  txProposalIndex?: number;
 }
