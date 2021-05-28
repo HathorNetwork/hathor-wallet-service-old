@@ -24,7 +24,6 @@ import {
   getAddressWalletInfo,
   getLockedUtxoFromInputs,
   getUtxosLockedAtHeight,
-  maybeUpdateLatestHeight,
   removeUtxos,
   storeTokenInformation,
   updateAddressTablesWithTx,
@@ -182,9 +181,6 @@ export const addNewTx = async (tx: Transaction, now: number, blockRewardLock: nu
     };
 
     await addBlock(mysql, block);
-
-    // update height on database
-    await maybeUpdateLatestHeight(mysql, tx.height);
   }
 
   if (tx.version === hathorLib.constants.CREATE_TOKEN_TX_VERSION) {

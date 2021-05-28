@@ -1215,20 +1215,6 @@ export const getWalletUnlockedUtxos = async (
 };
 
 /**
- * Update height info on database, if given value is larger than the stored one.
- *
- * @param mysql - Database connection
- * @param height - The block height
- */
-export const maybeUpdateLatestHeight = async (mysql: ServerlessMysql, height: number): Promise<void> => {
-  const entry = { key: 'height', value: height };
-  await mysql.query(
-    'INSERT INTO `metadata` SET ? ON DUPLICATE KEY UPDATE `value` = GREATEST(`value`, VALUES(`value`))',
-    [entry],
-  );
-};
-
-/**
  * Update latest version_data on the database
  *
  * @param mysql - Database connection

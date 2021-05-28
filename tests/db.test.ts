@@ -26,7 +26,6 @@ import {
   initWalletBalance,
   initWalletTxHistory,
   markUtxosWithProposalId,
-  maybeUpdateLatestHeight,
   removeTxProposalOutputs,
   removeUtxos,
   storeTokenInformation,
@@ -39,6 +38,7 @@ import {
   updateWalletStatus,
   updateWalletTablesWithTx,
   updateVersionData,
+  addBlock,
 } from '@src/db';
 import {
   Authorities,
@@ -912,16 +912,20 @@ test('updateWalletLockedBalance', async () => {
   await expect(checkWalletBalanceTable(mysql, 3, wallet1, tokenId, 25, 5, now, 5, 0b11, 0b01)).resolves.toBe(true);
 });
 
-test('maybeUpdateLatestHeight and getLatestHeight', async () => {
+test('addBlock and getLatestHeight', async () => {
   expect.hasAssertions();
+
+  await addBlock(mysql, { txId: 'txId1', height: 0 });
 
   expect(await getLatestHeight(mysql)).toBe(0);
 
-  await maybeUpdateLatestHeight(mysql, 5);
+  await addBlock(mysql, { txId: 'txId2', height: 5 });
+
   expect(await getLatestHeight(mysql)).toBe(5);
 
-  await maybeUpdateLatestHeight(mysql, 3);
-  expect(await getLatestHeight(mysql)).toBe(5);
+  await addBlock(mysql, { txId: 'txId3', height: 7 });
+
+  expect(await getLatestHeight(mysql)).toBe(7);
 });
 
 test('storeTokenInformation and getTokenInformation', async () => {
