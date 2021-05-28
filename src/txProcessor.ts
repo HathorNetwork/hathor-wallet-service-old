@@ -15,6 +15,8 @@ import {
   getWalletBalanceMap,
   markLockedOutputs,
   unlockUtxos,
+  searchForLatestValidBlock,
+  handleReorg,
 } from '@src/commons';
 import {
   addNewAddresses,
@@ -40,7 +42,6 @@ import {
   Tx,
 } from '@src/types';
 import { closeDbConnection, getDbConnection, getUnixTimestamp } from '@src/utils';
-import { searchForLatestValidBlock, handleReorg } from '@src/commons';
 
 const mysql = getDbConnection();
 
@@ -144,6 +145,7 @@ export const addNewTx = async (tx: Transaction, now: number, blockRewardLock: nu
   // to already have the pre-mine utxos on its database.
   if (network in IGNORE_TXS) {
     if (IGNORE_TXS[network].includes(txId)) {
+      console.log('Ignoring tx');
       throw new Error('Rejecting tx as it is part of the genesis transactions.');
     }
   }
@@ -154,7 +156,6 @@ export const addNewTx = async (tx: Transaction, now: number, blockRewardLock: nu
   if (dbTx) {
     // ignore tx if we already have it confirmed on our database
     if (dbTx.height) {
-      console.log(`Ignoring txid: ${txId} as we already have it confirmed on our database`);
       return;
     }
 
