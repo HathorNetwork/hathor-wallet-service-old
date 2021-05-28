@@ -540,7 +540,7 @@ export const addUtxos = async (
 
   // we are safe to ignore duplicates because our transaction might have already been in the mempool
   await mysql.query(
-    `INSERT INTO \`utxo\` (\`tx_id\`, \`index\`, \`token_id\`,
+    `INSERT INTO \`tx_output\` (\`tx_id\`, \`index\`, \`token_id\`,
                            \`value\`, \`authorities\`, \`address\`,
                            \`timelock\`, \`heightlock\`, \`locked\`)
      VALUES ?
@@ -1382,9 +1382,13 @@ export const getUnusedAddresses = async (mysql: ServerlessMysql, walletId: strin
  * @param utxos - The UTXOs to be marked with the proposal id
  */
 export const markUtxosWithProposalId = async (mysql: ServerlessMysql, txProposalId: string, utxos: DbTxOutput[]): Promise<void> => {
-  const entries = utxos.map((utxo, index) => ([utxo.txId, utxo.index, '', '', 0, 0, null, null, false, txProposalId, index]));
+  const entries = utxos.map((utxo, index) => ([utxo.txId, utxo.index, '', '', 0, 0, null, null, false, txProposalId, index, null]));
   await mysql.query(
-    'INSERT INTO `tx_output` VALUES ? ON DUPLICATE KEY UPDATE `tx_proposal` = VALUES(`tx_proposal`), `tx_proposal_index` = VALUES(`tx_proposal_index`)',
+    `INSERT INTO \`tx_output\`
+          VALUES ?
+              ON DUPLICATE KEY\
+          UPDATE \`tx_proposal\` = VALUES(\`tx_proposal\`),
+                 \`tx_proposal_index\` = VALUES(\`tx_proposal_index\`)`,
     [entries],
   );
 };
