@@ -57,7 +57,7 @@ export const cleanDatabase = async (mysql: ServerlessMysql): Promise<void> => {
     'token',
     'tx_proposal',
     'tx_proposal_outputs',
-    'utxo',
+    'tx_output',
     'version_data',
     'wallet',
     'wallet_balance',
@@ -115,7 +115,7 @@ export const checkUtxoTable = async (
   locked?: boolean,
 ): Promise<boolean | Record<string, unknown>> => {
   // first check the total number of rows in the table
-  let results: DbSelectResult = await mysql.query('SELECT * FROM `utxo` WHERE spent_by IS NULL');
+  let results: DbSelectResult = await mysql.query('SELECT * FROM `tx_output` WHERE spent_by IS NULL');
   if (results.length !== totalResults) {
     return {
       error: 'checkUtxoTable total results',
@@ -130,7 +130,7 @@ export const checkUtxoTable = async (
   // now fetch the exact entry
   const baseQuery = `
     SELECT *
-      FROM \`utxo\`
+      FROM \`tx_output\`
      WHERE \`tx_id\` = ?
        AND \`index\` = ?
        AND \`token_id\` = ?
@@ -452,7 +452,7 @@ export const addToUtxoTable = async (
   entries: unknown[][],
 ): Promise<void> => {
   await mysql.query(
-    `INSERT INTO \`utxo\`(\`tx_id\`, \`index\`,
+    `INSERT INTO \`tx_output\`(\`tx_id\`, \`index\`,
                           \`token_id\`, \`address\`,
                           \`value\`, \`authorities\`,
                           \`timelock\`, \`heightlock\`,
