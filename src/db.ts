@@ -590,7 +590,7 @@ export const removeUtxos = async (mysql: ServerlessMysql, inputs: TxInput[], txI
   if (entries.length) {
     // get the rows before deleting
     await mysql.query(
-      `UPDATE \`utxo\`
+      `UPDATE \`tx_output\`
           SET \`spent_by\` = ?
         WHERE (\`tx_id\` ,\`index\`)
            IN (?)`,
@@ -614,7 +614,7 @@ export const getUtxos = async (
   const entries = utxosInfo.map((utxo) => [utxo.txId, utxo.index]);
   const results: DbSelectResult = await mysql.query(
     `SELECT *
-       FROM \`utxo\`
+       FROM \`tx_output\`
       WHERE (\`tx_id\`, \`index\`)
          IN (?)
         AND \`spent_by\` IS NULL`,
@@ -658,7 +658,7 @@ export const getWalletSortedValueUtxos = async (
   const utxos = [];
   const results: DbSelectResult = await mysql.query(
     `SELECT *
-       FROM \`utxo\`
+       FROM \`tx_output\`
       WHERE \`address\`
          IN (
            SELECT \`address\`
@@ -701,7 +701,7 @@ export const unlockUtxos = async (mysql: ServerlessMysql, utxos: DbTxOutput[]): 
   if (utxos.length === 0) return;
   const entries = utxos.map((utxo) => [utxo.txId, utxo.index]);
   await mysql.query(
-    `UPDATE \`utxo\`
+    `UPDATE \`tx_output\`
         SET \`locked\` = FALSE
       WHERE (\`tx_id\` ,\`index\`)
          IN (?)
@@ -732,7 +732,7 @@ export const getLockedUtxoFromInputs = async (mysql: ServerlessMysql, inputs: Tx
     // get the rows before deleting
     const results: DbSelectResult = await mysql.query(
       `SELECT *
-         FROM \`utxo\`
+         FROM \`tx_output\`
         WHERE (\`tx_id\` ,\`index\`)
            IN (?)
           AND \`locked\` = TRUE
@@ -833,7 +833,7 @@ export const updateAddressTablesWithTx = async (
           `UPDATE \`address_balance\`
               SET \`unlocked_authorities\` = (
                 SELECT BIT_OR(\`authorities\`)
-                  FROM \`utxo\`
+                  FROM \`tx_output\`
                  WHERE \`address\` = ?
                    AND \`token_id\` = ?
                    AND \`locked\` = FALSE
@@ -901,7 +901,7 @@ export const updateAddressLockedBalance = async (
           `UPDATE \`address_balance\`
               SET \`locked_authorities\` = (
                 SELECT BIT_OR(\`authorities\`)
-                  FROM \`utxo\`
+                  FROM \`tx_output\`
                  WHERE \`address\` = ?
                    AND \`token_id\` = ?
                    AND \`locked\` = TRUE
@@ -918,7 +918,7 @@ export const updateAddressLockedBalance = async (
           UPDATE \`address_balance\`
              SET \`timelock_expires\` = (
                SELECT MIN(\`timelock\`)
-                 FROM \`utxo\`
+                 FROM \`tx_output\`
                 WHERE \`address\` = ?
                   AND \`token_id\` = ?
                   AND \`locked\` = TRUE
@@ -1136,7 +1136,7 @@ export const getUtxosLockedAtHeight = async (
   if (height >= 0) {
     const results: DbSelectResult = await mysql.query(
       `SELECT *
-         FROM \`utxo\`
+         FROM \`tx_output\`
         WHERE \`heightlock\` <= ?
           AND \`spent_by\` IS NULL
           AND (\`timelock\` <= ?
@@ -1184,7 +1184,7 @@ export const getWalletUnlockedUtxos = async (
   const utxos = [];
   const results: DbSelectResult = await mysql.query(
     `SELECT *
-       FROM \`utxo\`
+       FROM \`tx_output\`
       WHERE (\`heightlock\` <= ?
              OR \`heightlock\` is NULL)
         AND (\`timelock\` <= ?
@@ -1398,7 +1398,7 @@ export const getUnusedAddresses = async (mysql: ServerlessMysql, walletId: strin
 export const markUtxosWithProposalId = async (mysql: ServerlessMysql, txProposalId: string, utxos: DbTxOutput[]): Promise<void> => {
   const entries = utxos.map((utxo, index) => ([utxo.txId, utxo.index, '', '', 0, 0, null, null, false, txProposalId, index]));
   await mysql.query(
-    'INSERT INTO `utxo` VALUES ? ON DUPLICATE KEY UPDATE `tx_proposal` = VALUES(`tx_proposal`), `tx_proposal_index` = VALUES(`tx_proposal_index`)',
+    'INSERT INTO `tx_output` VALUES ? ON DUPLICATE KEY UPDATE `tx_proposal` = VALUES(`tx_proposal`), `tx_proposal_index` = VALUES(`tx_proposal_index`)',
     [entries],
   );
 };
@@ -1545,7 +1545,7 @@ export const releaseTxProposalUtxos = async (
   txProposalId: string,
 ): Promise<void> => {
   await mysql.query(
-    'UPDATE `utxo` SET `tx_proposal` = NULL, `tx_proposal_index` = NULL WHERE `tx_proposal` = ?',
+    'UPDATE `tx_output` SET `tx_proposal` = NULL, `tx_proposal_index` = NULL WHERE `tx_proposal` = ?',
     [txProposalId],
   );
 };
@@ -1566,7 +1566,7 @@ export const getTxProposalInputs = async (
 ): Promise<IWalletInput[]> => {
   const inputs = [];
   const results: DbSelectResult = await mysql.query(
-    'SELECT * FROM `utxo` WHERE `tx_proposal` = ? ORDER BY `tx_proposal_index` ASC',
+    'SELECT * FROM `tx_output` WHERE `tx_proposal` = ? ORDER BY `tx_proposal_index` ASC',
     [txProposalId],
   );
   for (const result of results) {
@@ -1621,7 +1621,7 @@ export const getTxOutputs = async (
   const txIds = transactions.map((tx) => tx.txId);
   const results: DbSelectResult = await mysql.query(
     `SELECT *
-       FROM \`utxo\`
+       FROM \`tx_output\`
       WHERE \`tx_id\` IN (?)`,
     [txIds],
   );
@@ -1681,7 +1681,7 @@ export const getTxOutputsBySpent = async (
 ): Promise<DbTxOutput[]> => {
   const results: DbSelectResult = await mysql.query(
     `SELECT *
-       FROM \`utxo\`
+       FROM \`tx_output\`
       WHERE \`spent_by\` IN (?)`,
     [txIds],
   );
@@ -1716,7 +1716,7 @@ export const unspendUtxos = async (
   const txIds = utxos.map((utxo) => utxo.txId);
 
   await mysql.query(
-    `UPDATE \`utxo\`
+    `UPDATE \`tx_output\`
         SET \`spent_by\` = NULL
       WHERE \`tx_id\` IN (?)`,
     [txIds],
@@ -1745,7 +1745,7 @@ export const deleteUtxos = async (
 
   await mysql.query(`
     DELETE
-      FROM \`utxo\`
+      FROM \`tx_output\`
      WHERE \`tx_id\` IN (?)`,
   [txIds]);
 };
@@ -1854,7 +1854,7 @@ export const rebuildAddressBalancesFromUtxos = async (
             0, -- locked_authorities
             0, -- timelock_expires
             COUNT(\`tx_id\`) -- transactions
-       FROM utxo
+       FROM \`tx_output\`
       WHERE heightlock IS NULL
         AND timelock IS NULL
         AND spent_by IS NULL
@@ -1880,7 +1880,7 @@ export const rebuildAddressBalancesFromUtxos = async (
               BIT_OR(\`authorities\`) AS locked_authorities,
               MIN(\`timelock\`) AS timelock_expires,
               0 as transactions
-         FROM \`utxo\`
+         FROM \`tx_output\`
         WHERE (\`heightlock\` IS NOT NULL
            OR \`timelock\` IS NOT NULL)
           AND spent_by IS NULL
