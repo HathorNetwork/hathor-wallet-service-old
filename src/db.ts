@@ -26,7 +26,7 @@ import {
   TxProposal,
   TxProposalStatus,
   TxTokenBalance,
-  Utxo,
+  DbTxOutput,
   Wallet,
   WalletStatus,
   WalletTokenBalance,
@@ -609,7 +609,7 @@ export const removeUtxos = async (mysql: ServerlessMysql, inputs: TxInput[], txI
 export const getUtxos = async (
   mysql: ServerlessMysql,
   utxosInfo: IWalletInput[],
-): Promise<Utxo[]> => {
+): Promise<DbTxOutput[]> => {
   const utxos = [];
   const entries = utxosInfo.map((utxo) => [utxo.txId, utxo.index]);
   const results: DbSelectResult = await mysql.query(
@@ -621,7 +621,7 @@ export const getUtxos = async (
     [entries],
   );
   for (const result of results) {
-    const utxo: Utxo = {
+    const utxo: DbTxOutput = {
       txId: result.tx_id as string,
       index: result.index as number,
       tokenId: result.token_id as string,
@@ -654,7 +654,7 @@ export const getWalletSortedValueUtxos = async (
   mysql: ServerlessMysql,
   walletId: string,
   tokenId: string,
-): Promise<Utxo[]> => {
+): Promise<DbTxOutput[]> => {
   const utxos = [];
   const results: DbSelectResult = await mysql.query(
     `SELECT *
@@ -675,7 +675,7 @@ export const getWalletSortedValueUtxos = async (
     [walletId, tokenId],
   );
   for (const result of results) {
-    const utxo: Utxo = {
+    const utxo: DbTxOutput = {
       txId: result.tx_id as string,
       index: result.index as number,
       tokenId: result.token_id as string,
@@ -697,7 +697,7 @@ export const getWalletSortedValueUtxos = async (
  * @param mysql - Database connection
  * @param utxos - List of UTXOs to unlock
  */
-export const unlockUtxos = async (mysql: ServerlessMysql, utxos: Utxo[]): Promise<void> => {
+export const unlockUtxos = async (mysql: ServerlessMysql, utxos: DbTxOutput[]): Promise<void> => {
   if (utxos.length === 0) return;
   const entries = utxos.map((utxo) => [utxo.txId, utxo.index]);
   await mysql.query(
@@ -725,7 +725,7 @@ export const unlockUtxos = async (mysql: ServerlessMysql, utxos: Utxo[]): Promis
  * @param inputs - The transaction inputs
  * @returns The locked UTXOs
  */
-export const getLockedUtxoFromInputs = async (mysql: ServerlessMysql, inputs: TxInput[]): Promise<Utxo[]> => {
+export const getLockedUtxoFromInputs = async (mysql: ServerlessMysql, inputs: TxInput[]): Promise<DbTxOutput[]> => {
   const entries = inputs.map((input) => [input.tx_id, input.index]);
   // entries might be empty if there are no inputs
   if (entries.length) {
@@ -1131,7 +1131,7 @@ export const getUtxosLockedAtHeight = async (
   mysql: ServerlessMysql,
   now: number,
   height: number,
-): Promise<Utxo[]> => {
+): Promise<DbTxOutput[]> => {
   const utxos = [];
   if (height >= 0) {
     const results: DbSelectResult = await mysql.query(
@@ -1145,7 +1145,7 @@ export const getUtxosLockedAtHeight = async (
       [height, now],
     );
     for (const result of results) {
-      const utxo: Utxo = {
+      const utxo: DbTxOutput = {
         txId: result.tx_id as string,
         index: result.index as number,
         tokenId: result.token_id as string,
@@ -1180,7 +1180,7 @@ export const getWalletUnlockedUtxos = async (
   walletId: string,
   now: number,
   currentHeight: number,
-): Promise<Utxo[]> => {
+): Promise<DbTxOutput[]> => {
   const utxos = [];
   const results: DbSelectResult = await mysql.query(
     `SELECT *
@@ -1198,7 +1198,7 @@ export const getWalletUnlockedUtxos = async (
     [currentHeight, now, walletId],
   );
   for (const result of results) {
-    const utxo: Utxo = {
+    const utxo: DbTxOutput = {
       txId: result.tx_id as string,
       index: result.index as number,
       tokenId: result.token_id as string,
@@ -1395,7 +1395,7 @@ export const getUnusedAddresses = async (mysql: ServerlessMysql, walletId: strin
  * @param txProposalId - The transaction proposal id
  * @param utxos - The UTXOs to be marked with the proposal id
  */
-export const markUtxosWithProposalId = async (mysql: ServerlessMysql, txProposalId: string, utxos: Utxo[]): Promise<void> => {
+export const markUtxosWithProposalId = async (mysql: ServerlessMysql, txProposalId: string, utxos: DbTxOutput[]): Promise<void> => {
   const entries = utxos.map((utxo, index) => ([utxo.txId, utxo.index, '', '', 0, 0, null, null, false, txProposalId, index]));
   await mysql.query(
     'INSERT INTO `utxo` VALUES ? ON DUPLICATE KEY UPDATE `tx_proposal` = VALUES(`tx_proposal`), `tx_proposal_index` = VALUES(`tx_proposal_index`)',
@@ -1617,7 +1617,7 @@ export const getTxsAfterHeight = async (
 export const getTxOutputs = async (
   mysql: ServerlessMysql,
   transactions: Tx[],
-): Promise<Utxo[]> => {
+): Promise<DbTxOutput[]> => {
   const txIds = transactions.map((tx) => tx.txId);
   const results: DbSelectResult = await mysql.query(
     `SELECT *
@@ -1628,7 +1628,7 @@ export const getTxOutputs = async (
 
   const utxos = [];
   for (const result of results) {
-    const utxo: Utxo = {
+    const utxo: DbTxOutput = {
       txId: result.tx_id as string,
       index: result.index as number,
       tokenId: result.token_id as string,
@@ -1678,7 +1678,7 @@ export const getTransactionsById = async (
 export const getTxOutputsBySpent = async (
   mysql: ServerlessMysql,
   txIds: string[],
-): Promise<Utxo[]> => {
+): Promise<DbTxOutput[]> => {
   const results: DbSelectResult = await mysql.query(
     `SELECT *
        FROM \`utxo\`
@@ -1688,7 +1688,7 @@ export const getTxOutputsBySpent = async (
 
   const utxos = [];
   for (const result of results) {
-    const utxo: Utxo = {
+    const utxo: DbTxOutput = {
       txId: result.tx_id as string,
       index: result.index as number,
       tokenId: result.token_id as string,
@@ -1711,7 +1711,7 @@ export const getTxOutputsBySpent = async (
 
 export const unspendUtxos = async (
   mysql: ServerlessMysql,
-  utxos: Utxo[],
+  utxos: DbTxOutput[],
 ): Promise<void> => {
   const txIds = utxos.map((utxo) => utxo.txId);
 
@@ -1739,7 +1739,7 @@ export const removeTxsHeight = async (
 
 export const deleteUtxos = async (
   mysql: ServerlessMysql,
-  utxos: Utxo[],
+  utxos: DbTxOutput[],
 ): Promise<void> => {
   const txIds = utxos.map((tx) => tx.txId);
 

@@ -40,7 +40,7 @@ import {
   TokenBalanceMap,
   TxInput,
   TxOutput,
-  Utxo,
+  DbTxOutput,
   Tx,
   Wallet,
   Block,
@@ -66,7 +66,7 @@ const VERSION_CHECK_MAX_DIFF = 60 * 60 * 1000; // 1 hour
  * @param utxos - List of UTXOs that are unlocked by height
  * @param updateTimelocks - If this update is triggered by a timelock expiring, update the next lock expiration
  */
-export const unlockUtxos = async (mysql: ServerlessMysql, utxos: Utxo[], updateTimelocks: boolean): Promise<void> => {
+export const unlockUtxos = async (mysql: ServerlessMysql, utxos: DbTxOutput[], updateTimelocks: boolean): Promise<void> => {
   if (utxos.length === 0) return;
 
   const outputs: TxOutput[] = utxos.map((utxo) => {
@@ -75,6 +75,7 @@ export const unlockUtxos = async (mysql: ServerlessMysql, utxos: Utxo[], updateT
       address: utxo.address,
       timelock: utxo.timelock,
     };
+
     return {
       value: utxo.authorities > 0 ? utxo.authorities : utxo.value,
       token: utxo.tokenId,
@@ -333,7 +334,7 @@ export const handleReorg = async (mysql: ServerlessMysql): Promise<void> => {
     hathorLib.constants.MERGED_MINED_BLOCK_VERSION,
   ].indexOf(tx.version) > -1);
 
-  let removedUtxoList: Utxo[] = [];
+  let removedUtxoList: DbTxOutput[] = [];
 
   while (txs.length > 0) {
     console.log(`Removing ${txs.length} transactions...`);
@@ -341,10 +342,10 @@ export const handleReorg = async (mysql: ServerlessMysql): Promise<void> => {
     await removeWalletTxHistory(mysql, txs);
     await removeAddressTxHistory(mysql, txs);
 
-    const txOutputs: Utxo[] = await getTxOutputs(mysql, txs); // "A" Outputs
+    const txOutputs: DbTxOutput[] = await getTxOutputs(mysql, txs); // "A" Outputs
 
     // txOutputs might contain more than one output that spend from the same tx
-    const txIds = txOutputs.reduce((acc: Set<string>, utxo: Utxo) => {
+    const txIds = txOutputs.reduce((acc: Set<string>, utxo: DbTxOutput) => {
       acc.add(utxo.spentBy);
 
       return acc;
@@ -357,7 +358,7 @@ export const handleReorg = async (mysql: ServerlessMysql): Promise<void> => {
     removedUtxoList = [...removedUtxoList, ...txOutputs];
 
     // get outputs that were spent in txOutputs
-    const spentOutputs: Utxo[] = await getTxOutputsBySpent(mysql, [...txIds]);
+    const spentOutputs: DbTxOutput[] = await getTxOutputsBySpent(mysql, [...txIds]);
     if (spentOutputs.length > 0) {
       console.log(`Unspending ${spentOutputs.length} outputs...`);
       await unspendUtxos(mysql, spentOutputs);
@@ -375,7 +376,7 @@ export const handleReorg = async (mysql: ServerlessMysql): Promise<void> => {
   }
 
   // fetch all addresses affected by the reorg
-  const affectedAddresses = removedUtxoList.reduce((acc: Set<string>, utxo: Utxo) => acc.add(utxo.address), new Set<string>());
+  const affectedAddresses = removedUtxoList.reduce((acc: Set<string>, utxo: DbTxOutput) => acc.add(utxo.address), new Set<string>());
 
   if (affectedAddresses.size > 0) {
     const addresses = [...affectedAddresses];
