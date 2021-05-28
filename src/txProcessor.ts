@@ -166,17 +166,15 @@ const addNewTx = async (tx: Transaction, now: number, blockRewardLock: number) =
   await updateWalletTablesWithTx(mysql, txId, tx.timestamp, walletBalanceMap);
 
   const queueUrl = process.env.NEW_TX_SQS;
-  if (!queueUrl) {
-    const sqs = new AWS.SQS({ apiVersion: '2012-11-05' });
-    const params = {
-      // MessageGroupId: 'cv',
-      // MessageDeduplicationId: '',
-      MessageBody: JSON.stringify({
-        wallets: Array.from(seenWallets),
-        tx,
-      }),
-      QueueUrl: queueUrl,
-    };
-    await sqs.sendMessage(params).promise();
-  }
+  if (!queueUrl) return;
+
+  const sqs = new AWS.SQS({ apiVersion: '2012-11-05' });
+  const params = {
+    MessageBody: JSON.stringify({
+      wallets: Array.from(seenWallets),
+      tx,
+    }),
+    QueueUrl: queueUrl,
+  };
+  await sqs.sendMessage(params).promise();
 };
