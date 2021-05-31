@@ -1604,6 +1604,14 @@ export const getTxsAfterHeight = async (
   return transactions;
 };
 
+/**
+ * Get a list of all tx outputs from transactions
+ *
+ * @param mysql - Database connection
+ * @param transactions - The list of transactions
+
+ * @returns A list of tx outputs
+ */
 export const getTxOutputs = async (
   mysql: ServerlessMysql,
   transactions: Tx[],
@@ -1638,6 +1646,14 @@ export const getTxOutputs = async (
   return utxos;
 };
 
+/**
+ * Get a list of transactions from their txIds
+ *
+ * @param mysql - Database connection
+ * @param txIds - The list of transaction ids
+
+ * @returns A list of transactions
+ */
 export const getTransactionsById = async (
   mysql: ServerlessMysql,
   txIds: string[],
@@ -1665,6 +1681,14 @@ export const getTransactionsById = async (
   return transactions;
 };
 
+/**
+ * Get a list of tx outputs from their spent_by txId
+ *
+ * @param mysql - Database connection
+ * @param txIds - The list of transactions that spent the tx_outputs we are querying
+
+ * @returns A list of tx_outputs
+ */
 export const getTxOutputsBySpent = async (
   mysql: ServerlessMysql,
   txIds: string[],
@@ -1699,11 +1723,17 @@ export const getTxOutputsBySpent = async (
   return utxos;
 };
 
+/**
+ * Set a list of tx_outputs as unspent
+ *
+ * @param mysql - Database connection
+ * @param txOutputs - The list of tx_outputs to unspend
+ */
 export const unspendUtxos = async (
   mysql: ServerlessMysql,
-  utxos: DbTxOutput[],
+  txOutputs: DbTxOutput[],
 ): Promise<void> => {
-  const txIds = utxos.map((utxo) => utxo.txId);
+  const txIds = txOutputs.map((txOutput) => txOutput.txId);
 
   await mysql.query(
     `UPDATE \`tx_output\`
@@ -1713,6 +1743,12 @@ export const unspendUtxos = async (
   );
 };
 
+/**
+ * Remove height from transactions we want to send back to the `mempool`
+ *
+ * @param mysql - Database connection
+ * @param txs - The list of transactions to remove height
+ */
 export const removeTxsHeight = async (
   mysql: ServerlessMysql,
   txs: Tx[],
@@ -1727,6 +1763,12 @@ export const removeTxsHeight = async (
   );
 };
 
+/**
+ * Deletes utxos from the tx_outputs table
+ *
+ * @param mysql - Database connection
+ * @param utxos - The list of utxos to delete from the database
+ */
 export const deleteUtxos = async (
   mysql: ServerlessMysql,
   utxos: DbTxOutput[],
@@ -1740,6 +1782,12 @@ export const deleteUtxos = async (
   [txIds]);
 };
 
+/**
+ * Inserts a block on the database
+ *
+ * @param mysql - Database connection
+ * @param block - The `Block` to insert
+ */
 export const addBlock = async (
   mysql: ServerlessMysql,
   block: Block,
@@ -1753,6 +1801,12 @@ export const addBlock = async (
   );
 };
 
+/**
+ * Delete all blocks starting from a given height
+ *
+ * @param mysql - Database connection
+ * @param height - The height to start deleting from
+ */
 export const deleteBlocksAfterHeight = async (
   mysql: ServerlessMysql,
   height: number,
@@ -1784,6 +1838,12 @@ export const removeTxs = async (
   );
 };
 
+/**
+ * Remove all records from address_tx_history that belong to the transaction list
+ *
+ * @param mysql - Database connection
+ * @param transactions - The list of transactions to search
+ */
 export const removeAddressTxHistory = async (
   mysql: ServerlessMysql,
   transactions: Tx[],
@@ -1798,6 +1858,12 @@ export const removeAddressTxHistory = async (
   );
 };
 
+/**
+ * Remove all records from wallet_tx_history that belong to the transaction list
+ *
+ * @param mysql - Database connection
+ * @param transactions - The list of transactions to search
+ */
 export const removeWalletTxHistory = async (
   mysql: ServerlessMysql,
   transactions: Tx[],
@@ -1812,6 +1878,13 @@ export const removeWalletTxHistory = async (
   );
 };
 
+/**
+ * Rebuilds the address_balance table for the given addresses from
+ * the tx_output table
+
+ * @param mysql - Database connection
+ * @param addresses - The list of addresses to rebuild
+ */
 export const rebuildAddressBalancesFromUtxos = async (
   mysql: ServerlessMysql,
   addresses: string[],
@@ -1884,6 +1957,12 @@ export const rebuildAddressBalancesFromUtxos = async (
    `, [addresses]);
 };
 
+/**
+ * Retrieves a transaction from the database given a txId
+ *
+ * @param mysql - Database connection
+ * @param txId - The transaction id to search for
+ */
 export const fetchTx = async (
   mysql: ServerlessMysql,
   txId: string,
