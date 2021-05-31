@@ -99,7 +99,7 @@ CREATE TABLE `tx_proposal_outputs` (
   PRIMARY KEY (`tx_proposal_id`,`index`)
 );
 
-CREATE TABLE `utxo` (
+CREATE TABLE `tx_output` (
   `tx_id` varchar(64) NOT NULL,
   `index` tinyint unsigned NOT NULL,
   `token_id` varchar(64) NOT NULL,
