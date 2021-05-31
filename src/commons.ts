@@ -305,8 +305,6 @@ export const searchForLatestValidBlock = async (mysql: ServerlessMysql): Promise
     const middleBlock: Block = await getBlockByHeight(mysql, midHeight);
     const isVoided: boolean = await checkBlockForVoided(middleBlock.txId);
 
-    console.log(middleBlock.txId, middleBlock.height, isVoided);
-
     if (!isVoided) {
       // Not voided, discard left half as all blocks to the left should
       // be valid, the reorg happened after this height.
@@ -323,7 +321,6 @@ export const searchForLatestValidBlock = async (mysql: ServerlessMysql): Promise
 export const handleReorg = async (mysql: ServerlessMysql): Promise<void> => {
   const { height } = await searchForLatestValidBlock(mysql);
 
-  console.log('Deleting blocks after height', height);
   // remove blocks where height > latestValidBlock
   await deleteBlocksAfterHeight(mysql, height);
 
@@ -337,7 +334,6 @@ export const handleReorg = async (mysql: ServerlessMysql): Promise<void> => {
   let removedUtxoList: DbTxOutput[] = [];
 
   while (txs.length > 0) {
-    console.log(`Removing ${txs.length} transactions...`);
     await removeTxs(mysql, txs);
     await removeWalletTxHistory(mysql, txs);
     await removeAddressTxHistory(mysql, txs);
@@ -352,7 +348,6 @@ export const handleReorg = async (mysql: ServerlessMysql): Promise<void> => {
     }, new Set<string>());
 
     // delete tx outputs:
-    console.log(`Deleting ${txOutputs.length} utxos...`);
     await deleteUtxos(mysql, txOutputs);
 
     removedUtxoList = [...removedUtxoList, ...txOutputs];
@@ -360,7 +355,6 @@ export const handleReorg = async (mysql: ServerlessMysql): Promise<void> => {
     // get outputs that were spent in txOutputs
     const spentOutputs: DbTxOutput[] = await getTxOutputsBySpent(mysql, [...txIds]);
     if (spentOutputs.length > 0) {
-      console.log(`Unspending ${spentOutputs.length} outputs...`);
       await unspendUtxos(mysql, spentOutputs);
     }
 
@@ -371,7 +365,6 @@ export const handleReorg = async (mysql: ServerlessMysql): Promise<void> => {
   // get all remaining txs and set height = null (mempool)
   const remainingTxs: Tx[] = await getTxsAfterHeight(mysql, height);
   if (remainingTxs.length > 0) {
-    console.log(`Removing ${remainingTxs.length} remainingTxs...`);
     await removeTxsHeight(mysql, remainingTxs);
   }
 

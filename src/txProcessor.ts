@@ -144,7 +144,6 @@ export const addNewTx = async (tx: Transaction, now: number, blockRewardLock: nu
   // to already have the pre-mine utxos on its database.
   if (network in IGNORE_TXS) {
     if (IGNORE_TXS[network].includes(txId)) {
-      console.log('Ignoring tx');
       throw new Error('Rejecting tx as it is part of the genesis transactions.');
     }
   }
