@@ -617,7 +617,8 @@ export const getUtxos = async (
        FROM \`tx_output\`
       WHERE (\`tx_id\`, \`index\`)
          IN (?)
-        AND \`spent_by\` IS NULL`,
+        AND \`spent_by\` IS NULL
+        AND \`dirty\` = FALSE`,
     [entries],
   );
   for (const result of results) {
@@ -670,6 +671,7 @@ export const getWalletSortedValueUtxos = async (
         AND \`locked\` = FALSE
         AND \`tx_proposal\` IS NULL
         AND \`spent_by\` IS NULL
+        AND \`dirty\` = FALSE
    ORDER BY \`value\`
        DESC`,
     [walletId, tokenId],
@@ -704,8 +706,7 @@ export const unlockUtxos = async (mysql: ServerlessMysql, utxos: DbTxOutput[]): 
     `UPDATE \`tx_output\`
         SET \`locked\` = FALSE
       WHERE (\`tx_id\` ,\`index\`)
-         IN (?)
-        AND \`spent_by\` IS NULL`,
+         IN (?)`,
     [entries],
   );
 };
@@ -736,7 +737,8 @@ export const getLockedUtxoFromInputs = async (mysql: ServerlessMysql, inputs: Tx
         WHERE (\`tx_id\` ,\`index\`)
            IN (?)
           AND \`locked\` = TRUE
-          AND \`spent_by\` IS NULL`,
+          AND \`spent_by\` IS NULL
+          AND \`dirty\` = FALSE`,
       [entries],
     );
 
@@ -838,6 +840,7 @@ export const updateAddressTablesWithTx = async (
                    AND \`token_id\` = ?
                    AND \`locked\` = FALSE
                    AND \`spent_by\` IS NULL
+                   AND \`dirty\` = FALSE
               )
             WHERE \`address\` = ?
               AND \`token_id\` = ?`,
@@ -905,7 +908,8 @@ export const updateAddressLockedBalance = async (
                  WHERE \`address\` = ?
                    AND \`token_id\` = ?
                    AND \`locked\` = TRUE
-                   AND \`spent_by\` IS NULL)
+                   AND \`spent_by\` IS NULL
+                   AND \`dirty\` = FALSE)
                  WHERE \`address\` = ?
                    AND \`token_id\` = ?`,
           [address, token, address, token],
@@ -923,6 +927,7 @@ export const updateAddressLockedBalance = async (
                   AND \`token_id\` = ?
                   AND \`locked\` = TRUE
                   AND \`spent_by\` IS NULL
+                  AND \`dirty\` = FALSE
              )
            WHERE \`address\` = ?
              AND \`token_id\` = ?`,
@@ -1139,6 +1144,7 @@ export const getUtxosLockedAtHeight = async (
          FROM \`tx_output\`
         WHERE \`heightlock\` <= ?
           AND \`spent_by\` IS NULL
+          AND \`dirty\` = FALSE
           AND (\`timelock\` <= ?
                OR \`timelock\` is NULL)
           AND \`locked\` = 1`,
@@ -1191,6 +1197,7 @@ export const getWalletUnlockedUtxos = async (
              OR \`timelock\` is NULL)
         AND \`locked\` = 1
         AND \`spent_by\` IS NULL
+        AND \`dirty\` = FALSE
         AND \`address\` IN (
           SELECT \`address\`
             FROM \`address\`
@@ -1382,7 +1389,7 @@ export const getUnusedAddresses = async (mysql: ServerlessMysql, walletId: strin
  * @param utxos - The UTXOs to be marked with the proposal id
  */
 export const markUtxosWithProposalId = async (mysql: ServerlessMysql, txProposalId: string, utxos: DbTxOutput[]): Promise<void> => {
-  const entries = utxos.map((utxo, index) => ([utxo.txId, utxo.index, '', '', 0, 0, null, null, false, txProposalId, index, null]));
+  const entries = utxos.map((utxo, index) => ([utxo.txId, utxo.index, '', '', 0, 0, null, null, false, txProposalId, index, null, 0]));
   await mysql.query(
     `INSERT INTO \`tx_output\`
           VALUES ?
@@ -1776,8 +1783,8 @@ export const deleteUtxos = async (
   const txIds = utxos.map((tx) => tx.txId);
 
   await mysql.query(`
-    DELETE
-      FROM \`tx_output\`
+    UPDATE \`tx_output\`
+       SET \`dirty\` = 1
      WHERE \`tx_id\` IN (?)`,
   [txIds]);
 };
@@ -1921,6 +1928,7 @@ export const rebuildAddressBalancesFromUtxos = async (
       WHERE heightlock IS NULL
         AND timelock IS NULL
         AND spent_by IS NULL
+        AND dirty = FALSE
         AND address IN (?)
    GROUP BY address, token_id
   `, [addresses]);
@@ -1947,6 +1955,7 @@ export const rebuildAddressBalancesFromUtxos = async (
         WHERE (\`heightlock\` IS NOT NULL
            OR \`timelock\` IS NOT NULL)
           AND spent_by IS NULL
+          AND dirty = FALSE
           AND address IN (?)
      GROUP BY \`address\`, \`token_id\`
    ON DUPLICATE KEY UPDATE
