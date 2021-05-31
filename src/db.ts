@@ -324,6 +324,7 @@ export const initWalletTxHistory = async (mysql: ServerlessMysql, walletId: stri
        FROM \`address_tx_history\`
       WHERE \`address\`
          IN (?)
+        AND \`dirty\` = FALSE
    GROUP BY \`tx_id\`,
             \`token_id\`,
             \`timestamp\``,
@@ -377,6 +378,7 @@ export const initWalletBalance = async (mysql: ServerlessMysql, walletId: string
             COUNT(DISTINCT \`tx_id\`) AS \`transactions\`
        FROM \`address_tx_history\`
       WHERE \`address\` IN (?)
+        AND \`dirty\` = FALSE
    GROUP BY \`token_id\`
    ORDER BY \`token_id\``,
     [addresses],
@@ -1858,8 +1860,8 @@ export const removeAddressTxHistory = async (
   const txIds = transactions.map((tx) => tx.txId);
 
   await mysql.query(
-    `DELETE
-       FROM \`address_tx_history\`
+    `UPDATE \`address_tx_history\`
+        SET \`dirty\` = FALSE
       WHERE \`tx_id\` IN (?)`,
     [txIds],
   );
@@ -1878,8 +1880,8 @@ export const removeWalletTxHistory = async (
   const txIds = transactions.map((tx) => tx.txId);
 
   await mysql.query(
-    `DELETE
-       FROM \`wallet_tx_history\`
+    `UPDATE \`wallet_tx_history\`
+        SET \`dirty\` = FALSE
       WHERE \`tx_id\` IN (?)`,
     [txIds],
   );
@@ -2035,6 +2037,7 @@ export const fetchAddressTxHistorySum = async (
             COUNT(\`tx_id\`) AS transactions
        FROM \`address_tx_history\`
       WHERE \`address\` IN (?)
+        AND \`dirty\` = FALSE
    GROUP BY address, token_id
    ORDER BY address, token_id`,
     [addresses],
