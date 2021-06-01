@@ -125,22 +125,7 @@ functions:
     handler: src/ws/txNotify.onUpdateTx
   wsAdminBroadcast:
     handler: src/ws/admin.broadcast
-    events:
-      - http:
-          path: admin/broadcast
-          method: post
-          cors: true
   wsAdminMulticast:
     handler: src/ws/admin.multicast
-    events:
-      - http:
-          path: admin/multicast
-          method: post
-          cors: true
   wsAdminDisconnect:
     handler: src/ws/admin.disconnect
-    events:
-      - http:
-          path: admin/disconnect
-          method: post
-          cors: true

@@ -44,13 +44,9 @@ export const handler = async (
   event: APIGatewayProxyEvent,
 ): Promise<void> => {
   const redisClient = getRedisClient();
-  const routeKey = event.requestContext.routeKey;
   const connInfo = connectionInfoFromEvent(event);
 
-  if (routeKey === 'join') {
-    await joinWallet(event, connInfo, mysql, redisClient);
-  }
-
+  await joinWallet(event, connInfo, mysql, redisClient);
   await closeDbConnection(mysql);
   await closeRedisClient(redisClient);
 };
@@ -78,8 +74,6 @@ const joinWallet = async (
 
   const walletId = value.id;
 
-  // validate walletID
-  // verify ownership of wallet
   const wallet = await getWallet(_mysql, walletId);
   if (wallet === null) {
     // wallet does not exist, but should we return an error?

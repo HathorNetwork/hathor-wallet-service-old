@@ -39,38 +39,9 @@ export const scanAll = async (
   return found;
 };
 
-// XXX: AsyncGenerator implementations of scanAll, maybe use these?
-// async function * scanGen(pattern) {
-//     async function * iterate (curs, patt) {
-//         const [cursor, keys] = await scanAsync(curs, 'MATCH', patt);
-//         for (const key of keys) yield key
-//         if (cursor !== '0') yield * iterate(cursor, patt)
-//     }
-//     yield * iterate(0, pattern)
-// }
-//
-// XXX: this iterates on values on the list `key`
-// async function * scanValGen(key, pattern) {
-//     async function * iterate (k, curs, patt) {
-//         const [cursor, values] = await sscanAsync(k, curs, 'MATCH', patt);
-//         for (const value of values) yield value
-//         if (cursor !== '0') yield * iterate(k, cursor, patt)
-//     }
-//     yield * iterate(key, 0, pattern)
-// }
-
-/*
- * Need:
- *  - broadcast
- *  - send to wallet connections
- *  - send to channel? (maybe wallet-`walletId` should be a channel)
- *
- *  If this function is called when the fields already exists:
- *  - same parameters: TTL is refreshed
- *  - other params: updates connection keys
- */
+/* Create the connection entry
+ * */
 export const initWsConnection = async (
-  // walletID: string,
   client: redis.RedisClient,
   connInfo: WsConnectionInfo,
 ): Promise<string> => {
@@ -109,7 +80,6 @@ export const wsJoinChannel = async (
   return setAsync(`${svcPrefix}:chan:${channel}:${connInfo.id}`, connInfo.url);
 };
 
-// maybe some wallet validation?
 export const wsJoinWallet = async (
   client: redis.RedisClient,
   connInfo: WsConnectionInfo,
