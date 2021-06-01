@@ -446,6 +446,22 @@ export const checkWalletBalanceTable = async (
   return true;
 };
 
+export const countTxOutputTable = async (
+  mysql: ServerlessMysql,
+): Promise<number> => {
+  const results: DbSelectResult = await mysql.query(
+    `SELECT COUNT(*) AS count
+       FROM \`tx_output\`
+      WHERE \`dirty\` = FALSE`,
+  );
+
+  if (results.length > 0) {
+    return results[0].count as number;
+  }
+
+  return 0;
+};
+
 export const addToUtxoTable = async (
   mysql: ServerlessMysql,
   entries: unknown[][],
