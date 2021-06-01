@@ -1952,7 +1952,7 @@ export const rebuildAddressBalancesFromUtxos = async (
               SUM(\`value\`) AS locked_balance,
               BIT_OR(\`authorities\`) AS locked_authorities,
               MIN(\`timelock\`) AS timelock_expires,
-              0 as transactions
+              COUNT(DISTINCT \`tx_id\`) -- transactions
          FROM \`tx_output\`
         WHERE (\`heightlock\` IS NOT NULL
            OR \`timelock\` IS NOT NULL)
@@ -1964,7 +1964,7 @@ export const rebuildAddressBalancesFromUtxos = async (
     locked_balance = VALUES(locked_balance),
     locked_authorities = VALUES(locked_authorities),
     timelock_expires = VALUES(timelock_expires),
-    transactions = transactions + 1
+    transactions = transactions + VALUES(\`transactions\`)
    `, [addresses]);
 };
 
