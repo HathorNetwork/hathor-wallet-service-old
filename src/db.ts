@@ -1925,7 +1925,7 @@ export const rebuildAddressBalancesFromUtxos = async (
             BIT_OR(\`authorities\`), -- unlocked_authorities
             0, -- locked_authorities
             0, -- timelock_expires
-            COUNT(\`tx_id\`) -- transactions
+            COUNT(DISTINCT \`tx_id\`) -- transactions
        FROM \`tx_output\`
       WHERE heightlock IS NULL
         AND timelock IS NULL
