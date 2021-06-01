@@ -39,6 +39,8 @@ import {
   updateWalletTablesWithTx,
   updateVersionData,
   addBlock,
+  fetchAddressTxHistorySum,
+  fetchAddressBalance,
 } from '@src/db';
 import {
   Authorities,
@@ -1169,4 +1171,87 @@ test('getVersionData', async () => {
   const versionData: FullNodeVersionData = await getVersionData(mysql);
 
   expect(Object.entries(versionData).toString()).toStrictEqual(Object.entries(mockData).toString());
+});
+
+test('fetchAddressTxHistorySum', async () => {
+  expect.hasAssertions();
+
+  const addr1 = 'addr1';
+  const addr2 = 'addr2';
+  const token1 = 'token1';
+  const token2 = 'token2';
+  const txId1 = 'txId1';
+  const txId2 = 'txId2';
+  const txId3 = 'txId3';
+  const timestamp1 = 10;
+  const timestamp2 = 20;
+  const entries = [
+    [addr1, txId1, token1, 10, timestamp1],
+    [addr1, txId2, token1, 20, timestamp2],
+    [addr1, txId3, token1, 30, timestamp2],
+    // total: 60
+    [addr2, txId1, token2, 20, timestamp1],
+    [addr2, txId2, token2, 20, timestamp2],
+    [addr2, txId3, token2, 10, timestamp2],
+    // total: 50
+  ];
+
+  await addToAddressTxHistoryTable(mysql, entries);
+
+  const history = await fetchAddressTxHistorySum(mysql, [addr1, addr2]);
+
+  expect(history[0].balance).toStrictEqual(60);
+  expect(history[1].balance).toStrictEqual(50);
+});
+
+test('fetchAddressBalance', async () => {
+  expect.hasAssertions();
+
+  const addr1 = 'addr1';
+  const addr2 = 'addr2';
+  const addr3 = 'addr3';
+  const token1 = 'token1';
+  const token2 = 'token2';
+  const timelock = 500;
+
+  const addressEntries = [
+    // address, tokenId, unlocked, locked, lockExpires, transactions
+    [addr1, token1, 2, 0, null, 2, 0, 0],
+    [addr1, token2, 1, 4, timelock, 1, 0, 0],
+    [addr2, token1, 5, 2, null, 2, 0, 0],
+    [addr2, token2, 0, 2, null, 1, 0, 0],
+    [addr3, token1, 0, 1, null, 1, 0, 0],
+    [addr3, token2, 10, 1, null, 1, 0, 0],
+  ];
+
+  await addToAddressBalanceTable(mysql, addressEntries);
+
+  const addressBalances = await fetchAddressBalance(mysql, [addr1, addr2, addr3]);
+
+  expect(addressBalances[0].address).toStrictEqual('addr1');
+  expect(addressBalances[0].tokenId).toStrictEqual('token1');
+  expect(addressBalances[0].unlockedBalance).toStrictEqual(2);
+  expect(addressBalances[0].lockedBalance).toStrictEqual(0);
+  expect(addressBalances[1].address).toStrictEqual('addr1');
+  expect(addressBalances[1].tokenId).toStrictEqual('token2');
+  expect(addressBalances[1].unlockedBalance).toStrictEqual(1);
+  expect(addressBalances[1].lockedBalance).toStrictEqual(4);
+
+  expect(addressBalances[2].address).toStrictEqual('addr2');
+  expect(addressBalances[2].tokenId).toStrictEqual('token1');
+  expect(addressBalances[2].unlockedBalance).toStrictEqual(5);
+  expect(addressBalances[2].lockedBalance).toStrictEqual(2);
+  expect(addressBalances[3].address).toStrictEqual('addr2');
+  expect(addressBalances[3].tokenId).toStrictEqual('token2');
+  expect(addressBalances[3].unlockedBalance).toStrictEqual(0);
+  expect(addressBalances[3].lockedBalance).toStrictEqual(2);
+
+  expect(addressBalances[4].address).toStrictEqual('addr3');
+  expect(addressBalances[4].tokenId).toStrictEqual('token1');
+  expect(addressBalances[4].unlockedBalance).toStrictEqual(0);
+  expect(addressBalances[4].lockedBalance).toStrictEqual(1);
+  expect(addressBalances[5].address).toStrictEqual('addr3');
+  expect(addressBalances[5].tokenId).toStrictEqual('token2');
+  expect(addressBalances[5].unlockedBalance).toStrictEqual(10);
+  expect(addressBalances[5].lockedBalance).toStrictEqual(1);
 });
