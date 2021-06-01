@@ -6,11 +6,9 @@
  */
 
 import { SQSHandler } from 'aws-lambda';
-import { RedisClient } from 'redis';
 import Joi from 'joi';
 
 import { sendMessageToClient } from '@src/ws/utils';
-import { Transaction } from '@src/types';
 import {
   wsGetWalletConnections,
   getRedisClient,

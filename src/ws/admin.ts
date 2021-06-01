@@ -22,14 +22,6 @@ import {
   wsGetWalletConnections,
 } from '@src/redis';
 
-const parseBody = (body: string) => {
-  try {
-    return JSON.parse(body);
-  } catch (e) {
-    return null;
-  }
-};
-
 const multicastSchema = Joi.object({
   wallets: Joi.array()
     .items(Joi.string())
@@ -44,18 +36,10 @@ const disconnectSchema = Joi.object({
 });
 
 export const broadcast: Handler = async (event) => {
-  const payload = parseBody(event.body);
-  if (!payload) {
-    return {
-      success: false,
-      message: ApiError.INVALID_BODY,
-    };
-  }
-
   const redisClient = getRedisClient();
   const connections = await wsGetAllConnections(redisClient);
   await Promise.all(connections.map((connInfo) => (
-    sendMessageToClient(redisClient, connInfo, payload)
+    sendMessageToClient(redisClient, connInfo, event)
   )));
   await closeRedisClient(redisClient);
   return {
@@ -65,8 +49,7 @@ export const broadcast: Handler = async (event) => {
 };
 
 export const multicast: Handler = async (event) => {
-  const body = parseBody(event.body);
-  const { value, error } = multicastSchema.validate(body, {
+  const { value, error } = multicastSchema.validate(event, {
     abortEarly: false,
     convert: false,
   });
