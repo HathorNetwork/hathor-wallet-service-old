@@ -1786,7 +1786,7 @@ export const deleteUtxos = async (
 
   await mysql.query(`
     UPDATE \`tx_output\`
-       SET \`dirty\` = 1
+       SET \`dirty\` = TRUE
      WHERE \`tx_id\` IN (?)`,
   [txIds]);
 };
@@ -1861,7 +1861,7 @@ export const removeAddressTxHistory = async (
 
   await mysql.query(
     `UPDATE \`address_tx_history\`
-        SET \`dirty\` = FALSE
+        SET \`dirty\` = TRUE
       WHERE \`tx_id\` IN (?)`,
     [txIds],
   );
@@ -1881,7 +1881,7 @@ export const removeWalletTxHistory = async (
 
   await mysql.query(
     `UPDATE \`wallet_tx_history\`
-        SET \`dirty\` = FALSE
+        SET \`dirty\` = TRUE
       WHERE \`tx_id\` IN (?)`,
     [txIds],
   );
@@ -1995,13 +1995,19 @@ export const fetchTx = async (
     txId: result.tx_id as string,
     timestamp: result.timestamp as number,
     version: result.version as number,
-    voided: result.voided as boolean,
+    voided: result.voided === 1,
     height: result.height as number,
   };
 
   return tx;
 };
 
+/**
+ * Retrieves a list of `AddressBalance`s from a list of addresses
+ *
+ * @param mysql - Database connection
+ * @param addresses - The addresses to query
+ */
 export const fetchAddressBalance = async (
   mysql: ServerlessMysql,
   addresses: string[],
@@ -2026,6 +2032,12 @@ export const fetchAddressBalance = async (
   }));
 };
 
+/**
+ * Retrieves a list of `AddressTotalBalance`s from a list of addresses
+ *
+ * @param mysql - Database connection
+ * @param addresses - The addresses to query
+ */
 export const fetchAddressTxHistorySum = async (
   mysql: ServerlessMysql,
   addresses: string[],
