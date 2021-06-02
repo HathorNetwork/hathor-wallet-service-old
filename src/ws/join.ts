@@ -72,6 +72,9 @@ const joinWallet = async (
     return;
   }
 
+  // TODO: Verify ownership of the wallet upon subscription.
+  // How: Do not pass walletId directly, use jwt token (same as the api bearer token)
+  // and validate the token, then use the walletId inside the token.
   const walletId = value.id;
 
   const wallet = await getWallet(_mysql, walletId);
