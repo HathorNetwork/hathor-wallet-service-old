@@ -287,6 +287,8 @@ export const maybeRefreshWalletConstants = async (mysql: ServerlessMysql): Promi
 /**
  * Searches our blocks database for the last block that is not voided.
  *
+ * @param mysql - Database connection
+ *
  * @returns A Block instance with the last block that is not voided.
  */
 export const searchForLatestValidBlock = async (mysql: ServerlessMysql): Promise<Block> => {
@@ -318,7 +320,15 @@ export const searchForLatestValidBlock = async (mysql: ServerlessMysql): Promise
   return latestValidBlock;
 };
 
-export const handleReorg = async (mysql: ServerlessMysql): Promise<void> => {
+/**
+ * Handles a reorg by finding the last valid block on the service's database and
+ * removing transactions and tx_outputs before re-calculating the address balances.
+ *
+ * @param mysql - Database connection
+ *
+ * @returns The new best block height
+ */
+export const handleReorg = async (mysql: ServerlessMysql): Promise<number> => {
   const { height } = await searchForLatestValidBlock(mysql);
 
   // remove blocks where height > latestValidBlock
@@ -391,4 +401,6 @@ export const handleReorg = async (mysql: ServerlessMysql): Promise<void> => {
       assert.strictEqual(addressBalance.unlockedBalance + addressBalance.lockedBalance, addressTxHistorySum.balance);
     }
   }
+
+  return height;
 };
