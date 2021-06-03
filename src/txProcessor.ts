@@ -93,6 +93,12 @@ export const onNewTxEvent = async (event: SQSEvent): Promise<APIGatewayProxyResu
   };
 };
 
+/**
+ * Function called when to process new transactions or blocks.
+ *
+ * @remarks
+ * This is a lambda function that should be invoked using the aws-sdk.
+ */
 export const onNewTxRequest: APIGatewayProxyHandler = async (event) => {
   const now = getUnixTimestamp();
   const blockRewardLock = parseInt(process.env.BLOCK_REWARD_LOCK, 10);
@@ -107,6 +113,12 @@ export const onNewTxRequest: APIGatewayProxyHandler = async (event) => {
   };
 };
 
+/**
+ * Function called when a reorg is detected on the wallet-service daemon
+ *
+ * @remarks
+ * This is a lambda function that should be invoked using the aws-sdk.
+ */
 export const onHandleReorgRequest: APIGatewayProxyHandler = async () => {
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
@@ -118,6 +130,12 @@ export const onHandleReorgRequest: APIGatewayProxyHandler = async () => {
   };
 };
 
+/**
+ * Function called to search for the latest valid block
+ *
+ * @remarks
+ * This is a lambda function that should be invoked using the aws-sdk.
+ */
 export const onSearchForLatestValidBlockRequest: APIGatewayProxyHandler = async () => {
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
