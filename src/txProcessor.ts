@@ -20,7 +20,8 @@ import {
 import {
   addNewAddresses,
   addUtxos,
-  addTx,
+  addOrUpdateTx,
+  updateTx,
   addBlock,
   generateAddresses,
   getAddressWalletInfo,
@@ -160,7 +161,7 @@ export const addNewTx = async (tx: Transaction, now: number, blockRewardLock: nu
     // set height and break out because it was already on the mempool
     // so we can consider that our balances have already been calculated
     // and the utxos were already inserted
-    await addTx(mysql, txId, tx.height, tx.timestamp, tx.version);
+    await updateTx(mysql, txId, tx.height, tx.timestamp, tx.version);
 
     return;
   }
@@ -195,7 +196,7 @@ export const addNewTx = async (tx: Transaction, now: number, blockRewardLock: nu
 
   // add outputs to utxo table
   markLockedOutputs(tx.outputs, now, heightlock !== null);
-  await addTx(mysql, txId, tx.height, tx.timestamp, tx.version);
+  await addOrUpdateTx(mysql, txId, tx.height, tx.timestamp, tx.version);
   await addUtxos(mysql, txId, tx.outputs, heightlock);
 
   // remove inputs from utxo table

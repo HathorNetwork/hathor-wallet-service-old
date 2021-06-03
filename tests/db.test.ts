@@ -43,7 +43,7 @@ import {
   addBlock,
   fetchAddressTxHistorySum,
   fetchAddressBalance,
-  addTx,
+  addOrUpdateTx,
   fetchTx,
   removeTxs,
   rebuildAddressBalancesFromUtxos,
@@ -1338,21 +1338,21 @@ test('addTx, fetchTx, getTransactionsById and removeTxs', async () => {
     voided: false,
   };
 
-  await addTx(mysql, tx1.txId, tx1.height, tx1.timestamp, tx1.version);
+  await addOrUpdateTx(mysql, tx1.txId, tx1.height, tx1.timestamp, tx1.version);
 
   expect(await fetchTx(mysql, txId1)).toStrictEqual(tx1);
 
   const tx2 = { ...tx1, txId: txId2 };
-  await addTx(mysql, tx2.txId, tx2.height, tx2.timestamp, tx2.version);
+  await addOrUpdateTx(mysql, tx2.txId, tx2.height, tx2.timestamp, tx2.version);
 
   const tx3 = { ...tx1, txId: txId3 };
-  await addTx(mysql, tx3.txId, tx3.height, tx3.timestamp, tx3.version);
+  await addOrUpdateTx(mysql, tx3.txId, tx3.height, tx3.timestamp, tx3.version);
 
   const tx4 = { ...tx1, txId: txId4 };
-  await addTx(mysql, tx4.txId, tx4.height, tx4.timestamp, tx4.version);
+  await addOrUpdateTx(mysql, tx4.txId, tx4.height, tx4.timestamp, tx4.version);
 
   const tx5 = { ...tx1, txId: txId5 };
-  await addTx(mysql, tx5.txId, tx5.height, tx5.timestamp, tx5.version);
+  await addOrUpdateTx(mysql, tx5.txId, tx5.height, tx5.timestamp, tx5.version);
 
   const transactions = await getTransactionsById(mysql, [txId1, txId2, txId3, txId4, txId5]);
 

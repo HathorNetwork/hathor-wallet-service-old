@@ -552,6 +552,25 @@ export const addUtxos = async (
 };
 
 /**
+ * Alias for addOrUpdateTx
+ *
+ * @remarks
+ * This method is simply an alias for addOrUpdateTx in the current implementation.
+ *
+ * @param mysql - Database connection
+ * @param txId - Transaction id
+ * @param timestamp - The transaction timestamp
+ * @param version - The transaction version
+ */
+export const updateTx = async (
+  mysql: ServerlessMysql,
+  txId: string,
+  height: number,
+  timestamp: number,
+  version: number,
+): Promise<void> => addOrUpdateTx(mysql, txId, height, timestamp, version);
+
+/**
  * Add a tx to the transaction table.
  *
  * @remarks
@@ -562,7 +581,7 @@ export const addUtxos = async (
  * @param timestamp - The transaction timestamp
  * @param version - The transaction version
  */
-export const addTx = async (
+export const addOrUpdateTx = async (
   mysql: ServerlessMysql,
   txId: string,
   height: number,
