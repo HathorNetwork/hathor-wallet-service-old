@@ -331,6 +331,8 @@ export const searchForLatestValidBlock = async (mysql: ServerlessMysql): Promise
 export const handleReorg = async (mysql: ServerlessMysql): Promise<number> => {
   const { height } = await searchForLatestValidBlock(mysql);
 
+  console.log(`Handling reorg. Our latest best block is ${height}`);
+
   // remove blocks where height > latestValidBlock
   await deleteBlocksAfterHeight(mysql, height);
 
@@ -344,8 +346,11 @@ export const handleReorg = async (mysql: ServerlessMysql): Promise<number> => {
   let removedUtxoList: DbTxOutput[] = [];
 
   while (txs.length > 0) {
+    console.log(`Removing ${txs.length} transactions.`);
     await removeTxs(mysql, txs);
+    console.log(`Removing WalletTxHistory from ${txs.length} transactions.`);
     await removeWalletTxHistory(mysql, txs);
+    console.log(`Removing AddressTxHistory from ${txs.length} transactions.`);
     await removeAddressTxHistory(mysql, txs);
 
     const txOutputs: DbTxOutput[] = await getTxOutputs(mysql, txs); // "A" Outputs
@@ -357,6 +362,7 @@ export const handleReorg = async (mysql: ServerlessMysql): Promise<number> => {
       return acc;
     }, new Set<string>());
 
+    console.log(`Setting ${txOutputs.length} tx_outputs as dirty.`);
     // delete tx outputs:
     await deleteUtxos(mysql, txOutputs);
 
@@ -365,6 +371,7 @@ export const handleReorg = async (mysql: ServerlessMysql): Promise<number> => {
     // get outputs that were spent in txOutputs
     const spentOutputs: DbTxOutput[] = await getTxOutputsBySpent(mysql, [...txIds]);
     if (spentOutputs.length > 0) {
+      console.log(`Unspending ${spentOutputs.length} tx_outputs.`);
       await unspendUtxos(mysql, spentOutputs);
     }
 
@@ -375,11 +382,13 @@ export const handleReorg = async (mysql: ServerlessMysql): Promise<number> => {
   // get all remaining txs and set height = null (mempool)
   const remainingTxs: Tx[] = await getTxsAfterHeight(mysql, height);
   if (remainingTxs.length > 0) {
+    console.log(`Setting ${remainingTxs.length} unconfirmed transactions to the mempool (height = NULL).`);
     await removeTxsHeight(mysql, remainingTxs);
   }
 
   // fetch all addresses affected by the reorg
   const affectedAddresses = removedUtxoList.reduce((acc: Set<string>, utxo: DbTxOutput) => acc.add(utxo.address), new Set<string>());
+  console.log(`Rebuilding balances for ${affectedAddresses.size} addresses.`);
 
   if (affectedAddresses.size > 0) {
     const addresses = [...affectedAddresses];
@@ -401,6 +410,8 @@ export const handleReorg = async (mysql: ServerlessMysql): Promise<number> => {
       assert.strictEqual(addressBalance.unlockedBalance + addressBalance.lockedBalance, addressTxHistorySum.balance);
     }
   }
+
+  console.log('Reorg is done.');
 
   return height;
 };
