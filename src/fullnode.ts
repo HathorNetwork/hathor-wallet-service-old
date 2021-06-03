@@ -10,6 +10,11 @@ import axios from 'axios';
 export const BASE_URL = process.env.DEFAULT_SERVER;
 export const TIMEOUT = 10000;
 
+/**
+ * Creates an handler for requesting data from the fullnode
+ *
+ * @param baseURL - The base URL for the full-node. Defaults to `env.DEFAULT_SERVER`
+ */
 export const create = (baseURL = BASE_URL): any => {
   const api = axios.create({
     baseURL,
