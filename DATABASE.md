@@ -101,7 +101,7 @@ CREATE TABLE `tx_proposal_outputs` (
 );
 
 CREATE TABLE `tx_output` (
-  `tx_id` varchar(64) NOT NULL,
+  `tx_id` varchar(64) NOT NULL, -- tx_id might point to a block
   `index` tinyint unsigned NOT NULL,
   `token_id` varchar(64) NOT NULL,
   `address` varchar(34) NOT NULL,
