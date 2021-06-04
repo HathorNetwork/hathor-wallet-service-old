@@ -24,6 +24,8 @@ provider:
   runtime: nodejs12.x
   stage: ${env:STAGE}
   region: us-east-1
+  websocketsApiName: wallet-realtime-ws-api
+  websocketsApiRouteSelectionExpression: $request.body.action
   apiGateway:
     minimumCompressionSize: 1024 # Enable gzip compression for responses > 1 KB
   environment:
@@ -103,3 +105,27 @@ functions:
             parameters:
               paths:
                 txProposalId: true
+  wsConnect:
+    handler: src/ws/connection.connect
+    events:
+      - websocket:
+          route: $connect
+      - websocket:
+          route: $disconnect
+      - websocket:
+          route: ping
+  wsJoin:
+    handler: src/ws/join.handler
+    events:
+      - websocket:
+          route: join
+  wsTxNotifyNew:
+    handler: src/ws/txNotify.onNewTx
+  wsTxNotifyUpdate:
+    handler: src/ws/txNotify.onUpdateTx
+  wsAdminBroadcast:
+    handler: src/ws/admin.broadcast
+  wsAdminMulticast:
+    handler: src/ws/admin.multicast
+  wsAdminDisconnect:
+    handler: src/ws/admin.disconnect

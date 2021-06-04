@@ -5,6 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import AWS from 'aws-sdk';
 import { APIGatewayProxyResult, SQSEvent } from 'aws-lambda';
 import 'source-map-support/register';
 import hathorLib from '@hathor/wallet-lib';
@@ -163,4 +164,17 @@ const addNewTx = async (tx: Transaction, now: number, blockRewardLock: number) =
   // update wallet_balance and wallet_tx_history tables
   const walletBalanceMap: StringMap<TokenBalanceMap> = getWalletBalanceMap(addressWalletMap, addressBalanceMap);
   await updateWalletTablesWithTx(mysql, txId, tx.timestamp, walletBalanceMap);
+
+  const queueUrl = process.env.NEW_TX_SQS;
+  if (!queueUrl) return;
+
+  const sqs = new AWS.SQS({ apiVersion: '2012-11-05' });
+  const params = {
+    MessageBody: JSON.stringify({
+      wallets: Array.from(seenWallets),
+      tx,
+    }),
+    QueueUrl: queueUrl,
+  };
+  await sqs.sendMessage(params).promise();
 };

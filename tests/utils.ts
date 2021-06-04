@@ -10,6 +10,8 @@ import {
 
 import { WalletBalanceEntry, AddressTableEntry, TokenTableEntry } from '@tests/types';
 
+import { RedisClient } from 'redis';
+
 // we'll use this xpubkey and corresponding addresses in some tests
 export const XPUBKEY = 'xpub6EcBoi2vDFcCW5sPAiQpXDYYtXd1mKhUJD64tUi8CPRG1VQFDkAbL8G5gqTmSZD6oq4Yhr5PZ8pKf3Xmb3W3pGcgqzUdFNaCRKL7TZa3res';
 
@@ -634,4 +636,21 @@ export const checkVersionDataTable = async (mysql: ServerlessMysql, versionData:
   }
 
   return true;
+};
+
+export const redisAddKeys = (
+  client: RedisClient,
+  keyMapping: Record<string, string>,
+): void => {
+  const multi = client.multi();
+  for (const [k, v] of Object.entries(keyMapping)) {
+    multi.set(k, v);
+  }
+  multi.exec();
+};
+
+export const redisCleanup = (
+  client: RedisClient,
+): void => {
+  client.flushdb();
 };

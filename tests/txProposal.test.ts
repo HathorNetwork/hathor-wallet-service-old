@@ -689,8 +689,8 @@ test('PUT /txproposals/{proposalId}', async () => {
   const txCreateResult = await txProposalCreate(txCreateEvent, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(txCreateResult.body as string);
 
-  const signature = new buffer.Buffer(20);
-  const pubkeyBytes = new buffer.Buffer(30);
+  const signature = buffer.Buffer.alloc(20);
+  const pubkeyBytes = buffer.Buffer.alloc(30);
 
   const txSendEvent = makeGatewayEvent({ txProposalId: returnBody.txProposalId }, JSON.stringify({
     inputsSignatures: [
@@ -975,8 +975,8 @@ test('PUT /txproposals/{proposalId} with an invalid weight should fail with ApiE
   const txCreateResult = await txProposalCreate(txCreateEvent, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(txCreateResult.body as string);
 
-  const signature = new buffer.Buffer(20);
-  const pubkeyBytes = new buffer.Buffer(30);
+  const signature = buffer.Buffer.alloc(20);
+  const pubkeyBytes = buffer.Buffer.alloc(30);
 
   const txSendEvent = makeGatewayEvent({ txProposalId: returnBody.txProposalId }, JSON.stringify({
     inputsSignatures: [
@@ -1080,8 +1080,8 @@ test('PUT /txproposals/{proposalId} with an invalid txHex should fail and update
   const txCreateResult = await txProposalCreate(txCreateEvent, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(txCreateResult.body as string);
 
-  const signature = new buffer.Buffer(20);
-  const pubkeyBytes = new buffer.Buffer(30);
+  const signature = buffer.Buffer.alloc(20);
+  const pubkeyBytes = buffer.Buffer.alloc(30);
 
   const txSendEvent = makeGatewayEvent({ txProposalId: returnBody.txProposalId }, JSON.stringify({
     inputsSignatures: [
@@ -1185,8 +1185,8 @@ test('PUT /txproposals/{proposalId} should update tx_proposal to SEND_ERROR on f
   const txCreateResult = await txProposalCreate(txCreateEvent, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(txCreateResult.body as string);
 
-  const signature = new buffer.Buffer(20);
-  const pubkeyBytes = new buffer.Buffer(30);
+  const signature = buffer.Buffer.alloc(20);
+  const pubkeyBytes = buffer.Buffer.alloc(30);
 
   const txSendEvent = makeGatewayEvent({ txProposalId: returnBody.txProposalId }, JSON.stringify({
     inputsSignatures: [

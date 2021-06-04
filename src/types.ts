@@ -550,3 +550,14 @@ export interface ApiResponse {
   success: boolean;
   message: string;
 }
+
+export type WsConnectionInfo = {
+  id: string;
+  url: string;
+}
+
+export type RedisConfig = {
+  host: string;
+  port?: number;
+  password?: string;
+};
