@@ -5,14 +5,10 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import {
-  APIGatewayProxyEvent,
-  APIGatewayProxyResult,
-} from 'aws-lambda';
+import { APIGatewayProxyEvent } from 'aws-lambda';
 import {
   connectionInfoFromEvent,
   sendMessageToClient,
-  DEFAULT_API_GATEWAY_RESPONSE,
 } from '@src/ws/utils';
 import {
   getRedisClient,
@@ -26,7 +22,7 @@ const mysql = getDbConnection();
 
 export const connect = async (
   event: APIGatewayProxyEvent,
-): Promise<APIGatewayProxyResult> => {
+): Promise<void> => {
   const redisClient = getRedisClient();
   const routeKey = event.requestContext.routeKey;
   // info needed to send response to client
@@ -46,6 +42,4 @@ export const connect = async (
 
   await closeRedisClient(redisClient);
   await closeDbConnection(mysql);
-
-  return DEFAULT_API_GATEWAY_RESPONSE;
 };

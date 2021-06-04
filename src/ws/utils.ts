@@ -1,4 +1,4 @@
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
+import { APIGatewayProxyEvent } from 'aws-lambda';
 import { RedisClient } from 'redis';
 
 import AWS from 'aws-sdk';
@@ -76,9 +76,4 @@ export const disconnectClient = async (
       throw err;
     },
   );
-};
-
-export const DEFAULT_API_GATEWAY_RESPONSE: APIGatewayProxyResult = {
-  statusCode: 200,
-  body: '',
 };
