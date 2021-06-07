@@ -22,7 +22,6 @@ import {
   addUtxos,
   addOrUpdateTx,
   updateTx,
-  addBlock,
   generateAddresses,
   getAddressWalletInfo,
   getLockedUtxoFromInputs,
@@ -38,7 +37,6 @@ import {
   Transaction,
   TokenBalanceMap,
   Wallet,
-  Block,
   Tx,
 } from '@src/types';
 import { closeDbConnection, getDbConnection, getUnixTimestamp } from '@src/utils';
@@ -203,13 +201,6 @@ export const addNewTx = async (tx: Transaction, now: number, blockRewardLock: nu
 
     // set heightlock
     heightlock = tx.height + blockRewardLock;
-
-    const block: Block = {
-      txId: tx.tx_id as string,
-      height: tx.height as number,
-    };
-
-    await addBlock(mysql, block);
   }
 
   if (tx.version === hathorLib.constants.CREATE_TOKEN_TX_VERSION) {
