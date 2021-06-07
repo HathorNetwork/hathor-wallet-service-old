@@ -605,7 +605,7 @@ export const addOrUpdateTx = async (
  * @param inputs - The transaction inputs
  * @param txId - The transaction that spent these utxos
  */
-export const removeUtxos = async (mysql: ServerlessMysql, inputs: TxInput[], txId: string): Promise<void> => {
+export const updateTxOutputSpentBy = async (mysql: ServerlessMysql, inputs: TxInput[], txId: string): Promise<void> => {
   const entries = inputs.map((input) => [input.tx_id, input.index]);
   // entries might be empty if there are no inputs
   if (entries.length) {
