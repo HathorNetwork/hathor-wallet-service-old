@@ -525,13 +525,13 @@ test('addUtxos, getUtxos, unlockUtxos, removeUtxos, unspendUtxos, getTxOutputsBy
   const spentTxOutputs = await getTxOutputsBySpent(mysql, [txId]);
   expect(spentTxOutputs).toHaveLength(5);
 
-  const txOutputs = utxos.map((utxo) => ({
+  const txOutputs = utxos.map((utxo, index) => ({
     ...utxo,
     txId,
     authorities: 0,
     heightlock: null,
     timelock: null,
-    index: 0,
+    index,
   }));
 
   await unspendUtxos(mysql, txOutputs);

@@ -1761,13 +1761,13 @@ export const unspendUtxos = async (
   mysql: ServerlessMysql,
   txOutputs: DbTxOutput[],
 ): Promise<void> => {
-  const txIds = txOutputs.map((txOutput) => txOutput.txId);
+  const txIdIndexList = txOutputs.map((txOutput) => [txOutput.txId, txOutput.index]);
 
   await mysql.query(
     `UPDATE \`tx_output\`
         SET \`spent_by\` = NULL
-      WHERE \`tx_id\` IN (?)`,
-    [txIds],
+      WHERE (\`tx_id\`, \`index\`) IN (?)`,
+    [txIdIndexList],
   );
 };
 
