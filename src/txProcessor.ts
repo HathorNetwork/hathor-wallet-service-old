@@ -28,7 +28,7 @@ import {
   getAddressWalletInfo,
   getLockedUtxoFromInputs,
   getUtxosLockedAtHeight,
-  removeUtxos,
+  updateTxOutputSpentBy,
   storeTokenInformation,
   updateAddressTablesWithTx,
   updateWalletTablesWithTx,
@@ -219,7 +219,7 @@ export const addNewTx = async (tx: Transaction, now: number, blockRewardLock: nu
   await addUtxos(mysql, txId, tx.outputs, heightlock);
 
   // remove inputs from utxo table
-  await removeUtxos(mysql, tx.inputs, txId);
+  await updateTxOutputSpentBy(mysql, tx.inputs, txId);
 
   // get balance of each token for each address
   const addressBalanceMap: StringMap<TokenBalanceMap> = getAddressBalanceMap(tx.inputs, tx.outputs);

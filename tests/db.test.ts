@@ -29,7 +29,7 @@ import {
   initWalletTxHistory,
   markUtxosWithProposalId,
   removeTxProposalOutputs,
-  removeUtxos,
+  updateTxOutputSpentBy,
   storeTokenInformation,
   unlockUtxos,
   updateAddressLockedBalance,
@@ -474,7 +474,7 @@ test('updateWalletTablesWithTx', async () => {
   await expect(checkWalletTxHistoryTable(mysql, 5, walletId2, token2, tx3, 10, ts3)).resolves.toBe(true);
 });
 
-test('addUtxos, getUtxos, unlockUtxos, removeUtxos, unspendUtxos, getTxOutputsBySpent and deleteUtxos', async () => {
+test('addUtxos, getUtxos, unlockUtxos, updateTxOutputSpentBy, unspendUtxos, getTxOutputsBySpent and deleteUtxos', async () => {
   expect.hasAssertions();
 
   const txId = 'txId';
@@ -519,7 +519,7 @@ test('addUtxos, getUtxos, unlockUtxos, removeUtxos, unspendUtxos, getTxOutputsBy
 
   // remove from utxo table
   const inputs = utxos.map((utxo, index) => createInput(utxo.value, utxo.address, txId, index, utxo.tokenId, utxo.timelock));
-  await removeUtxos(mysql, inputs, txId);
+  await updateTxOutputSpentBy(mysql, inputs, txId);
   await expect(checkUtxoTable(mysql, 0)).resolves.toBe(true);
 
   const spentTxOutputs = await getTxOutputsBySpent(mysql, [txId]);
