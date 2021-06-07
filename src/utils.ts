@@ -168,7 +168,7 @@ export const validateWeight = (calculated: number, received: number): boolean =>
  *
  * @returns A boolean with the result
  */
-export const checkBlockForVoided = async (txId: string): Promise<boolean> => {
+export const isTxVoided = async (txId: string): Promise<boolean> => {
   const blockInfo = await fullnode.downloadTx(txId);
 
   if (!blockInfo.meta.voided_by || blockInfo.meta.voided_by.length === 0) {

@@ -52,7 +52,7 @@ import {
 
 import {
   getUnixTimestamp,
-  checkBlockForVoided,
+  isTxVoided,
 } from '@src/utils';
 
 import hathorLib from '@hathor/wallet-lib';
@@ -305,7 +305,7 @@ export const searchForLatestValidBlock = async (mysql: ServerlessMysql): Promise
 
     // Check if the block at middle position is voided
     const middleBlock: Block = await getBlockByHeight(mysql, midHeight);
-    const isVoided: boolean = await checkBlockForVoided(middleBlock.txId);
+    const isVoided: boolean = await isTxVoided(middleBlock.txId);
 
     if (!isVoided) {
       // Not voided, discard left half as all blocks to the left should

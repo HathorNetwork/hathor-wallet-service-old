@@ -392,7 +392,7 @@ test('maybeRefreshWalletConstants with an initialized version_data database shou
 test('searchForLatestValidBlock should find the first voided block', async () => {
   expect.hasAssertions();
 
-  const spy = jest.spyOn(Utils, 'checkBlockForVoided');
+  const spy = jest.spyOn(Utils, 'isTxVoided');
 
   const mockImplementation = jest.fn((block) => {
     const voidedList = [
