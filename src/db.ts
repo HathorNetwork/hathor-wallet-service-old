@@ -1325,7 +1325,7 @@ export const getLatestHeight = async (mysql: ServerlessMysql): Promise<number> =
  *
  * @returns The latest height
  */
-export const getBlockByHeight = async (mysql: ServerlessMysql, height: number): Promise<Block> => {
+export const getBlockByHeight = async (mysql: ServerlessMysql, height: number): Promise<Block | null> => {
   const results: DbSelectResult = await mysql.query('SELECT * FROM `blocks` WHERE `height` = ? LIMIT 1', [height]);
 
   if (results.length > 0) {
