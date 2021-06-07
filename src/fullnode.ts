@@ -11,7 +11,7 @@ export const BASE_URL = process.env.DEFAULT_SERVER;
 export const TIMEOUT = 10000;
 
 /**
- * Creates an handler for requesting data from the fullnode
+ * Creates a handler for requesting data from the fullnode
  *
  * @param baseURL - The base URL for the full-node. Defaults to `env.DEFAULT_SERVER`
  */
