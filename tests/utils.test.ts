@@ -1,4 +1,4 @@
-import { CustomStorage, arrayShuffle, sha256d, checkBlockForVoided } from '@src/utils';
+import { CustomStorage, arrayShuffle, sha256d, isTxVoided } from '@src/utils';
 import hathorLib from '@hathor/wallet-lib';
 import * as Fullnode from '@src/fullnode';
 
@@ -45,7 +45,7 @@ test('arrayShuffle', () => {
   expect(original).not.toStrictEqual(shuffled);
 });
 
-test('checkBlockForVoided', async () => {
+test('isTxVoided', async () => {
   expect.hasAssertions();
 
   const spy = jest.spyOn(Fullnode.default, 'downloadTx');
@@ -68,6 +68,6 @@ test('checkBlockForVoided', async () => {
 
   spy.mockImplementation(mockImplementation);
 
-  expect(await checkBlockForVoided('0000000f1fbb4bd8a8e71735af832be210ac9a6c1e2081b21faeea3c0f5797f7')).toStrictEqual(false);
-  expect(await checkBlockForVoided('5c690b78d489f158d8575e7ed271521d056c445e8bd3978c8295775c1743bec0')).toStrictEqual(true);
+  expect(await isTxVoided('0000000f1fbb4bd8a8e71735af832be210ac9a6c1e2081b21faeea3c0f5797f7')).toStrictEqual(false);
+  expect(await isTxVoided('5c690b78d489f158d8575e7ed271521d056c445e8bd3978c8295775c1743bec0')).toStrictEqual(true);
 });
