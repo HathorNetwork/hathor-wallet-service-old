@@ -21,7 +21,6 @@ import {
   addToAddressBalanceTable,
   addToUtxoTable,
   addToWalletTable,
-  addToBlocksTable,
   addToWalletBalanceTable,
   cleanDatabase,
   checkUtxoTable,
@@ -33,6 +32,7 @@ import {
 } from '@tests/utils';
 import {
   updateVersionData,
+  addOrUpdateTx,
 } from '@src/db';
 
 import * as Utils from '@src/utils';
@@ -416,7 +416,9 @@ test('searchForLatestValidBlock should find the first voided block', async () =>
     height: index,
   }));
 
-  await addToBlocksTable(mysql, mockData);
+  for (let i = 0; i < mockData.length; i++) {
+    await addOrUpdateTx(mysql, mockData[i].txId, mockData[i].height, i, 0);
+  }
 
   const result = await searchForLatestValidBlock(mysql);
 
