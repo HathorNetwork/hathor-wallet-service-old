@@ -343,7 +343,7 @@ export const handleReorg = async (mysql: ServerlessMysql): Promise<number> => {
     hathorLib.constants.MERGED_MINED_BLOCK_VERSION,
   ].indexOf(tx.version) > -1);
 
-  let removedUtxoList: DbTxOutput[] = [];
+  let affectedUtxoList: DbTxOutput[] = [];
 
   while (txs.length > 0) {
     console.log(`Removing ${txs.length} transactions.`);
@@ -355,25 +355,27 @@ export const handleReorg = async (mysql: ServerlessMysql): Promise<number> => {
 
     const txOutputs: DbTxOutput[] = await getTxOutputs(mysql, txs); // "A" Outputs
 
-    // txOutputs might contain more than one output that spend from the same tx
-    const txIds = txOutputs.reduce((acc: Set<string>, utxo: DbTxOutput) => {
-      acc.add(utxo.spentBy);
+    // get outputs that were spent in txOutputs
+    const spentOutputs: DbTxOutput[] = await getTxOutputsBySpent(mysql, txOutputs.map((txOutput) => txOutput.txId));
+    if (spentOutputs.length > 0) {
+      console.log(`Unspending ${spentOutputs.length} tx_outputs.`);
+      await unspendUtxos(mysql, spentOutputs);
+    }
 
-      return acc;
-    }, new Set<string>());
+    affectedUtxoList = [...affectedUtxoList, ...txOutputs, ...spentOutputs];
 
     console.log(`Setting ${txOutputs.length} tx_outputs as dirty.`);
     // delete tx outputs:
     await deleteUtxos(mysql, txOutputs);
 
-    removedUtxoList = [...removedUtxoList, ...txOutputs];
+    // txOutputs might contain more than one output that spend from the same tx
+    const txIds = txOutputs.reduce((acc: Set<string>, utxo: DbTxOutput) => {
+      if (utxo.spentBy) {
+        acc.add(utxo.spentBy);
+      }
 
-    // get outputs that were spent in txOutputs
-    const spentOutputs: DbTxOutput[] = await getTxOutputsBySpent(mysql, [...txIds]);
-    if (spentOutputs.length > 0) {
-      console.log(`Unspending ${spentOutputs.length} tx_outputs.`);
-      await unspendUtxos(mysql, spentOutputs);
-    }
+      return acc;
+    }, new Set<string>());
 
     // fetch all transactions that spend those voided txs outputs:
     txs = await getTransactionsById(mysql, [...txIds]);
@@ -387,7 +389,7 @@ export const handleReorg = async (mysql: ServerlessMysql): Promise<number> => {
   }
 
   // fetch all addresses affected by the reorg
-  const affectedAddresses = removedUtxoList.reduce((acc: Set<string>, utxo: DbTxOutput) => acc.add(utxo.address), new Set<string>());
+  const affectedAddresses = affectedUtxoList.reduce((acc: Set<string>, utxo: DbTxOutput) => acc.add(utxo.address), new Set<string>());
   console.log(`Rebuilding balances for ${affectedAddresses.size} addresses.`);
 
   if (affectedAddresses.size > 0) {
