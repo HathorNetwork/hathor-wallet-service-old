@@ -297,8 +297,8 @@ export const searchForLatestValidBlock = async (mysql: ServerlessMysql): Promise
   const bestBlock: Block = await getBlockByHeight(mysql, latestHeight);
 
   let start = 0;
-  let end = bestBlock.height; // 63
-  let latestValidBlock = bestBlock; // 63
+  let end = bestBlock.height;
+  let latestValidBlock = bestBlock;
 
   while (start <= end) {
     const midHeight = Math.floor((start + end) / 2);
