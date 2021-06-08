@@ -356,10 +356,15 @@ export const handleReorg = async (mysql: ServerlessMysql): Promise<number> => {
     const txOutputs: DbTxOutput[] = await getTxOutputs(mysql, txs); // "A" Outputs
 
     // get outputs that were spent in txOutputs
-    const spentOutputs: DbTxOutput[] = await getTxOutputsBySpent(mysql, txOutputs.map((txOutput) => txOutput.txId));
+    const txOutputsTxIds: Set<string> = txOutputs.reduce(
+      (acc: Set<string>, txOutput: DbTxOutput) => acc.add(txOutput.txId),
+      new Set<string>(),
+    );
+    const spentOutputs: DbTxOutput[] = await getTxOutputsBySpent(mysql, [...txOutputsTxIds]);
+
     if (spentOutputs.length > 0) {
       console.log(`Unspending ${spentOutputs.length} tx_outputs.`);
-      await unspendUtxos(mysql, spentOutputs);
+      await unspendUtxos(mysql, [...spentOutputs]);
     }
 
     affectedUtxoList = [...affectedUtxoList, ...txOutputs, ...spentOutputs];
