@@ -20,7 +20,7 @@ import {
   updateVersionData,
   getBlockByHeight,
   getTxsAfterHeight,
-  removeTxs,
+  markTxsAsVoided,
   getTxOutputs,
   getTxOutputsBySpent,
   removeTxsHeight,
@@ -347,7 +347,7 @@ export const handleReorg = async (mysql: ServerlessMysql): Promise<number> => {
 
   while (txs.length > 0) {
     console.log(`Removing ${txs.length} transactions.`);
-    await removeTxs(mysql, txs);
+    await markTxsAsVoided(mysql, txs);
     console.log(`Removing WalletTxHistory from ${txs.length} transactions.`);
     await removeWalletTxHistory(mysql, txs);
     console.log(`Removing AddressTxHistory from ${txs.length} transactions.`);
