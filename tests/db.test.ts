@@ -47,9 +47,9 @@ import {
   fetchTx,
   markTxsAsVoided,
   rebuildAddressBalancesFromUtxos,
-  removeAddressTxHistory,
+  markAddressTxHistoryAsVoided,
   deleteBlocksAfterHeight,
-  deleteUtxos,
+  markUtxosAsVoided,
   unspendUtxos,
 } from '@src/db';
 import {
@@ -474,7 +474,7 @@ test('updateWalletTablesWithTx', async () => {
   await expect(checkWalletTxHistoryTable(mysql, 5, walletId2, token2, tx3, 10, ts3)).resolves.toBe(true);
 });
 
-test('addUtxos, getUtxos, unlockUtxos, updateTxOutputSpentBy, unspendUtxos, getTxOutputsBySpent and deleteUtxos', async () => {
+test('addUtxos, getUtxos, unlockUtxos, updateTxOutputSpentBy, unspendUtxos, getTxOutputsBySpent and markUtxosAsVoided', async () => {
   expect.hasAssertions();
 
   const txId = 'txId';
@@ -569,7 +569,7 @@ test('addUtxos, getUtxos, unlockUtxos, updateTxOutputSpentBy, unspendUtxos, getT
   const countBeforeDelete = await countTxOutputTable(mysql);
   expect(countBeforeDelete).toStrictEqual(5);
 
-  await deleteUtxos(mysql, txOutputs);
+  await markUtxosAsVoided(mysql, txOutputs);
 
   const countAfterDelete = await countTxOutputTable(mysql);
   expect(countAfterDelete).toStrictEqual(0);
@@ -1407,7 +1407,7 @@ test('rebuildAddressBalancesFromUtxos', async () => {
   expect(addressBalances[2].tokenId).toStrictEqual('token2');
 });
 
-test('removeAddressTxHistory', async () => {
+test('markAddressTxHistoryAsVoided', async () => {
   expect.hasAssertions();
 
   const addr1 = 'address1';
@@ -1437,7 +1437,7 @@ test('removeAddressTxHistory', async () => {
 
   expect(history).toHaveLength(2);
 
-  await removeAddressTxHistory(mysql, [{
+  await markAddressTxHistoryAsVoided(mysql, [{
     txId: txId1,
     timestamp: timestamp1,
     version: 0,
