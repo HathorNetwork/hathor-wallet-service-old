@@ -25,11 +25,11 @@ import {
   getTxOutputsBySpent,
   removeTxsHeight,
   unspendUtxos,
-  deleteUtxos,
+  markUtxosAsVoided,
   getTransactionsById,
   deleteBlocksAfterHeight,
-  removeWalletTxHistory,
-  removeAddressTxHistory,
+  markWalletTxHistoryAsVoided,
+  markAddressTxHistoryAsVoided,
   rebuildAddressBalancesFromUtxos,
   fetchAddressBalance,
   fetchAddressTxHistorySum,
@@ -349,9 +349,9 @@ export const handleReorg = async (mysql: ServerlessMysql): Promise<number> => {
     console.log(`Removing ${txs.length} transactions.`);
     await markTxsAsVoided(mysql, txs);
     console.log(`Removing WalletTxHistory from ${txs.length} transactions.`);
-    await removeWalletTxHistory(mysql, txs);
+    await markWalletTxHistoryAsVoided(mysql, txs);
     console.log(`Removing AddressTxHistory from ${txs.length} transactions.`);
-    await removeAddressTxHistory(mysql, txs);
+    await markAddressTxHistoryAsVoided(mysql, txs);
 
     const txOutputs: DbTxOutput[] = await getTxOutputs(mysql, txs); // "A" Outputs
 
@@ -364,9 +364,9 @@ export const handleReorg = async (mysql: ServerlessMysql): Promise<number> => {
 
     affectedUtxoList = [...affectedUtxoList, ...txOutputs, ...spentOutputs];
 
-    console.log(`Setting ${txOutputs.length} tx_outputs as dirty.`);
+    console.log(`Setting ${txOutputs.length} tx_outputs as voided.`);
     // delete tx outputs:
-    await deleteUtxos(mysql, txOutputs);
+    await markUtxosAsVoided(mysql, txOutputs);
 
     // txOutputs might contain more than one output that spend from the same tx
     const txIds = txOutputs.reduce((acc: Set<string>, utxo: DbTxOutput) => {

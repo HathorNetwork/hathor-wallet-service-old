@@ -452,7 +452,7 @@ export const countTxOutputTable = async (
   const results: DbSelectResult = await mysql.query(
     `SELECT COUNT(*) AS count
        FROM \`tx_output\`
-      WHERE \`dirty\` = FALSE`,
+      WHERE \`voided\` = FALSE`,
   );
 
   if (results.length > 0) {

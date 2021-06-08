@@ -324,7 +324,7 @@ export const initWalletTxHistory = async (mysql: ServerlessMysql, walletId: stri
        FROM \`address_tx_history\`
       WHERE \`address\`
          IN (?)
-        AND \`dirty\` = FALSE
+        AND \`voided\` = FALSE
    GROUP BY \`tx_id\`,
             \`token_id\`,
             \`timestamp\``,
@@ -378,7 +378,7 @@ export const initWalletBalance = async (mysql: ServerlessMysql, walletId: string
             COUNT(DISTINCT \`tx_id\`) AS \`transactions\`
        FROM \`address_tx_history\`
       WHERE \`address\` IN (?)
-        AND \`dirty\` = FALSE
+        AND \`voided\` = FALSE
    GROUP BY \`token_id\`
    ORDER BY \`token_id\``,
     [addresses],
@@ -639,7 +639,7 @@ export const getUtxos = async (
       WHERE (\`tx_id\`, \`index\`)
          IN (?)
         AND \`spent_by\` IS NULL
-        AND \`dirty\` = FALSE`,
+        AND \`voided\` = FALSE`,
     [entries],
   );
   for (const result of results) {
@@ -692,7 +692,7 @@ export const getWalletSortedValueUtxos = async (
         AND \`locked\` = FALSE
         AND \`tx_proposal\` IS NULL
         AND \`spent_by\` IS NULL
-        AND \`dirty\` = FALSE
+        AND \`voided\` = FALSE
    ORDER BY \`value\`
        DESC`,
     [walletId, tokenId],
@@ -759,7 +759,7 @@ export const getLockedUtxoFromInputs = async (mysql: ServerlessMysql, inputs: Tx
            IN (?)
           AND \`locked\` = TRUE
           AND \`spent_by\` IS NULL
-          AND \`dirty\` = FALSE`,
+          AND \`voided\` = FALSE`,
       [entries],
     );
 
@@ -861,7 +861,7 @@ export const updateAddressTablesWithTx = async (
                    AND \`token_id\` = ?
                    AND \`locked\` = FALSE
                    AND \`spent_by\` IS NULL
-                   AND \`dirty\` = FALSE
+                   AND \`voided\` = FALSE
               )
             WHERE \`address\` = ?
               AND \`token_id\` = ?`,
@@ -930,7 +930,7 @@ export const updateAddressLockedBalance = async (
                    AND \`token_id\` = ?
                    AND \`locked\` = TRUE
                    AND \`spent_by\` IS NULL
-                   AND \`dirty\` = FALSE)
+                   AND \`voided\` = FALSE)
                  WHERE \`address\` = ?
                    AND \`token_id\` = ?`,
           [address, token, address, token],
@@ -948,7 +948,7 @@ export const updateAddressLockedBalance = async (
                   AND \`token_id\` = ?
                   AND \`locked\` = TRUE
                   AND \`spent_by\` IS NULL
-                  AND \`dirty\` = FALSE
+                  AND \`voided\` = FALSE
              )
            WHERE \`address\` = ?
              AND \`token_id\` = ?`,
@@ -1165,7 +1165,7 @@ export const getUtxosLockedAtHeight = async (
          FROM \`tx_output\`
         WHERE \`heightlock\` <= ?
           AND \`spent_by\` IS NULL
-          AND \`dirty\` = FALSE
+          AND \`voided\` = FALSE
           AND (\`timelock\` <= ?
                OR \`timelock\` is NULL)
           AND \`locked\` = 1`,
@@ -1218,7 +1218,7 @@ export const getWalletUnlockedUtxos = async (
              OR \`timelock\` is NULL)
         AND \`locked\` = 1
         AND \`spent_by\` IS NULL
-        AND \`dirty\` = FALSE
+        AND \`voided\` = FALSE
         AND \`address\` IN (
           SELECT \`address\`
             FROM \`address\`
@@ -1799,7 +1799,7 @@ export const removeTxsHeight = async (
  * @param mysql - Database connection
  * @param utxos - The list of utxos to delete from the database
  */
-export const deleteUtxos = async (
+export const markUtxosAsVoided = async (
   mysql: ServerlessMysql,
   utxos: DbTxOutput[],
 ): Promise<void> => {
@@ -1807,7 +1807,7 @@ export const deleteUtxos = async (
 
   await mysql.query(`
     UPDATE \`tx_output\`
-       SET \`dirty\` = TRUE
+       SET \`voided\` = TRUE
      WHERE \`tx_id\` IN (?)`,
   [txIds]);
 };
@@ -1874,7 +1874,7 @@ export const markTxsAsVoided = async (
  * @param mysql - Database connection
  * @param transactions - The list of transactions to search
  */
-export const removeAddressTxHistory = async (
+export const markAddressTxHistoryAsVoided = async (
   mysql: ServerlessMysql,
   transactions: Tx[],
 ): Promise<void> => {
@@ -1882,7 +1882,7 @@ export const removeAddressTxHistory = async (
 
   await mysql.query(
     `UPDATE \`address_tx_history\`
-        SET \`dirty\` = TRUE
+        SET \`voided\` = TRUE
       WHERE \`tx_id\` IN (?)`,
     [txIds],
   );
@@ -1894,7 +1894,7 @@ export const removeAddressTxHistory = async (
  * @param mysql - Database connection
  * @param transactions - The list of transactions to search
  */
-export const removeWalletTxHistory = async (
+export const markWalletTxHistoryAsVoided = async (
   mysql: ServerlessMysql,
   transactions: Tx[],
 ): Promise<void> => {
@@ -1902,7 +1902,7 @@ export const removeWalletTxHistory = async (
 
   await mysql.query(
     `UPDATE \`wallet_tx_history\`
-        SET \`dirty\` = TRUE
+        SET \`voided\` = TRUE
       WHERE \`tx_id\` IN (?)`,
     [txIds],
   );
@@ -1951,7 +1951,7 @@ export const rebuildAddressBalancesFromUtxos = async (
       WHERE heightlock IS NULL
         AND timelock IS NULL
         AND spent_by IS NULL
-        AND dirty = FALSE
+        AND voided = FALSE
         AND address IN (?)
    GROUP BY address, token_id
   `, [addresses]);
@@ -1978,7 +1978,7 @@ export const rebuildAddressBalancesFromUtxos = async (
         WHERE (\`heightlock\` IS NOT NULL
            OR \`timelock\` IS NOT NULL)
           AND spent_by IS NULL
-          AND dirty = FALSE
+          AND voided = FALSE
           AND address IN (?)
      GROUP BY \`address\`, \`token_id\`
    ON DUPLICATE KEY UPDATE
@@ -2071,7 +2071,7 @@ export const fetchAddressTxHistorySum = async (
             COUNT(\`tx_id\`) AS transactions
        FROM \`address_tx_history\`
       WHERE \`address\` IN (?)
-        AND \`dirty\` = FALSE
+        AND \`voided\` = FALSE
    GROUP BY address, token_id
    ORDER BY address, token_id`,
     [addresses],
