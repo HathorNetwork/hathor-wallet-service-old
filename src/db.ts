@@ -1612,7 +1612,8 @@ export const getTxsAfterHeight = async (
   const results: DbSelectResult = await mysql.query(
     `SELECT *
        FROM \`transaction\`
-      WHERE \`height\` > ?`,
+      WHERE \`height\` > ?
+        AND \`voided\` = FALSE`,
     [height],
   );
   const transactions = [];
@@ -1689,7 +1690,8 @@ export const getTransactionsById = async (
   const results: DbSelectResult = await mysql.query(
     `SELECT *
        FROM \`transaction\`
-      WHERE \`tx_id\` IN (?)`,
+      WHERE \`tx_id\` IN (?)
+        AND \`voided\` = FALSE`,
     [txIds],
   );
   const transactions = [];
@@ -1847,20 +1849,20 @@ export const deleteBlocksAfterHeight = async (
 };
 
 /**
- * Deletes transactions from the database
+ * Marks transactions as voided on the database
  *
  * @param mysql - Database connection
  * @param transactions - The list of transactions to remove from database
  */
-export const removeTxs = async (
+export const markTxsAsVoided = async (
   mysql: ServerlessMysql,
   transactions: Tx[],
 ): Promise<void> => {
   const txIds = transactions.map((tx) => tx.txId);
 
   await mysql.query(
-    `DELETE
-       FROM \`transaction\`
+    `UPDATE \`transaction\`
+        SET \`voided\` = TRUE
       WHERE \`tx_id\` IN (?)`,
     [txIds],
   );
@@ -2000,7 +2002,8 @@ export const fetchTx = async (
   const results: DbSelectResult = await mysql.query(
     `SELECT *
        FROM \`transaction\`
-      WHERE \`tx_id\` = ?`,
+      WHERE \`tx_id\` = ?
+        AND \`voided\` = FALSE`,
     [txId],
   );
 

@@ -45,7 +45,7 @@ import {
   fetchAddressBalance,
   addOrUpdateTx,
   fetchTx,
-  removeTxs,
+  markTxsAsVoided,
   rebuildAddressBalancesFromUtxos,
   removeAddressTxHistory,
   deleteBlocksAfterHeight,
@@ -1320,7 +1320,7 @@ test('fetchAddressBalance', async () => {
   expect(addressBalances[5].lockedBalance).toStrictEqual(1);
 });
 
-test('addTx, fetchTx, getTransactionsById and removeTxs', async () => {
+test('addTx, fetchTx, getTransactionsById and markTxsAsVoided', async () => {
   expect.hasAssertions();
 
   const txId1 = 'txId1';
@@ -1358,7 +1358,7 @@ test('addTx, fetchTx, getTransactionsById and removeTxs', async () => {
 
   expect(transactions).toHaveLength(5);
 
-  await removeTxs(mysql, [tx1, tx2, tx3, tx4, tx5]);
+  await markTxsAsVoided(mysql, [tx1, tx2, tx3, tx4, tx5]);
 
   expect(await fetchTx(mysql, txId1)).toBeNull();
   expect(await fetchTx(mysql, txId2)).toBeNull();
