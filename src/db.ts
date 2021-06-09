@@ -322,8 +322,7 @@ export const initWalletTxHistory = async (mysql: ServerlessMysql, walletId: stri
             SUM(\`balance\`) AS balance,
             \`timestamp\`
        FROM \`address_tx_history\`
-      WHERE \`address\`
-         IN (?)
+      WHERE \`address\` IN (?)
         AND \`voided\` = FALSE
    GROUP BY \`tx_id\`,
             \`token_id\`,
@@ -1687,6 +1686,10 @@ export const getTransactionsById = async (
   mysql: ServerlessMysql,
   txIds: string[],
 ): Promise<Tx[]> => {
+  if (txIds.length === 0) {
+    return [];
+  }
+
   const results: DbSelectResult = await mysql.query(
     `SELECT *
        FROM \`transaction\`
