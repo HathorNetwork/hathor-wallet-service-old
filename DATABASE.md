@@ -150,7 +150,10 @@ CREATE TABLE `transaction` (
   `voided` boolean NOT NULL DEFAULT false,
   `height` int unsigned DEFAULT NULL,
   PRIMARY KEY (`tx_id`)
-);
+));
+
+CREATE INDEX transaction_version_idx USING HASH ON `transaction`(`version`);
+
 ```
 
 # Genesis transactions
