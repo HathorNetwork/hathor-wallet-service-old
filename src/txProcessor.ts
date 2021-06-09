@@ -119,14 +119,24 @@ export const onNewTxRequest: APIGatewayProxyHandler = async (event) => {
  * This is a lambda function that should be invoked using the aws-sdk.
  */
 export const onHandleReorgRequest: APIGatewayProxyHandler = async () => {
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
-  await handleReorg(mysql);
-
-  return {
-    statusCode: 200,
-    body: JSON.stringify({ success: true }),
-  };
+  try {
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    await handleReorg(mysql);
+    return {
+      statusCode: 200,
+      body: JSON.stringify({ success: true }),
+    };
+  } catch (e) {
+    console.log('Error: ', e);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        success: false,
+        message: 'Reorg failed.',
+      }),
+    };
+  }
 };
 
 /**
