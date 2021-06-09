@@ -41,7 +41,7 @@ CREATE TABLE `address_tx_history` (
   `token_id` varchar(64) NOT NULL,
   `balance` bigint NOT NULL,
   `timestamp` int unsigned NOT NULL,
-  `dirty` tinyint unsigned NOT NULL DEFAULT '0',
+  `voided` tinyint unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`address`,`tx_id`,`token_id`)
 );
 
@@ -113,7 +113,7 @@ CREATE TABLE `tx_output` (
   `tx_proposal` varchar(36) DEFAULT NULL,
   `tx_proposal_index` tinyint unsigned DEFAULT NULL,
   `spent_by` varchar(64) DEFAULT NULL,
-  `dirty` tinyint unsigned NOT NULL DEFAULT '0',
+  `voided` tinyint unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`tx_id`,`index`)
 );
 
@@ -145,7 +145,7 @@ CREATE TABLE `wallet_tx_history` (
   `tx_id` varchar(64) NOT NULL,
   `balance` bigint NOT NULL,
   `timestamp` int unsigned NOT NULL,
-  `dirty` tinyint unsigned NOT NULL DEFAULT '0',
+  `voided` tinyint unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`wallet_id`,`token_id`,`tx_id`)
 );
 
