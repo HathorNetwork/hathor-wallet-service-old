@@ -320,6 +320,64 @@ export const searchForLatestValidBlock = async (mysql: ServerlessMysql): Promise
   return latestValidBlock;
 };
 
+/*
+ * Receives a list of transactions that are being voided on a reorg and returns a list of transactions that spend them.
+ *
+ * Also marks wallet and addresses history that use this transaction as voided
+ *
+ * @param mysql - Database connection
+ * @param txs - List of voided transactions to handle
+ *
+ * @returns A new list of voided transactions that are linked to the received list and a list of tx_outputs affected
+ * by this iteration.
+ */
+export const handleVoidedTxList = async (mysql: ServerlessMysql, txs: Tx[]): Promise<[Tx[], DbTxOutput[]]> => {
+  console.log(`Setting ${txs.length} transactions as voided.`);
+  await markTxsAsVoided(mysql, txs);
+  console.log(`Setting WalletTxHistory as voided from ${txs.length} transactions.`);
+  await markWalletTxHistoryAsVoided(mysql, txs);
+  console.log(`Setting AddressTxHistory as voided from ${txs.length} transactions.`);
+  await markAddressTxHistoryAsVoided(mysql, txs);
+
+  // tx outputs are the list of all outputs in the transaction list
+  const txOutputs: DbTxOutput[] = await getTxOutputs(mysql, txs);
+
+  // get outputs that were spent in txOutputs
+  const txOutputsTxIds: Set<string> = txOutputs.reduce(
+    (acc: Set<string>, txOutput: DbTxOutput) => acc.add(txOutput.txId),
+    new Set<string>(),
+  );
+
+  // spent outputs are the list of outputs that were spent by those tx_outputs
+  const spentOutputs: DbTxOutput[] = await getTxOutputsBySpent(mysql, [...txOutputsTxIds]);
+
+  // unspend them as the tx_outputs that spent them are now voided
+  if (spentOutputs.length > 0) {
+    console.log(`Unspending ${spentOutputs.length} tx_outputs.`);
+    await unspendUtxos(mysql, [...spentOutputs]);
+  }
+
+  const affectedUtxoList = [...txOutputs, ...spentOutputs];
+
+  // mark the tx_outputs from the received tx list as voided
+  console.log(`Setting ${txOutputs.length} tx_outputs as voided.`);
+  await markUtxosAsVoided(mysql, txOutputs);
+
+  // get the list of tx ids that spend the tx_outputs list from the received tx list
+  const txIds = txOutputs.reduce((acc: Set<string>, utxo: DbTxOutput) => {
+    if (utxo.spentBy) {
+      acc.add(utxo.spentBy);
+    }
+
+    return acc;
+  }, new Set<string>());
+
+  // fetch all transactions that spend those voided txs outputs:
+  const newTxs = await getTransactionsById(mysql, [...txIds]);
+
+  return [newTxs, affectedUtxoList];
+};
+
 /**
  * Handles a reorg by finding the last valid block on the service's database and
  * removing transactions and tx_outputs before re-calculating the address balances.
@@ -345,45 +403,18 @@ export const handleReorg = async (mysql: ServerlessMysql): Promise<number> => {
 
   let affectedUtxoList: DbTxOutput[] = [];
 
+  /*
+   * Here we need to traverse the DAG of "funds", starting from the voided tx_outputs from the blocks
+   * and stopping when there are no more linked tx_outputs voided.
+   *
+   * We do that by using a BFS, that mutates the DAG on every iteration (by setting the transactions
+   * as voided on the database).
+   */
   while (txs.length > 0) {
-    console.log(`Removing ${txs.length} transactions.`);
-    await markTxsAsVoided(mysql, txs);
-    console.log(`Removing WalletTxHistory from ${txs.length} transactions.`);
-    await markWalletTxHistoryAsVoided(mysql, txs);
-    console.log(`Removing AddressTxHistory from ${txs.length} transactions.`);
-    await markAddressTxHistoryAsVoided(mysql, txs);
+    const [newTxs, newAffectedUtxoList] = await handleVoidedTxList(mysql, txs);
 
-    const txOutputs: DbTxOutput[] = await getTxOutputs(mysql, txs); // "A" Outputs
-
-    // get outputs that were spent in txOutputs
-    const txOutputsTxIds: Set<string> = txOutputs.reduce(
-      (acc: Set<string>, txOutput: DbTxOutput) => acc.add(txOutput.txId),
-      new Set<string>(),
-    );
-    const spentOutputs: DbTxOutput[] = await getTxOutputsBySpent(mysql, [...txOutputsTxIds]);
-
-    if (spentOutputs.length > 0) {
-      console.log(`Unspending ${spentOutputs.length} tx_outputs.`);
-      await unspendUtxos(mysql, [...spentOutputs]);
-    }
-
-    affectedUtxoList = [...affectedUtxoList, ...txOutputs, ...spentOutputs];
-
-    console.log(`Setting ${txOutputs.length} tx_outputs as voided.`);
-    // delete tx outputs:
-    await markUtxosAsVoided(mysql, txOutputs);
-
-    // txOutputs might contain more than one output that spend from the same tx
-    const txIds = txOutputs.reduce((acc: Set<string>, utxo: DbTxOutput) => {
-      if (utxo.spentBy) {
-        acc.add(utxo.spentBy);
-      }
-
-      return acc;
-    }, new Set<string>());
-
-    // fetch all transactions that spend those voided txs outputs:
-    txs = await getTransactionsById(mysql, [...txIds]);
+    txs = newTxs;
+    affectedUtxoList = [...affectedUtxoList, ...newAffectedUtxoList];
   }
 
   // get all remaining txs and set height = null (mempool)
