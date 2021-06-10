@@ -167,6 +167,17 @@ export const onSearchForLatestValidBlockRequest: APIGatewayProxyHandler = async 
   };
 };
 
+export const handleVoidedTx = async (tx: Transaction): Promise<void> => {
+  const txId = tx.tx_id;
+  const transaction: Tx = await fetchTx(mysql, txId);
+
+  if (!transaction) {
+    throw new Error(`Transaction ${txId} not found.`);
+  }
+
+  await handleVoided(mysql, transaction);
+};
+
 /**
  * Add a new transaction or block, updating the proper tables.
  *

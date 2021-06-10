@@ -18,6 +18,7 @@ import {
   checkWalletBalanceTable,
   createOutput,
   createInput,
+  addToAddressTxHistoryTable,
 } from '@tests/utils';
 
 const mysql = getDbConnection();
@@ -265,4 +266,70 @@ test('receive token creation tx', async () => {
   expect(tokenInfo.id).toBe(tokenCreationTx.tx_id);
   expect(tokenInfo.name).toBe(tokenCreationTx.token_name);
   expect(tokenInfo.symbol).toBe(tokenCreationTx.token_symbol);
+});
+
+test('onHandleVoidedTxRequest', async () => {
+  expect.hasAssertions();
+
+  const txId1 = 'txId1';
+  const txId2 = 'txId2';
+  const token = 'tokenId';
+  const addr = 'address';
+  const walletId = 'walletId';
+  const timelock = 1000;
+
+  await addToWalletTable(mysql, [
+    [walletId, XPUBKEY, 'ready', 10, 1, 2],
+  ]);
+
+  await addToUtxoTable(mysql, [
+    [txId1, 0, token, addr, 2500, 0, null, null, false],
+  ]);
+
+  await addToAddressTable(mysql, [
+    { address: addr, index: 0, walletId, transactions: 1 },
+  ]);
+
+  await addToAddressBalanceTable(mysql, [
+    [addr, token, 2500, 0, null, 1, 0, 0],
+  ]);
+
+  await addToAddressTxHistoryTable(mysql, [
+    [addr, txId1, token, 2500, 0],
+  ]);
+
+  await addToWalletBalanceTable(mysql, [{
+    walletId,
+    tokenId: token,
+    unlockedBalance: 2500,
+    lockedBalance: 0,
+    unlockedAuthorities: 0,
+    lockedAuthorities: 0,
+    timelockExpires: null,
+    transactions: 1,
+  }]);
+
+  const evt = JSON.parse(JSON.stringify(eventTemplate));
+  const tx = evt.Records[0].body;
+  tx.version = 1;
+  tx.tx_id = txId2;
+  tx.timestamp += timelock + 1;
+  tx.inputs = [createInput(2500, addr, txId1, 0, token)];
+  tx.outputs = [
+    createOutput(2000, addr, token),    // one output to the same address
+    createOutput(500, 'other', token),  // and one to another address
+  ];
+
+  await txProcessor.onNewTxEvent(evt);
+
+  // void the transaction
+  await txProcessor.handleVoidedTx(tx);
+
+  // both utxos should be voided
+  await expect(checkUtxoTable(mysql, 3, txId2, 0, token, addr, 2000, 0, null, null, false, null, true)).resolves.toBe(true);
+  await expect(checkUtxoTable(mysql, 3, txId2, 1, token, 'other', 500, 0, null, null, false, null, true)).resolves.toBe(true);
+  // the original utxo should not be voided and should not have been spent
+  await expect(checkUtxoTable(mysql, 3, txId1, 0, token, addr, 2500, 0, null, null, false, null, false)).resolves.toBe(true);
+
+  await expect(checkAddressBalanceTable(mysql, 1, addr, token, 2500, 0, 0, 1)).resolves.toBe(true);
 });
