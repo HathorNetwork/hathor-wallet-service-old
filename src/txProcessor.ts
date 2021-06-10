@@ -214,12 +214,12 @@ export const addNewTx = async (tx: Transaction, now: number, blockRewardLock: nu
   const lockedInputs = await getLockedUtxoFromInputs(mysql, tx.inputs);
   await unlockUtxos(mysql, lockedInputs, true);
 
-  // add outputs to utxo table
+  // add transaction outputs to the tx_outputs table
   markLockedOutputs(tx.outputs, now, heightlock !== null);
   await addOrUpdateTx(mysql, txId, tx.height, tx.timestamp, tx.version);
   await addUtxos(mysql, txId, tx.outputs, heightlock);
 
-  // remove inputs from utxo table
+  // mark the tx_outputs used in the transaction (tx.inputs) as spent by txId
   await updateTxOutputSpentBy(mysql, tx.inputs, txId);
 
   // get balance of each token for each address
