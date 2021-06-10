@@ -40,7 +40,6 @@ import {
   updateWalletStatus,
   updateWalletTablesWithTx,
   updateVersionData,
-  addBlock,
   fetchAddressTxHistorySum,
   fetchAddressBalance,
   addOrUpdateTx,
@@ -968,24 +967,24 @@ test('updateWalletLockedBalance', async () => {
   await expect(checkWalletBalanceTable(mysql, 3, wallet1, tokenId, 25, 5, now, 5, 0b11, 0b01)).resolves.toBe(true);
 });
 
-test('addBlock, getLatestHeight and deleteBlocksAfterHeight', async () => {
+test('getLatestHeight and deleteBlocksAfterHeight', async () => {
   expect.hasAssertions();
 
-  await addBlock(mysql, { txId: 'txId1', height: 0 });
+  await addOrUpdateTx(mysql, 'txId1', 0, 1, 0);
 
   expect(await getLatestHeight(mysql)).toBe(0);
 
-  await addBlock(mysql, { txId: 'txId2', height: 5 });
+  await addOrUpdateTx(mysql, 'txId2', 5, 2, 0);
 
   expect(await getLatestHeight(mysql)).toBe(5);
 
-  await addBlock(mysql, { txId: 'txId3', height: 7 });
+  await addOrUpdateTx(mysql, 'txId3', 7, 3, 0);
 
   expect(await getLatestHeight(mysql)).toBe(7);
 
-  await addBlock(mysql, { txId: 'txId4', height: 8 });
-  await addBlock(mysql, { txId: 'txId5', height: 9 });
-  await addBlock(mysql, { txId: 'txId6', height: 10 });
+  await addOrUpdateTx(mysql, 'txId4', 8, 4, 0);
+  await addOrUpdateTx(mysql, 'txId5', 9, 5, 0);
+  await addOrUpdateTx(mysql, 'txId6', 10, 6, 0);
 
   expect(await getLatestHeight(mysql)).toBe(10);
 

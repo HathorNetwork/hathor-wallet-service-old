@@ -7,7 +7,7 @@
 
 import { strict as assert } from 'assert';
 import { ServerlessMysql } from 'serverless-mysql';
-import { walletUtils } from '@hathor/wallet-lib';
+import { constants, walletUtils } from '@hathor/wallet-lib';
 
 import {
   AddressIndexMap,
@@ -38,6 +38,11 @@ import {
 } from '@src/types';
 
 import { getUnixTimestamp, isAuthority } from '@src/utils';
+
+const BLOCK_VERSION = [
+  constants.BLOCK_VERSION,
+  constants.MERGED_MINED_BLOCK_VERSION,
+];
 
 /**
  * Given an xpubkey, generate its addresses.
@@ -1308,7 +1313,13 @@ export const getVersionData = async (mysql: ServerlessMysql): Promise<FullNodeVe
  * @returns The latest height
  */
 export const getLatestHeight = async (mysql: ServerlessMysql): Promise<number> => {
-  const results: DbSelectResult = await mysql.query('SELECT MAX(`height`) as value FROM `blocks`');
+  const results: DbSelectResult = await mysql.query(
+    `SELECT MAX(\`height\`) AS value
+       FROM \`transaction\`
+      WHERE version
+         IN (?)`, [BLOCK_VERSION],
+  );
+
   if (results.length > 0) {
     return results[0].value as number;
   }
@@ -1324,8 +1335,14 @@ export const getLatestHeight = async (mysql: ServerlessMysql): Promise<number> =
  *
  * @returns The latest height
  */
-export const getBlockByHeight = async (mysql: ServerlessMysql, height: number): Promise<Block | null> => {
-  const results: DbSelectResult = await mysql.query('SELECT * FROM `blocks` WHERE `height` = ? LIMIT 1', [height]);
+export const getBlockByHeight = async (mysql: ServerlessMysql, height: number): Promise<Block> => {
+  const results: DbSelectResult = await mysql.query(
+    `SELECT *
+       FROM \`transaction\`
+      WHERE \`height\` = ?
+        AND \`version\` IN (?)
+      LIMIT 1`, [height, BLOCK_VERSION],
+  );
 
   if (results.length > 0) {
     return {
@@ -1816,25 +1833,6 @@ export const markUtxosAsVoided = async (
 };
 
 /**
- * Inserts a block on the database
- *
- * @param mysql - Database connection
- * @param block - The `Block` to insert
- */
-export const addBlock = async (
-  mysql: ServerlessMysql,
-  block: Block,
-): Promise<void> => {
-  const entry = { tx_id: block.txId, height: block.height };
-
-  await mysql.query(
-    `INSERT INTO \`blocks\`
-        SET ?`,
-    [entry],
-  );
-};
-
-/**
  * Delete all blocks starting from a given height
  *
  * @param mysql - Database connection
@@ -1845,9 +1843,10 @@ export const deleteBlocksAfterHeight = async (
   height: number,
 ): Promise<void> => {
   await mysql.query(
-    `DELETE FROM \`blocks\`
-      WHERE height > ?`,
-    [height],
+    `DELETE FROM \`transaction\`
+      WHERE height > ?
+        AND version IN (?)`,
+    [height, BLOCK_VERSION],
   );
 };
 
