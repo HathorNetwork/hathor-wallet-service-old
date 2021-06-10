@@ -39,6 +39,11 @@ import {
 
 import { getUnixTimestamp, isAuthority } from '@src/utils';
 
+const BLOCK_VERSION = [
+  constants.BLOCK_VERSION,
+  constants.MERGED_MINED_BLOCK_VERSION,
+];
+
 /**
  * Given an xpubkey, generate its addresses.
  *
@@ -1308,15 +1313,11 @@ export const getVersionData = async (mysql: ServerlessMysql): Promise<FullNodeVe
  * @returns The latest height
  */
 export const getLatestHeight = async (mysql: ServerlessMysql): Promise<number> => {
-  const blockVersion = [
-    constants.BLOCK_VERSION,
-    constants.MERGED_MINED_BLOCK_VERSION,
-  ];
   const results: DbSelectResult = await mysql.query(
     `SELECT MAX(\`height\`) AS value
        FROM \`transaction\`
       WHERE version
-         IN (?)`, [blockVersion],
+         IN (?)`, [BLOCK_VERSION],
   );
 
   if (results.length > 0) {
@@ -1335,16 +1336,12 @@ export const getLatestHeight = async (mysql: ServerlessMysql): Promise<number> =
  * @returns The latest height
  */
 export const getBlockByHeight = async (mysql: ServerlessMysql, height: number): Promise<Block> => {
-  const blockVersion = [
-    constants.BLOCK_VERSION,
-    constants.MERGED_MINED_BLOCK_VERSION,
-  ];
   const results: DbSelectResult = await mysql.query(
     `SELECT *
        FROM \`transaction\`
       WHERE \`height\` = ?
         AND \`version\` IN (?)
-      LIMIT 1`, [height, blockVersion],
+      LIMIT 1`, [height, BLOCK_VERSION],
   );
 
   if (results.length > 0) {
@@ -1845,16 +1842,11 @@ export const deleteBlocksAfterHeight = async (
   mysql: ServerlessMysql,
   height: number,
 ): Promise<void> => {
-  const blockVersion = [
-    constants.BLOCK_VERSION,
-    constants.MERGED_MINED_BLOCK_VERSION,
-  ];
-
   await mysql.query(
     `DELETE FROM \`transaction\`
       WHERE height > ?
         AND version IN (?)`,
-    [height, blockVersion],
+    [height, BLOCK_VERSION],
   );
 };
 
