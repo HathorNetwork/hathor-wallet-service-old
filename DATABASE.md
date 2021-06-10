@@ -148,6 +148,7 @@ CREATE TABLE `transaction` (
   `timestamp` int unsigned NOT NULL,
   `version` tinyint unsigned NOT NULL,
   `voided` boolean NOT NULL DEFAULT false,
+  -- Height is the block's height if it's a block and the height of the `first_block` if it is a transaction.
   `height` int unsigned DEFAULT NULL,
   PRIMARY KEY (`tx_id`)
 ));
