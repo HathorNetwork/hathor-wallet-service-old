@@ -588,3 +588,8 @@ export interface DbTxOutput {
   txProposalId?: string;
   txProposalIndex?: number;
 }
+
+export interface Block {
+  txId: string;
+  height: number;
+}

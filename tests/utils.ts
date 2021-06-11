@@ -6,7 +6,6 @@ import {
   TxInput,
   TxOutput,
   FullNodeVersionData,
-  Block,
 } from '@src/types';
 
 import { WalletBalanceEntry, AddressTableEntry, TokenTableEntry } from '@tests/types';
