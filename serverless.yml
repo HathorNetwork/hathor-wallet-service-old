@@ -9,7 +9,7 @@ custom:
     automatic: true
     number: 3
 
-# Create an optimized package for our functions 
+# Create an optimized package for our functions
 package:
   individually: true
 
@@ -37,6 +37,14 @@ provider:
     DB_USER: ${env:STAGE}-user
 
 functions:
+  getLatestBlock:
+    handler: src/height.getLatestBlock
+  onNewTxRequest:
+    handler: src/txProcessor.onNewTxRequest
+  onHandleReorgRequest:
+    handler: src/txProcessor.onHandleReorgRequest
+  onSearchForLatestValidBlockRequest:
+    handler: src/txProcessor.onSearchForLatestValidBlockRequest
   onNewTxEvent:
     handler: src/txProcessor.onNewTxEvent
   loadWalletAsync:

@@ -6,7 +6,7 @@
  */
 
 import AWS from 'aws-sdk';
-import { APIGatewayProxyResult, SQSEvent } from 'aws-lambda';
+import { APIGatewayProxyHandler, APIGatewayProxyResult, SQSEvent } from 'aws-lambda';
 import 'source-map-support/register';
 import hathorLib from '@hathor/wallet-lib';
 
@@ -15,25 +15,30 @@ import {
   getWalletBalanceMap,
   markLockedOutputs,
   unlockUtxos,
+  searchForLatestValidBlock,
+  handleReorg,
 } from '@src/commons';
 import {
   addNewAddresses,
   addUtxos,
+  addOrUpdateTx,
+  updateTx,
   generateAddresses,
   getAddressWalletInfo,
   getLockedUtxoFromInputs,
   getUtxosLockedAtHeight,
-  maybeUpdateLatestHeight,
-  removeUtxos,
+  updateTxOutputSpentBy,
   storeTokenInformation,
   updateAddressTablesWithTx,
   updateWalletTablesWithTx,
+  fetchTx,
 } from '@src/db';
 import {
   StringMap,
   Transaction,
   TokenBalanceMap,
   Wallet,
+  Tx,
 } from '@src/types';
 import { closeDbConnection, getDbConnection, getUnixTimestamp } from '@src/utils';
 
@@ -87,13 +92,77 @@ export const onNewTxEvent = async (event: SQSEvent): Promise<APIGatewayProxyResu
 };
 
 /**
+ * Function called when to process new transactions or blocks.
+ *
+ * @remarks
+ * This is a lambda function that should be invoked using the aws-sdk.
+ */
+export const onNewTxRequest: APIGatewayProxyHandler = async (event) => {
+  const now = getUnixTimestamp();
+  const blockRewardLock = parseInt(process.env.BLOCK_REWARD_LOCK, 10);
+
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  await addNewTx(event.body, now, blockRewardLock);
+
+  return {
+    statusCode: 200,
+    body: JSON.stringify({ success: true }),
+  };
+};
+
+/**
+ * Function called when a reorg is detected on the wallet-service daemon
+ *
+ * @remarks
+ * This is a lambda function that should be invoked using the aws-sdk.
+ */
+export const onHandleReorgRequest: APIGatewayProxyHandler = async () => {
+  try {
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    await handleReorg(mysql);
+    return {
+      statusCode: 200,
+      body: JSON.stringify({ success: true }),
+    };
+  } catch (e) {
+    console.log('Error: ', e);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        success: false,
+        message: 'Reorg failed.',
+      }),
+    };
+  }
+};
+
+/**
+ * Function called to search for the latest valid block
+ *
+ * @remarks
+ * This is a lambda function that should be invoked using the aws-sdk.
+ */
+export const onSearchForLatestValidBlockRequest: APIGatewayProxyHandler = async () => {
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  const latestValidBlock = await searchForLatestValidBlock(mysql);
+
+  return {
+    statusCode: 200,
+    body: JSON.stringify({ success: true, latestValidBlock }),
+  };
+};
+
+/**
  * Add a new transaction or block, updating the proper tables.
  *
  * @param tx - The transaction or block
  * @param now - Current timestamp
  * @param blockRewardLock - The block reward lock
  */
-const addNewTx = async (tx: Transaction, now: number, blockRewardLock: number) => {
+export const addNewTx = async (tx: Transaction, now: number, blockRewardLock: number): Promise<void> => {
   // TODO mysql error treatment
 
   const txId = tx.tx_id;
@@ -107,6 +176,23 @@ const addNewTx = async (tx: Transaction, now: number, blockRewardLock: number) =
     }
   }
 
+  const dbTx: Tx = await fetchTx(mysql, txId);
+
+  // check if we already have the tx on our database:
+  if (dbTx) {
+    // ignore tx if we already have it confirmed on our database
+    if (dbTx.height) {
+      return;
+    }
+
+    // set height and break out because it was already on the mempool
+    // so we can consider that our balances have already been calculated
+    // and the utxos were already inserted
+    await updateTx(mysql, txId, tx.height, tx.timestamp, tx.version);
+
+    return;
+  }
+
   let heightlock = null;
   if (tx.version === hathorLib.constants.BLOCK_VERSION
     || tx.version === hathorLib.constants.MERGED_MINED_BLOCK_VERSION) {
@@ -116,9 +202,6 @@ const addNewTx = async (tx: Transaction, now: number, blockRewardLock: number) =
 
     // set heightlock
     heightlock = tx.height + blockRewardLock;
-
-    // update height on database
-    await maybeUpdateLatestHeight(mysql, tx.height);
   }
 
   if (tx.version === hathorLib.constants.CREATE_TOKEN_TX_VERSION) {
@@ -131,12 +214,13 @@ const addNewTx = async (tx: Transaction, now: number, blockRewardLock: number) =
   const lockedInputs = await getLockedUtxoFromInputs(mysql, tx.inputs);
   await unlockUtxos(mysql, lockedInputs, true);
 
-  // add outputs to utxo table
+  // add transaction outputs to the tx_outputs table
   markLockedOutputs(tx.outputs, now, heightlock !== null);
+  await addOrUpdateTx(mysql, txId, tx.height, tx.timestamp, tx.version);
   await addUtxos(mysql, txId, tx.outputs, heightlock);
 
-  // remove inputs from utxo table
-  await removeUtxos(mysql, tx.inputs);
+  // mark the tx_outputs used in the transaction (tx.inputs) as spent by txId
+  await updateTxOutputSpentBy(mysql, tx.inputs, txId);
 
   // get balance of each token for each address
   const addressBalanceMap: StringMap<TokenBalanceMap> = getAddressBalanceMap(tx.inputs, tx.outputs);
