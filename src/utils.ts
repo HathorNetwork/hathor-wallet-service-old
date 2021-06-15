@@ -9,6 +9,7 @@ import { createHash, HexBase64Latin1Encoding } from 'crypto';
 
 import serverlessMysql, { ServerlessMysql } from 'serverless-mysql';
 import hathorLib from '@hathor/wallet-lib';
+import fullnode from '@src/fullnode';
 
 const ACCEPTABLE_WEIGHT_RANGE = 1.1; // 10%
 
@@ -160,3 +161,19 @@ export const validateWeight = (calculated: number, received: number): boolean =>
   (received >= calculated)
   && (received < (calculated * ACCEPTABLE_WEIGHT_RANGE))
 );
+
+/**
+ * Requests the fullnode for the requested block information and returns
+ * if it is voided or not
+ *
+ * @returns A boolean with the result
+ */
+export const isTxVoided = async (txId: string): Promise<boolean> => {
+  const blockInfo = await fullnode.downloadTx(txId);
+
+  if (!blockInfo.meta.voided_by || blockInfo.meta.voided_by.length === 0) {
+    return false;
+  }
+
+  return true;
+};

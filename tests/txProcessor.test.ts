@@ -258,6 +258,7 @@ test('receive token creation tx', async () => {
     await expect(
       checkUtxoTable(mysql, length, tokenCreationTx.tx_id, index, token, address, value, authorities, timelock, null, false),
     ).resolves.toBe(true);
+
     await expect(checkAddressBalanceTable(mysql, length, address, token, value, 0, null, transactions, authorities, 0)).resolves.toBe(true);
   }
   const tokenInfo = await getTokenInformation(mysql, tokenCreationTx.tx_id);

@@ -22,7 +22,7 @@ import {
   IWalletInput,
   IWalletOutput,
   TokenBalanceMap,
-  Utxo,
+  DbTxOutput,
   WalletTokenBalance,
 } from '@src/types';
 import { closeDbAndGetError } from '@src/api/utils';
@@ -276,7 +276,7 @@ export const getOutputsBalance = (outputs: IWalletOutput[], now: number): TokenB
  * @param inputUtxos - List of input UTXOs
  * @returns A balance map merging all input UTXOs
  */
-export const getInputsBalance = (inputUtxos: Utxo[]): TokenBalanceMap => {
+export const getInputsBalance = (inputUtxos: DbTxOutput[]): TokenBalanceMap => {
   let inputsBalance = null;
   for (const utxo of inputUtxos) {
     const decoded = { type: 'P2PKH', address: utxo.address, timelock: utxo.timelock };
@@ -345,7 +345,7 @@ const getUtxosForTokenBalance = async (
   walletId: string,
   tokenId: string,
   tokenBalance: Balance,
-): Promise<Utxo[]> => {
+): Promise<DbTxOutput[]> => {
   switch (inputSelectionAlgo) {
     case InputSelectionAlgo.USE_LARGER_UTXOS:
     default:
@@ -358,8 +358,8 @@ export const useLargerUtxos = async (
   walletId: string,
   tokenId: string,
   balance: number,
-): Promise<Utxo[]> => {
-  const finalUtxos: Utxo[] = [];
+): Promise<DbTxOutput[]> => {
+  const finalUtxos: DbTxOutput[] = [];
 
   let remainingBalance = balance;
   const valueUtxos = await getWalletSortedValueUtxos(_mysql, walletId, tokenId);
@@ -409,7 +409,7 @@ export const checkWalletFunds = (walletBalances: WalletTokenBalance[], outputsBa
  * @param utxos - List of UTXOs retrieved from database
  * @returns A list with the missing UTXOs, if any
  */
-export const checkMissingUtxos = (inputs: IWalletInput[], utxos: Utxo[]): IWalletInput[] => {
+export const checkMissingUtxos = (inputs: IWalletInput[], utxos: DbTxOutput[]): IWalletInput[] => {
   if (inputs.length === utxos.length) return [];
 
   const remaining = new Set(inputs.map((input) => [input.txId, input.index]));
@@ -430,7 +430,7 @@ export const checkMissingUtxos = (inputs: IWalletInput[], utxos: Utxo[]): IWalle
  * @param utxos - List of UTXOs retrieved from database
  * @returns A list with the missing UTXOs, if any
  */
-export const checkUsedUtxos = (utxos: Utxo[]): boolean => {
+export const checkUsedUtxos = (utxos: DbTxOutput[]): boolean => {
   for (let x = 0; x < utxos.length; x++) {
     if (utxos[x].txProposalId) {
       return true;
