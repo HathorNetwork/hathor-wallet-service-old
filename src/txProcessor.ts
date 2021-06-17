@@ -98,17 +98,29 @@ export const onNewTxEvent = async (event: SQSEvent): Promise<APIGatewayProxyResu
  * This is a lambda function that should be invoked using the aws-sdk.
  */
 export const onNewTxRequest: APIGatewayProxyHandler = async (event) => {
-  const now = getUnixTimestamp();
-  const blockRewardLock = parseInt(process.env.BLOCK_REWARD_LOCK, 10);
+  try {
+    const now = getUnixTimestamp();
+    const blockRewardLock = parseInt(process.env.BLOCK_REWARD_LOCK, 10);
 
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
-  await addNewTx(event.body, now, blockRewardLock);
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    await addNewTx(event.body, now, blockRewardLock);
 
-  return {
-    statusCode: 200,
-    body: JSON.stringify({ success: true }),
-  };
+    return {
+      statusCode: 200,
+      body: JSON.stringify({ success: true }),
+    };
+  } catch (e) {
+    console.log('Errored on onNewTxRequest: ', e);
+
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        success: false,
+        message: 'Tx processor failed',
+      }),
+    };
+  }
 };
 
 /**
@@ -127,7 +139,7 @@ export const onHandleReorgRequest: APIGatewayProxyHandler = async () => {
       body: JSON.stringify({ success: true }),
     };
   } catch (e) {
-    console.log('Error: ', e);
+    console.log('Errored on onHandleReorgRequest: ', e);
     return {
       statusCode: 500,
       body: JSON.stringify({
