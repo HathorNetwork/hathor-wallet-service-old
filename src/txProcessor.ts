@@ -98,10 +98,10 @@ export const onNewTxEvent = async (event: SQSEvent): Promise<APIGatewayProxyResu
  * This is a lambda function that should be invoked using the aws-sdk.
  */
 export const onNewTxRequest: APIGatewayProxyHandler = async (event) => {
-  try {
-    const now = getUnixTimestamp();
-    const blockRewardLock = parseInt(process.env.BLOCK_REWARD_LOCK, 10);
+  const now = getUnixTimestamp();
+  const blockRewardLock = parseInt(process.env.BLOCK_REWARD_LOCK, 10);
 
+  try {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     await addNewTx(event.body, now, blockRewardLock);
