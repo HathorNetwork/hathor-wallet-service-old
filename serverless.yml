@@ -123,6 +123,13 @@ functions:
           method: get
           cors: true
           authorizer: ${self:custom.authorizer.walletBearer}
+  getUtxos:
+    handler: src/api/utxos.getFilteredUtxos
+    events:
+      - http:
+          path: filter_utxos
+          method: post
+          cors: true
   getBalanceApi:
     handler: src/api/balances.get
     events:

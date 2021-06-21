@@ -50,6 +50,7 @@ import {
   deleteBlocksAfterHeight,
   markUtxosAsVoided,
   unspendUtxos,
+  filterUtxos,
 } from '@src/db';
 import {
   Authorities,
@@ -1456,4 +1457,75 @@ test('markAddressTxHistoryAsVoided', async () => {
   const history2 = await fetchAddressTxHistorySum(mysql, [addr1, addr2]);
 
   expect(history2).toHaveLength(0);
+});
+
+test('filterUtxos', async () => {
+  expect.hasAssertions();
+
+  const addr1 = 'addr1';
+  const addr2 = 'addr2';
+  const walletId = 'walletId';
+  const tokenId = 'tokenId';
+  const txId = 'txId';
+  const txId2 = 'txId2';
+  const txId3 = 'txId3';
+
+  await addToAddressTable(mysql, [{
+    address: addr1,
+    index: 0,
+    walletId,
+    transactions: 1,
+  }, {
+    address: addr2,
+    index: 1,
+    walletId,
+    transactions: 1,
+  }]);
+
+  await addToUtxoTable(mysql, [
+    [txId3, 0, '00', addr1, 6000, 0, null, null, false],
+    [txId, 0, tokenId, addr1, 100, 0, null, null, false],
+    [txId2, 0, tokenId, addr1, 500, 0, null, null, false],
+    [txId2, 1, tokenId, addr1, 1000, 0, null, null, false],
+    // locked utxo:
+    [txId2, 2, tokenId, addr2, 1500, 0, null, null, true],
+    // authority utxo:
+    [txId2, 3, tokenId, addr2, 0, 0b01, null, null, false],
+  ]);
+
+  // filter all hathor utxos from addr1 and addr2
+  let utxos = await filterUtxos(mysql, { addresses: [addr1, addr2] });
+  expect(utxos).toHaveLength(1);
+
+  // filter all 'tokenId' utxos from addr1 and addr2
+  utxos = await filterUtxos(mysql, { addresses: [addr1, addr2], tokenId });
+  expect(utxos).toHaveLength(4);
+
+  // filter all 'tokenId' utxos from addr1 and addr2 that are not locked
+  utxos = await filterUtxos(mysql, { addresses: [addr1, addr2], tokenId, ignoreLocked: true });
+  expect(utxos).toHaveLength(3);
+
+  // filter all authority utxos from addr1 and addr2
+  utxos = await filterUtxos(mysql, { addresses: [addr1, addr2], tokenId, authority: 0b01 });
+  expect(utxos).toHaveLength(1);
+
+  // filter all utxos between 100 and 1500
+  utxos = await filterUtxos(mysql, { addresses: [addr1, addr2], tokenId, biggerThan: 100, smallerThan: 1500 });
+  expect(utxos).toHaveLength(2);
+  expect(utxos[0]).toStrictEqual({
+    txId: txId2, index: 1, tokenId, address: addr1, value: 1000, authorities: 0, timelock: null, heightlock: null, locked: false,
+  });
+  expect(utxos[1]).toStrictEqual({
+    txId: txId2, index: 0, tokenId, address: addr1, value: 500, authorities: 0, timelock: null, heightlock: null, locked: false,
+  });
+
+  // limit to 2 utxos, should return the largest 2 ordered by value
+  utxos = await filterUtxos(mysql, { addresses: [addr1, addr2], tokenId, maxUtxos: 2 });
+  expect(utxos).toHaveLength(2);
+  expect(utxos[0]).toStrictEqual({
+    txId: txId2, index: 2, tokenId, address: addr2, value: 1500, authorities: 0, timelock: null, heightlock: null, locked: true,
+  });
+  expect(utxos[1]).toStrictEqual({
+    txId: txId2, index: 1, tokenId, address: addr1, value: 1000, authorities: 0, timelock: null, heightlock: null, locked: false,
+  });
 });
