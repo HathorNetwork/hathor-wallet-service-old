@@ -24,7 +24,8 @@ resources:
     WalletServiceNewTxQueue:
       Type: "AWS::SQS::Queue"
       Properties:
-        QueueName: "WalletServiceNewTxQueue"
+        QueueName:
+            WalletServiceNewTxQueue_${env:STAGE}
 
 provider:
   name: aws
