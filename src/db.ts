@@ -36,6 +36,7 @@ import {
   Tx,
   AddressBalance,
   AddressTotalBalance,
+  IFilterUtxo,
 } from '@src/types';
 
 import { getUnixTimestamp, isAuthority, getAddressPath } from '@src/utils';
@@ -2131,4 +2132,63 @@ export const fetchAddressTxHistorySum = async (
     balance: result.balance as number,
     transactions: result.transactions as number,
   }));
+};
+
+export const filterUtxos = async (
+  mysql: ServerlessMysql,
+  filters: IFilterUtxo = { addresses: [] },
+): Promise<DbTxOutput[]> => {
+  const finalFilters = {
+    addresses: [],
+    tokenId: '00',
+    authority: 0,
+    ignoreLocked: false,
+    biggerThan: -1,
+    smallerThan: constants.MAX_OUTPUT_VALUE + 1,
+    ...filters,
+  };
+
+  if (finalFilters.addresses.length === 0) {
+    throw new Error('Addresses can\'t be empty.');
+  }
+
+  const results: DbSelectResult = await mysql.query(
+    `SELECT *
+       FROM \`tx_output\`
+      WHERE \`address\`
+         IN (?)
+        AND \`token_id\` = ?
+        AND \`authorities\` = ?
+        ${finalFilters.ignoreLocked ? 'AND `locked` = FALSE' : ''}
+        ${finalFilters.authority === 0 ? 'AND value < ?' : ''}
+        ${finalFilters.authority === 0 ? 'AND value > ?' : ''}
+        AND \`tx_proposal\` IS NULL
+        AND \`voided\` = FALSE
+        AND \`spent_by\` IS NULL
+   ORDER BY \`value\` DESC
+        ${finalFilters.maxUtxos ? 'LIMIT ?': ''}
+       `,
+    [
+      finalFilters.addresses,
+      finalFilters.tokenId,
+      finalFilters.authority,
+      finalFilters.smallerThan,
+      finalFilters.biggerThan,
+      finalFilters.maxUtxos,
+    ],
+  );
+
+  const utxos: DbTxOutput[] = results.map((utxo) => ({
+    txId: utxo.tx_id as string,
+    index: utxo.index as number,
+    tokenId: utxo.token_id as string,
+    address: utxo.address as string,
+    value: utxo.value as number,
+    authorities: utxo.authorities as number,
+    timelock: utxo.timelock as number,
+    heightlock: utxo.heightlock as number,
+    locked: utxo.locked > 0,
+  }));
+
+  return utxos;
 };
