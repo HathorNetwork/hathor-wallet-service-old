@@ -4,7 +4,9 @@ import {
   addNewAddresses,
   addTxProposalOutputs,
   addUtxos,
+  clearMissingTx,
   createTxProposal,
+  createUnconfirmedTx,
   createWallet,
   generateAddresses,
   getAddressWalletInfo,
@@ -1457,3 +1459,25 @@ test('markAddressTxHistoryAsVoided', async () => {
 
   expect(history2).toHaveLength(0);
 });
+
+test('unconfirmedTx: create and clear', async () => {
+  expect.hasAssertions();
+  const data = '{"foo":"bar"}';
+  await createUnconfirmedTx(mysql, '123', data, ['456', '789']);
+  // Nobody is waiting for 000
+  expect(await clearMissingTx(mysql, '000')).toStrictEqual([]);
+  // '123' is still waiting for '789'
+  expect(await clearMissingTx(mysql, '456')).toStrictEqual([]);
+  // '123' is waiting for noone, return it with the original data
+  expect(await clearMissingTx(mysql, '789')).toStrictEqual([{ tx: '123', data }]);
+  // Nobody is waiting for 000 still
+  expect(await clearMissingTx(mysql, '000')).toStrictEqual([]);
+
+  // check if tables are empty?
+});
+
+// Tests missing:
+// - create unconfirmed tx then `checkForMissingTxs` with needed inputs
+// - create unconfirmed tx then `checkForMissingTxs` with unneeded inputs
+// - Maybe the above with multiple txs and inputs
+// - check tables are empty after `clearMissingTx`

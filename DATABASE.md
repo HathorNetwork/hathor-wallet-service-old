@@ -151,9 +151,23 @@ CREATE TABLE `transaction` (
   -- Height is the block's height if it's a block and the height of the `first_block` if it is a transaction.
   `height` int unsigned DEFAULT NULL,
   PRIMARY KEY (`tx_id`)
-));
+);
 
 CREATE INDEX transaction_version_idx USING HASH ON `transaction`(`version`);
+
+CREATE TABLE `unconfirmed_tx` (
+  `tx_id` varchar(64) NOT NULL,
+  `data` TEXT NOT NULL,
+  `created_at` int unsigned NOT NULL,
+  PRIMARY KEY (`tx_id`)
+);
+
+CREATE TABLE `unconfirmed_tx_missing` (
+  `tx_id` varchar(64) NOT NULL,
+  `spent_by` varchar(64) NOT NULL,
+  `created_at` int unsigned NOT NULL,
+  PRIMARY KEY (`tx_id`, `spent_by`)
+);
 
 ```
 
@@ -165,13 +179,7 @@ We need to add the genesis transactions to the database as the service expects t
 ```
 INSERT INTO `metadata` (`key`, `value`) VALUES ('height', 0);
 INSERT INTO `transaction` (`tx_id`, `height`, `timestamp`, `version`, `voided`) VALUES ('000006cb93385b8b87a545a1cbb6197e6caff600c12cc12fc54250d39c8088fc', 0, 1578075305, 0, FALSE);
-INSERT INTO `tx_output` (`tx_id`, `index`, `token_id`, `address`, `value`)
-     VALUES ('000006cb93385b8b87a545a1cbb6197e6caff600c12cc12fc54250d39c8088fc',
-              0,
-              '00',
-              'HJB2yxxsHtudGGy3jmVeadwMfRi2zNCKKD',
-              100000000000
-              );
+INSERT INTO `tx_output` (`tx_id`, `index`, `token_id`, `address`, `value`) VALUES ('000006cb93385b8b87a545a1cbb6197e6caff600c12cc12fc54250d39c8088fc', 0, '00', 'HJB2yxxsHtudGGy3jmVeadwMfRi2zNCKKD', 100000000000);
 ```
 
 ## Testnet
@@ -179,11 +187,30 @@ INSERT INTO `tx_output` (`tx_id`, `index`, `token_id`, `address`, `value`)
 ```
 INSERT INTO `metadata` (`key`, `value`) VALUES ('height', 0);
 INSERT INTO `transaction` (`tx_id`, `height`, `timestamp`, `version`, `voided`) VALUES ('0000033139d08176d1051fb3a272c3610457f0c7f686afbe0afe3d37f966db85', 0, 1577836800, 0, FALSE);
-INSERT INTO `tx_output` (`tx_id`, `index`, `token_id`, `address`, `value`)
-     VALUES ('0000033139d08176d1051fb3a272c3610457f0c7f686afbe0afe3d37f966db85',
-              0,
-              '00',
-              'WdmDUMp8KvzhWB7KLgguA2wBiKsh4Ha8eX',
-              100000000000
-              );
+INSERT INTO `tx_output` (`tx_id`, `index`, `token_id`, `address`, `value`) VALUES ('0000033139d08176d1051fb3a272c3610457f0c7f686afbe0afe3d37f966db85', 0, '00', 'WdmDUMp8KvzhWB7KLgguA2wBiKsh4Ha8eX', 100000000000);
+```
+
+# Cleanup
+
+For development.
+
+```
+TRUNCATE TABLE address;
+TRUNCATE TABLE address_balance;
+TRUNCATE TABLE address_tx_history;
+TRUNCATE TABLE version_data;
+TRUNCATE TABLE metadata;
+TRUNCATE TABLE token;
+TRUNCATE TABLE tx_proposal;
+TRUNCATE TABLE tx_proposal_outputs;
+TRUNCATE TABLE tx_output;
+TRUNCATE TABLE wallet;
+TRUNCATE TABLE wallet_balance;
+TRUNCATE TABLE wallet_tx_history;
+TRUNCATE TABLE transaction;
+
+-- And add the genesis like this for testnet:
+INSERT INTO `metadata` (`key`, `value`) VALUES ('height', 0);
+INSERT INTO `transaction` (`tx_id`, `height`, `timestamp`, `version`, `voided`) VALUES ('0000033139d08176d1051fb3a272c3610457f0c7f686afbe0afe3d37f966db85', 0, 1577836800, 0, FALSE);
+INSERT INTO `tx_output` (`tx_id`, `index`, `token_id`, `address`, `value`) VALUES ('0000033139d08176d1051fb3a272c3610457f0c7f686afbe0afe3d37f966db85', 0, '00', 'WdmDUMp8KvzhWB7KLgguA2wBiKsh4Ha8eX', 100000000000);
 ```

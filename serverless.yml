@@ -26,6 +26,11 @@ resources:
       Properties:
         QueueName:
             WalletServiceNewTxQueue_${env:STAGE}
+    WalletServiceProcessNewTxQueue:
+      Type: "AWS::SQS::Queue"
+      Properties:
+        QueueName:
+            WalletServiceProcessNewTxQueue_${env:STAGE}
 
 provider:
   name: aws
@@ -43,12 +48,18 @@ provider:
     DB_NAME: ${self:service}-${env:STAGE}
     DB_USER: ${env:STAGE}-user
     NEW_TX_SQS: { Ref: WalletServiceNewTxQueue }
+    PROCESS_TX_SQS: { Ref: WalletServiceProcessNewTxQueue }
   iamRoleStatements:
     - Effect: Allow
       Action:
         - sqs:*
       Resource:
         Fn::GetAtt: [ WalletServiceNewTxQueue, Arn ]
+    - Effect: Allow
+      Action:
+        - sqs:*
+      Resource:
+        Fn::GetAtt: [ WalletServiceProcessNewTxQueue, Arn ]
 
 functions:
   getLatestBlock:
@@ -61,6 +72,14 @@ functions:
     handler: src/txProcessor.onSearchForLatestValidBlockRequest
   onNewTxEvent:
     handler: src/txProcessor.onNewTxEvent
+    events:
+      - sqs:
+          arn:
+            Fn::GetAtt:
+              - WalletServiceProcessNewTxQueue
+              - Arn
+          batchSize: 10
+          maximumBatchingWindow: 60
   loadWalletAsync:
     handler: src/api/wallet.loadWallet
   loadWalletApi:
