@@ -38,7 +38,6 @@ provider:
   environment:
     AWS_NODEJS_CONNECTION_REUSE_ENABLED: 1
     SERVICE_NAME: ${self:service}
-    # AWS_REGION: ${self:provider.region}
     DB_ENDPOINT: ${env:DB_ENDPOINT, 'rds-endpoint-TODO'}
     DB_NAME: ${self:service}-${env:STAGE}
     DB_USER: ${env:STAGE}-user
