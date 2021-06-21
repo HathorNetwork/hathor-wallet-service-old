@@ -30,22 +30,14 @@ import {
   TokenBalanceMap,
   DbTxOutput,
   WalletTokenBalance,
+  InputSelectionAlgo,
+  IWalletInsufficientFunds,
 } from '@src/types';
 import { closeDbAndGetError } from '@src/api/utils';
 import { arrayShuffle, closeDbConnection, getDbConnection, getUnixTimestamp } from '@src/utils';
 import hathorLib from '@hathor/wallet-lib';
 
 const mysql = getDbConnection();
-
-enum InputSelectionAlgo {
-  USE_LARGER_UTXOS = 'use-larger-utxos',
-}
-
-interface IWalletInsufficientFunds {
-  tokenId: string;
-  requested: number;
-  available: number;
-}
 
 const bodySchema = Joi.object({
   outputs: Joi.array()
