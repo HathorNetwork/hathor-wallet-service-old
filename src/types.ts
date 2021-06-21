@@ -633,3 +633,13 @@ export interface IFilterUtxo {
 export interface DbTxOutputWithPath extends DbTxOutput {
   addressPath: string;
 }
+
+export enum InputSelectionAlgo {
+  USE_LARGER_UTXOS = 'use-larger-utxos',
+}
+
+export interface IWalletInsufficientFunds {
+  tokenId: string;
+  requested: number;
+  available: number;
+}
