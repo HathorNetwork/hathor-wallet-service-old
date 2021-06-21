@@ -624,3 +624,13 @@ export interface IFilterUtxo {
   smallerThan?: number;
   maxUtxos?: number;
 }
+
+export enum InputSelectionAlgo {
+  USE_LARGER_UTXOS = 'use-larger-utxos',
+}
+
+export interface IWalletInsufficientFunds {
+  tokenId: string;
+  requested: number;
+  available: number;
+}
