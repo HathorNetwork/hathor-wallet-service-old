@@ -12,6 +12,7 @@ import {
 } from '@src/types';
 import { closeDbAndGetError } from '@src/api/utils';
 import { getDbConnection } from '@src/utils';
+import { constants } from '@hathor/wallet-lib';
 
 const mysql = getDbConnection();
 
@@ -25,7 +26,7 @@ const bodySchema = Joi.object({
   ignoreLocked: Joi.boolean().optional(),
   biggerThan: Joi.number().integer().positive(),
   smallerThan: Joi.number().integer().positive(),
-  maxUtxos: Joi.number().integer().positive(),
+  maxUtxos: Joi.number().integer().positive().default(constants.MAX_OUTPUTS),
 });
 
 /*
