@@ -19,6 +19,14 @@ plugins:
   - serverless-prune-plugin
   - serverless-dotenv-plugin
 
+resources:
+  Resources:
+    WalletServiceNewTxQueue:
+      Type: "AWS::SQS::Queue"
+      Properties:
+        QueueName:
+            WalletServiceNewTxQueue_${env:STAGE}
+
 provider:
   name: aws
   runtime: nodejs12.x
@@ -31,10 +39,16 @@ provider:
   environment:
     AWS_NODEJS_CONNECTION_REUSE_ENABLED: 1
     SERVICE_NAME: ${self:service}
-    AWS_REGION: ${self:provider.region}
     DB_ENDPOINT: ${env:DB_ENDPOINT, 'rds-endpoint-TODO'}
     DB_NAME: ${self:service}-${env:STAGE}
     DB_USER: ${env:STAGE}-user
+    NEW_TX_SQS: { Ref: WalletServiceNewTxQueue }
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - sqs:*
+      Resource:
+        Fn::GetAtt: [ WalletServiceNewTxQueue, Arn ]
 
 functions:
   getLatestBlock:
@@ -129,11 +143,19 @@ functions:
           route: join
   wsTxNotifyNew:
     handler: src/ws/txNotify.onNewTx
+    events:
+      - sqs:
+          arn:
+            Fn::GetAtt:
+              - WalletServiceNewTxQueue
+              - Arn
+          batchSize: 10
+          maximumBatchingWindow: 60
   wsTxNotifyUpdate:
     handler: src/ws/txNotify.onUpdateTx
   wsAdminBroadcast:
     handler: src/ws/admin.broadcast
-  wsAdminMulticast:
-    handler: src/ws/admin.multicast
   wsAdminDisconnect:
     handler: src/ws/admin.disconnect
+  wsAdminMulticast:
+    handler: src/ws/admin.multicast
