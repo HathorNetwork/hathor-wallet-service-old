@@ -417,7 +417,6 @@ export const validateAddressBalances = async (mysql: ServerlessMysql, addresses:
   const addressTxHistorySums: AddressTotalBalance[] = await fetchAddressTxHistorySum(mysql, addresses);
 
   // if we have the full history of transactions, the number of rows must match:
-  console.log(addressBalances.length, addressTxHistorySums.length);
   assert.strictEqual(addressBalances.length, addressTxHistorySums.length);
 
   for (let i = 0; i < addressTxHistorySums.length; i++) {

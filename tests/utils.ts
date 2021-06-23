@@ -144,14 +144,14 @@ export const checkUtxoTable = async (
   results = await mysql.query(
     `${baseQuery} ${timelock ? '= ?' : 'IS ?'}
        AND \`heightlock\` ${heightlock ? '= ?' : 'IS ?'}
-       AND \`spent_by\` ${heightlock ? '= ?' : 'IS ?'}
+       AND \`spent_by\` ${spentBy ? '= ?' : 'IS ?'}
     `,
     [txId, index, tokenId, address, value, authorities, locked, voided, timelock, heightlock, spentBy],
   );
   if (results.length !== 1) {
     return {
       error: 'checkUtxoTable query',
-      params: { txId, index, tokenId, address, value, authorities, timelock, heightlock, locked },
+      params: { txId, index, tokenId, address, value, authorities, timelock, heightlock, locked, spentBy, voided },
       results,
     };
   }
