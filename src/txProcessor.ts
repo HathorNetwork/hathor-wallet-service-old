@@ -17,6 +17,7 @@ import {
   unlockUtxos,
   searchForLatestValidBlock,
   handleReorg,
+  handleVoided,
 } from '@src/commons';
 import {
   addNewAddresses,
