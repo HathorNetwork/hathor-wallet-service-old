@@ -274,13 +274,12 @@ export const addNewTx = async (tx: Transaction, now: number, blockRewardLock: nu
 
   const sqs = new AWS.SQS({ apiVersion: '2012-11-05' });
 
-  // XXX: maybe put this after WS?
   // This tx has been processed, check if any txs are waiting for it!
   const txReprocess = await clearMissingTx(mysql, txId);
   const promises = [];
   txReprocess.forEach((readyTx) => {
     const params = {
-      MessageBody: readyTx.data, // already in json string format, maybe use JSON.parse?
+      MessageBody: readyTx.data,
       QueueUrl: process.env.PROCESS_TX_SQS,
     };
     promises.push(sqs.sendMessage(params).promise());
