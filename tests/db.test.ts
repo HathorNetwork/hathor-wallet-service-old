@@ -4,6 +4,7 @@ import {
   addNewAddresses,
   addTxProposalOutputs,
   addUtxos,
+  checkForMissingTxs,
   clearMissingTx,
   createTxProposal,
   createUnconfirmedTx,
@@ -61,6 +62,7 @@ import {
   WalletStatus,
   FullNodeVersionData,
   Tx,
+  TxInput,
 } from '@src/types';
 import {
   closeDbConnection,
@@ -1472,12 +1474,25 @@ test('unconfirmedTx: create and clear', async () => {
   expect(await clearMissingTx(mysql, '789')).toStrictEqual([{ tx: '123', data }]);
   // Nobody is waiting for 000 still
   expect(await clearMissingTx(mysql, '000')).toStrictEqual([]);
-
-  // check if tables are empty?
 });
 
-// Tests missing:
-// - create unconfirmed tx then `checkForMissingTxs` with needed inputs
-// - create unconfirmed tx then `checkForMissingTxs` with unneeded inputs
-// - Maybe the above with multiple txs and inputs
-// - check tables are empty after `clearMissingTx`
+test('checkForMissingTxs', async () => {
+  expect.hasAssertions();
+
+  const outputs = [createOutput(10, 'address1')];
+  await addUtxos(mysql, 'not-missing', outputs);
+
+  const inputs: TxInput[] = [createInput(5, 'address1', 'not-missing', 1)];
+  // if not missing, return empty
+  expect(await checkForMissingTxs(mysql, inputs)).toStrictEqual([]);
+  inputs.push(createInput(5, 'address1', 'missing1', 1));
+  // if missing, return txId
+  expect(await checkForMissingTxs(mysql, inputs)).toStrictEqual(['missing1']);
+  inputs.push(createInput(5, 'address1', 'missing2', 1));
+  // if missing multiple, return all missing txIds
+  expect(await checkForMissingTxs(mysql, inputs)).toStrictEqual(['missing1', 'missing2']);
+  // add missing2 utxo
+  await addUtxos(mysql, 'missing2', outputs);
+  // now the check should return only missing1
+  expect(await checkForMissingTxs(mysql, inputs)).toStrictEqual(['missing1']);
+});
