@@ -151,7 +151,7 @@ CREATE TABLE `transaction` (
   -- Height is the block's height if it's a block and the height of the `first_block` if it is a transaction.
   `height` int unsigned DEFAULT NULL,
   PRIMARY KEY (`tx_id`)
-));
+);
 
 CREATE INDEX transaction_version_idx USING HASH ON `transaction`(`version`);
 

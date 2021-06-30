@@ -18,7 +18,7 @@
     "url": "https://github.com/HathorNetwork/hathor-wallet-service.git"
   },
   "dependencies": {
-    "@hathor/wallet-lib": "^0.19.0",
+    "@hathor/wallet-lib": "^0.20.0",
     "@types/redis": "^2.8.28",
     "aws-lambda": "^1.0.6",
     "axios": "^0.21.1",
