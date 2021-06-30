@@ -45,9 +45,10 @@ function parseBody(body) {
  * Verify a signature for a given timestamp and xpubkey
  *
  * @param signature - The signature done by the xpriv of the wallet
- * @param xpub - The xpubkey of the wallet as a string
  * @param timestamp - Unix Timestamp of the signature
- * @returns true if the timestamp, the xpubkey and signature matches
+ * @param address - The address of the xpubkey used to create the walletId
+ * @param walletId - The walletId, a sha512d of the xpubkey
+ * @returns true if the signature matches the other params
  */
 export const verifySignature = (
   signature: string,
