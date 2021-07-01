@@ -537,6 +537,7 @@ export interface IWalletOutput {
   address: string;
   value: number;
   token: string;
+  tokenData: number;
   timelock: number;
 }
 
