@@ -24,8 +24,8 @@ const bodySchema = Joi.object({
   tokenId: Joi.string().default('00'),
   authority: Joi.number().default(0).integer().positive(),
   ignoreLocked: Joi.boolean().optional(),
-  biggerThan: Joi.number().integer().positive(),
-  smallerThan: Joi.number().integer().positive(),
+  biggerThan: Joi.number().integer().positive().default(-1),
+  smallerThan: Joi.number().integer().positive().default(constants.MAX_OUTPUT_VALUE + 1),
   maxUtxos: Joi.number().integer().positive().default(constants.MAX_OUTPUTS),
 });
 
@@ -35,17 +35,21 @@ const bodySchema = Joi.object({
  * This lambda is called by API Gateway on POST /filter_utxos
  */
 export const getFilteredUtxos: APIGatewayProxyHandler = async (event) => {
-  const eventBody = (function parseBody(body) {
-    try {
-      return JSON.parse(body);
-    } catch (e) {
-      return null;
-    }
-  }(event.body));
+  const multiQueryString = event.multiValueQueryStringParameters;
+  const queryString = event.queryStringParameters;
+
+  const eventBody = {
+    addresses: multiQueryString.addresses,
+    tokenId: queryString.tokenId,
+    authority: queryString.authority,
+    ignoreLocked: queryString.ignoreLocked,
+    biggerThan: queryString.biggerThan,
+    smallerThan: queryString.smallerThan,
+  };
 
   const { value, error } = bodySchema.validate(eventBody, {
     abortEarly: false, // We want it to return all the errors not only the first
-    convert: false, // We want it to be strict with the parameters and not parse a string as integer
+    convert: true, // We need to convert as parameters are sent on the QueryString
   });
 
   if (error) {
