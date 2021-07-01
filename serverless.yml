@@ -8,6 +8,12 @@ custom:
   prune:
     automatic: true
     number: 3
+  authorizer:
+    walletBearer:
+      name: bearerAuthorizer
+      type: TOKEN
+      identitySource: method.request.header.Authorization
+      identityValidationExpression: Bearer (.*)
 
 # Create an optimized package for our functions
 package:
@@ -77,6 +83,7 @@ functions:
           path: wallet
           method: get
           cors: true
+          authorizer: ${self:custom.authorizer.walletBearer}
   getAddressesApi:
     handler: src/api/addresses.get
     events:
@@ -84,6 +91,7 @@ functions:
           path: addresses
           method: get
           cors: true
+          authorizer: ${self:custom.authorizer.walletBearer}
   getBalanceApi:
     handler: src/api/balances.get
     events:
@@ -91,6 +99,7 @@ functions:
           path: balances
           method: get
           cors: true
+          authorizer: ${self:custom.authorizer.walletBearer}
   getTxHistoryApi:
     handler: src/api/txhistory.get
     events:
@@ -98,6 +107,7 @@ functions:
           path: txhistory
           method: get
           cors: true
+          authorizer: ${self:custom.authorizer.walletBearer}
   createTxProposalApi:
     handler: src/api/txProposalCreate.create
     events:
@@ -105,6 +115,7 @@ functions:
           path: txproposals
           method: post
           cors: true
+          authorizer: ${self:custom.authorizer.walletBearer}
   sendTxProposalApi:
     handler: src/api/txProposalSend.send
     events:
@@ -112,6 +123,7 @@ functions:
           path: txproposals/{txProposalId}
           method: put
           cors: true
+          authorizer: ${self:custom.authorizer.walletBearer}
           request:
             parameters:
               paths:
@@ -123,6 +135,7 @@ functions:
           path: txproposals/{txProposalId}
           method: delete
           cors: true
+          authorizer: ${self:custom.authorizer.walletBearer}
           request:
             parameters:
               paths:
@@ -159,3 +172,12 @@ functions:
     handler: src/ws/admin.disconnect
   wsAdminMulticast:
     handler: src/ws/admin.multicast
+  authTokenApi:
+    handler: src/api/auth.tokenHandler
+    events:
+      - http:
+          path: auth/token
+          method: post
+          cors: true
+  bearerAuthorizer:
+    handler: src/api/auth.bearerAuthorizer

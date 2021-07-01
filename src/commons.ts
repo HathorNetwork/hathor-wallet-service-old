@@ -5,6 +5,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import { APIGatewayProxyHandler } from 'aws-lambda';
+
 import { ServerlessMysql } from 'serverless-mysql';
 import { strict as assert } from 'assert';
 
@@ -48,6 +50,7 @@ import {
   FullNodeVersionData,
   AddressBalance,
   AddressTotalBalance,
+  WalletProxyHandler,
 } from '@src/types';
 
 import {
@@ -453,3 +456,19 @@ export const handleReorg = async (mysql: ServerlessMysql): Promise<number> => {
 
   return height;
 };
+
+export const walletIdProxyHandler = (handler: WalletProxyHandler): APIGatewayProxyHandler => (
+  async (event, context) => {
+    let walletId: string;
+    try {
+      walletId = event.requestContext.authorizer.principalId;
+      // validate walletId?
+    } catch (e) {
+      return {
+        statusCode: 401,
+        body: 'Unauthorized',
+      };
+    }
+    return handler(walletId, event, context);
+  }
+);

@@ -5,7 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { APIGatewayProxyHandler } from 'aws-lambda';
 import 'source-map-support/register';
 import hathorLib from '@hathor/wallet-lib';
 
@@ -16,6 +15,7 @@ import {
   getWalletTxHistory,
 } from '@src/db';
 import { closeDbConnection, getDbConnection } from '@src/utils';
+import { walletIdProxyHandler } from '@src/commons';
 import Joi from 'joi';
 
 // XXX add to .env or serverless.yml?
@@ -23,8 +23,6 @@ const MAX_COUNT = 15;
 const htrToken = hathorLib.constants.HATHOR_TOKEN_CONFIG.uid;
 
 const paramsSchema = Joi.object({
-  id: Joi.string()
-    .required(),
   token_id: Joi.string()
     .alphanum()
     .default(htrToken)
@@ -49,7 +47,7 @@ const mysql = getDbConnection();
  *
  * This lambda is called by API Gateway on GET /txhistory
  */
-export const get: APIGatewayProxyHandler = async (event) => {
+export const get = walletIdProxyHandler(async (walletId, event) => {
   const params = event.queryStringParameters;
 
   const { value, error } = paramsSchema.validate(params, {
@@ -66,7 +64,6 @@ export const get: APIGatewayProxyHandler = async (event) => {
     return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, { details });
   }
 
-  const walletId = value.id;
   const tokenId = value.token_id;
   const skip = value.skip;
   const count = Math.min(MAX_COUNT, value.count);
@@ -88,4 +85,4 @@ export const get: APIGatewayProxyHandler = async (event) => {
     statusCode: 200,
     body: JSON.stringify({ success: true, history, skip, count }),
   };
-};
+});

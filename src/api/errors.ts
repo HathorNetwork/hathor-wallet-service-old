@@ -16,6 +16,7 @@ export enum ApiError {
   INSUFFICIENT_FUNDS = 'insufficient-funds',
   INSUFFICIENT_INPUTS = 'insufficient-inputs',
   INVALID_PARAMETER = 'invalid-parameter',
+  AUTH_INVALID_SIGNATURE = 'invalid-auth-signature',
   INVALID_PAYLOAD = 'invalid-payload',
   TOO_MANY_INPUTS = 'too-many-inputs',
   TOO_MANY_OUTPUTS = 'too-many-outputs',
@@ -25,4 +26,6 @@ export enum ApiError {
   WALLET_NOT_FOUND = 'wallet-not-found',
   WALLET_NOT_READY = 'wallet-not-ready',
   WALLET_ALREADY_LOADED = 'wallet-already-loaded',
+  FORBIDDEN = 'forbidden',
+  UNAUTHORIZED = 'unauthorized',
 }
