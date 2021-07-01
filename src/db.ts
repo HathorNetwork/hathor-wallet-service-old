@@ -2189,3 +2189,50 @@ export const filterUtxos = async (
 
   return utxos;
 };
+
+/**
+ * Add tx proposal token information
+ *
+ * @param mysql - Database connection
+ * @param txProposalId - The transaction proposal id
+ * @param name - The token name
+ * @param symbol - The token symbol
+ */
+export const addTxProposalTokenInfo = async (
+  mysql: ServerlessMysql,
+  txProposalId: string,
+  name: string,
+  symbol: string,
+): Promise<void> => {
+  const entry = [
+    [txProposalId, name, symbol],
+  ];
+
+  await mysql.query(
+    'INSERT INTO `tx_proposal_token_info` VALUES ?',
+    [entry],
+  );
+};
+
+/**
+ * Get tx proposal token info
+ *
+ * @param mysql - Database connection
+ * @param txProposalId - The transaction proposal id
+ * @returns Information about the new token
+ */
+export const getTxProposalTokenInfo = async (
+  mysql: ServerlessMysql,
+  txProposalId: string,
+): Promise<TxProposalTokenInfo> => {
+  const results: DbSelectResult = await mysql.query(
+    'SELECT * FROM `tx_proposal_token_info` WHERE `tx_proposal_id` = ?',
+    [txProposalId],
+  );
+
+  return {
+    txProposalId: results[0].tx_proposal_id as string,
+    name: results[0].name as string,
+    symbol: results[0].symbol as string,
+  };
+};
