@@ -23,6 +23,7 @@ import {
 
 import {
   maybeRefreshWalletConstants,
+  walletIdProxyHandler,
 } from '@src/commons';
 
 import { closeDbAndGetError } from '@src/api/utils';
@@ -60,7 +61,7 @@ const bodySchema = Joi.object({
  *
  * This lambda is called by API Gateway on PUT /txproposals/{proposalId}
  */
-export const send: APIGatewayProxyHandler = async (event) => {
+export const send: APIGatewayProxyHandler = walletIdProxyHandler(async (walletId, event) => {
   if (!event.pathParameters) {
     return closeDbAndGetError(mysql, ApiError.MISSING_PARAMETER, { parameter: 'txProposalId' });
   }
@@ -94,6 +95,10 @@ export const send: APIGatewayProxyHandler = async (event) => {
 
   if (txProposal === null) {
     return closeDbAndGetError(mysql, ApiError.TX_PROPOSAL_NOT_FOUND);
+  }
+
+  if (txProposal.walletId !== walletId) {
+    return closeDbAndGetError(mysql, ApiError.FORBIDDEN);
   }
 
   // we can only send if it's still open or there was an error sending before
@@ -191,4 +196,4 @@ export const send: APIGatewayProxyHandler = async (event) => {
 
     return closeDbAndGetError(mysql, ApiError.TX_PROPOSAL_SEND_ERROR, { message: e.message, txProposalId, txHex });
   }
-};
+});

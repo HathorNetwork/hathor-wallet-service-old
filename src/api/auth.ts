@@ -150,7 +150,6 @@ export const tokenHandler: APIGatewayProxyHandler = async (event) => {
  * Generates a aws policy document to allow/deny access to the resource
  */
 const _generatePolicy = (principalId: string, effect: string, resource: string) => {
-  const resourcePrefix = `${resource.split('/').slice(0, 2).join('/')}/*`;
   const policyDocument: PolicyDocument = {
     Version: '2012-10-17',
     Statement: [],
@@ -159,10 +158,7 @@ const _generatePolicy = (principalId: string, effect: string, resource: string) 
   const statementOne: Statement = {
     Action: 'execute-api:Invoke',
     Effect: effect,
-    Resource: [
-      `${resourcePrefix}/wallet/*`,
-      `${resourcePrefix}/tx/*`,
-    ],
+    Resource: resource,
   };
 
   policyDocument.Statement[0] = statementOne;
@@ -175,8 +171,6 @@ const _generatePolicy = (principalId: string, effect: string, resource: string) 
   const context = { walletId: principalId };
   authResponse.context = context;
 
-  // XXX: to get the resulting policy on the logs, since we can't check the cached policy
-  console.info('Generated policy:', authResponse);
   return authResponse;
 };
 
@@ -186,26 +180,10 @@ export const bearerAuthorizer: APIGatewayTokenAuthorizerHandler = async (event) 
     throw new Error('Unauthorized'); // returns a 401
   }
   const sanitizedToken = authorizationToken.replace(/Bearer /gi, '');
-  let data;
-  try {
-    data = jwt.verify(
-      sanitizedToken,
-      process.env.AUTH_SECRET,
-    );
-  } catch (e) {
-    // XXX: find a way to return specific error to frontend or make all errors Unauthorized?
-    //
-    // Identify exception from jsonwebtoken by the name property
-    // https://github.com/auth0/node-jsonwebtoken/blob/master/lib/TokenExpiredError.js#L5
-    if (e.name === 'JsonWebTokenError') {
-      throw new Error('Unauthorized');
-    } else if (e.name === 'TokenExpiredError') {
-      throw new Error('Unauthorized');
-    } else {
-      console.log('Error on bearerAuthorizer: ', e);
-      throw e;
-    }
-  }
+  const data = jwt.verify(
+    sanitizedToken,
+    process.env.AUTH_SECRET,
+  );
   // signature data
   const signature = data.sign;
   const timestamp = data.ts;

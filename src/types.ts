@@ -11,6 +11,13 @@ import hathorLib from '@hathor/wallet-lib';
 // eslint-disable-next-line
 import { isAuthority } from '@src/utils';
 
+import {
+  APIGatewayProxyEvent,
+  APIGatewayProxyResult,
+  Context,
+  Callback,
+} from 'aws-lambda';
+
 export interface StringMap<T> {
   [x: string]: T;
 }
@@ -593,3 +600,11 @@ export interface Block {
   txId: string;
   height: number;
 }
+
+// maybe use templates <TEvent = any, TResult = any>
+export type WalletProxyHandler = (
+  walletId: string,
+  event?: APIGatewayProxyEvent,
+  context?: Context,
+  callback?: Callback<APIGatewayProxyResult>
+) => Promise<APIGatewayProxyResult>;

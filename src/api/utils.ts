@@ -23,6 +23,7 @@ export const STATUS_CODE_TABLE = {
   [ApiError.INSUFFICIENT_FUNDS]: 400,
   [ApiError.INSUFFICIENT_INPUTS]: 400,
   [ApiError.INVALID_PARAMETER]: 400,
+  [ApiError.AUTH_INVALID_SIGNATURE]: 400,
   [ApiError.INVALID_PAYLOAD]: 400,
   [ApiError.TOO_MANY_INPUTS]: 400,
   [ApiError.TOO_MANY_OUTPUTS]: 400,
@@ -32,6 +33,8 @@ export const STATUS_CODE_TABLE = {
   [ApiError.WALLET_NOT_FOUND]: 404,
   [ApiError.WALLET_NOT_READY]: 400,
   [ApiError.WALLET_ALREADY_LOADED]: 400,
+  [ApiError.FORBIDDEN]: 403,
+  [ApiError.UNAUTHORIZED]: 401,
 };
 
 /**

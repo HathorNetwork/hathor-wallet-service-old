@@ -308,8 +308,7 @@ export const checkAddressTxHistoryTable = async (
 export const checkWalletTable = async (mysql: ServerlessMysql,
   totalResults: number,
   id?: string,
-  status?: string,
-): Promise<boolean | Record<string, unknown>> => {
+  status?: string): Promise<boolean | Record<string, unknown>> => {
   // first check the total number of rows in the table
   let results: DbSelectResult = await mysql.query('SELECT * FROM `wallet`');
   expect(results).toHaveLength(totalResults);
@@ -348,8 +347,7 @@ export const checkWalletTxHistoryTable = async (mysql: ServerlessMysql,
   tokenId?: string,
   txId?: string,
   balance?: number,
-  timestamp?: number,
-): Promise<boolean | Record<string, unknown>> => {
+  timestamp?: number): Promise<boolean | Record<string, unknown>> => {
   // first check the total number of rows in the table
   let results: DbSelectResult = await mysql.query('SELECT * FROM `wallet_tx_history`');
   expect(results).toHaveLength(totalResults);
@@ -608,6 +606,42 @@ export const makeGatewayEvent = (params: {
   multiValueQueryStringParameters: null,
   stageVariables: null,
   requestContext: null,
+  resource: null,
+});
+
+/*
+ * The views protected by the bearer authorizer may use the `walletIdProxyHandler`
+ * function that extracts the walletId from the requestContext and not from parameters.
+ */
+export const makeGatewayEventWithAuthorizer = (
+  walletId: string,
+  params: { [name: string]: string },
+  body = null,
+): APIGatewayProxyEvent => ({
+  body,
+  queryStringParameters: params,
+  pathParameters: params,
+  headers: {},
+  multiValueHeaders: {},
+  httpMethod: '',
+  isBase64Encoded: false,
+  path: '',
+  multiValueQueryStringParameters: null,
+  stageVariables: null,
+  requestContext: {
+    authorizer: { principalId: walletId },
+    accountId: '',
+    apiId: '',
+    httpMethod: '',
+    identity: null,
+    path: '',
+    protocol: '',
+    requestId: '',
+    requestTimeEpoch: 0,
+    resourceId: '',
+    resourcePath: '',
+    stage: '',
+  },
   resource: null,
 });
 

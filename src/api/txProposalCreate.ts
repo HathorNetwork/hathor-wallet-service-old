@@ -1,11 +1,17 @@
-import { APIGatewayProxyHandler } from 'aws-lambda';
+/**
+ * Copyright (c) Hathor Labs and its affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 import { ServerlessMysql } from 'serverless-mysql';
 import 'source-map-support/register';
 import { v4 as uuidv4 } from 'uuid';
 import Joi from 'joi';
 
 import { ApiError } from '@src/api/errors';
-import { getWalletBalances, maybeRefreshWalletConstants } from '@src/commons';
+import { getWalletBalances, maybeRefreshWalletConstants, walletIdProxyHandler } from '@src/commons';
 import {
   addTxProposalOutputs,
   createTxProposal,
@@ -42,8 +48,6 @@ interface IWalletInsufficientFunds {
 }
 
 const bodySchema = Joi.object({
-  id: Joi.string()
-    .required(),
   outputs: Joi.array()
     .items(
       Joi.object({
@@ -85,7 +89,7 @@ const bodySchema = Joi.object({
  *
  * This lambda is called by API Gateway on POST /txproposals
  */
-export const create: APIGatewayProxyHandler = async (event) => {
+export const create = walletIdProxyHandler(async (walletId, event) => {
   await maybeRefreshWalletConstants(mysql);
 
   const eventBody = (function parseBody(body) {
@@ -111,7 +115,6 @@ export const create: APIGatewayProxyHandler = async (event) => {
   }
 
   const body = value;
-  const walletId = body.id;
 
   if (body.outputs.length > hathorLib.transaction.getMaxOutputsConstant()) {
     return closeDbAndGetError(mysql, ApiError.TOO_MANY_OUTPUTS, { outputs: body.outputs.length });
@@ -241,7 +244,7 @@ export const create: APIGatewayProxyHandler = async (event) => {
       tokens,
     }),
   };
-};
+});
 
 /**
  * Calculates the total balance for the outputs.
