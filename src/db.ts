@@ -1564,7 +1564,7 @@ export const addTxProposalOutputs = async (
 ): Promise<void> => {
   const entries = [];
   for (const [index, output] of outputs.entries()) {
-    entries.push([txProposalId, index, output.address, output.token, output.value, output.timelock]);
+    entries.push([txProposalId, index, output.address, output.token, output.tokenData, output.value, output.timelock]);
   }
   await mysql.query(
     'INSERT INTO `tx_proposal_outputs` VALUES ?',
@@ -1592,6 +1592,7 @@ export const getTxProposalOutputs = async (
     outputs.push({
       address: result.address as string,
       token: result.token_id as string,
+      tokenData: result.token_data as number,
       value: result.value as number,
       timelock: result.timelock as number,
     });
@@ -2166,7 +2167,7 @@ export const filterUtxos = async (
         AND \`voided\` = FALSE
         AND \`spent_by\` IS NULL
    ORDER BY \`value\` DESC
-        ${finalFilters.maxUtxos ? 'LIMIT ?': ''}
+        ${finalFilters.maxUtxos ? 'LIMIT ?' : ''}
        `,
     [
       finalFilters.addresses,

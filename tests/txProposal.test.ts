@@ -50,11 +50,11 @@ test('getOutputsBalance', () => {
   const now = getUnixTimestamp();
 
   const result = getOutputsBalance([
-    { address: addr1, value: 2, token: token1, timelock: null },
-    { address: addr1, value: 3, token: token1, timelock: now + 100 },
-    { address: addr2, value: 15, token: token1, timelock: null },
-    { address: addr1, value: 7, token: token2, timelock: null },
-    { address: addr2, value: 1, token: token2, timelock: null },
+    { address: addr1, value: 2, tokenData: 1, token: token1, timelock: null },
+    { address: addr1, value: 3, tokenData: 1, token: token1, timelock: now + 100 },
+    { address: addr2, value: 15, tokenData: 1, token: token1, timelock: null },
+    { address: addr1, value: 7, tokenData: 1, token: token2, timelock: null },
+    { address: addr2, value: 1, tokenData: 1, token: token2, timelock: null },
   ], now);
 
   const expected = TokenBalanceMap.fromStringMap({

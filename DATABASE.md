@@ -83,6 +83,7 @@ CREATE TABLE `tx_proposal_outputs` (
   `index` tinyint unsigned NOT NULL,
   `address` varchar(34) NOT NULL,
   `token_id` varchar(64) NOT NULL,
+  `token_data` int unsigned NOT NULL,
   `value` bigint DEFAULT NULL,
   `timelock` int unsigned DEFAULT NULL,
   PRIMARY KEY (`tx_proposal_id`,`index`)
