@@ -127,9 +127,19 @@ functions:
     handler: src/api/utxos.getFilteredUtxos
     events:
       - http:
-          path: filter_utxos
-          method: post
+          path: utxos
+          method: get
           cors: true
+          request:
+            parameters:
+              querystrings:
+                addresses: true
+                tokenId: true
+                authority: true
+                ignoreLocked: true
+                biggerThan: true
+                smallerThan: true
+                maxUtxos: true
   getBalanceApi:
     handler: src/api/balances.get
     events:
