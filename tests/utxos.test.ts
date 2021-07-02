@@ -9,6 +9,7 @@ import {
   ADDRESSES,
   TX_IDS,
 } from '@tests/utils';
+import { ApiError } from '@src/api/errors';
 import { APIGatewayProxyResult } from 'aws-lambda';
 
 const mysql = getDbConnection();
@@ -19,6 +20,24 @@ beforeEach(async () => {
 
 afterAll(async () => {
   await closeDbConnection(mysql);
+});
+
+test('filter utxo api with invalid parameters', async () => {
+  expect.hasAssertions();
+
+  const event = makeGatewayEvent({
+    id: 'my-wallet',
+    biggerThan: 'invalid-parameter',
+    smallerThan: 'invalid-parameter',
+  }, null, null);
+
+  const result = await getFilteredUtxos(event, null, null) as APIGatewayProxyResult;
+  const returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toStrictEqual(400);
+  expect(returnBody.success).toStrictEqual(false);
+  expect(returnBody.details).toHaveLength(2);
+  expect(returnBody.error).toStrictEqual(ApiError.INVALID_PAYLOAD);
 });
 
 test('get utxos with wallet id', async () => {
