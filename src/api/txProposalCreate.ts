@@ -14,7 +14,6 @@ import { maybeRefreshWalletConstants, walletIdProxyHandler } from '@src/commons'
 import {
   addTxProposalOutputs,
   createTxProposal,
-  // getUnusedAddresses,
   getUtxos,
   getWallet,
   getWalletAddresses,
