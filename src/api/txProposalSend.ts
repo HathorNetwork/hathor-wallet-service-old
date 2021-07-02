@@ -12,8 +12,9 @@ import {
   getTxProposalOutputs,
   updateTxProposal,
   removeTxProposalOutputs,
+  getTxProposalTokenInfo,
 } from '@src/db';
-import { TxProposalStatus, ApiResponse } from '@src/types';
+import { TxProposalStatus, ApiResponse, TxProposalTokenInfo } from '@src/types';
 import {
   closeDbConnection,
   getDbConnection,
@@ -125,6 +126,19 @@ export const send: APIGatewayProxyHandler = walletIdProxyHandler(async (walletId
   const tokensSet = new Set(proposalOutputs.map((output) => (output.token)));
   tokensSet.delete(hathorLib.constants.HATHOR_TOKEN_CONFIG.uid);
   const tokens = Array.from(tokensSet);
+  const version = txProposal.version;
+  const { name, symbol } = await (async function getNameAndSymbol() {
+    if (version !== hathorLib.constants.CREATE_TOKEN_TX_VERSION) {
+      return {
+        name: undefined,
+        symbol: undefined,
+      };
+    }
+
+    const tokenInfo: TxProposalTokenInfo = await getTxProposalTokenInfo(mysql, txProposalId);
+
+    return tokenInfo;
+  }());
 
   // output: value, tokenData, address, timelock
   const outputs = [];
@@ -133,12 +147,12 @@ export const send: APIGatewayProxyHandler = walletIdProxyHandler(async (walletId
       value: output.value,
       address: output.address,
       timelock: output.timelock,
-      tokenData: output.token === hathorLib.constants.HATHOR_TOKEN_CONFIG.uid ? 0 : tokens.indexOf(output.token) + 1,
+      tokenData: output.tokenData,
     });
   }
 
   const txData = {
-    version: hathorLib.constants.DEFAULT_TX_VERSION,
+    version,
     parents,
     timestamp,
     weight,
@@ -146,6 +160,8 @@ export const send: APIGatewayProxyHandler = walletIdProxyHandler(async (walletId
     tokens,
     inputs,
     outputs,
+    name,
+    symbol,
   };
 
   await maybeRefreshWalletConstants(mysql);
@@ -158,7 +174,6 @@ export const send: APIGatewayProxyHandler = walletIdProxyHandler(async (walletId
   }
 
   const txHex = hathorLib.transaction.getTxHexFromData(txData);
-
   const now = getUnixTimestamp();
 
   try {
