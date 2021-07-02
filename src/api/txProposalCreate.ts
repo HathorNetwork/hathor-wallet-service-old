@@ -35,7 +35,6 @@ const mysql = getDbConnection();
 
 const bodySchema = Joi.object({
   txHex: Joi.string().alphanum(),
-  send: Joi.boolean().default(false),
 });
 
 /*

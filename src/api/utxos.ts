@@ -1,7 +1,7 @@
-import { APIGatewayProxyHandler } from 'aws-lambda';
 import 'source-map-support/register';
 import Joi from 'joi';
 
+import { walletIdProxyHandler } from '@src/commons';
 import { ApiError } from '@src/api/errors';
 import {
   filterUtxos,
@@ -36,12 +36,11 @@ const bodySchema = Joi.object({
  *
  * This lambda is called by API Gateway on POST /filter_utxos
  */
-export const getFilteredUtxos: APIGatewayProxyHandler = async (event) => {
+export const getFilteredUtxos = walletIdProxyHandler(async (walletId, event) => {
   const multiQueryString = event.multiValueQueryStringParameters || {};
   const queryString = event.queryStringParameters;
 
   const eventBody = {
-    id: queryString.id,
     addresses: multiQueryString.addresses,
     tokenId: queryString.tokenId,
     authority: queryString.authority,
@@ -64,8 +63,6 @@ export const getFilteredUtxos: APIGatewayProxyHandler = async (event) => {
     return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, { details });
   }
 
-  const walletId = value.id;
-
   if (!value.addresses) {
     const walletAddresses = await getWalletAddresses(mysql, walletId);
 
@@ -82,4 +79,4 @@ export const getFilteredUtxos: APIGatewayProxyHandler = async (event) => {
       utxos,
     }),
   };
-};
+});

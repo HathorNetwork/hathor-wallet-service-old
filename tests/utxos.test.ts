@@ -4,7 +4,7 @@ import {
   addToUtxoTable,
   addToWalletTable,
   addToAddressTable,
-  makeGatewayEvent,
+  makeGatewayEventWithAuthorizer,
   cleanDatabase,
   ADDRESSES,
   TX_IDS,
@@ -25,11 +25,10 @@ afterAll(async () => {
 test('filter utxo api with invalid parameters', async () => {
   expect.hasAssertions();
 
-  const event = makeGatewayEvent({
-    id: 'my-wallet',
+  const event = makeGatewayEventWithAuthorizer('my-wallet', {
     biggerThan: 'invalid-parameter',
     smallerThan: 'invalid-parameter',
-  }, null, null);
+  }, null);
 
   const result = await getFilteredUtxos(event, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(result.body as string);
@@ -62,12 +61,11 @@ test('get utxos with wallet id', async () => {
 
   await addToUtxoTable(mysql, utxos);
 
-  const event = makeGatewayEvent({
-    id: 'my-wallet',
+  const event = makeGatewayEventWithAuthorizer('my-wallet', {
     tokenId: token1,
     biggerThan: '50',
     smallerThan: '200',
-  }, null, null);
+  }, null);
 
   const result = await getFilteredUtxos(event, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(result.body as string);
