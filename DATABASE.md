@@ -73,6 +73,7 @@ CREATE TABLE `tx_proposal` (
   `id` varchar(36) NOT NULL,
   `wallet_id` varchar(64) NOT NULL,
   `status` enum('open','sent','send_error','cancelled') NOT NULL,
+  `version` int unsigned NOT NULL DEFAULT 1,
   `created_at` int unsigned NOT NULL,
   `updated_at` int unsigned DEFAULT NULL,
   PRIMARY KEY (`id`)
@@ -82,7 +83,7 @@ CREATE TABLE `tx_proposal_outputs` (
   `tx_proposal_id` varchar(36) NOT NULL,
   `index` tinyint unsigned NOT NULL,
   `address` varchar(34) NOT NULL,
-  `token_id` varchar(64) NOT NULL,
+  `token_id` varchar(64), -- Can be null because it might be a token creation action
   `token_data` int unsigned NOT NULL,
   `value` bigint DEFAULT NULL,
   `timelock` int unsigned DEFAULT NULL,
