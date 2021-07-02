@@ -133,6 +133,37 @@ export const create = walletIdProxyHandler(async (walletId, event) => {
     return closeDbAndGetError(mysql, ApiError.TOO_MANY_INPUTS, { inputs: inputUtxos.length });
   }
 
+  // the difference between inputs and outputs will be the change
+  const inputsBalance = getInputsBalance(inputUtxos);
+  const diff = TokenBalanceMap.merge(outputsBalance, inputsBalance);
+
+  // Make sure diff is 0 or lower, which means inputs sum is greater than (or equal to) outputs sum.
+  // This should only happen when we receive the inputs from user and he didn't select enough inputs.
+  const insufficientInputs = [];
+  for (const [token, tokenBalance] of diff.iterator()) {
+    if (tokenBalance.total() > 0) insufficientInputs.push(token);
+  }
+  if (insufficientInputs.length > 0) {
+    return closeDbAndGetError(mysql, ApiError.INSUFFICIENT_INPUTS, { insufficient: insufficientInputs });
+  }
+
+  const addresses = await getUnusedAddresses(mysql, walletId);
+  const changeOutputs = getChangeOutputs(diff, addresses);
+
+  const finalOutputs = outputs.concat(changeOutputs);
+
+  // we also need to do this check here, as we may have added change outputs
+  if (finalOutputs.length > hathorLib.transaction.getMaxOutputsConstant()) {
+    return closeDbAndGetError(mysql, ApiError.TOO_MANY_OUTPUTS, { outputs: finalOutputs.length });
+  }
+
+  /**
+   * We shuffle the array to prevent the change address from always being the last output so we can give some more
+   * privacy to the user
+   */
+  arrayShuffle(finalOutputs);
+
+==== BASE ====
   // mark utxos with tx-proposal id
   const txProposalId = uuidv4();
   markUtxosWithProposalId(mysql, txProposalId, inputUtxos);
