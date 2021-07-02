@@ -67,7 +67,7 @@ export const getFilteredUtxos: APIGatewayProxyHandler = async (event) => {
   const walletId = value.id;
 
   if (!value.addresses) {
-    const walletAddresses  = await getWalletAddresses(mysql, walletId);
+    const walletAddresses = await getWalletAddresses(mysql, walletId);
 
     value.addresses = walletAddresses.map((addressInfo) => addressInfo.address);
   }
