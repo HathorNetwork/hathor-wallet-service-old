@@ -55,6 +55,7 @@ export interface TxProposal {
   id: string;
   walletId: string;
   status: TxProposalStatus;
+  version: number;
   createdAt: number;
   updatedAt: number;
 }
@@ -233,8 +234,8 @@ export class Authorities {
   toJSON(): Record<string, unknown> {
     const authorities = this.toInteger();
     return {
-      mint: (authorities & hathorLib.constants.TOKEN_MINT_MASK) > 0,   // eslint-disable-line no-bitwise
-      melt: (authorities & hathorLib.constants.TOKEN_MELT_MASK) > 0,   // eslint-disable-line no-bitwise
+      mint: (authorities & hathorLib.constants.TOKEN_MINT_MASK) > 0, // eslint-disable-line no-bitwise
+      melt: (authorities & hathorLib.constants.TOKEN_MELT_MASK) > 0, // eslint-disable-line no-bitwise
     };
   }
 }
