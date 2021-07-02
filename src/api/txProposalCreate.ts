@@ -17,6 +17,7 @@ import {
   // getUnusedAddresses,
   getUtxos,
   getWallet,
+  getWalletAddresses,
   getWalletAddressDetail,
   markUtxosWithProposalId,
   addTxProposalTokenInfo,
@@ -113,11 +114,18 @@ export const create = walletIdProxyHandler(async (walletId, event) => {
   const now = getUnixTimestamp();
 
   // fetch the utxos that will be used
-  const inputUtxos = await getUtxos(mysql, inputs);
+  const inputUtxos: DbTxOutput[] = await getUtxos(mysql, inputs);
   const missing = checkMissingUtxos(inputs, inputUtxos);
 
   if (missing.length > 0) {
     return closeDbAndGetError(mysql, ApiError.INPUTS_NOT_FOUND, { missing });
+  }
+
+  // check if the inputs sent by the user belong to his wallet
+  const denied = await validateUtxoAddresses(walletId, inputUtxos);
+
+  if (denied.length > 0) {
+    return closeDbAndGetError(mysql, ApiError.INPUTS_NOT_IN_WALLET, { missing });
   }
 
   // check if inputs sent by user are not part of another tx proposal
@@ -130,7 +138,6 @@ export const create = walletIdProxyHandler(async (walletId, event) => {
   }
 
   // mark utxos with tx-proposal id
-  // XXX should this be done atomically?
   const txProposalId = uuidv4();
   markUtxosWithProposalId(mysql, txProposalId, inputUtxos);
 
@@ -202,4 +209,26 @@ export const checkUsedUtxos = (utxos: DbTxOutput[]): boolean => {
   }
 
   return false;
+};
+
+/**
+ * Confirm that the requested utxos belongs to the user's wallet
+ *
+ * @param walletId - The user wallet id
+ * @param utxos - List of UTXOs to validate
+ * @returns A list with the denied UTXOs, if any
+ */
+export const validateUtxoAddresses = async (walletId: string, utxos: DbTxOutput[]): Promise<DbTxOutput[]> => {
+  // fetch all addresses that belong to this wallet
+  const walletAddresses = await getWalletAddresses(mysql, walletId);
+  const flatAddresses = walletAddresses.map((walletAddress) => walletAddress.address);
+  const denied: DbTxOutput[] = [];
+
+  for (let i = 0; i < utxos.length; i++) {
+    if (!flatAddresses.includes(utxos[i].address)) {
+      denied.push(utxos[i]);
+    }
+  }
+
+  return denied;
 };
