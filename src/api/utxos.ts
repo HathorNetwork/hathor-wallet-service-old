@@ -5,6 +5,7 @@ import Joi from 'joi';
 import { ApiError } from '@src/api/errors';
 import {
   filterUtxos,
+  getWalletAddresses,
 } from '@src/db';
 import {
   DbTxOutput,
@@ -17,10 +18,11 @@ import { constants } from '@hathor/wallet-lib';
 const mysql = getDbConnection();
 
 const bodySchema = Joi.object({
+  id: Joi.string().optional(),
   addresses: Joi.array()
     .items(Joi.string().alphanum())
     .min(1)
-    .required(),
+    .optional(),
   tokenId: Joi.string().default('00'),
   authority: Joi.number().default(0).integer().positive(),
   ignoreLocked: Joi.boolean().optional(),
@@ -35,10 +37,11 @@ const bodySchema = Joi.object({
  * This lambda is called by API Gateway on POST /filter_utxos
  */
 export const getFilteredUtxos: APIGatewayProxyHandler = async (event) => {
-  const multiQueryString = event.multiValueQueryStringParameters;
+  const multiQueryString = event.multiValueQueryStringParameters || {};
   const queryString = event.queryStringParameters;
 
   const eventBody = {
+    id: queryString.id,
     addresses: multiQueryString.addresses,
     tokenId: queryString.tokenId,
     authority: queryString.authority,
@@ -59,6 +62,14 @@ export const getFilteredUtxos: APIGatewayProxyHandler = async (event) => {
     }));
 
     return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, { details });
+  }
+
+  const walletId = value.id;
+
+  if (!value.addresses) {
+    const walletAddresses  = await getWalletAddresses(mysql, walletId);
+
+    value.addresses = walletAddresses.map((addressInfo) => addressInfo.address);
   }
 
   const body: IFilterUtxo = value;
