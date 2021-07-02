@@ -382,12 +382,11 @@ export const handleVoidedTxList = async (mysql: ServerlessMysql, txs: Tx[]): Pro
 };
 
 /**
- * Handles a reorg by finding the last valid block on the service's database and
- * removing transactions and tx_outputs before re-calculating the address balances.
+ * Handles a voided transaction by re-calculating the balances for all affected addresses after
+ * removing the tx
  *
  * @param mysql - Database connection
- *
- * @returns The new best block height
+ * @param tx - The voided transaction to remove
  */
 export const handleVoided = async (mysql: ServerlessMysql, tx: Tx): Promise<void> => {
   let txs: Tx[] = [tx];
