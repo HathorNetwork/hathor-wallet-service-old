@@ -951,7 +951,7 @@ test('POST /txproposals with denied utxos', async () => {
   const transaction = new hathorLib.Transaction(inputs, outputs, { tokens: [token1] });
 
   const txHex = transaction.toHex();
-  const event = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet', txHex }));
+  const event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({ txHex }));
   const result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(result.body as string);
 
