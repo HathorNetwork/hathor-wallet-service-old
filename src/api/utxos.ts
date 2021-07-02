@@ -46,6 +46,7 @@ export const getFilteredUtxos = walletIdProxyHandler(async (walletId, event) => 
   const queryString = event.queryStringParameters || {};
 
   const eventBody = {
+    id: queryString.id,
     addresses: multiQueryString.addresses,
     tokenId: queryString.tokenId,
     authority: queryString.authority,
