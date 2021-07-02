@@ -915,6 +915,51 @@ test('POST /txproposals one output and input on txHex', async () => {
   await _checkTxProposalTables(returnBody.txProposalId, returnBody.inputs, returnBody.outputs);
 });
 
+test('POST /txproposals with denied utxos', async () => {
+  expect.hasAssertions();
+
+  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToWalletTable(mysql, [['other-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToAddressTable(mysql, [{
+    address: ADDRESSES[0],
+    index: 0,
+    walletId: 'my-wallet',
+    transactions: 2,
+  }]);
+  await addToAddressTable(mysql, [{
+    address: ADDRESSES[1],
+    index: 0,
+    walletId: 'other-wallet',
+    transactions: 2,
+  }]);
+
+  const token1 = '004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50';
+  const token2 = '002f2bcc3261b4fb8510a458ed9df9f6ba2a413ee35901b3c5f81b0c085287e2';
+
+  const utxos = [
+    ['004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50', 0, token1, ADDRESSES[1], 300, 0, null, null, false],
+    ['0000001e39bc37fe8710c01cc1e8c0a937bf6f9337551fbbfddc222bfc28c197', 0, token1, ADDRESSES[1], 100, 0, null, null, false],
+    ['00000060a25077e48926bcd9473d77259296e123ec6af1c1a16c1c381093ab90', 0, token2, ADDRESSES[1], 300, 0, null, null, false],
+  ];
+
+  await addToUtxoTable(mysql, utxos);
+
+  const outputs = [new hathorLib.Output(300, new hathorLib.Address(ADDRESSES[0], { network: new hathorLib.Network(process.env.NETWORK) }), {
+    tokenData: 1,
+  })];
+  const inputs = [new hathorLib.Input(utxos[0][0], utxos[0][1])];
+  const transaction = new hathorLib.Transaction(inputs, outputs, { tokens: [token1] });
+
+  const txHex = transaction.toHex();
+  const event = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet', txHex }));
+  const result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  const returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toStrictEqual(ApiError.INPUTS_NOT_IN_WALLET);
+});
+
 test('POST /txproposals a tx create action on txHex', async () => {
   expect.hasAssertions();
 

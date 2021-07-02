@@ -13,6 +13,7 @@ export enum ApiError {
   UNKNOWN_ERROR = 'unknown-error',
   INPUTS_NOT_FOUND = 'inputs-not-found',
   INPUTS_ALREADY_USED = 'inputs-already-used',
+  INPUTS_NOT_IN_WALLET = 'inputs-not-in-wallet',
   INSUFFICIENT_FUNDS = 'insufficient-funds',
   INSUFFICIENT_INPUTS = 'insufficient-inputs',
   INVALID_PARAMETER = 'invalid-parameter',
