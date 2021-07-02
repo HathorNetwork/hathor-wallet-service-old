@@ -405,6 +405,7 @@ export const handleVoided = async (mysql: ServerlessMysql, tx: Tx): Promise<void
   console.log(`Rebuilding balances for ${affectedAddresses.size} addresses.`);
   if (affectedAddresses.size > 0) {
     const addresses = [...affectedAddresses];
+    console.log('Addresses:', addresses);
     await rebuildAddressBalancesFromUtxos(mysql, addresses);
     await validateAddressBalances(mysql, addresses);
   }
