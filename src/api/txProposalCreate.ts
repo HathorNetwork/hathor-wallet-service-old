@@ -5,8 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { ServerlessMysql } from 'serverless-mysql';
-import { APIGatewayProxyHandler } from 'aws-lambda';
 import 'source-map-support/register';
 import { v4 as uuidv4 } from 'uuid';
 import Joi from 'joi';
@@ -36,8 +34,6 @@ import hathorLib from '@hathor/wallet-lib';
 const mysql = getDbConnection();
 
 const bodySchema = Joi.object({
-  id: Joi.string()
-    .required(),
   txHex: Joi.string().alphanum(),
   send: Joi.boolean().default(false),
 });
@@ -73,7 +69,6 @@ export const create = walletIdProxyHandler(async (walletId, event) => {
   }
 
   const body = value;
-  const walletId = body.id;
   const tx = hathorLib.helpersUtils.createTxFromHex(body.txHex, new hathorLib.Network(process.env.NETWORK));
 
   if (tx.outputs.length > hathorLib.transaction.getMaxOutputsConstant()) {
