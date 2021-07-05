@@ -33,6 +33,8 @@ import {
   updateAddressTablesWithTx,
   updateWalletTablesWithTx,
   fetchTx,
+  unvoidTx,
+  getLatestSeen,
 } from '@src/db';
 import {
   StringMap,
@@ -207,6 +209,15 @@ export const addNewTx = async (tx: Transaction, now: number, blockRewardLock: nu
     // ignore tx if we already have it confirmed on our database
     if (dbTx.height) {
       return;
+    }
+
+    // if the received transaction has height, it means that it has just been
+    // confirmed by a block, so we if it is voided on our database, we need to "unvoid" it.
+    // this might happen because we are setting transactions that were not 'seen' in sequential
+    // mempool requests as voided but we might have called the method that does that before having
+    // synced to the latest valid block.
+    if (dbTx.voided && tx.height) {
+      await unvoidTx(mysql, txId);
     }
 
     // set height and break out because it was already on the mempool
