@@ -51,6 +51,8 @@ import {
   markUtxosAsVoided,
   unspendUtxos,
   filterUtxos,
+  unvoidTx,
+  getLatestSeen,
 } from '@src/db';
 import {
   Authorities,
@@ -1320,7 +1322,7 @@ test('fetchAddressBalance', async () => {
   expect(addressBalances[5].lockedBalance).toStrictEqual(1);
 });
 
-test('addTx, fetchTx, getTransactionsById and markTxsAsVoided', async () => {
+test('addTx, fetchTx, getTransactionsById, markTxsAsVoided and unvoidTx', async () => {
   expect.hasAssertions();
 
   const txId1 = 'txId1';
@@ -1336,6 +1338,7 @@ test('addTx, fetchTx, getTransactionsById and markTxsAsVoided', async () => {
     timestamp,
     version: 0,
     voided: false,
+    seen: 0,
   };
 
   await addOrUpdateTx(mysql, tx1.txId, tx1.height, tx1.timestamp, tx1.version);
@@ -1365,6 +1368,14 @@ test('addTx, fetchTx, getTransactionsById and markTxsAsVoided', async () => {
   expect(await fetchTx(mysql, txId3)).toBeNull();
   expect(await fetchTx(mysql, txId4)).toBeNull();
   expect(await fetchTx(mysql, txId5)).toBeNull();
+
+  await unvoidTx(mysql, txId1);
+
+  const fetchedTx1 = await fetchTx(mysql, txId1);
+
+  console.log('Fetched tx1: ', fetchedTx1);
+
+  expect(fetchedTx1).toStrictEqual(tx1);
 });
 
 test('rebuildAddressBalancesFromUtxos', async () => {
@@ -1405,6 +1416,39 @@ test('rebuildAddressBalancesFromUtxos', async () => {
   expect(addressBalances[2].address).toStrictEqual(addr2);
   expect(addressBalances[2].transactions).toStrictEqual(1);
   expect(addressBalances[2].tokenId).toStrictEqual('token2');
+});
+
+test('update transaction seen times and getLatestSeen', async () => {
+  expect.hasAssertions();
+
+  const timestamp = getUnixTimestamp();
+  const txId1 = 'txId1';
+
+  const tx1: Tx = {
+    txId: txId1,
+    timestamp,
+    height: null,
+    version: 0,
+    voided: false,
+    seen: 0,
+  };
+
+  await addOrUpdateTx(mysql, tx1.txId, tx1.height, tx1.timestamp, tx1.version);
+
+  const fetchedTx1 = await fetchTx(mysql, txId1);
+
+  expect(fetchedTx1).toStrictEqual(tx1);
+
+  await addOrUpdateTx(mysql, tx1.txId, tx1.height, tx1.timestamp, tx1.version);
+
+  const fetchedTx2 = await fetchTx(mysql, txId1);
+
+  expect(fetchedTx2).toStrictEqual({
+    ...tx1,
+    seen: 1,
+  });
+
+  expect(await getLatestSeen(mysql)).toStrictEqual(1);
 });
 
 test('markAddressTxHistoryAsVoided', async () => {

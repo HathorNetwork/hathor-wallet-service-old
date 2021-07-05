@@ -568,6 +568,7 @@ export interface Tx {
   timestamp: number;
   version: number;
   voided: boolean;
+  seen?: number;
   height?: number | null;
 }
 

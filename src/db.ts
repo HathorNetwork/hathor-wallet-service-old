@@ -601,9 +601,67 @@ export const addOrUpdateTx = async (
   await mysql.query(
     `INSERT INTO \`transaction\` (tx_id, height, timestamp, version)
      VALUES ?
-         ON DUPLICATE KEY UPDATE height = ?`,
+         ON DUPLICATE KEY
+     UPDATE height = ?, seen = seen + 1`,
     [entries, height],
   );
+};
+
+/**
+ * Unvoid a transaction
+ *
+ * @param mysql - Database connection
+ * @param txId - The transaction that should be unvoided
+ */
+export const unvoidTx = async (
+  mysql: ServerlessMysql,
+  txId: string,
+): Promise<void> => {
+  await mysql.query(
+    `UPDATE \`transaction\`
+        SET \`voided\` = FALSE
+      WHERE \`tx_id\` = ?`,
+    [txId],
+  );
+};
+
+/**
+ * Voids all transactions before a given seen number
+ *
+ * @param mysql - Database connection
+ * @param txId - The transaction that should be unvoided
+ */
+export const voidBeforeSeen = async (
+  mysql: ServerlessMysql,
+  seen: number,
+): Promise<void> => {
+  await mysql.query(
+    `UPDATE \`transaction\`
+        SET \`voided\` = TRUE
+      WHERE \`seen\` < ?
+        AND \`height\` IS NULL`,
+    [seen],
+  );
+};
+
+/**
+ * Gets the latest seen number from the transaction table
+ *
+ * @param mysql - Database connection
+ * @returns seen - The latest seen number
+ */
+export const getLatestSeen = async (
+  mysql: ServerlessMysql,
+): Promise<number> => {
+  const result = await mysql.query(
+    `SELECT MAX(\`seen\`) AS last_seen
+       FROM \`transaction\`
+      WHERE \`height\` IS NULL
+        AND \`voided\` = FALSE`,
+  );
+  const lastSeen: number = result[0].last_seen as number;
+
+  return lastSeen;
 };
 
 /**
@@ -2072,6 +2130,7 @@ export const fetchTx = async (
     version: result.version as number,
     voided: result.voided === 1,
     height: result.height as number,
+    seen: result.seen as number,
   };
 
   return tx;
