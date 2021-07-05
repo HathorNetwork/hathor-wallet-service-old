@@ -382,6 +382,55 @@ export const handleVoidedTxList = async (mysql: ServerlessMysql, txs: Tx[]): Pro
 };
 
 /**
+ * Handles a voided transaction by re-calculating the balances for all affected addresses after
+ * removing the tx
+ *
+ * @param mysql - Database connection
+ * @param tx - The voided transaction to remove
+ */
+export const handleVoided = async (mysql: ServerlessMysql, tx: Tx): Promise<void> => {
+  let txs: Tx[] = [tx];
+  let affectedUtxoList: DbTxOutput[] = [];
+
+  while (txs.length > 0) {
+    const [newTxs, newAffectedUtxoList] = await handleVoidedTxList(mysql, txs);
+    txs = newTxs;
+    affectedUtxoList = [...affectedUtxoList, ...newAffectedUtxoList];
+  }
+
+  // fetch all addresses affected by the voided tx
+  const affectedAddresses = affectedUtxoList.reduce((acc: Set<string>, utxo: DbTxOutput) => acc.add(utxo.address), new Set<string>());
+
+  console.log(`Rebuilding balances for ${affectedAddresses.size} addresses.`);
+  if (affectedAddresses.size > 0) {
+    const addresses = [...affectedAddresses];
+    console.log('Addresses:', addresses);
+    await rebuildAddressBalancesFromUtxos(mysql, addresses);
+    await validateAddressBalances(mysql, addresses);
+  }
+
+  console.log('Handle voided tx is done.');
+};
+
+export const validateAddressBalances = async (mysql: ServerlessMysql, addresses: string[]): Promise<void> => {
+  const addressBalances: AddressBalance[] = await fetchAddressBalance(mysql, addresses);
+  const addressTxHistorySums: AddressTotalBalance[] = await fetchAddressTxHistorySum(mysql, addresses);
+
+  // if we have the full history of transactions, the number of rows must match:
+  assert.strictEqual(addressBalances.length, addressTxHistorySums.length);
+
+  for (let i = 0; i < addressTxHistorySums.length; i++) {
+    const addressBalance: AddressBalance = addressBalances[i];
+    const addressTxHistorySum: AddressTotalBalance = addressTxHistorySums[i];
+
+    assert.strictEqual(addressBalance.tokenId, addressTxHistorySum.tokenId);
+
+    // balances must match
+    assert.strictEqual(addressBalance.unlockedBalance + addressBalance.lockedBalance, addressTxHistorySum.balance);
+  }
+};
+
+/**
  * Handles a reorg by finding the last valid block on the service's database and
  * removing transactions and tx_outputs before re-calculating the address balances.
  *
@@ -434,22 +483,7 @@ export const handleReorg = async (mysql: ServerlessMysql): Promise<number> => {
   if (affectedAddresses.size > 0) {
     const addresses = [...affectedAddresses];
     await rebuildAddressBalancesFromUtxos(mysql, addresses);
-
-    const addressBalances: AddressBalance[] = await fetchAddressBalance(mysql, addresses);
-    const addressTxHistorySums: AddressTotalBalance[] = await fetchAddressTxHistorySum(mysql, addresses);
-
-    // if we have the full history of transactions, the number of rows must match:
-    assert.strictEqual(addressBalances.length, addressTxHistorySums.length);
-
-    for (let i = 0; i < addressTxHistorySums.length; i++) {
-      const addressBalance: AddressBalance = addressBalances[i];
-      const addressTxHistorySum: AddressTotalBalance = addressTxHistorySums[i];
-
-      assert.strictEqual(addressBalance.tokenId, addressTxHistorySum.tokenId);
-
-      // balances must match
-      assert.strictEqual(addressBalance.unlockedBalance + addressBalance.lockedBalance, addressTxHistorySum.balance);
-    }
+    await validateAddressBalances(mysql, addresses);
   }
 
   console.log('Reorg is done.');
