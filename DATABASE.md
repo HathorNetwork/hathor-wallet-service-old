@@ -153,6 +153,8 @@ CREATE TABLE `transaction` (
   `voided` boolean NOT NULL DEFAULT false,
   -- Height is the block's height if it's a block and the height of the `first_block` if it is a transaction.
   `height` int unsigned DEFAULT NULL,
+  -- Seen is the number of times this transaction has been seen. This is used to determine if the transaction is voided (no height and seen < last seen on mempool sync)
+  `seen` int unsigned DEFAULT 0,
   PRIMARY KEY (`tx_id`)
 );
 
