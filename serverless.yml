@@ -16,8 +16,8 @@ custom:
       identityValidationExpression: Bearer (.*)
 
 # Create an optimized package for our functions
-package:
-  individually: true
+# package:
+#   individually: true
 
 plugins:
   - serverless-offline
@@ -31,24 +31,43 @@ resources:
       Type: "AWS::SQS::Queue"
       Properties:
         QueueName:
-            WalletServiceNewTxQueue_${env:STAGE}
+            WalletServiceNewTxQueue_${opt:stage, 'dev'}
 
 provider:
   name: aws
   runtime: nodejs12.x
-  stage: ${env:STAGE}
-  region: us-east-1
   websocketsApiName: wallet-realtime-ws-api
   websocketsApiRouteSelectionExpression: $request.body.action
+  vpc:
+    securityGroupIds:
+      - ${env:AWS_VPC_DEFAULT_SG_ID}
+    subnetIds:
+      - ${env:AWS_SUBNET_ID_1}
+      - ${env:AWS_SUBNET_ID_2}
+      - ${env:AWS_SUBNET_ID_3}
   apiGateway:
     minimumCompressionSize: 1024 # Enable gzip compression for responses > 1 KB
   environment:
+    AWS_VPC_DEFAULT_SG_ID: ${env:AWS_VPC_DEFAULT_SG_ID}
+    AWS_SUBNET_ID_1: ${env:AWS_SUBNET_ID_1}
+    AWS_SUBNET_ID_2: ${env:AWS_SUBNET_ID_2}
+    AWS_SUBNET_ID_3: ${env:AWS_SUBNET_ID_3}
     AWS_NODEJS_CONNECTION_REUSE_ENABLED: 1
     SERVICE_NAME: ${self:service}
-    DB_ENDPOINT: ${env:DB_ENDPOINT, 'rds-endpoint-TODO'}
-    DB_NAME: ${self:service}-${env:STAGE}
-    DB_USER: ${env:STAGE}-user
+    NETWORK: ${env:NETWORK}
+    MAX_ADDRESS_GAP: ${env:MAX_ADDRESS_GAP}
+    BLOCK_REWARD_LOCK: ${env:BLOCK_REWARD_LOCK}
+    ADMINTOKEN: ${env:ADMINTOKEN}
+    CONFIRM_FIRST_ADDRESS: ${env:CONFIRM_FIRST_ADDRESS}
+    DB_ENDPOINT: ${env:DB_ENDPOINT}
+    DB_PORT: ${env:DB_PORT}
+    DB_NAME: ${env:DB_NAME}
+    DB_USER: ${env:DB_USER}
+    DB_PASS: ${env:DB_PASS}
     NEW_TX_SQS: { Ref: WalletServiceNewTxQueue }
+    REDIS_HOST: ${env:REDIS_HOST}
+    REDIS_PORT: ${env:REDIS_PORT}
+    REDIS_PASSWORD: ${env:REDIS_PASSWORD}
   iamRoleStatements:
     - Effect: Allow
       Action:
@@ -59,6 +78,7 @@ provider:
 functions:
   getLatestBlock:
     handler: src/height.getLatestBlock
+    timeout: 600
   onNewTxRequest:
     handler: src/txProcessor.onNewTxRequest
   onHandleReorgRequest:

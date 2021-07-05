@@ -48,7 +48,7 @@
     "fork-ts-checker-webpack-plugin": "^3.0.1",
     "jest": "^26.0.1",
     "npm-run-all": "^4.1.5",
-    "serverless": "^1.73.1",
+    "serverless": "^1.83.3",
     "serverless-dotenv-plugin": "^2.4.2",
     "serverless-offline": "^6.4.0",
     "serverless-prune-plugin": "^1.5.0",
