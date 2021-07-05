@@ -273,6 +273,7 @@ test('onHandleVoidedTxRequest', async () => {
 
   const txId1 = 'txId1';
   const txId2 = 'txId2';
+  const txId3 = 'txId3';
   const token = 'tokenId';
   const addr = 'address';
   const walletId = 'walletId';
@@ -322,14 +323,29 @@ test('onHandleVoidedTxRequest', async () => {
 
   await txProcessor.onNewTxEvent(evt);
 
+  const evt2 = JSON.parse(JSON.stringify(eventTemplate));
+  const tx2 = evt2.Records[0].body;
+  tx2.version = 1;
+  tx2.tx_id = txId3;
+  tx2.timestamp += 1;
+  tx2.inputs = [createInput(2000, addr, txId2, 0, token)];
+  tx2.outputs = [
+    createOutput(1500, addr, token),    // one output to the same address
+    createOutput(500, 'other', token),  // and one to another address
+  ];
+
+  await txProcessor.onNewTxEvent(evt2);
+
   // void the transaction
   await txProcessor.handleVoidedTx(tx);
 
   // both utxos should be voided
-  await expect(checkUtxoTable(mysql, 3, txId2, 0, token, addr, 2000, 0, null, null, false, null, true)).resolves.toBe(true);
-  await expect(checkUtxoTable(mysql, 3, txId2, 1, token, 'other', 500, 0, null, null, false, null, true)).resolves.toBe(true);
+  await expect(checkUtxoTable(mysql, 5, txId2, 0, token, addr, 2000, 0, null, null, false, null, true)).resolves.toBe(true);
+  await expect(checkUtxoTable(mysql, 5, txId2, 1, token, 'other', 500, 0, null, null, false, null, true)).resolves.toBe(true);
+  // txId3 will be voided because txId2 was voided
+  await expect(checkUtxoTable(mysql, 5, txId3, 0, token, addr, 1500, 0, null, null, false, null, true)).resolves.toBe(true);
   // the original utxo should not be voided and should not have been spent
-  await expect(checkUtxoTable(mysql, 3, txId1, 0, token, addr, 2500, 0, null, null, false, null, false)).resolves.toBe(true);
+  await expect(checkUtxoTable(mysql, 5, txId1, 0, token, addr, 2500, 0, null, null, false, null, false)).resolves.toBe(true);
 
   await expect(checkAddressBalanceTable(mysql, 1, addr, token, 2500, 0, 0, 1)).resolves.toBe(true);
 });
