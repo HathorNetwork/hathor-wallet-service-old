@@ -17,6 +17,7 @@ import {
   unlockUtxos,
   searchForLatestValidBlock,
   handleReorg,
+  handleVoided,
 } from '@src/commons';
 import {
   addNewAddresses,
@@ -165,6 +166,17 @@ export const onSearchForLatestValidBlockRequest: APIGatewayProxyHandler = async 
     statusCode: 200,
     body: JSON.stringify({ success: true, latestValidBlock }),
   };
+};
+
+export const handleVoidedTx = async (tx: Transaction): Promise<void> => {
+  const txId = tx.tx_id;
+  const transaction: Tx = await fetchTx(mysql, txId);
+
+  if (!transaction) {
+    throw new Error(`Transaction ${txId} not found.`);
+  }
+
+  await handleVoided(mysql, transaction);
 };
 
 /**

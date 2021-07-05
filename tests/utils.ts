@@ -112,6 +112,8 @@ export const checkUtxoTable = async (
   timelock?: number | null,
   heightlock?: number | null,
   locked?: boolean,
+  spentBy?: string | null,
+  voided = false,
 ): Promise<boolean | Record<string, unknown>> => {
   // first check the total number of rows in the table
   let results: DbSelectResult = await mysql.query('SELECT * FROM `tx_output` WHERE spent_by IS NULL');
@@ -137,15 +139,19 @@ export const checkUtxoTable = async (
        AND \`value\` = ?
        AND \`authorities\` = ?
        AND \`locked\` = ?
+       AND \`voided\` = ?
        AND \`timelock\``;
   results = await mysql.query(
-    `${baseQuery} ${timelock ? '= ?' : 'IS ?'} AND \`heightlock\` ${heightlock ? '= ?' : 'IS ?'}`,
-    [txId, index, tokenId, address, value, authorities, locked, timelock, heightlock],
+    `${baseQuery} ${timelock ? '= ?' : 'IS ?'}
+       AND \`heightlock\` ${heightlock ? '= ?' : 'IS ?'}
+       AND \`spent_by\` ${spentBy ? '= ?' : 'IS ?'}
+    `,
+    [txId, index, tokenId, address, value, authorities, locked, voided, timelock, heightlock, spentBy],
   );
   if (results.length !== 1) {
     return {
       error: 'checkUtxoTable query',
-      params: { txId, index, tokenId, address, value, authorities, timelock, heightlock, locked },
+      params: { txId, index, tokenId, address, value, authorities, timelock, heightlock, locked, spentBy, voided },
       results,
     };
   }
