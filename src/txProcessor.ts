@@ -297,3 +297,13 @@ export const addNewTx = async (tx: Transaction, now: number, blockRewardLock: nu
   };
   await sqs.sendMessage(params).promise();
 };
+
+/**
+ * Voids transactions that happened before our latest "seen" transaction
+ * and were not confirmed by a block
+ */
+export const voidMissingTransactions = async (): Promise<void> => {
+  const latestSeen: number = await getLatestSeen(mysql);
+
+  await voidBeforeSeen(mysql, latestSeen);
+};
