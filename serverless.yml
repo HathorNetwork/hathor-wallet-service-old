@@ -48,22 +48,22 @@ provider:
   apiGateway:
     minimumCompressionSize: 1024 # Enable gzip compression for responses > 1 KB
   environment:
+    ADMINTOKEN: ${env:ADMINTOKEN}
     AWS_VPC_DEFAULT_SG_ID: ${env:AWS_VPC_DEFAULT_SG_ID}
     AWS_SUBNET_ID_1: ${env:AWS_SUBNET_ID_1}
     AWS_SUBNET_ID_2: ${env:AWS_SUBNET_ID_2}
     AWS_SUBNET_ID_3: ${env:AWS_SUBNET_ID_3}
     AWS_NODEJS_CONNECTION_REUSE_ENABLED: 1
-    SERVICE_NAME: ${self:service}
-    NETWORK: ${env:NETWORK}
-    MAX_ADDRESS_GAP: ${env:MAX_ADDRESS_GAP}
     BLOCK_REWARD_LOCK: ${env:BLOCK_REWARD_LOCK}
-    ADMINTOKEN: ${env:ADMINTOKEN}
     CONFIRM_FIRST_ADDRESS: ${env:CONFIRM_FIRST_ADDRESS}
     DB_ENDPOINT: ${env:DB_ENDPOINT}
     DB_PORT: ${env:DB_PORT}
     DB_NAME: ${env:DB_NAME}
     DB_USER: ${env:DB_USER}
     DB_PASS: ${env:DB_PASS}
+    SERVICE_NAME: ${self:service}
+    MAX_ADDRESS_GAP: ${env:MAX_ADDRESS_GAP}
+    NETWORK: ${env:NETWORK}
     NEW_TX_SQS: { Ref: WalletServiceNewTxQueue }
     REDIS_HOST: ${env:REDIS_HOST}
     REDIS_PORT: ${env:REDIS_PORT}
@@ -81,6 +81,7 @@ functions:
     timeout: 600
   onNewTxRequest:
     handler: src/txProcessor.onNewTxRequest
+    memorySize: 256
   onHandleReorgRequest:
     handler: src/txProcessor.onHandleReorgRequest
     timeout: 300 # 5 minutes
