@@ -48,7 +48,7 @@ const mysql = getDbConnection();
  * This lambda is called by API Gateway on GET /txhistory
  */
 export const get = walletIdProxyHandler(async (walletId, event) => {
-  const params = event.queryStringParameters;
+  const params = event.queryStringParameters || {};
 
   const { value, error } = paramsSchema.validate(params, {
     abortEarly: false,
