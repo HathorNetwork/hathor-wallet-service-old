@@ -38,7 +38,7 @@ const bodySchema = Joi.object({
  */
 export const getFilteredUtxos = walletIdProxyHandler(async (walletId, event) => {
   const multiQueryString = event.multiValueQueryStringParameters || {};
-  const queryString = event.queryStringParameters;
+  const queryString = event.queryStringParameters || {};
 
   const eventBody = {
     addresses: multiQueryString.addresses,
