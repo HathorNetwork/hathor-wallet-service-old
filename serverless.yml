@@ -71,6 +71,7 @@ functions:
   loadWalletAsync:
     handler: src/api/wallet.loadWallet
   loadWalletApi:
+    role: arn:aws:iam::769498303037:role/WalletServiceLoadWalletLambda
     handler: src/api/wallet.load
     events:
       - http:
