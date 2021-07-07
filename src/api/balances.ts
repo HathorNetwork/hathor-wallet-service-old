@@ -39,7 +39,7 @@ const paramsSchema = Joi.object({
  * with a lot of different tokens in his wallet from doing an expensive query
  */
 export const get: APIGatewayProxyHandler = walletIdProxyHandler(async (walletId, event) => {
-  const params = event.queryStringParameters;
+  const params = event.queryStringParameters || {};
 
   const { value, error } = paramsSchema.validate(params, {
     abortEarly: false,
