@@ -196,6 +196,7 @@ export const bearerAuthorizer: APIGatewayTokenAuthorizerHandler = async (event) 
     } else if (e.name === 'TokenExpiredError') {
       throw new Error('Unauthorized');
     } else {
+      console.log('Error on bearerAuthorizer: ', e);
       throw e;
     }
   }
