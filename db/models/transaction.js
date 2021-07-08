@@ -42,6 +42,13 @@ module.exports = (sequelize, DataTypes) => {
     modelName: 'Transaction',
     tableName: 'transaction',
     timestamps: false,
+    indexes: [
+      {
+        name: 'transaction_version_idx',
+        fields: ['version'],
+        using: 'HASH',
+      },
+    ],
   });
   return Transaction;
 };

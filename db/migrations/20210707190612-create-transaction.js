@@ -25,9 +25,17 @@ module.exports = {
         allowNull: true,
         defaultValue: null,
       },
-    });
+    }).then(() => queryInterface.addIndex(
+      'transaction',
+      ['version'],
+      {
+        name: 'transaction_version_idx',
+        fields: ['version'],
+        using: 'HASH',
+      },
+    ));
   },
   down: async (queryInterface, Sequelize) => {
     await queryInterface.dropTable('transaction');
-  }
+  },
 };
