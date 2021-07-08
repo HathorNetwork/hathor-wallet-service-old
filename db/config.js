@@ -2,7 +2,7 @@ const fs = require('fs');
 
 let development;
 
-switch (process.env.PROD_DB_USERNAME) {
+switch (process.env.DEV_DB) {
   case 'mysql':
     development = {
       username: process.env.DB_USERNAME,
