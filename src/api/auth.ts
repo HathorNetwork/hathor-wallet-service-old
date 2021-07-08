@@ -33,6 +33,10 @@ const bodySchema = Joi.object({
   sign: Joi.string().required(),
 });
 
+const verifySchema = Joi.object({
+  token: Joi.string().required(),
+});
+
 function parseBody(body) {
   try {
     return JSON.parse(body);
@@ -216,5 +220,97 @@ export const bearerAuthorizer: APIGatewayTokenAuthorizerHandler = async (event) 
     return _generatePolicy(walletId, 'Allow', event.methodArn);
   }
 
-  return _generatePolicy(walletId, 'Deny', event.methodArn);
+  throw new Error('Unauthorized');
+};
+
+export const verifyHandler: APIGatewayProxyHandler = async (event) => {
+  const eventBody = parseBody(event.body);
+
+  const { value, error } = verifySchema.validate(eventBody, {
+    abortEarly: false,
+    convert: false,
+  });
+
+  if (error) {
+    const details = error.details.map((err) => ({
+      message: err.message,
+      path: err.path,
+    }));
+
+    return {
+      statusCode: 400,
+      body: JSON.stringify({
+        success: false,
+        error: ApiError.INVALID_PAYLOAD,
+        details,
+      }),
+    };
+  }
+
+  const token = value.token;
+  let data;
+  try {
+    data = jwt.verify(
+      token,
+      process.env.AUTH_SECRET,
+    );
+  } catch (e) {
+    if (e.name === 'JsonWebTokenError') {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({
+          success: false,
+          message: 'Invalid token.',
+        }),
+      };
+    }
+
+    if (e.name === 'TokenExpiredError') {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({
+          success: false,
+          message: 'Token expired.',
+        }),
+      };
+    }
+
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        success: false,
+        message: 'Unexpected Error.',
+      }),
+    };
+  }
+
+  // signature data
+  const signature = data.sign;
+  const timestamp = data.ts;
+  const addr = data.addr;
+  const walletId = data.wid;
+
+  // header data
+  const expirationTs = data.exp;
+
+  const address = new bitcore.Address(addr, hathorLib.network.getNetwork());
+  const verified = verifySignature(signature, timestamp, address, walletId);
+
+  if (verified && Math.floor(Date.now() / 1000) <= expirationTs) {
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        success: true,
+        message: 'Ok.',
+      }),
+    };
+  }
+
+  return {
+    statusCode: 400,
+    body: JSON.stringify({
+      success: false,
+      message: 'Unexpected Error.',
+    }),
+  };
 };

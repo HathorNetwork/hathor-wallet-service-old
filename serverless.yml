@@ -182,3 +182,10 @@ functions:
           cors: true
   bearerAuthorizer:
     handler: src/api/auth.bearerAuthorizer
+  verifyTokenApi:
+    handler: src/api/auth.verifyHandler
+    events:
+      - http:
+          path: auth/verify
+          method: post
+          cors: true
