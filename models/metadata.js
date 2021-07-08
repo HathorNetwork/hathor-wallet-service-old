@@ -15,7 +15,7 @@ module.exports = (sequelize, DataTypes) => {
   };
   Metadata.init({
     key: {
-      type: DataTypes.STRING(64),
+      type: DataTypes.STRING(25),
       allowNull: false,
       primaryKey: true,
     },

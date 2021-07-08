@@ -3,7 +3,7 @@ module.exports = {
   up: async (queryInterface, Sequelize) => { // eslint-disable-line
     await queryInterface.createTable('metadata', {
       key: {
-        type: Sequelize.STRING(64),
+        type: Sequelize.STRING(25),
         primaryKey: true,
         allowNull: false,
       },
