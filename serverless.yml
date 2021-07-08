@@ -74,14 +74,14 @@ functions:
     handler: src/api/wallet.load
     events:
       - http:
-          path: wallet
+          path: wallet/init
           method: post
           cors: true
   getWalletStatusApi:
     handler: src/api/wallet.get
     events:
       - http:
-          path: wallet
+          path: wallet/status
           method: get
           cors: true
           authorizer: ${self:custom.authorizer.walletBearer}
@@ -89,7 +89,7 @@ functions:
     handler: src/api/addresses.get
     events:
       - http:
-          path: addresses
+          path: wallet/addresses
           method: get
           cors: true
           authorizer: ${self:custom.authorizer.walletBearer}
@@ -97,7 +97,7 @@ functions:
     handler: src/api/balances.get
     events:
       - http:
-          path: balances
+          path: wallet/balances
           method: get
           cors: true
           authorizer: ${self:custom.authorizer.walletBearer}
@@ -105,7 +105,7 @@ functions:
     handler: src/api/txhistory.get
     events:
       - http:
-          path: txhistory
+          path: wallet/history
           method: get
           cors: true
           authorizer: ${self:custom.authorizer.walletBearer}
@@ -113,7 +113,7 @@ functions:
     handler: src/api/txProposalCreate.create
     events:
       - http:
-          path: txproposals
+          path: tx/proposal
           method: post
           cors: true
           authorizer: ${self:custom.authorizer.walletBearer}
@@ -121,7 +121,7 @@ functions:
     handler: src/api/txProposalSend.send
     events:
       - http:
-          path: txproposals/{txProposalId}
+          path: tx/proposal/{txProposalId}
           method: put
           cors: true
           authorizer: ${self:custom.authorizer.walletBearer}
@@ -133,7 +133,7 @@ functions:
     handler: src/api/txProposalDestroy.destroy
     events:
       - http:
-          path: txproposals/{txProposalId}
+          path: tx/proposal/{txProposalId}
           method: delete
           cors: true
           authorizer: ${self:custom.authorizer.walletBearer}
