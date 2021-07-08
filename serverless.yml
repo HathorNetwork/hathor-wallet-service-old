@@ -15,10 +15,6 @@ custom:
       identitySource: method.request.header.Authorization
       identityValidationExpression: Bearer (.*)
 
-# Create an optimized package for our functions
-# package:
-#   individually: true
-
 plugins:
   - serverless-offline
   - serverless-webpack
@@ -36,6 +32,7 @@ resources:
 provider:
   name: aws
   runtime: nodejs12.x
+  memorySize: 256
   websocketsApiName: wallet-realtime-ws-api
   websocketsApiRouteSelectionExpression: $request.body.action
   vpc:
@@ -49,6 +46,7 @@ provider:
     minimumCompressionSize: 1024 # Enable gzip compression for responses > 1 KB
   environment:
     ADMINTOKEN: ${env:ADMINTOKEN}
+    AUTH_SECRET: ${env:AUTH_SECRET}
     AWS_VPC_DEFAULT_SG_ID: ${env:AWS_VPC_DEFAULT_SG_ID}
     AWS_SUBNET_ID_1: ${env:AWS_SUBNET_ID_1}
     AWS_SUBNET_ID_2: ${env:AWS_SUBNET_ID_2}
@@ -78,10 +76,8 @@ provider:
 functions:
   getLatestBlock:
     handler: src/height.getLatestBlock
-    timeout: 600
   onNewTxRequest:
     handler: src/txProcessor.onNewTxRequest
-    memorySize: 256
   onHandleReorgRequest:
     handler: src/txProcessor.onHandleReorgRequest
     timeout: 300 # 5 minutes
@@ -93,6 +89,7 @@ functions:
     handler: src/api/wallet.loadWallet
   loadWalletApi:
     handler: src/api/wallet.load
+    role: arn:aws:iam::769498303037:role/WalletServiceLoadWalletLambda
     events:
       - http:
           path: wallet
@@ -164,6 +161,7 @@ functions:
                 txProposalId: true
   wsConnect:
     handler: src/ws/connection.connect
+    timeout: 1
     events:
       - websocket:
           route: $connect
@@ -173,11 +171,13 @@ functions:
           route: ping
   wsJoin:
     handler: src/ws/join.handler
+    timeout: 1
     events:
       - websocket:
           route: join
   wsTxNotifyNew:
     handler: src/ws/txNotify.onNewTx
+    timeout: 1
     events:
       - sqs:
           arn:
@@ -188,12 +188,16 @@ functions:
           maximumBatchingWindow: 60
   wsTxNotifyUpdate:
     handler: src/ws/txNotify.onUpdateTx
+    timeout: 1
   wsAdminBroadcast:
     handler: src/ws/admin.broadcast
+    timeout: 1
   wsAdminDisconnect:
     handler: src/ws/admin.disconnect
+    timeout: 1
   wsAdminMulticast:
     handler: src/ws/admin.multicast
+    timeout: 1
   authTokenApi:
     handler: src/api/auth.tokenHandler
     events:
