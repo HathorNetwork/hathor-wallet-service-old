@@ -13,7 +13,6 @@ custom:
       name: bearerAuthorizer
       type: TOKEN
       identitySource: method.request.header.Authorization
-      identityValidationExpression: Bearer (.*)
 
 plugins:
   - serverless-offline
@@ -170,8 +169,15 @@ functions:
     events:
       - websocket:
           route: $connect
+          authorizer: ${self:custom.authorizer.walletBearer}
+  wsDisconnect:
+    handler: src/ws/connection.disconnect
+    events:
       - websocket:
           route: $disconnect
+  wsPing:
+    handler: src/ws/connection.ping
+    events:
       - websocket:
           route: ping
   wsJoin:

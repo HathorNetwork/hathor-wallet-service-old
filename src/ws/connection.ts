@@ -8,6 +8,7 @@
 import { APIGatewayProxyEvent } from 'aws-lambda';
 import {
   connectionInfoFromEvent,
+  disconnectClient,
   sendMessageToClient,
 } from '@src/ws/utils';
 import {
@@ -15,31 +16,59 @@ import {
   closeRedisClient,
   initWsConnection,
   endWsConnection,
+  wsJoinWallet,
 } from '@src/redis';
-import { closeDbConnection, getDbConnection } from '@src/utils';
 
-const mysql = getDbConnection();
-
+// Route: @connect
 export const connect = async (
   event: APIGatewayProxyEvent,
 ): Promise<void> => {
   const redisClient = getRedisClient();
-  const routeKey = event.requestContext.routeKey;
-  // info needed to send response to client
   const connInfo = connectionInfoFromEvent(event);
 
-  if (routeKey === '$connect') {
-    await initWsConnection(redisClient, connInfo);
+  let walletId: string;
+  try {
+    walletId = event.requestContext.authorizer.principalId;
+  } catch (e) {
+    console.log('WebSocket Connection Error:', e);
+    // Does not have a walletId, forcefull disconnect
+    // This shouldn't happen with the authorizer
+    await disconnectClient(redisClient, connInfo);
+    await closeRedisClient(redisClient);
+    return;
   }
 
-  if (routeKey === '$disconnect') {
-    await endWsConnection(redisClient, connInfo.id);
-  }
-
-  if (routeKey === 'ping') {
-    await sendMessageToClient(redisClient, connInfo, { message: 'PONG' });
-  }
+  // Init connection then join wallet
+  await initWsConnection(
+    redisClient,
+    connInfo,
+  ).then(() => wsJoinWallet(
+    redisClient,
+    connInfo,
+    walletId,
+  ));
 
   await closeRedisClient(redisClient);
-  await closeDbConnection(mysql);
+};
+
+// Route: $disconnect
+export const disconnect = async (
+  event: APIGatewayProxyEvent,
+): Promise<void> => {
+  const redisClient = getRedisClient();
+  const connInfo = connectionInfoFromEvent(event);
+  await endWsConnection(redisClient, connInfo.id);
+
+  await closeRedisClient(redisClient);
+};
+
+// Route: ping
+export const ping = async (
+  event: APIGatewayProxyEvent,
+): Promise<void> => {
+  const redisClient = getRedisClient();
+  const connInfo = connectionInfoFromEvent(event);
+  await sendMessageToClient(redisClient, connInfo, { message: 'PONG' });
+
+  await closeRedisClient(redisClient);
 };
