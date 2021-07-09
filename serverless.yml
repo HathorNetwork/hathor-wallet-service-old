@@ -13,7 +13,7 @@ custom:
     walletBearer:
       name: bearerAuthorizer
       type: TOKEN
-      identitySource: route.request.header.Authorization
+      identitySource: route.request.header.Authorization, route.request.querystring.token
 
 plugins:
   - serverless-offline
@@ -169,9 +169,7 @@ functions:
     events:
       - websocket:
           route: $connect
-          authorizer:
-            name: bearerAuthorizer
-            identitySource: method.request.querystring.token
+          authorizer: ${self:custom.authorizer.walletBearer}
   wsDisconnect:
     handler: src/ws/connection.disconnect
     events:
