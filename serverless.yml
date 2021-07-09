@@ -12,7 +12,7 @@ custom:
     walletBearer:
       name: bearerAuthorizer
       type: TOKEN
-      identitySource: method.request.header.Authorization
+      identitySource: method.request.header.Authorization, method.request.querystring.token
 
 plugins:
   - serverless-offline
