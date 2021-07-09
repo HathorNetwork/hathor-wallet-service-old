@@ -27,6 +27,7 @@ export enum ApiError {
   WALLET_NOT_FOUND = 'wallet-not-found',
   WALLET_NOT_READY = 'wallet-not-ready',
   WALLET_ALREADY_LOADED = 'wallet-already-loaded',
+  ADDRESS_NOT_IN_WALLET = 'address-not-in-wallet',
   FORBIDDEN = 'forbidden',
   UNAUTHORIZED = 'unauthorized',
 }

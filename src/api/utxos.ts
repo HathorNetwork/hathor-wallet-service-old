@@ -10,6 +10,7 @@ import {
 import {
   DbTxOutput,
   IFilterUtxo,
+  AddressInfo,
 } from '@src/types';
 import { closeDbAndGetError } from '@src/api/utils';
 import { getDbConnection } from '@src/utils';
@@ -63,20 +64,55 @@ export const getFilteredUtxos = walletIdProxyHandler(async (walletId, event) => 
     return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, { details });
   }
 
-  if (!value.addresses) {
-    const walletAddresses = await getWalletAddresses(mysql, walletId);
+  const walletAddresses = await getWalletAddresses(mysql, walletId);
 
+  if (value.addresses) {
+    const denied = await validateAddresses(walletAddresses, value.addresses);
+
+    if (denied.length > 0) {
+      return closeDbAndGetError(mysql, ApiError.ADDRESS_NOT_IN_WALLET, { missing: denied });
+    }
+  } else {
     value.addresses = walletAddresses.map((addressInfo) => addressInfo.address);
   }
 
   const body: IFilterUtxo = value;
   const utxos: DbTxOutput[] = await filterUtxos(mysql, body);
 
+  const utxosWithPath = utxos.map(async (utxo) => {
+    const addressDetail: AddressInfo = walletAddresses.find((address) => address.address === utxo.address);
+    if (!addressDetail) {
+      throw new Error('Utxo address not in user\'s wallet');
+    }
+    const addressPath = `m/44'/${constants.HATHOR_BIP44_CODE}'/0'/0/${addressDetail.index}`;
+    return { ...utxo, addressPath };
+  });
+
   return {
     statusCode: 200,
     body: JSON.stringify({
       success: true,
-      utxos,
+      utxos: utxosWithPath,
     }),
   };
 });
+
+/**
+ * Confirm that the requested addresses belongs to the user's wallet
+ *
+ * @param walletId - The user wallet id
+ * @param addresses - List of addresses to validate
+ * @returns A list with the denied addresses, if any
+ */
+export const validateAddresses = async (walletAddresses: AddressInfo[], addresses: string[]): Promise<string[]> => {
+  const flatAddresses = walletAddresses.map((walletAddress) => walletAddress.address);
+  const denied: string[] = [];
+
+  for (let i = 0; i < addresses.length; i++) {
+    if (!flatAddresses.includes(addresses[i])) {
+      denied.push(addresses[i]);
+    }
+  }
+
+  return denied;
+};
