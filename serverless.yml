@@ -12,7 +12,7 @@ custom:
     walletBearer:
       name: bearerAuthorizer
       type: TOKEN
-      identitySource: method.request.header.Authorization, method.request.querystring.token
+      identitySource: method.request.header.Authorization
 
 plugins:
   - serverless-offline
@@ -91,7 +91,6 @@ functions:
   loadWalletAsync:
     handler: src/api/wallet.loadWallet
   loadWalletApi:
-    role: arn:aws:iam::769498303037:role/WalletServiceLoadWalletLambda
     handler: src/api/wallet.load
     role: arn:aws:iam::769498303037:role/WalletServiceLoadWalletLambda
     events:
@@ -169,7 +168,9 @@ functions:
     events:
       - websocket:
           route: $connect
-          authorizer: ${self:custom.authorizer.walletBearer}
+          authorizer:
+            name: bearerAuthorizer
+            identitySource: method.request.querystring.token
   wsDisconnect:
     handler: src/ws/connection.disconnect
     events:
