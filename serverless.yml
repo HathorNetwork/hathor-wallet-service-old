@@ -1,5 +1,6 @@
-service:
-  name: hathor-wallet-service
+service: hathor-wallet-service
+
+useDotenv: true
 
 custom:
   webpack:
@@ -12,13 +13,12 @@ custom:
     walletBearer:
       name: bearerAuthorizer
       type: TOKEN
-      identitySource: method.request.header.Authorization
+      identitySource: route.request.header.Authorization
 
 plugins:
   - serverless-offline
   - serverless-webpack
   - serverless-prune-plugin
-  - serverless-dotenv-plugin
 
 resources:
   Resources:
@@ -31,6 +31,7 @@ resources:
 provider:
   name: aws
   runtime: nodejs12.x
+  lambdaHashingVersion: 20201221
   # In MB. This is the memory allocated for the Lambdas, they cannot use more than this
   # and will break if they try.
   memorySize: 256
