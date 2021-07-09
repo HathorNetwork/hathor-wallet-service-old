@@ -32,7 +32,11 @@ resources:
 provider:
   name: aws
   runtime: nodejs12.x
+  # In MB. This is the memory allocated for the Lambdas, they cannot use more than this
+  # and will break if they try.
   memorySize: 256
+  # This is the default timeout. Each function can specify a different value
+  timeout: 6
   websocketsApiName: wallet-realtime-ws-api
   websocketsApiRouteSelectionExpression: $request.body.action
   vpc:
