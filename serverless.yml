@@ -2,6 +2,12 @@ service: hathor-wallet-service
 
 useDotenv: true
 
+frameworkVersion: '2'
+configValidationMode: warn
+variablesResolutionMode: null
+unresolvedVariablesNotificationMode: warn
+deprecationNotificationMode: warn:summary
+
 custom:
   webpack:
     webpackConfig: ./webpack.config.js
@@ -12,8 +18,8 @@ custom:
   authorizer:
     walletBearer:
       name: bearerAuthorizer
-      type: TOKEN
-      identitySource: route.request.header.Authorization, route.request.querystring.token
+      type: request
+      resultTtlInSeconds: 600
 
 plugins:
   - serverless-offline
