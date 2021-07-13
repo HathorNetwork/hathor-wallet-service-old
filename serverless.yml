@@ -18,7 +18,15 @@ custom:
   authorizer:
     walletBearer:
       name: bearerAuthorizer
-      type: request
+      type: token
+      identitySource:
+        - method.request.header.Authorization
+      resultTtlInSeconds: 600
+    wsBearer:
+      name: bearerAuthorizer
+      type: token
+      identitySource:
+        - route.request.querystring.token
       resultTtlInSeconds: 600
 
 plugins:
@@ -175,7 +183,7 @@ functions:
     events:
       - websocket:
           route: $connect
-          authorizer: ${self:custom.authorizer.walletBearer}
+          authorizer: ${self:custom.authorizer.wsBearer}
   wsDisconnect:
     handler: src/ws/connection.disconnect
     events:

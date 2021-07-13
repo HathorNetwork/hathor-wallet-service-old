@@ -7,7 +7,7 @@
 
 import {
   APIGatewayProxyHandler,
-  APIGatewayRequestAuthorizerHandler,
+  CustomAuthorizerHandler,
   CustomAuthorizerResult,
   PolicyDocument,
   Statement,
@@ -181,18 +181,16 @@ const _generatePolicy = (principalId: string, effect: string, resource: string) 
   return authResponse;
 };
 
-export const bearerAuthorizer: APIGatewayRequestAuthorizerHandler = async (event) => {
-  const authHeader = event.headers && event.headers.Authorization;
-  const authHeaderSanitized = authHeader && authHeader.replace(/Bearer /gi, '');
-  const authQuery = event.queryStringParameters && event.queryStringParameters.Authorization;
-  const authorizationToken = authHeaderSanitized || authQuery;
+export const bearerAuthorizer: CustomAuthorizerHandler = async (event) => {
+  const { authorizationToken } = event;
   if (!authorizationToken) {
     throw new Error('No token found!'); // returns a 401
   }
+  const tokenSanitized = authorizationToken.replace(/Bearer /gi, '');
   let data;
   try {
     data = jwt.verify(
-      authorizationToken,
+      tokenSanitized,
       process.env.AUTH_SECRET,
     );
   } catch (e) {
