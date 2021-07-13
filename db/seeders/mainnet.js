@@ -4,10 +4,6 @@ module.exports = {
   up: async (queryInterface, Sequelize) => {
     return queryInterface.sequelize.transaction((t) => {
       return Promise.all([
-        queryInterface.bulkInsert('metadata', [{
-          key: 'height',
-          value: 0,
-        }], { transaction: t }),
         queryInterface.bulkInsert('transaction', [{
           tx_id: '0000033139d08176d1051fb3a272c3610457f0c7f686afbe0afe3d37f966db85',
           height: 0,
@@ -29,13 +25,10 @@ module.exports = {
   down: async (queryInterface, Sequelize) => {
     return queryInterface.sequelize.transaction((t) => {
       return Promise.all([
-        queryInterface.bulkDelete('metadata', {
-          key: 'height',
-        }, { transaction: t }),
         queryInterface.bulkDelete('transaction', {
           tx_id: '0000033139d08176d1051fb3a272c3610457f0c7f686afbe0afe3d37f966db85',
         }, { transaction: t }),
-        queryInterface.bulkInsert('tx_output', {
+        queryInterface.bulkDelete('tx_output', {
           tx_id: '0000033139d08176d1051fb3a272c3610457f0c7f686afbe0afe3d37f966db85',
           index: 0,
         }, { transaction: t }),

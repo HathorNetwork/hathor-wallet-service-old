@@ -14,6 +14,7 @@ module.exports = (sequelize, DataTypes) => {
     }
   };
   TxOutput.init({
+    // tx_id might point to a block
     tx_id: {
       type: DataTypes.STRING(64),
       allowNull: false,

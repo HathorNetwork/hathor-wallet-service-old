@@ -32,6 +32,7 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false,
       defaultValue: false,
     },
+    // Height is the block's height if it's a block and the height of the `first_block` if it is a transaction.
     height: {
       type: DataTypes.INTEGER.UNSIGNED,
       allowNull: true,

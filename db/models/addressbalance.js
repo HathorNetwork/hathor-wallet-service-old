@@ -13,6 +13,16 @@ module.exports = (sequelize, DataTypes) => {
       // define association here
     }
   };
+
+  // Unlocked authorities represents:
+  // null or 0b00 - Has no authority
+  // 0b01 - Mint authority
+  // 0b11 - Mint and Melt authority
+  // 0b10 - Melt authority
+
+  // This is always up to date with the authorities in every
+  // UTXO for this address.
+
   AddressBalance.init({
     address: {
       type: DataTypes.STRING(34),

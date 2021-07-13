@@ -63,12 +63,6 @@ CREATE TABLE `version_data` (
   PRIMARY KEY (`id`)
 );
 
-CREATE TABLE `metadata` (
-  `key` varchar(25) NOT NULL,
-  `value` int unsigned NOT NULL,
-  PRIMARY KEY (`key`)
-);
-
 CREATE TABLE `token` (
   `id` varchar(64) NOT NULL,
   `name` varchar(30) NOT NULL,
@@ -163,7 +157,6 @@ We need to add the genesis transactions to the database as the service expects t
 
 ## Mainnet
 ```
-INSERT INTO `metadata` (`key`, `value`) VALUES ('height', 0);
 INSERT INTO `transaction` (`tx_id`, `height`, `timestamp`, `version`, `voided`) VALUES ('000006cb93385b8b87a545a1cbb6197e6caff600c12cc12fc54250d39c8088fc', 0, 1578075305, 0, FALSE);
 INSERT INTO `tx_output` (`tx_id`, `index`, `token_id`, `address`, `value`)
      VALUES ('000006cb93385b8b87a545a1cbb6197e6caff600c12cc12fc54250d39c8088fc',
@@ -177,7 +170,6 @@ INSERT INTO `tx_output` (`tx_id`, `index`, `token_id`, `address`, `value`)
 ## Testnet
 
 ```
-INSERT INTO `metadata` (`key`, `value`) VALUES ('height', 0);
 INSERT INTO `transaction` (`tx_id`, `height`, `timestamp`, `version`, `voided`) VALUES ('0000033139d08176d1051fb3a272c3610457f0c7f686afbe0afe3d37f966db85', 0, 1577836800, 0, FALSE);
 INSERT INTO `tx_output` (`tx_id`, `index`, `token_id`, `address`, `value`)
      VALUES ('0000033139d08176d1051fb3a272c3610457f0c7f686afbe0afe3d37f966db85',
