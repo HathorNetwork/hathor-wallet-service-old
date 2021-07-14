@@ -157,6 +157,9 @@ CREATE TABLE `transaction` (
 );
 
 CREATE INDEX transaction_version_idx USING HASH ON `transaction`(`version`);
+CREATE INDEX tx_output_heightlock_idx USING HASH ON `tx_output`(`heightlock`);
+CREATE INDEX tx_output_timelock_idx USING HASH ON `tx_output`(`timelock`);
+CREATE INDEX transaction_height_idx USING HASH ON `transaction`(`height`);
 
 ```
 
