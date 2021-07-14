@@ -8,22 +8,26 @@ import 'source-map-support/register';
 import { ApiError } from '@src/api/errors';
 import {
   getTxProposal,
-  getTxProposalInputs,
-  getTxProposalOutputs,
+  // getTxProposalInputs,
+  // getTxProposalOutputs,
   updateTxProposal,
-  removeTxProposalOutputs,
-  getTxProposalTokenInfo,
+  // removeTxProposalOutputs,
+  // getTxProposalTokenInfo,
 } from '@src/db';
-import { TxProposalStatus, ApiResponse, TxProposalTokenInfo } from '@src/types';
+import {
+  TxProposalStatus,
+  ApiResponse,
+  // TxProposalTokenInfo,
+} from '@src/types';
 import {
   closeDbConnection,
   getDbConnection,
   getUnixTimestamp,
-  validateWeight,
+  // validateWeight,
 } from '@src/utils';
 
 import {
-  maybeRefreshWalletConstants,
+  // maybeRefreshWalletConstants,
   walletIdProxyHandler,
 } from '@src/commons';
 
@@ -43,18 +47,7 @@ const paramsSchema = Joi.object({
 });
 
 const bodySchema = Joi.object({
-  timestamp: Joi.number()
-    .required(),
-  parents: Joi.array()
-    .required()
-    .length(2),
-  weight: Joi.number()
-    .required(),
-  nonce: Joi.number()
-    .integer()
-    .required(),
-  inputsSignatures: Joi.array()
-    .required(),
+  txHex: Joi.string().alphanum(),
 });
 
 /*
@@ -84,13 +77,7 @@ export const send: APIGatewayProxyHandler = walletIdProxyHandler(async (walletId
     return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD);
   }
 
-  const {
-    timestamp,
-    parents,
-    weight,
-    nonce,
-    inputsSignatures,
-  } = bodyValidation.value;
+  const { txHex } = bodyValidation.value;
 
   const txProposal = await getTxProposal(mysql, txProposalId);
 
@@ -107,73 +94,6 @@ export const send: APIGatewayProxyHandler = walletIdProxyHandler(async (walletId
     return closeDbAndGetError(mysql, ApiError.TX_PROPOSAL_NOT_OPEN, { status: txProposal.status });
   }
 
-  // TODO validate max input signature size
-  // input: tx_id, index, data
-  const inputs = [];
-  const usedUtxos = await getTxProposalInputs(mysql, txProposalId);
-  for (const [i, utxo] of usedUtxos.entries()) {
-    // Deserialize from base64
-    const inputSignature = Buffer.from(inputsSignatures[i], 'base64');
-
-    inputs.push({
-      tx_id: utxo.txId,
-      index: utxo.index,
-      data: inputSignature,
-    });
-  }
-
-  const proposalOutputs = await getTxProposalOutputs(mysql, txProposalId);
-  const tokensSet = new Set(proposalOutputs.map((output) => (output.token)));
-  tokensSet.delete(hathorLib.constants.HATHOR_TOKEN_CONFIG.uid);
-  const tokens = Array.from(tokensSet);
-  const version = txProposal.version;
-  const { name, symbol } = await (async function getNameAndSymbol() {
-    if (version !== hathorLib.constants.CREATE_TOKEN_TX_VERSION) {
-      return {
-        name: undefined,
-        symbol: undefined,
-      };
-    }
-
-    const tokenInfo: TxProposalTokenInfo = await getTxProposalTokenInfo(mysql, txProposalId);
-
-    return tokenInfo;
-  }());
-
-  // output: value, tokenData, address, timelock
-  const outputs = [];
-  for (const output of proposalOutputs) {
-    outputs.push({
-      value: output.value,
-      address: output.address,
-      timelock: output.timelock,
-      tokenData: output.tokenData,
-    });
-  }
-
-  const txData = {
-    version,
-    parents,
-    timestamp,
-    weight,
-    nonce,
-    tokens,
-    inputs,
-    outputs,
-    name,
-    symbol,
-  };
-
-  await maybeRefreshWalletConstants(mysql);
-
-  // Validate TX_WEIGHT
-  const calculatedTxWeight = hathorLib.transaction.calculateTxWeight(txData);
-
-  if (!validateWeight(calculatedTxWeight, txData.weight)) {
-    return closeDbAndGetError(mysql, ApiError.INVALID_TX_WEIGHT, { status: txProposal.status });
-  }
-
-  const txHex = hathorLib.transaction.getTxHexFromData(txData);
   const now = getUnixTimestamp();
 
   try {
@@ -190,7 +110,7 @@ export const send: APIGatewayProxyHandler = walletIdProxyHandler(async (walletId
       TxProposalStatus.SENT,
     );
 
-    await removeTxProposalOutputs(mysql, txProposalId);
+    // await removeTxProposalOutputs(mysql, txProposalId);
     await closeDbConnection(mysql);
 
     return {
@@ -209,6 +129,10 @@ export const send: APIGatewayProxyHandler = walletIdProxyHandler(async (walletId
       TxProposalStatus.SEND_ERROR,
     );
 
-    return closeDbAndGetError(mysql, ApiError.TX_PROPOSAL_SEND_ERROR, { message: e.message, txProposalId, txHex });
+    return closeDbAndGetError(mysql, ApiError.TX_PROPOSAL_SEND_ERROR, {
+      message: e.message,
+      txProposalId,
+      txHex,
+    });
   }
 });
