@@ -6,6 +6,7 @@ import { ApiError } from '@src/api/errors';
 import {
   filterUtxos,
   getWalletAddresses,
+  getUtxo,
 } from '@src/db';
 import {
   DbTxOutput,
@@ -30,6 +31,8 @@ const bodySchema = Joi.object({
   biggerThan: Joi.number().integer().positive().default(-1),
   smallerThan: Joi.number().integer().positive().default(constants.MAX_OUTPUT_VALUE + 1),
   maxUtxos: Joi.number().integer().positive().default(constants.MAX_OUTPUTS),
+  txId: Joi.string().optional(),
+  index: Joi.number().optional(),
 });
 
 /*
@@ -66,6 +69,36 @@ export const getFilteredUtxos = walletIdProxyHandler(async (walletId, event) => 
 
   const walletAddresses = await getWalletAddresses(mysql, walletId);
 
+  if (value.txId) {
+    if (!value.index) {
+      return closeDbAndGetError(mysql, ApiError.NO_TX_INDEX);
+    }
+
+    const utxo: DbTxOutput = await getUtxo(mysql, value.txId, value.index);
+
+    if (!utxo) {
+      return closeDbAndGetError(mysql, ApiError.UTXO_NOT_FOUND);
+    }
+
+    const denied = await validateAddresses(walletAddresses, [utxo.address]);
+
+    if (denied.length > 0) {
+      // the requested utxo does not belong to the user's wallet.
+      return closeDbAndGetError(mysql, ApiError.FORBIDDEN);
+    }
+
+    // check if the utxo is a member of the user's wallet
+    const utxoList = mapUtxosWithPath(walletAddresses, [utxo]);
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        success: true,
+        utxos: utxoList,
+      }),
+    };
+  }
+
   if (value.addresses) {
     const denied = await validateAddresses(walletAddresses, value.addresses);
 
@@ -78,15 +111,7 @@ export const getFilteredUtxos = walletIdProxyHandler(async (walletId, event) => 
 
   const body: IFilterUtxo = value;
   const utxos: DbTxOutput[] = await filterUtxos(mysql, body);
-
-  const utxosWithPath = utxos.map(async (utxo) => {
-    const addressDetail: AddressInfo = walletAddresses.find((address) => address.address === utxo.address);
-    if (!addressDetail) {
-      throw new Error('Utxo address not in user\'s wallet');
-    }
-    const addressPath = `m/44'/${constants.HATHOR_BIP44_CODE}'/0'/0/${addressDetail.index}`;
-    return { ...utxo, addressPath };
-  });
+  const utxosWithPath = mapUtxosWithPath(walletAddresses, utxos);
 
   return {
     statusCode: 200,
@@ -95,6 +120,23 @@ export const getFilteredUtxos = walletIdProxyHandler(async (walletId, event) => 
       utxos: utxosWithPath,
     }),
   };
+});
+
+/**
+ * Returns a new list of utxos with the addressPaths for each utxo
+ *
+ * @param walletAddress - A list of addresses for the user's wallet
+ * @param utxos - A list of utxos to map
+ * @returns A list with the mapped utxos
+ */
+export const mapUtxosWithPath = (walletAddresses: AddressInfo[], utxos: DbTxOutput[]) => utxos.map((utxo) => {
+  const addressDetail: AddressInfo = walletAddresses.find((address) => address.address === utxo.address);
+  if (!addressDetail) {
+    // this should never happen, so we will throw here
+    throw new Error('Utxo address not in user\'s wallet');
+  }
+  const addressPath = `m/44'/${constants.HATHOR_BIP44_CODE}'/0'/0/${addressDetail.index}`;
+  return { ...utxo, addressPath };
 });
 
 /**
@@ -107,6 +149,8 @@ export const getFilteredUtxos = walletIdProxyHandler(async (walletId, event) => 
 export const validateAddresses = async (walletAddresses: AddressInfo[], addresses: string[]): Promise<string[]> => {
   const flatAddresses = walletAddresses.map((walletAddress) => walletAddress.address);
   const denied: string[] = [];
+
+  console.log('flat adresses: ', flatAddresses);
 
   for (let i = 0; i < addresses.length; i++) {
     if (!flatAddresses.includes(addresses[i])) {
