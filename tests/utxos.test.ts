@@ -48,6 +48,11 @@ test('get utxos with wallet id', async () => {
     index: 0,
     walletId: 'my-wallet',
     transactions: 4,
+  }, {
+    address: ADDRESSES[1],
+    index: 1,
+    walletId: 'my-wallet',
+    transactions: 4,
   }]);
 
   const token1 = '004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50';
@@ -55,7 +60,7 @@ test('get utxos with wallet id', async () => {
   const utxos = [
     [TX_IDS[0], 0, token1, ADDRESSES[0], 50, 0, null, null, false],
     [TX_IDS[1], 0, token1, ADDRESSES[0], 100, 0, null, null, false],
-    [TX_IDS[2], 0, token1, ADDRESSES[0], 150, 0, null, null, false],
+    [TX_IDS[2], 0, token1, ADDRESSES[1], 150, 0, null, null, false],
     [TX_IDS[2], 1, token1, ADDRESSES[0], 200, 0, null, null, false],
   ];
 
@@ -70,10 +75,7 @@ test('get utxos with wallet id', async () => {
   const result = await getFilteredUtxos(event, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(result.body as string);
 
-  expect(result.statusCode).toBe(200);
-  expect(returnBody.success).toBe(true);
-  expect(returnBody.utxos).toHaveLength(2);
-  expect(returnBody.utxos).toStrictEqual([utxos[2], utxos[1]].map((utxo) => ({
+  const formatUtxo = (utxo, path) => ({
     txId: utxo[0],
     index: utxo[1],
     tokenId: utxo[2],
@@ -83,5 +85,12 @@ test('get utxos with wallet id', async () => {
     timelock: utxo[6],
     heightlock: utxo[7],
     locked: utxo[8],
-  })));
+    addressPath: `m/44'/280'/0'/0/${path}`,
+  });
+
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(true);
+  expect(returnBody.utxos).toHaveLength(2);
+  expect(returnBody.utxos[0]).toStrictEqual(formatUtxo(utxos[2], 1));
+  expect(returnBody.utxos[1]).toStrictEqual(formatUtxo(utxos[1], 0));
 });
