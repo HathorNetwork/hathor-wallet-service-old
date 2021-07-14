@@ -18,7 +18,7 @@ module.exports = {
         primaryKey: true,
       },
       balance: {
-        type: Sequelize.BIGINT.UNSIGNED,
+        type: Sequelize.BIGINT,
         allowNull: false,
       },
       timestamp: {
