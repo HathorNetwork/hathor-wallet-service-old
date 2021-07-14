@@ -12,7 +12,7 @@ import Joi from 'joi';
 import { ApiError } from '@src/api/errors';
 import { maybeRefreshWalletConstants, walletIdProxyHandler } from '@src/commons';
 import {
-  addTxProposalOutputs,
+  // addTxProposalOutputs,
   createTxProposal,
   getUtxos,
   getWallet,
@@ -144,7 +144,7 @@ export const create = walletIdProxyHandler(async (walletId, event) => {
   }
 
   await createTxProposal(mysql, txProposalId, walletId, tx.version, now);
-  await addTxProposalOutputs(mysql, txProposalId, outputs);
+  // await addTxProposalOutputs(mysql, txProposalId, outputs);
 
   await closeDbConnection(mysql);
 
