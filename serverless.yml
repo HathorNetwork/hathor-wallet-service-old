@@ -194,12 +194,6 @@ functions:
     events:
       - websocket:
           route: ping
-  wsJoin:
-    handler: src/ws/join.handler
-    timeout: 1
-    events:
-      - websocket:
-          route: join
   wsTxNotifyNew:
     handler: src/ws/txNotify.onNewTx
     timeout: 1

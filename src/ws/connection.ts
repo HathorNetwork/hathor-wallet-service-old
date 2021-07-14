@@ -28,7 +28,14 @@ export const connect = async (
 
   let walletId: string;
   try {
-    walletId = event.requestContext.authorizer.principalId;
+    if (!process.env.IS_OFFLINE) {
+      walletId = event.requestContext.authorizer.principalId;
+    } else {
+      // serverless offline does not support websocket authorizers
+      // https://github.com/dherault/serverless-offline/issues/951
+      // For offline testing purposes get walletId from env
+      walletId = process.env.DEV_WALLET_ID;
+    }
   } catch (e) {
     console.log('WebSocket Connection Error:', e);
     // Does not have a walletId, forcefull disconnect
