@@ -68,7 +68,7 @@ jobs:
           npm run test
         env:
           NODE_ENV: test
-          NETWORK: testnet
+          NETWORK: mainnet
           DB_ENDPOINT: 127.0.0.1
           DB_PORT: 3306
           DB_NAME: wallet_service_ci
