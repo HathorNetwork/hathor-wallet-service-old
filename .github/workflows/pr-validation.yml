@@ -76,3 +76,6 @@ jobs:
           DB_PASS: password
           REDIS_HOST: 127.0.0.1
           REDIS_PORT: 6379
+          MAX_ADDRESS_GAP: 10
+          BLOCK_REWARD_LOCK: 300
+          CONFIRM_FIRST_ADDRESS: false
