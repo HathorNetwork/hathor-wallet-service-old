@@ -629,6 +629,52 @@ export const updateTxOutputSpentBy = async (mysql: ServerlessMysql, inputs: TxIn
 };
 
 /**
+ * Get the requested UTXO.
+ *
+ * @param mysql - Database connection
+ * @param txId - The tx id to search
+ * @param index - The index to search
+ * @returns The requested UTXO
+ */
+export const getUtxo = async (
+  mysql: ServerlessMysql,
+  txId: string,
+  index: number,
+): Promise<DbTxOutput> => {
+  const results: DbSelectResult = await mysql.query(
+    `SELECT *
+       FROM \`tx_output\`
+      WHERE \`tx_id\` = ?
+        AND \`index\` = ?
+        AND \`spent_by\` IS NULL
+        AND \`voided\` = FALSE`,
+    [txId, index],
+  );
+
+  if (!results.length || results.length === 0) {
+    return null;
+  }
+
+  const result = results[0];
+
+  const utxo: DbTxOutput = {
+    txId: result.tx_id as string,
+    index: result.index as number,
+    tokenId: result.token_id as string,
+    address: result.address as string,
+    value: result.value as number,
+    authorities: result.authorities as number,
+    timelock: result.timelock as number,
+    heightlock: result.heightlock as number,
+    locked: result.locked > 0,
+    txProposalId: result.tx_proposal as string,
+    txProposalIndex: result.tx_proposal_index as number,
+  };
+
+  return utxo;
+};
+
+/**
  * Get the requested UTXOs.
  *
  * @param mysql - Database connection
