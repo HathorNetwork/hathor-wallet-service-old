@@ -25,7 +25,7 @@ const apiDoc = {
                 examples: {
                   success: {
                     summary: 'Addresses returned with success.',
-                    value: [{"address": "WYDN3wbR5nT1kgs9ak6WU4euEH4w5rdhPy", "index": 10, "addressPath": "m/44'/280'/0'/0/10"}, {"address": "WUaHZ2bC3p1BxQWe29Hw5nNfDU2W8F3j4R", "index": 11, "addressPath": "m/44'/280'/0'/0/11"}]
+                    value: {"success": true, "addresses": [{"address": "WYDN3wbR5nT1kgs9ak6WU4euEH4w5rdhPy", "index": 10, "addressPath": "m/44'/280'/0'/0/10"}, {"address": "WUaHZ2bC3p1BxQWe29Hw5nNfDU2W8F3j4R", "index": 11, "addressPath": "m/44'/280'/0'/0/11"}]}
                   },
                 },
               },

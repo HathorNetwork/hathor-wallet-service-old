@@ -5,24 +5,20 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { APIGatewayProxyHandler } from 'aws-lambda';
 import 'source-map-support/register';
 
+import { APIGatewayProxyHandler } from 'aws-lambda';
 import { ApiError } from '@src/api/errors';
 import { closeDbAndGetError } from '@src/api/utils';
 import {
   getWallet,
   getNewAddresses,
 } from '@src/db';
-import Joi from 'joi';
 import { closeDbConnection, getDbConnection } from '@src/utils';
 
-const mysql = getDbConnection();
+import { walletIdProxyHandler } from '@src/commons';
 
-const paramsSchema = Joi.object({
-  id: Joi.string()
-    .required(),
-});
+const mysql = getDbConnection();
 
 /*
  * Get the addresses of a wallet to be used in new transactions
@@ -30,25 +26,7 @@ const paramsSchema = Joi.object({
  *
  * This lambda is called by API Gateway on GET /addresses/new
  */
-export const get: APIGatewayProxyHandler = async (event) => {
-  const params = event.queryStringParameters;
-
-  const { value, error } = paramsSchema.validate(params, {
-    abortEarly: false,
-    convert: true,
-  });
-
-  if (error) {
-    const details = error.details.map((err) => ({
-      message: err.message,
-      path: err.path,
-    }));
-
-    return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, { details });
-  }
-
-  const walletId: string = value.id;
-
+export const get: APIGatewayProxyHandler = walletIdProxyHandler(async (walletId) => {
   const status = await getWallet(mysql, walletId);
 
   if (!status) {
