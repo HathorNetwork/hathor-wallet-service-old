@@ -11,6 +11,13 @@ import hathorLib from '@hathor/wallet-lib';
 // eslint-disable-next-line
 import { isAuthority } from '@src/utils';
 
+import {
+  APIGatewayProxyEvent,
+  APIGatewayProxyResult,
+  Context,
+  Callback,
+} from 'aws-lambda';
+
 export interface StringMap<T> {
   [x: string]: T;
 }
@@ -82,20 +89,6 @@ export interface TokenBalance {
   tokenId: string;
   balance: Balance;
   transactions: number;
-}
-
-export interface Utxo {
-  txId: string;
-  index: number;
-  tokenId: string;
-  address: string;
-  value: number;
-  authorities: number;
-  timelock: number | null;
-  heightlock: number | null;
-  locked: boolean;
-  txProposalId?: string;
-  txProposalIndex?: number;
 }
 
 export class TokenInfo {
@@ -555,3 +548,68 @@ export interface ApiResponse {
   success: boolean;
   message: string;
 }
+
+export type WsConnectionInfo = {
+  id: string;
+  url: string;
+}
+
+export type RedisConfig = {
+  host: string;
+  port?: number;
+  password?: string;
+};
+
+export interface Tx {
+  txId: string;
+  timestamp: number;
+  version: number;
+  voided: boolean;
+  height?: number | null;
+}
+
+export interface AddressBalance {
+  address: string;
+  tokenId: string;
+  unlockedBalance: number;
+  lockedBalance: number;
+  unlockedAuthorities: number;
+  lockedAuthorities: number;
+  timelockExpires: number;
+  transactions: number;
+}
+
+export interface AddressTotalBalance {
+  address: string;
+  tokenId: string;
+  balance: number;
+  transactions: number;
+}
+
+export interface DbTxOutput {
+  txId: string;
+  index: number;
+  tokenId: string;
+  address: string;
+  value: number;
+  authorities: number;
+  timelock: number | null;
+  heightlock: number | null;
+  locked: boolean;
+  spentBy?: string | null;
+  txProposalId?: string;
+  txProposalIndex?: number;
+}
+
+export interface Block {
+  txId: string;
+  height: number;
+}
+
+// maybe use templates <TEvent = any, TResult = any>
+export type WalletProxyHandler = (
+  walletId: string,
+  event?: APIGatewayProxyEvent,
+  context?: Context,
+  callback?: Callback<APIGatewayProxyResult>
+) => Promise<APIGatewayProxyResult>;

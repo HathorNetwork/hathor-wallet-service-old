@@ -8,10 +8,12 @@ custom:
   prune:
     automatic: true
     number: 3
-
-# Create an optimized package for our functions 
-package:
-  individually: true
+  authorizer:
+    walletBearer:
+      name: bearerAuthorizer
+      type: TOKEN
+      identitySource: method.request.header.Authorization
+      identityValidationExpression: Bearer (.*)
 
 plugins:
   - serverless-offline
@@ -19,47 +21,101 @@ plugins:
   - serverless-prune-plugin
   - serverless-dotenv-plugin
 
+resources:
+  Resources:
+    WalletServiceNewTxQueue:
+      Type: "AWS::SQS::Queue"
+      Properties:
+        QueueName:
+            WalletServiceNewTxQueue_${opt:stage, 'dev'}
+
 provider:
   name: aws
   runtime: nodejs12.x
-  stage: ${env:STAGE}
-  region: us-east-1
+  # In MB. This is the memory allocated for the Lambdas, they cannot use more than this
+  # and will break if they try.
+  memorySize: 256
+  # This is the default timeout. Each function can specify a different value
+  timeout: 6
+  websocketsApiName: wallet-realtime-ws-api
+  websocketsApiRouteSelectionExpression: $request.body.action
+  vpc:
+    securityGroupIds:
+      - ${env:AWS_VPC_DEFAULT_SG_ID}
+    subnetIds:
+      - ${env:AWS_SUBNET_ID_1}
+      - ${env:AWS_SUBNET_ID_2}
+      - ${env:AWS_SUBNET_ID_3}
   apiGateway:
     minimumCompressionSize: 1024 # Enable gzip compression for responses > 1 KB
   environment:
+    ADMINTOKEN: ${env:ADMINTOKEN}
+    AUTH_SECRET: ${env:AUTH_SECRET}
+    AWS_VPC_DEFAULT_SG_ID: ${env:AWS_VPC_DEFAULT_SG_ID}
+    AWS_SUBNET_ID_1: ${env:AWS_SUBNET_ID_1}
+    AWS_SUBNET_ID_2: ${env:AWS_SUBNET_ID_2}
+    AWS_SUBNET_ID_3: ${env:AWS_SUBNET_ID_3}
     AWS_NODEJS_CONNECTION_REUSE_ENABLED: 1
+    BLOCK_REWARD_LOCK: ${env:BLOCK_REWARD_LOCK}
+    CONFIRM_FIRST_ADDRESS: ${env:CONFIRM_FIRST_ADDRESS}
+    DB_ENDPOINT: ${env:DB_ENDPOINT}
+    DB_PORT: ${env:DB_PORT}
+    DB_NAME: ${env:DB_NAME}
+    DB_USER: ${env:DB_USER}
+    DB_PASS: ${env:DB_PASS}
     SERVICE_NAME: ${self:service}
-    AWS_REGION: ${self:provider.region}
-    DB_ENDPOINT: ${env:DB_ENDPOINT, 'rds-endpoint-TODO'}
-    DB_NAME: ${self:service}-${env:STAGE}
-    DB_USER: ${env:STAGE}-user
+    MAX_ADDRESS_GAP: ${env:MAX_ADDRESS_GAP}
+    NETWORK: ${env:NETWORK}
+    NEW_TX_SQS: { Ref: WalletServiceNewTxQueue }
+    REDIS_HOST: ${env:REDIS_HOST}
+    REDIS_PORT: ${env:REDIS_PORT}
+    REDIS_PASSWORD: ${env:REDIS_PASSWORD}
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - sqs:*
+      Resource:
+        Fn::GetAtt: [ WalletServiceNewTxQueue, Arn ]
 
 functions:
+  getLatestBlock:
+    handler: src/height.getLatestBlock
+  onNewTxRequest:
+    handler: src/txProcessor.onNewTxRequest
+  onHandleReorgRequest:
+    handler: src/txProcessor.onHandleReorgRequest
+    timeout: 300 # 5 minutes
+  onSearchForLatestValidBlockRequest:
+    handler: src/txProcessor.onSearchForLatestValidBlockRequest
   onNewTxEvent:
     handler: src/txProcessor.onNewTxEvent
   loadWalletAsync:
     handler: src/api/wallet.loadWallet
   loadWalletApi:
+    role: arn:aws:iam::769498303037:role/WalletServiceLoadWalletLambda
     handler: src/api/wallet.load
+    role: arn:aws:iam::769498303037:role/WalletServiceLoadWalletLambda
     events:
       - http:
-          path: wallet
+          path: wallet/init
           method: post
           cors: true
   getWalletStatusApi:
     handler: src/api/wallet.get
     events:
       - http:
-          path: wallet
+          path: wallet/status
           method: get
           cors: true
+          authorizer: ${self:custom.authorizer.walletBearer}
   getAddressesApi:
     handler: src/api/addresses.get
     events:
       - http:
-          path: addresses
+          path: wallet/addresses
           method: get
           cors: true
+          authorizer: ${self:custom.authorizer.walletBearer}
   getAddressesToUseApi:
     handler: src/api/addressesToUse.get
     events:
@@ -67,34 +123,39 @@ functions:
           path: addressestouse
           method: get
           cors: true
+          authorizer: ${self:custom.authorizer.walletBearer}
   getBalanceApi:
     handler: src/api/balances.get
     events:
       - http:
-          path: balances
+          path: wallet/balances
           method: get
           cors: true
+          authorizer: ${self:custom.authorizer.walletBearer}
   getTxHistoryApi:
     handler: src/api/txhistory.get
     events:
       - http:
-          path: txhistory
+          path: wallet/history
           method: get
           cors: true
+          authorizer: ${self:custom.authorizer.walletBearer}
   createTxProposalApi:
     handler: src/api/txProposalCreate.create
     events:
       - http:
-          path: txproposals
+          path: tx/proposal
           method: post
           cors: true
+          authorizer: ${self:custom.authorizer.walletBearer}
   sendTxProposalApi:
     handler: src/api/txProposalSend.send
     events:
       - http:
-          path: txproposals/{txProposalId}
+          path: tx/proposal/{txProposalId}
           method: put
           cors: true
+          authorizer: ${self:custom.authorizer.walletBearer}
           request:
             parameters:
               paths:
@@ -103,10 +164,60 @@ functions:
     handler: src/api/txProposalDestroy.destroy
     events:
       - http:
-          path: txproposals/{txProposalId}
+          path: tx/proposal/{txProposalId}
           method: delete
           cors: true
+          authorizer: ${self:custom.authorizer.walletBearer}
           request:
             parameters:
               paths:
                 txProposalId: true
+  wsConnect:
+    handler: src/ws/connection.connect
+    timeout: 1
+    events:
+      - websocket:
+          route: $connect
+      - websocket:
+          route: $disconnect
+      - websocket:
+          route: ping
+  wsJoin:
+    handler: src/ws/join.handler
+    timeout: 1
+    events:
+      - websocket:
+          route: join
+  wsTxNotifyNew:
+    handler: src/ws/txNotify.onNewTx
+    timeout: 1
+    events:
+      - sqs:
+          arn:
+            Fn::GetAtt:
+              - WalletServiceNewTxQueue
+              - Arn
+          batchSize: 10
+          maximumBatchingWindow: 60
+  wsTxNotifyUpdate:
+    handler: src/ws/txNotify.onUpdateTx
+    timeout: 1
+  wsAdminBroadcast:
+    handler: src/ws/admin.broadcast
+    timeout: 1
+  wsAdminDisconnect:
+    handler: src/ws/admin.disconnect
+    timeout: 1
+  wsAdminMulticast:
+    handler: src/ws/admin.multicast
+    timeout: 1
+  authTokenApi:
+    handler: src/api/auth.tokenHandler
+    timeout: 1
+    events:
+      - http:
+          path: auth/token
+          method: post
+          cors: true
+  bearerAuthorizer:
+    handler: src/api/auth.bearerAuthorizer

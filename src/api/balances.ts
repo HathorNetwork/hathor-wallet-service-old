@@ -5,12 +5,12 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { APIGatewayProxyHandler } from 'aws-lambda';
 import 'source-map-support/register';
 
+import { APIGatewayProxyHandler } from 'aws-lambda';
 import { ApiError } from '@src/api/errors';
 import { closeDbAndGetError } from '@src/api/utils';
-import { getWalletBalances } from '@src/commons';
+import { getWalletBalances, walletIdProxyHandler } from '@src/commons';
 import {
   getWallet,
 } from '@src/db';
@@ -24,8 +24,6 @@ import Joi from 'joi';
 const mysql = getDbConnection();
 
 const paramsSchema = Joi.object({
-  id: Joi.string()
-    .required(),
   token_id: Joi.string()
     .alphanum()
     .optional(),
@@ -40,8 +38,8 @@ const paramsSchema = Joi.object({
  * Maybe we should limit the amount of tokens to query the balance to prevent an user
  * with a lot of different tokens in his wallet from doing an expensive query
  */
-export const get: APIGatewayProxyHandler = async (event) => {
-  const params = event.queryStringParameters;
+export const get: APIGatewayProxyHandler = walletIdProxyHandler(async (walletId, event) => {
+  const params = event.queryStringParameters || {};
 
   const { value, error } = paramsSchema.validate(params, {
     abortEarly: false,
@@ -57,7 +55,6 @@ export const get: APIGatewayProxyHandler = async (event) => {
     return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, { details });
   }
 
-  const walletId = value.id;
   const status = await getWallet(mysql, walletId);
 
   if (!status) {
@@ -81,4 +78,4 @@ export const get: APIGatewayProxyHandler = async (event) => {
     statusCode: 200,
     body: JSON.stringify({ success: true, balances }),
   };
-};
+});

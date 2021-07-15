@@ -5,8 +5,16 @@ import {
   markLockedOutputs,
   unlockUtxos,
   maybeRefreshWalletConstants,
+  searchForLatestValidBlock,
 } from '@src/commons';
-import { FullNodeVersionData, Authorities, Balance, TokenBalanceMap, Utxo } from '@src/types';
+import {
+  FullNodeVersionData,
+  Authorities,
+  Balance,
+  TokenBalanceMap,
+  DbTxOutput,
+  Block,
+} from '@src/types';
 import { closeDbConnection, getDbConnection } from '@src/utils';
 import {
   addToAddressTable,
@@ -20,11 +28,14 @@ import {
   checkWalletBalanceTable,
   createInput,
   createOutput,
+  TX_IDS,
 } from '@tests/utils';
 import {
   updateVersionData,
+  addOrUpdateTx,
 } from '@src/db';
 
+import * as Utils from '@src/utils';
 import hathorLib from '@hathor/wallet-lib';
 
 const mysql = getDbConnection();
@@ -232,7 +243,7 @@ test('unlockUtxos', async () => {
     transactions: 5,
   }]);
 
-  const utxo: Utxo = {
+  const utxo: DbTxOutput = {
     txId: txId1,
     index: 0,
     tokenId: token,
@@ -376,4 +387,40 @@ test('maybeRefreshWalletConstants with an initialized version_data database shou
   expect(txMinWeightK).toStrictEqual(mockedVersionData.minTxWeightK);
   expect(maxNumberInputs).toStrictEqual(mockedVersionData.maxNumberInputs);
   expect(maxNumberOutputs).toStrictEqual(mockedVersionData.maxNumberOutputs);
+});
+
+test('searchForLatestValidBlock should find the first voided block', async () => {
+  expect.hasAssertions();
+
+  const spy = jest.spyOn(Utils, 'isTxVoided');
+
+  const mockImplementation = jest.fn((block) => {
+    const voidedList = [
+      '0000000f1fbb4bd8a8e71735af832be210ac9a6c1e2081b21faeea3c0f5797f7',
+      '00000649d769de25fcca204faaa23d4974d00fcb01130ab3f736fade4013598d',
+      '000002e185a37162bbcb1ec43576056638f0fad43648ae070194d1e1105f339a',
+      '00000597288221301f856e245579e7d32cea3e257330f9cb10178bb487b343e5',
+    ];
+
+    if (voidedList.indexOf(block) > -1) {
+      return Promise.resolve(true);
+    }
+
+    return Promise.resolve(false);
+  });
+
+  spy.mockImplementation(mockImplementation);
+
+  const mockData: Block[] = TX_IDS.map((tx, index) => ({
+    txId: tx,
+    height: index,
+  }));
+
+  for (let i = 0; i < mockData.length; i++) {
+    await addOrUpdateTx(mysql, mockData[i].txId, mockData[i].height, i, 0);
+  }
+
+  const result = await searchForLatestValidBlock(mysql);
+
+  expect(result.txId).toStrictEqual('000005cbcb8b29f74446a260cd7d36fab3cba1295ac9fe904795d7b064e0e53c');
 });

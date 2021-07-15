@@ -20,6 +20,7 @@ import {
   addToWalletTxHistoryTable,
   cleanDatabase,
   makeGatewayEvent,
+  makeGatewayEventWithAuthorizer,
 } from '@tests/utils';
 
 const mysql = getDbConnection();
@@ -32,8 +33,8 @@ afterAll(async () => {
   await closeDbConnection(mysql);
 });
 
-const _testInvalidPayload = async (fn: APIGatewayProxyHandler, errorMessages: string[] = [], params = {}) => {
-  const event = makeGatewayEvent(params);
+const _testInvalidPayload = async (fn: APIGatewayProxyHandler, errorMessages: string[] = [], walletId: string, params = {}) => {
+  const event = makeGatewayEventWithAuthorizer(walletId, params);
   const result = await fn(event, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(400);
@@ -47,9 +48,10 @@ const _testInvalidPayload = async (fn: APIGatewayProxyHandler, errorMessages: st
 };
 
 const _testMissingWallet = async (fn: APIGatewayProxyHandler, walletId: string, body = null) => {
-  const event = makeGatewayEvent({ id: walletId }, JSON.stringify(body));
+  const event = makeGatewayEventWithAuthorizer(walletId, {}, body && JSON.stringify(body));
   const result = await fn(event, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(result.body as string);
+
   expect(result.statusCode).toBe(404);
   expect(returnBody.success).toBe(false);
   expect(returnBody.error).toBe(ApiError.WALLET_NOT_FOUND);
@@ -58,7 +60,7 @@ const _testMissingWallet = async (fn: APIGatewayProxyHandler, walletId: string, 
 const _testWalletNotReady = async (fn: APIGatewayProxyHandler) => {
   const walletId = 'wallet-not-started';
   await addToWalletTable(mysql, [[walletId, 'aaaa', 'creating', 5, 10000, null]]);
-  const event = makeGatewayEvent({ id: walletId });
+  const event = makeGatewayEventWithAuthorizer(walletId, {});
   const result = await fn(event, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(400);
@@ -75,8 +77,8 @@ test('GET /addresses', async () => {
     { address: ADDRESSES[1], index: 1, walletId: 'my-wallet', transactions: 0 },
   ]);
 
-  // missing param
-  await _testInvalidPayload(addressesGet, ['"id" is required']);
+  // TODO: test missing walletId?
+  // Authorizer should be responsible for this
 
   // missing wallet
   await _testMissingWallet(addressesGet, 'some-wallet');
@@ -85,7 +87,7 @@ test('GET /addresses', async () => {
   await _testWalletNotReady(addressesGet);
 
   // success case
-  const event = makeGatewayEvent({ id: 'my-wallet' });
+  const event = makeGatewayEventWithAuthorizer('my-wallet', {});
   const result = await addressesGet(event, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(200);
@@ -152,9 +154,6 @@ test('GET /balances', async () => {
     { id: token4.id, name: token4.name, symbol: token4.symbol },
   ]);
 
-  // missing param
-  await _testInvalidPayload(balancesGet, ['"id" is required']);
-
   // missing wallet
   await _testMissingWallet(balancesGet, 'some-wallet');
 
@@ -162,7 +161,7 @@ test('GET /balances', async () => {
   await _testWalletNotReady(balancesGet);
 
   // success but no balances
-  let event = makeGatewayEvent({ id: 'my-wallet' });
+  let event = makeGatewayEventWithAuthorizer('my-wallet', {});
   let result = await balancesGet(event, null, null) as APIGatewayProxyResult;
   let returnBody = JSON.parse(result.body as string);
 
@@ -193,7 +192,7 @@ test('GET /balances', async () => {
   }]);
 
   // get all balances
-  event = makeGatewayEvent({ id: 'my-wallet' });
+  event = makeGatewayEventWithAuthorizer('my-wallet', {});
   result = await balancesGet(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(200);
@@ -215,7 +214,7 @@ test('GET /balances', async () => {
   });
 
   // get token1 balance
-  event = makeGatewayEvent({ id: 'my-wallet', token_id: 'token1' });
+  event = makeGatewayEventWithAuthorizer('my-wallet', { token_id: 'token1' });
   result = await balancesGet(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(200);
@@ -249,7 +248,7 @@ test('GET /balances', async () => {
     transactions: 2,
   }]);
   await addToUtxoTable(mysql, [['txId', 0, 'token3', ADDRESSES[0], 1, 0, lockExpires2, null, true]]);
-  event = makeGatewayEvent({ id: 'my-wallet', token_id: 'token3' });
+  event = makeGatewayEventWithAuthorizer('my-wallet', { token_id: 'token3' });
   result = await balancesGet(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(200);
@@ -279,7 +278,7 @@ test('GET /balances', async () => {
     ['txId2', 0, 'token4', ADDRESSES[0], 3, 0, lockExpires2, null, true],
     ['txId3', 0, 'token4', ADDRESSES[0], 2, 0, lockExpires, null, true],
   ]);
-  event = makeGatewayEvent({ id: 'my-wallet', token_id: 'token4' });
+  event = makeGatewayEventWithAuthorizer('my-wallet', { token_id: 'token4' });
   result = await balancesGet(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(200);
@@ -305,7 +304,7 @@ test('GET /balances', async () => {
     transactions: 3,
   }]);
 
-  event = makeGatewayEvent({ id: 'my-wallet', token_id: '00' });
+  event = makeGatewayEventWithAuthorizer('my-wallet', { token_id: '00' });
   result = await balancesGet(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(200);
@@ -326,9 +325,6 @@ test('GET /txhistory', async () => {
   await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
   await addToWalletTxHistoryTable(mysql, [['my-wallet', 'tx1', '00', 5, 1000], ['my-wallet', 'tx1', 'token2', '7', 1000], ['my-wallet', 'tx2', '00', 7, 1001]]);
 
-  // missing param
-  await _testInvalidPayload(txHistoryGet, ['"id" is required']);
-
   // missing wallet
   await _testMissingWallet(txHistoryGet, 'some-wallet');
 
@@ -336,13 +332,13 @@ test('GET /txhistory', async () => {
   await _testWalletNotReady(txHistoryGet);
 
   // invalid 'skip' param
-  await _testInvalidPayload(txHistoryGet, ['"skip" must be a number'], { id: 'my-wallet', skip: 'aaa' });
+  await _testInvalidPayload(txHistoryGet, ['"skip" must be a number'], 'my-wallet', { skip: 'aaa' });
 
   // invalid 'count' param
-  await _testInvalidPayload(txHistoryGet, ['"count" must be a number'], { id: 'my-wallet', count: 'aaa' });
+  await _testInvalidPayload(txHistoryGet, ['"count" must be a number'], 'my-wallet', { count: 'aaa' });
 
   // without token in parameters, use htr
-  let event = makeGatewayEvent({ id: 'my-wallet' });
+  let event = makeGatewayEventWithAuthorizer('my-wallet', {});
   let result = await txHistoryGet(event, null, null) as APIGatewayProxyResult;
   let returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(200);
@@ -352,7 +348,7 @@ test('GET /txhistory', async () => {
   expect(returnBody.history).toContainEqual({ txId: 'tx2', timestamp: 1001, balance: 7 });
 
   // with count just 1, return only the most recent tx
-  event = makeGatewayEvent({ id: 'my-wallet', count: '1' });
+  event = makeGatewayEventWithAuthorizer('my-wallet', { count: '1' });
   result = await txHistoryGet(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(200);
@@ -362,7 +358,7 @@ test('GET /txhistory', async () => {
   expect(returnBody.history).toContainEqual({ txId: 'tx2', timestamp: 1001, balance: 7 });
 
   // skip first item
-  event = makeGatewayEvent({ id: 'my-wallet', skip: '1' });
+  event = makeGatewayEventWithAuthorizer('my-wallet', { skip: '1' });
   result = await txHistoryGet(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(200);
@@ -372,7 +368,7 @@ test('GET /txhistory', async () => {
   expect(returnBody.history).toContainEqual({ txId: 'tx1', timestamp: 1000, balance: 5 });
 
   // use other token id
-  event = makeGatewayEvent({ id: 'my-wallet', token_id: 'token2' });
+  event = makeGatewayEventWithAuthorizer('my-wallet', { token_id: 'token2' });
   result = await txHistoryGet(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(200);
@@ -386,14 +382,11 @@ test('GET /wallet', async () => {
 
   await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
 
-  // missing param
-  await _testInvalidPayload(walletGet, ['"id" is required']);
-
   // missing wallet
   await _testMissingWallet(walletGet, 'some-wallet');
 
   // get all balances
-  const event = makeGatewayEvent({ id: 'my-wallet' });
+  const event = makeGatewayEventWithAuthorizer('my-wallet', null);
   const result = await walletGet(event, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(200);
@@ -467,7 +460,7 @@ test('POST /txproposals params validation', async () => {
   }]);
 
   // invalid body
-  let event = makeGatewayEvent({ id: 'my-wallet' });
+  let event = makeGatewayEventWithAuthorizer('my-wallet', null);
   let result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
   let returnBody = JSON.parse(result.body as string);
 
@@ -475,26 +468,15 @@ test('POST /txproposals params validation', async () => {
   expect(returnBody.success).toBe(false);
   expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
 
-  event = makeGatewayEvent({ id: 'my-wallet' }, 'aaa');
+  event = makeGatewayEventWithAuthorizer('my-wallet', null, 'aaa');
   result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(400);
   expect(returnBody.success).toBe(false);
   expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
-
-  // missing id
-  event = makeGatewayEvent(null, '{}');
-  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
-  returnBody = JSON.parse(result.body as string);
-  expect(result.statusCode).toBe(400);
-  expect(returnBody.success).toBe(false);
-  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
-  expect(returnBody.details).toHaveLength(2); // id and outputs are required parameters
-  expect(returnBody.details[0].message).toStrictEqual('"id" is required');
-  expect(returnBody.details[1].message).toStrictEqual('"outputs" is required');
 
   // missing outputs
-  event = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet' }));
+  event = makeGatewayEventWithAuthorizer('my-wallet', null, '{}');
   result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(400);
@@ -504,7 +486,7 @@ test('POST /txproposals params validation', async () => {
   expect(returnBody.details[0].message).toStrictEqual('"outputs" is required');
 
   // empty outputs
-  event = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet', outputs: [], inputs: [] }));
+  event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({ outputs: [], inputs: [] }));
   result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(400);
@@ -514,8 +496,7 @@ test('POST /txproposals params validation', async () => {
   expect(returnBody.details[0].message).toStrictEqual('"outputs" must contain at least 1 items');
 
   // invalid outputs
-  event = makeGatewayEvent(null, JSON.stringify({
-    id: 'my-wallet',
+  event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({
     outputs: [{ address: ADDRESSES[0], value: '10', token: 'token', timelock: 100000 }],
   }));
   result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
@@ -527,8 +508,7 @@ test('POST /txproposals params validation', async () => {
   expect(returnBody.details[0].message).toStrictEqual('"outputs[0].value" must be a number');
 
   // invalid outputs 2
-  event = makeGatewayEvent(null, JSON.stringify({
-    id: 'my-wallet',
+  event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({
     outputs: [{
       address: ADDRESSES[0],
       value: 10,
@@ -545,8 +525,7 @@ test('POST /txproposals params validation', async () => {
   expect(returnBody.details[0].message).toStrictEqual('"outputs[0].timelock" must be a number');
 
   // invalid inputs
-  event = makeGatewayEvent(null, JSON.stringify({
-    id: 'my-wallet',
+  event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({
     outputs: [{ address: ADDRESSES[0], value: 10, token: 'token1', timelock: 100000 }],
     inputs: [{ txId: 'txId', index: '0' }],
   }));
@@ -559,8 +538,7 @@ test('POST /txproposals params validation', async () => {
   expect(returnBody.details[0].message).toStrictEqual('"inputs[0].index" must be a number');
 
   // invalid inputs 2
-  event = makeGatewayEvent(null, JSON.stringify({
-    id: 'my-wallet',
+  event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({
     outputs: [{ address: ADDRESSES[0], value: 10, token: 'token1', timelock: 100000 }],
     inputs: [{ txId: 'txId' }],
   }));
@@ -573,7 +551,9 @@ test('POST /txproposals params validation', async () => {
   expect(returnBody.details[0].message).toStrictEqual('"inputs[0].index" is required');
 
   // missing wallet
-  event = makeGatewayEvent(null, JSON.stringify({ id: 'other-wallet', outputs: [{ address: ADDRESSES[0], value: 10, token: 'token', timelock: 100000 }] }));
+  event = makeGatewayEventWithAuthorizer('other-wallet', null, JSON.stringify({
+    outputs: [{ address: ADDRESSES[0], value: 10, token: 'token', timelock: 100000 }],
+  }));
   result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(404);
@@ -609,7 +589,7 @@ test('POST /txproposals inputs error', async () => {
     transactions: 3,
   }]);
 
-  let event = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet', outputs: [{ address: ADDRESSES[0], value: 20, token: 'token1', timelock: 100000 }] }));
+  let event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({ outputs: [{ address: ADDRESSES[0], value: 20, token: 'token1', timelock: 100000 }] }));
   let result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
   let returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(400);
@@ -639,7 +619,7 @@ test('POST /txproposals inputs error', async () => {
     utxos.push([`tx${i}`, 0, 'token2', ADDRESSES[0], 1, 0, null, null, false]);
   }
   await addToUtxoTable(mysql, utxos);
-  event = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet', outputs: [{ address: ADDRESSES[0], value: 300, token: 'token2', timelock: 100000 }] }));
+  event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({ outputs: [{ address: ADDRESSES[0], value: 300, token: 'token2', timelock: 100000 }] }));
   result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(400);
@@ -648,8 +628,7 @@ test('POST /txproposals inputs error', async () => {
   expect(returnBody.inputs).toBe(300);
 
   // inputs not found
-  event = makeGatewayEvent(null, JSON.stringify({
-    id: 'my-wallet',
+  event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({
     outputs: [{ address: ADDRESSES[0], value: 10, token: 'token1', timelock: 100000 }],
     inputs: [{ txId: 'txId', index: 0 }],
   }));
@@ -661,8 +640,7 @@ test('POST /txproposals inputs error', async () => {
   expect(returnBody.missing).toStrictEqual([{ txId: 'txId', index: 0 }]);
 
   // insufficient inputs (sent by user)
-  event = makeGatewayEvent(null, JSON.stringify({
-    id: 'my-wallet',
+  event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({
     outputs: [{ address: ADDRESSES[0], value: 10, token: 'token2', timelock: 100000 }],
     inputs: [{ txId: 'tx0', index: 0 }],
   }));
@@ -690,7 +668,7 @@ test('POST /txproposals outputs error', async () => {
   for (let i = 1; i < 300; i++) {
     outputs.push({ address: ADDRESSES[0], value: i, token: 'token', timelock: null });
   }
-  let event = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet', outputs }));
+  let event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({ outputs }));
   let result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
   let returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(400);
@@ -700,7 +678,7 @@ test('POST /txproposals outputs error', async () => {
 
   // output with value < 0 should fail
   outputs = [{ address: ADDRESSES[0], value: -1, token: 'token', timelock: null }];
-  event = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet', outputs }));
+  event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({ outputs }));
   result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(400);
@@ -711,7 +689,7 @@ test('POST /txproposals outputs error', async () => {
 
   // output with value == 0 should fail
   outputs = [{ address: ADDRESSES[0], value: 0, token: 'token', timelock: null }];
-  event = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet', outputs }));
+  event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({ outputs }));
   result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(400);
@@ -737,7 +715,7 @@ test('POST /txproposals outputs error', async () => {
   for (let i = 0; i < 255; i++) {
     outputs.push({ address: ADDRESSES[0], value: 1, token: 'token2', timelock: null });
   }
-  event = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet', outputs }));
+  event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({ outputs }));
   result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(400);

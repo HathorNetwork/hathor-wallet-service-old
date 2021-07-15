@@ -9,6 +9,7 @@ import {
   removeTxProposalOutputs,
   releaseTxProposalUtxos,
 } from '@src/db';
+import { walletIdProxyHandler } from '@src/commons';
 import { TxProposalStatus } from '@src/types';
 import { closeDbConnection, getDbConnection, getUnixTimestamp } from '@src/utils';
 import { closeDbAndGetError } from '@src/api/utils';
@@ -20,7 +21,7 @@ const mysql = getDbConnection();
  *
  * This lambda is called by API Gateway on DELETE /txproposals/{proposalId}
  */
-export const destroy: APIGatewayProxyHandler = async (event) => {
+export const destroy: APIGatewayProxyHandler = walletIdProxyHandler(async (walletId, event) => {
   const params = event.pathParameters;
   let txProposalId: string;
 
@@ -34,6 +35,10 @@ export const destroy: APIGatewayProxyHandler = async (event) => {
 
   if (txProposal === null) {
     return closeDbAndGetError(mysql, ApiError.TX_PROPOSAL_NOT_FOUND);
+  }
+
+  if (txProposal.walletId !== walletId) {
+    return closeDbAndGetError(mysql, ApiError.FORBIDDEN);
   }
 
   if (txProposal.status !== TxProposalStatus.OPEN && txProposal.status !== TxProposalStatus.SEND_ERROR) {
@@ -64,4 +69,4 @@ export const destroy: APIGatewayProxyHandler = async (event) => {
       txProposalId,
     }),
   };
-};
+});

@@ -10,8 +10,20 @@ import {
 
 import { WalletBalanceEntry, AddressTableEntry, TokenTableEntry } from '@tests/types';
 
+import { RedisClient } from 'redis';
+
 // we'll use this xpubkey and corresponding addresses in some tests
 export const XPUBKEY = 'xpub6EcBoi2vDFcCW5sPAiQpXDYYtXd1mKhUJD64tUi8CPRG1VQFDkAbL8G5gqTmSZD6oq4Yhr5PZ8pKf3Xmb3W3pGcgqzUdFNaCRKL7TZa3res';
+
+export const TX_IDS = [
+  '0000033139d08176d1051fb3a272c3610457f0c7f686afbe0afe3d37f966db85',
+  '000003ae3be32b9df13157a27b77cf8e5fed3c20ad309a843002a10c5430c9cc',
+  '000005cbcb8b29f74446a260cd7d36fab3cba1295ac9fe904795d7b064e0e53c',
+  '0000000f1fbb4bd8a8e71735af832be210ac9a6c1e2081b21faeea3c0f5797f7',
+  '00000649d769de25fcca204faaa23d4974d00fcb01130ab3f736fade4013598d',
+  '000002e185a37162bbcb1ec43576056638f0fad43648ae070194d1e1105f339a',
+  '00000597288221301f856e245579e7d32cea3e257330f9cb10178bb487b343e5',
+];
 
 export const ADDRESSES = [
   'HNwiHGHKBNbeJPo9ToWvFWeNQkJrpicYci',
@@ -39,12 +51,11 @@ export const cleanDatabase = async (mysql: ServerlessMysql): Promise<void> => {
     'address',
     'address_balance',
     'address_tx_history',
-    'blocks',
-    'metadata',
     'token',
     'tx_proposal',
     'tx_proposal_outputs',
-    'utxo',
+    'transaction',
+    'tx_output',
     'version_data',
     'wallet',
     'wallet_balance',
@@ -100,9 +111,11 @@ export const checkUtxoTable = async (
   timelock?: number | null,
   heightlock?: number | null,
   locked?: boolean,
+  spentBy?: string | null,
+  voided = false,
 ): Promise<boolean | Record<string, unknown>> => {
   // first check the total number of rows in the table
-  let results: DbSelectResult = await mysql.query('SELECT * FROM `utxo`');
+  let results: DbSelectResult = await mysql.query('SELECT * FROM `tx_output` WHERE spent_by IS NULL');
   if (results.length !== totalResults) {
     return {
       error: 'checkUtxoTable total results',
@@ -117,7 +130,7 @@ export const checkUtxoTable = async (
   // now fetch the exact entry
   const baseQuery = `
     SELECT *
-      FROM \`utxo\`
+      FROM \`tx_output\`
      WHERE \`tx_id\` = ?
        AND \`index\` = ?
        AND \`token_id\` = ?
@@ -125,15 +138,19 @@ export const checkUtxoTable = async (
        AND \`value\` = ?
        AND \`authorities\` = ?
        AND \`locked\` = ?
+       AND \`voided\` = ?
        AND \`timelock\``;
   results = await mysql.query(
-    `${baseQuery} ${timelock ? '= ?' : 'IS ?'} AND \`heightlock\` ${heightlock ? '= ?' : 'IS ?'}`,
-    [txId, index, tokenId, address, value, authorities, locked, timelock, heightlock],
+    `${baseQuery} ${timelock ? '= ?' : 'IS ?'}
+       AND \`heightlock\` ${heightlock ? '= ?' : 'IS ?'}
+       AND \`spent_by\` ${spentBy ? '= ?' : 'IS ?'}
+    `,
+    [txId, index, tokenId, address, value, authorities, locked, voided, timelock, heightlock, spentBy],
   );
   if (results.length !== 1) {
     return {
       error: 'checkUtxoTable query',
-      params: { txId, index, tokenId, address, value, authorities, timelock, heightlock, locked },
+      params: { txId, index, tokenId, address, value, authorities, timelock, heightlock, locked, spentBy, voided },
       results,
     };
   }
@@ -296,8 +313,7 @@ export const checkAddressTxHistoryTable = async (
 export const checkWalletTable = async (mysql: ServerlessMysql,
   totalResults: number,
   id?: string,
-  status?: string,
-): Promise<boolean | Record<string, unknown>> => {
+  status?: string): Promise<boolean | Record<string, unknown>> => {
   // first check the total number of rows in the table
   let results: DbSelectResult = await mysql.query('SELECT * FROM `wallet`');
   expect(results).toHaveLength(totalResults);
@@ -336,8 +352,7 @@ export const checkWalletTxHistoryTable = async (mysql: ServerlessMysql,
   tokenId?: string,
   txId?: string,
   balance?: number,
-  timestamp?: number,
-): Promise<boolean | Record<string, unknown>> => {
+  timestamp?: number): Promise<boolean | Record<string, unknown>> => {
   // first check the total number of rows in the table
   let results: DbSelectResult = await mysql.query('SELECT * FROM `wallet_tx_history`');
   expect(results).toHaveLength(totalResults);
@@ -434,12 +449,28 @@ export const checkWalletBalanceTable = async (
   return true;
 };
 
+export const countTxOutputTable = async (
+  mysql: ServerlessMysql,
+): Promise<number> => {
+  const results: DbSelectResult = await mysql.query(
+    `SELECT COUNT(*) AS count
+       FROM \`tx_output\`
+      WHERE \`voided\` = FALSE`,
+  );
+
+  if (results.length > 0) {
+    return results[0].count as number;
+  }
+
+  return 0;
+};
+
 export const addToUtxoTable = async (
   mysql: ServerlessMysql,
   entries: unknown[][],
 ): Promise<void> => {
   await mysql.query(
-    `INSERT INTO \`utxo\`(\`tx_id\`, \`index\`,
+    `INSERT INTO \`tx_output\`(\`tx_id\`, \`index\`,
                           \`token_id\`, \`address\`,
                           \`value\`, \`authorities\`,
                           \`timelock\`, \`heightlock\`,
@@ -583,6 +614,42 @@ export const makeGatewayEvent = (params: {
   resource: null,
 });
 
+/*
+ * The views protected by the bearer authorizer may use the `walletIdProxyHandler`
+ * function that extracts the walletId from the requestContext and not from parameters.
+ */
+export const makeGatewayEventWithAuthorizer = (
+  walletId: string,
+  params: { [name: string]: string },
+  body = null,
+): APIGatewayProxyEvent => ({
+  body,
+  queryStringParameters: params,
+  pathParameters: params,
+  headers: {},
+  multiValueHeaders: {},
+  httpMethod: '',
+  isBase64Encoded: false,
+  path: '',
+  multiValueQueryStringParameters: null,
+  stageVariables: null,
+  requestContext: {
+    authorizer: { principalId: walletId },
+    accountId: '',
+    apiId: '',
+    httpMethod: '',
+    identity: null,
+    path: '',
+    protocol: '',
+    requestId: '',
+    requestTimeEpoch: 0,
+    resourceId: '',
+    resourcePath: '',
+    stage: '',
+  },
+  resource: null,
+});
+
 export const checkVersionDataTable = async (mysql: ServerlessMysql, versionData: FullNodeVersionData): Promise<boolean | Record<string, unknown>> => {
   // first check the total number of rows in the table
   let results: DbSelectResult = await mysql.query('SELECT * FROM `version_data`');
@@ -634,4 +701,21 @@ export const checkVersionDataTable = async (mysql: ServerlessMysql, versionData:
   }
 
   return true;
+};
+
+export const redisAddKeys = (
+  client: RedisClient,
+  keyMapping: Record<string, string>,
+): void => {
+  const multi = client.multi();
+  for (const [k, v] of Object.entries(keyMapping)) {
+    multi.set(k, v);
+  }
+  multi.exec();
+};
+
+export const redisCleanup = (
+  client: RedisClient,
+): void => {
+  client.flushdb();
 };

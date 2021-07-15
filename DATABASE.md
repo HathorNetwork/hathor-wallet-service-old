@@ -41,6 +41,7 @@ CREATE TABLE `address_tx_history` (
   `token_id` varchar(64) NOT NULL,
   `balance` bigint NOT NULL,
   `timestamp` int unsigned NOT NULL,
+  `voided` tinyint unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`address`,`tx_id`,`token_id`)
 );
 
@@ -60,18 +61,6 @@ CREATE TABLE `version_data` (
   `max_number_inputs` int unsigned NOT NULL,
   `max_number_outputs` int unsigned NOT NULL,
   PRIMARY KEY (`id`)
-);
-
-CREATE TABLE `metadata` (
-  `key` varchar(25) NOT NULL,
-  `value` int unsigned NOT NULL,
-  PRIMARY KEY (`key`)
-);
-
-CREATE TABLE `blocks` (
-  `tx_id` VARCHAR(64) NOT NULL,
-  `height` INT UNSIGNED NOT NULL,
-  PRIMARY KEY (`tx_id`)
 );
 
 CREATE TABLE `token` (
@@ -99,8 +88,8 @@ CREATE TABLE `tx_proposal_outputs` (
   PRIMARY KEY (`tx_proposal_id`,`index`)
 );
 
-CREATE TABLE `utxo` (
-  `tx_id` varchar(64) NOT NULL,
+CREATE TABLE `tx_output` (
+  `tx_id` varchar(64) NOT NULL, -- tx_id might point to a block
   `index` tinyint unsigned NOT NULL,
   `token_id` varchar(64) NOT NULL,
   `address` varchar(34) NOT NULL,
@@ -111,6 +100,8 @@ CREATE TABLE `utxo` (
   `locked` tinyint unsigned NOT NULL DEFAULT '0',
   `tx_proposal` varchar(36) DEFAULT NULL,
   `tx_proposal_index` tinyint unsigned DEFAULT NULL,
+  `spent_by` varchar(64) DEFAULT NULL,
+  `voided` tinyint unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`tx_id`,`index`)
 );
 
@@ -142,8 +133,22 @@ CREATE TABLE `wallet_tx_history` (
   `tx_id` varchar(64) NOT NULL,
   `balance` bigint NOT NULL,
   `timestamp` int unsigned NOT NULL,
+  `voided` tinyint unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`wallet_id`,`token_id`,`tx_id`)
 );
+
+CREATE TABLE `transaction` (
+  `tx_id` varchar(64) NOT NULL,
+  `timestamp` int unsigned NOT NULL,
+  `version` tinyint unsigned NOT NULL,
+  `voided` boolean NOT NULL DEFAULT false,
+  -- Height is the block's height if it's a block and the height of the `first_block` if it is a transaction.
+  `height` int unsigned DEFAULT NULL,
+  PRIMARY KEY (`tx_id`)
+);
+
+CREATE INDEX transaction_version_idx USING HASH ON `transaction`(`version`);
+
 ```
 
 # Genesis transactions
@@ -152,9 +157,8 @@ We need to add the genesis transactions to the database as the service expects t
 
 ## Mainnet
 ```
-INSERT INTO `metadata` (`key`, `value`) VALUES ('height', 0);
-INSERT INTO `blocks` (`tx_id`, `height`) VALUES ('000006cb93385b8b87a545a1cbb6197e6caff600c12cc12fc54250d39c8088fc', 0);
-INSERT INTO `utxo` (`tx_id`, `index`, `token_id`, `address`, `value`)
+INSERT INTO `transaction` (`tx_id`, `height`, `timestamp`, `version`, `voided`) VALUES ('000006cb93385b8b87a545a1cbb6197e6caff600c12cc12fc54250d39c8088fc', 0, 1578075305, 0, FALSE);
+INSERT INTO `tx_output` (`tx_id`, `index`, `token_id`, `address`, `value`)
      VALUES ('000006cb93385b8b87a545a1cbb6197e6caff600c12cc12fc54250d39c8088fc',
               0,
               '00',
@@ -166,9 +170,8 @@ INSERT INTO `utxo` (`tx_id`, `index`, `token_id`, `address`, `value`)
 ## Testnet
 
 ```
-INSERT INTO `metadata` (`key`, `value`) VALUES ('height', 0);
-INSERT INTO `blocks` (`tx_id`, `height`) VALUES ('0000033139d08176d1051fb3a272c3610457f0c7f686afbe0afe3d37f966db85', 0);
-INSERT INTO `utxo` (`tx_id`, `index`, `token_id`, `address`, `value`)
+INSERT INTO `transaction` (`tx_id`, `height`, `timestamp`, `version`, `voided`) VALUES ('0000033139d08176d1051fb3a272c3610457f0c7f686afbe0afe3d37f966db85', 0, 1577836800, 0, FALSE);
+INSERT INTO `tx_output` (`tx_id`, `index`, `token_id`, `address`, `value`)
      VALUES ('0000033139d08176d1051fb3a272c3610457f0c7f686afbe0afe3d37f966db85',
               0,
               '00',

@@ -23,39 +23,18 @@ import {
 import { WalletStatus } from '@src/types';
 import { closeDbConnection, getDbConnection, getWalletId } from '@src/utils';
 import { closeDbAndGetError } from '@src/api/utils';
+import { walletIdProxyHandler } from '@src/commons';
 import Joi from 'joi';
 import { walletUtils } from '@hathor/wallet-lib';
 
 const mysql = getDbConnection();
-const getParamsSchema = Joi.object({
-  id: Joi.string()
-    .required(),
-});
 
 /*
  * Get the status of a wallet
  *
  * This lambda is called by API Gateway on GET /wallet
  */
-export const get: APIGatewayProxyHandler = async (event) => {
-  const params = event.queryStringParameters;
-
-  const { value, error } = getParamsSchema.validate(params, {
-    abortEarly: false,
-    convert: true,
-  });
-
-  if (error) {
-    const details = error.details.map((err) => ({
-      message: err.message,
-      path: err.path,
-    }));
-
-    return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, { details });
-  }
-
-  const walletId: string = value.id;
-
+export const get: APIGatewayProxyHandler = walletIdProxyHandler(async (walletId) => {
   const status = await getWallet(mysql, walletId);
   if (!status) {
     return closeDbAndGetError(mysql, ApiError.WALLET_NOT_FOUND);
@@ -67,7 +46,7 @@ export const get: APIGatewayProxyHandler = async (event) => {
     statusCode: 200,
     body: JSON.stringify({ success: true, status }),
   };
-};
+});
 
 // If the env requires to validate the first address
 // then we must set the firstAddress field as required

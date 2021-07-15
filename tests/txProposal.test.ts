@@ -17,7 +17,7 @@ import {
   addToAddressTable,
   addToWalletTable,
   addToUtxoTable,
-  makeGatewayEvent,
+  makeGatewayEventWithAuthorizer,
   cleanDatabase,
   ADDRESSES,
 } from '@tests/utils';
@@ -222,7 +222,7 @@ const _checkTxProposalTables = async (txProposalId, inputs, outputs): Promise<vo
 test('POST /txproposals with null as param should fail with ApiError.INVALID_PAYLOAD', async () => {
   expect.hasAssertions();
 
-  const event = makeGatewayEvent(null, null);
+  const event = makeGatewayEventWithAuthorizer('my-wallet', null, null);
   const result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(result.body as string);
 
@@ -278,7 +278,7 @@ test('POST /txproposals one output and input', async () => {
 
   // only one output, spending the whole 300 utxo of token3
   const outputs = [{ address: ADDRESSES[0], value: 300, token: 'token1', timelock: null }];
-  const event = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet', outputs }));
+  const event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({ outputs }));
   const result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(result.body as string);
 
@@ -339,7 +339,7 @@ test('POST /txproposals with utxos that are already used on another txproposal s
   }]);
 
   const outputs = [{ address: ADDRESSES[0], value: 300, token: 'token1', timelock: null }];
-  const event = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet', outputs }));
+  const event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({ outputs }));
   const result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(201);
@@ -350,7 +350,7 @@ test('POST /txproposals with utxos that are already used on another txproposal s
   expect(returnBody.outputs).toHaveLength(1);
   expect(returnBody.outputs).toContainEqual({ address: ADDRESSES[0], value: 300, token: 'token1', timelock: null });
 
-  const usedInputsEvent = makeGatewayEvent(null, JSON.stringify({ id: 'my-wallet', outputs, inputs: [{ txId: 'txSuccess0', index: 0 }] }));
+  const usedInputsEvent = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({ outputs, inputs: [{ txId: 'txSuccess0', index: 0 }] }));
   const usedInputsResult = await txProposalCreate(usedInputsEvent, null, null) as APIGatewayProxyResult;
   const usedInputsReturnBody = JSON.parse(usedInputsResult.body as string);
 
@@ -404,7 +404,7 @@ test('POST /txproposals with a wallet that is not ready should fail with ApiErro
 
   // only one output, spending the whole 300 utxo of token3
   const outputs = [{ address: ADDRESSES[0], value: 300, token: 'token1', timelock: null }];
-  const event = makeGatewayEvent(null, JSON.stringify({ id: 'not-ready-wallet', outputs }));
+  const event = makeGatewayEventWithAuthorizer('not-ready-wallet', null, JSON.stringify({ outputs }));
   const result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(400);
@@ -461,8 +461,7 @@ test('POST /txproposals use two UTXOs and add change output', async () => {
     transactions: 0,
   }]);
 
-  const event = makeGatewayEvent(null, JSON.stringify({
-    id: 'my-wallet',
+  const event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({
     outputs: [{ address: ADDRESSES[0], value: 320, token: 'token1', timelock: null }],
   }));
 
@@ -524,8 +523,7 @@ test('POST /txproposals with invalid inputSelectionAlgo should fail with ApiErro
     transactions: 0,
   }]);
 
-  const event = makeGatewayEvent(null, JSON.stringify({
-    id: 'my-wallet',
+  const event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({
     outputs: [{ address: ADDRESSES[0], value: 320, token: 'token1', timelock: null }],
     inputSelectionAlgo: 'INVALID_SELECTION_ALGORITHM',
   }));
@@ -582,8 +580,7 @@ test('POST /txproposals two tokens, both with change output', async () => {
     transactions: 0,
   }]);
 
-  const event = makeGatewayEvent(null, JSON.stringify({
-    id: 'my-wallet',
+  const event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({
     outputs: [
       { address: ADDRESSES[0], value: 320, token: 'token1', timelock: null },
       { address: ADDRESSES[0], value: 90, token: 'token2', timelock: null },
@@ -678,9 +675,8 @@ test('PUT /txproposals/{proposalId}', async () => {
     transactions: 0,
   }]);
 
-  const txCreateEvent = makeGatewayEvent(null,
+  const txCreateEvent = makeGatewayEventWithAuthorizer('my-wallet', null,
     JSON.stringify({
-      id: 'my-wallet',
       outputs: [
         { address: ADDRESSES[0], value: 320, token: 'token1', timelock: null },
         { address: ADDRESSES[0], value: 90, token: 'token2', timelock: null },
@@ -689,10 +685,10 @@ test('PUT /txproposals/{proposalId}', async () => {
   const txCreateResult = await txProposalCreate(txCreateEvent, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(txCreateResult.body as string);
 
-  const signature = new buffer.Buffer(20);
-  const pubkeyBytes = new buffer.Buffer(30);
+  const signature = buffer.Buffer.alloc(20);
+  const pubkeyBytes = buffer.Buffer.alloc(30);
 
-  const txSendEvent = makeGatewayEvent({ txProposalId: returnBody.txProposalId }, JSON.stringify({
+  const txSendEvent = makeGatewayEventWithAuthorizer('my-wallet', { txProposalId: returnBody.txProposalId }, JSON.stringify({
     inputsSignatures: [
       1, 2, 3, 4, 5, 6, 7,
     ].map(() => hathorLib.transaction.createInputData(signature, pubkeyBytes).toString('base64')),
@@ -761,9 +757,8 @@ test('PUT /txproposals/{proposalId} with an empty body should fail with ApiError
     transactions: 0,
   }]);
 
-  const txCreateEvent = makeGatewayEvent(null,
+  const txCreateEvent = makeGatewayEventWithAuthorizer('my-wallet', null,
     JSON.stringify({
-      id: 'my-wallet',
       outputs: [
         { address: ADDRESSES[0], value: 320, token: 'token1', timelock: null },
         { address: ADDRESSES[0], value: 90, token: 'token2', timelock: null },
@@ -772,7 +767,7 @@ test('PUT /txproposals/{proposalId} with an empty body should fail with ApiError
   const txCreateResult = await txProposalCreate(txCreateEvent, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(txCreateResult.body as string);
 
-  const txSendEvent = makeGatewayEvent({ txProposalId: returnBody.txProposalId }, null);
+  const txSendEvent = makeGatewayEventWithAuthorizer('my-wallet', { txProposalId: returnBody.txProposalId }, null);
   const txSendResult = await txProposalSend(txSendEvent, null, null) as APIGatewayProxyResult;
 
   expect(JSON.parse(txSendResult.body as string).error).toStrictEqual(ApiError.INVALID_PAYLOAD);
@@ -781,7 +776,7 @@ test('PUT /txproposals/{proposalId} with an empty body should fail with ApiError
 test('PUT /txproposals/{proposalId} with missing params should fail with ApiError.MISSING_PARAMETER', async () => {
   expect.hasAssertions();
 
-  const txSendEvent = makeGatewayEvent(null, null);
+  const txSendEvent = makeGatewayEventWithAuthorizer('my-wallet', null, null);
   const txSendResult = await txProposalSend(txSendEvent, null, null) as APIGatewayProxyResult;
 
   expect(JSON.parse(txSendResult.body as string).error).toBe(ApiError.MISSING_PARAMETER);
@@ -791,7 +786,7 @@ test('PUT /txproposals/{proposalId} with missing params should fail with ApiErro
 test('PUT /txproposals/{proposalId} with a missing proposalId should fail with ApiError.TX_PROPOSAL_NOT_FOUND', async () => {
   expect.hasAssertions();
 
-  const txSendEvent = makeGatewayEvent({ txProposalId: '8d1e2921-7bc9-41f5-9758-40b734edff0f' }, JSON.stringify({
+  const txSendEvent = makeGatewayEventWithAuthorizer('my-wallet', { txProposalId: '8d1e2921-7bc9-41f5-9758-40b734edff0f' }, JSON.stringify({
     inputsSignatures: [1],
     nonce: 28,
     parents: [
@@ -809,7 +804,7 @@ test('PUT /txproposals/{proposalId} with a missing proposalId should fail with A
 test('PUT /txproposals/{proposalId} with a invalid proposalId should fail with ApiError.INVALID_PARAMETER', async () => {
   expect.hasAssertions();
 
-  const txSendEvent = makeGatewayEvent({ txProposalId: 'invalid-uuid' }, null);
+  const txSendEvent = makeGatewayEventWithAuthorizer('my-wallet', { txProposalId: 'invalid-uuid' }, null);
   const txSendResult = await txProposalSend(txSendEvent, null, null) as APIGatewayProxyResult;
 
   expect(JSON.parse(txSendResult.body as string).error).toStrictEqual(ApiError.INVALID_PARAMETER);
@@ -861,9 +856,8 @@ test('PUT /txproposals/{proposalId} on a proposal which status is not OPEN or SE
     transactions: 0,
   }]);
 
-  const txCreateEvent = makeGatewayEvent(null,
+  const txCreateEvent = makeGatewayEventWithAuthorizer('my-wallet', null,
     JSON.stringify({
-      id: 'my-wallet',
       outputs: [
         { address: ADDRESSES[0], value: 320, token: 'token1', timelock: null },
         { address: ADDRESSES[0], value: 90, token: 'token2', timelock: null },
@@ -881,7 +875,7 @@ test('PUT /txproposals/{proposalId} on a proposal which status is not OPEN or SE
     TxProposalStatus.CANCELLED,
   );
 
-  const txSendEvent = makeGatewayEvent({ txProposalId: returnBody.txProposalId }, JSON.stringify({
+  const txSendEvent = makeGatewayEventWithAuthorizer('my-wallet', { txProposalId: returnBody.txProposalId }, JSON.stringify({
     inputsSignatures: [1],
     nonce: 28,
     parents: [
@@ -964,9 +958,8 @@ test('PUT /txproposals/{proposalId} with an invalid weight should fail with ApiE
     transactions: 0,
   }]);
 
-  const txCreateEvent = makeGatewayEvent(null,
+  const txCreateEvent = makeGatewayEventWithAuthorizer('my-wallet', null,
     JSON.stringify({
-      id: 'my-wallet',
       outputs: [
         { address: ADDRESSES[0], value: 320, token: 'token1', timelock: null },
         { address: ADDRESSES[0], value: 90, token: 'token2', timelock: null },
@@ -975,10 +968,10 @@ test('PUT /txproposals/{proposalId} with an invalid weight should fail with ApiE
   const txCreateResult = await txProposalCreate(txCreateEvent, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(txCreateResult.body as string);
 
-  const signature = new buffer.Buffer(20);
-  const pubkeyBytes = new buffer.Buffer(30);
+  const signature = buffer.Buffer.alloc(20);
+  const pubkeyBytes = buffer.Buffer.alloc(30);
 
-  const txSendEvent = makeGatewayEvent({ txProposalId: returnBody.txProposalId }, JSON.stringify({
+  const txSendEvent = makeGatewayEventWithAuthorizer('my-wallet', { txProposalId: returnBody.txProposalId }, JSON.stringify({
     inputsSignatures: [
       1, 2, 3, 4, 5, 6, 7,
     ].map(() => hathorLib.transaction.createInputData(signature, pubkeyBytes).toString('base64')),
@@ -1069,9 +1062,8 @@ test('PUT /txproposals/{proposalId} with an invalid txHex should fail and update
     transactions: 0,
   }]);
 
-  const txCreateEvent = makeGatewayEvent(null,
+  const txCreateEvent = makeGatewayEventWithAuthorizer('my-wallet', null,
     JSON.stringify({
-      id: 'my-wallet',
       outputs: [
         { address: ADDRESSES[0], value: 320, token: 'token1', timelock: null },
         { address: ADDRESSES[0], value: 90, token: 'token2', timelock: null },
@@ -1080,10 +1072,10 @@ test('PUT /txproposals/{proposalId} with an invalid txHex should fail and update
   const txCreateResult = await txProposalCreate(txCreateEvent, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(txCreateResult.body as string);
 
-  const signature = new buffer.Buffer(20);
-  const pubkeyBytes = new buffer.Buffer(30);
+  const signature = buffer.Buffer.alloc(20);
+  const pubkeyBytes = buffer.Buffer.alloc(30);
 
-  const txSendEvent = makeGatewayEvent({ txProposalId: returnBody.txProposalId }, JSON.stringify({
+  const txSendEvent = makeGatewayEventWithAuthorizer('my-wallet', { txProposalId: returnBody.txProposalId }, JSON.stringify({
     inputsSignatures: [
       1, 2, 3, 4, 5, 6, 7,
     ].map(() => hathorLib.transaction.createInputData(signature, pubkeyBytes).toString('base64')),
@@ -1174,9 +1166,8 @@ test('PUT /txproposals/{proposalId} should update tx_proposal to SEND_ERROR on f
     transactions: 0,
   }]);
 
-  const txCreateEvent = makeGatewayEvent(null,
+  const txCreateEvent = makeGatewayEventWithAuthorizer('my-wallet', null,
     JSON.stringify({
-      id: 'my-wallet',
       outputs: [
         { address: ADDRESSES[0], value: 320, token: 'token1', timelock: null },
         { address: ADDRESSES[0], value: 90, token: 'token2', timelock: null },
@@ -1185,10 +1176,10 @@ test('PUT /txproposals/{proposalId} should update tx_proposal to SEND_ERROR on f
   const txCreateResult = await txProposalCreate(txCreateEvent, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(txCreateResult.body as string);
 
-  const signature = new buffer.Buffer(20);
-  const pubkeyBytes = new buffer.Buffer(30);
+  const signature = buffer.Buffer.alloc(20);
+  const pubkeyBytes = buffer.Buffer.alloc(30);
 
-  const txSendEvent = makeGatewayEvent({ txProposalId: returnBody.txProposalId }, JSON.stringify({
+  const txSendEvent = makeGatewayEventWithAuthorizer('my-wallet', { txProposalId: returnBody.txProposalId }, JSON.stringify({
     inputsSignatures: [
       1, 2, 3, 4, 5, 6, 7,
     ].map(() => hathorLib.transaction.createInputData(signature, pubkeyBytes).toString('base64')),
@@ -1256,9 +1247,8 @@ test('DELETE /txproposals/{proposalId} should delete a tx_proposal and remove th
     transactions: 0,
   }]);
 
-  const txCreateEvent = makeGatewayEvent(null,
+  const txCreateEvent = makeGatewayEventWithAuthorizer('my-wallet', null,
     JSON.stringify({
-      id: 'my-wallet',
       outputs: [
         { address: ADDRESSES[0], value: 320, token: 'token1', timelock: null },
         { address: ADDRESSES[0], value: 90, token: 'token2', timelock: null },
@@ -1287,7 +1277,7 @@ test('DELETE /txproposals/{proposalId} should delete a tx_proposal and remove th
     expect(u.txProposalId).toBe(txProposalId);
   }
 
-  const txDeleteEvent = makeGatewayEvent({ txProposalId: returnBody.txProposalId }, null);
+  const txDeleteEvent = makeGatewayEventWithAuthorizer('my-wallet', { txProposalId: returnBody.txProposalId }, null);
   const txDeleteResult = await txProposalDestroy(txDeleteEvent, null, null) as APIGatewayProxyResult;
 
   expect(JSON.parse(txDeleteResult.body).success).toStrictEqual(true);
@@ -1308,7 +1298,7 @@ test('DELETE /txproposals/{proposalId} should delete a tx_proposal and remove th
 test('DELETE /txproposals/{proposalId} with missing txProposalId should fail with ApiError.MISSING_PARAMETER', async () => {
   expect.hasAssertions();
 
-  const txDeleteEvent = makeGatewayEvent(null, null);
+  const txDeleteEvent = makeGatewayEventWithAuthorizer('wallet-id', null, null);
   const txDeleteResult = await txProposalDestroy(txDeleteEvent, null, null) as APIGatewayProxyResult;
   const txDeleteResultBody = JSON.parse(txDeleteResult.body as string);
 
@@ -1320,7 +1310,7 @@ test('DELETE /txproposals/{proposalId} with missing txProposalId should fail wit
 test('DELETE /txproposals/{proposalId} with not existing tx_proposal should fail with ApiError.TX_PROPOSAL_NOT_FOUND', async () => {
   expect.hasAssertions();
 
-  const txDeleteEvent = makeGatewayEvent({ txProposalId: 'invalid-tx-proposal-id' }, null);
+  const txDeleteEvent = makeGatewayEventWithAuthorizer('wallet-id', { txProposalId: 'invalid-tx-proposal-id' }, null);
   const txDeleteResult = await txProposalDestroy(txDeleteEvent, null, null) as APIGatewayProxyResult;
   const txDeleteResultBody = JSON.parse(txDeleteResult.body as string);
 
@@ -1328,12 +1318,12 @@ test('DELETE /txproposals/{proposalId} with not existing tx_proposal should fail
   expect(txDeleteResultBody.error).toStrictEqual(ApiError.TX_PROPOSAL_NOT_FOUND);
 });
 
-test('DELETE /txproposals/{proposalId} shoudl fail with ApiError.TX_PROPOSAL_NOT_OPEN on already sent tx_proposals', async () => {
+test('DELETE /txproposals/{proposalId} should fail with ApiError.TX_PROPOSAL_NOT_OPEN on already sent tx_proposals', async () => {
   expect.hasAssertions();
 
   await addToTxProposalTable(mysql, [['fe141b88-7328-4851-a608-631d1d5a5513', 'wallet-id', 'sent', 1, 1]]);
 
-  const txDeleteEvent = makeGatewayEvent({ txProposalId: 'fe141b88-7328-4851-a608-631d1d5a5513' }, null);
+  const txDeleteEvent = makeGatewayEventWithAuthorizer('wallet-id', { txProposalId: 'fe141b88-7328-4851-a608-631d1d5a5513' }, null);
   const txDeleteResult = await txProposalDestroy(txDeleteEvent, null, null) as APIGatewayProxyResult;
   const txDeleteResultBody = JSON.parse(txDeleteResult.body as string);
 
