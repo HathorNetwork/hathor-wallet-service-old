@@ -1067,31 +1067,35 @@ export const getWalletAddresses = async (mysql: ServerlessMysql, walletId: strin
  */
 export const getNewAddresses = async (mysql: ServerlessMysql, walletId: string): Promise<ShortAddressInfo[]> => {
   const addresses: ShortAddressInfo[] = [];
-  // Select all addresses that are empty and the index is bigger than the last used address index
-  const results: DbSelectResult = await mysql.query(`
-    SELECT *
-      FROM \`address\`
-     WHERE \`wallet_id\` = ?
-       AND \`transactions\` = 0
-       AND \`index\` > (
-         SELECT MAX(\`index\`)
-           FROM \`address\`
-           WHERE \`wallet_id\` = ?
-           AND \`transactions\` > 0
-       )
-  ORDER BY \`index\`
-       ASC
-  LIMIT 100`, [walletId, walletId]);
+  const resultsWallet: DbSelectResult = await mysql.query('SELECT * FROM `wallet` WHERE `id` = ?', walletId);
+  if (resultsoWallet.length) {
+    const gapLimit = result.max_gap as number;
+    // Select all addresses that are empty and the index is bigger than the last used address index
+    const results: DbSelectResult = await mysql.query(`
+      SELECT *
+        FROM \`address\`
+       WHERE \`wallet_id\` = ?
+         AND \`transactions\` = 0
+         AND \`index\` > (
+           SELECT MAX(\`index\`)
+             FROM \`address\`
+             WHERE \`wallet_id\` = ?
+             AND \`transactions\` > 0
+         )
+    ORDER BY \`index\`
+         ASC
+    LIMIT ?`, [walletId, walletId, gapLimit]);
 
-  for (const result of results) {
-    const index = result.index as number;
-    const address = {
-      address: result.address as string,
-      index,
-      addressPath: getAddressPath(index),
+    for (const result of results) {
+      const index = result.index as number;
+      const address = {
+        address: result.address as string,
+        index,
+        addressPath: getAddressPath(index),
 
-    };
-    addresses.push(address);
+      };
+      addresses.push(address);
+    }
   }
   return addresses;
 };
