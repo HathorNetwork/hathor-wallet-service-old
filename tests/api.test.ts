@@ -115,9 +115,6 @@ test('GET /addresses/new', async () => {
     { address: ADDRESSES[10], index: 0, walletId: 'test', transactions: 0 },
   ]);
 
-  // missing param
-  await _testInvalidPayload(newAddressesGet, ['"id" is required']);
-
   // missing wallet
   await _testMissingWallet(newAddressesGet, 'some-wallet');
 
@@ -125,7 +122,7 @@ test('GET /addresses/new', async () => {
   await _testWalletNotReady(newAddressesGet);
 
   // success case
-  const event = makeGatewayEvent({ id: 'my-wallet' });
+  const event = makeGatewayEventWithAuthorizer('my-wallet', {});
   const result = await newAddressesGet(event, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(200);
