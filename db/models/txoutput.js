@@ -82,6 +82,19 @@ module.exports = (sequelize, DataTypes) => {
     modelName: 'TxOutput',
     tableName: 'tx_output',
     timestamps: false,
+    indexes: [{
+      name: 'tx_output_token_id_idx',
+      fields: ['token_id'],
+    }, {
+      name: 'tx_output_address_idx',
+      fields: ['address'],
+    }, {
+      name: 'tx_output_heightlock_idx',
+      fields: 'heightlock',
+    }, {
+      name: 'tx_output_timelock_idx',
+      fields: 'timelock',
+    }],
   });
   return TxOutput;
 };
