@@ -5,7 +5,6 @@ on:
     paths-ignore:
       - '**.md'
   push:
-    # TODO Remove self branch
     branches: [master, dev]
 jobs:
   build:
@@ -14,7 +13,6 @@ jobs:
     strategy:
       matrix:
         node-version: [14.x]
-        # node-version: [10.x, 12.x, 14.x, 15.x]
     services:
       mysql:
         # We are using this image because the official one didn't
@@ -78,4 +76,4 @@ jobs:
           REDIS_PORT: 6379
           MAX_ADDRESS_GAP: 10
           BLOCK_REWARD_LOCK: 300
-          CONFIRM_FIRST_ADDRESS: false
+          CONFIRM_FIRST_ADDRESS: true
