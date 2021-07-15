@@ -183,6 +183,6 @@ export const isTxVoided = async (txId: string): Promise<boolean> => {
  *
  * @returns {string} The address path
  */
-export const getAddressPath = (index: number): string => {
-  return `m/44'/${hathorLib.constants.HATHOR_BIP44_CODE}'/0'/0/${index}`;
-};
+export const getAddressPath = (index: number): string => (
+  `m/44'/${hathorLib.constants.HATHOR_BIP44_CODE}'/0'/0/${index}`
+);

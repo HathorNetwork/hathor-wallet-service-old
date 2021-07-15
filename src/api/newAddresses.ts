@@ -44,4 +44,4 @@ export const get: APIGatewayProxyHandler = walletIdProxyHandler(async (walletId)
     statusCode: 200,
     body: JSON.stringify({ success: true, addresses }),
   };
-};
+});

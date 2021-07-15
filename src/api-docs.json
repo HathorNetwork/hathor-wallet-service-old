@@ -1,12 +1,12 @@
-const apiDoc = {
-  openapi: '3.0.0',
+{
+  openapi: "3.0.0",
   servers: [
     { url: "http://localhost:8000" }
   ],
   info: {
-    title: 'Wallet Service API',
-    description: 'This is a service to manage wallet operations.',
-    version: '0.0.1',
+    title: "Wallet Service API",
+    description: "This is a service to manage wallet operations.",
+    version: "0.0.1",
   },
   produces: [ "application/json" ],
   components: {
@@ -14,17 +14,17 @@ const apiDoc = {
   security: [
   ],
   paths: {
-    '/wallet/addresses/new': {
+    "/wallet/addresses/new": {
       get: {
-        summary: 'Get new addresses of the wallet. The addresses after the last used one.',
+        summary: "Get new addresses of the wallet. The addresses after the last used one.",
         responses: {
           200: {
-            description: 'Success',
+            description: "Success",
             content: {
-              'application/json': {
+              "application/json": {
                 examples: {
                   success: {
-                    summary: 'Addresses returned with success.',
+                    summary: "Addresses returned with success.",
                     value: {"success": true, "addresses": [{"address": "WYDN3wbR5nT1kgs9ak6WU4euEH4w5rdhPy", "index": 10, "addressPath": "m/44'/280'/0'/0/10"}, {"address": "WUaHZ2bC3p1BxQWe29Hw5nNfDU2W8F3j4R", "index": 11, "addressPath": "m/44'/280'/0'/0/11"}]}
                   },
                 },
@@ -35,6 +35,4 @@ const apiDoc = {
       },
     },
   },
-};
-
-export default apiDoc;
+}
