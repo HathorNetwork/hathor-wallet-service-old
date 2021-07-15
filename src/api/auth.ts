@@ -7,7 +7,7 @@
 
 import {
   APIGatewayProxyHandler,
-  CustomAuthorizerHandler,
+  APIGatewayTokenAuthorizerHandler,
   CustomAuthorizerResult,
   PolicyDocument,
   Statement,
@@ -181,7 +181,7 @@ const _generatePolicy = (principalId: string, effect: string, resource: string) 
   return authResponse;
 };
 
-export const bearerAuthorizer: CustomAuthorizerHandler = async (event) => {
+export const bearerAuthorizer: APIGatewayTokenAuthorizerHandler = async (event) => {
   const { authorizationToken } = event;
   if (!authorizationToken) {
     throw new Error('No token found!'); // returns a 401
@@ -211,15 +211,11 @@ export const bearerAuthorizer: CustomAuthorizerHandler = async (event) => {
   const addr = data.addr;
   const walletId = data.wid;
 
-  // header data
-  const expirationTs = data.exp;
-
   const address = new bitcore.Address(addr, hathorLib.network.getNetwork());
-  const verified = verifySignature(signature, timestamp, address, walletId);
 
-  if (verified && Math.floor(Date.now() / 1000) <= expirationTs) {
+  if (verifySignature(signature, timestamp, address, walletId)) {
     return _generatePolicy(walletId, 'Allow', event.methodArn);
   }
 
-  throw new Error('Unexpected Error.');
+  throw new Error('Could not verify ownership.');
 };

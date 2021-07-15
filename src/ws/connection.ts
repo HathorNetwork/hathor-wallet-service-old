@@ -45,15 +45,10 @@ export const connect = async (
     return;
   }
 
-  // Init connection then join wallet
-  await initWsConnection(
-    redisClient,
-    connInfo,
-  ).then(() => wsJoinWallet(
-    redisClient,
-    connInfo,
-    walletId,
-  ));
+  // Init connection
+  await initWsConnection(redisClient, connInfo);
+  // then join wallet
+  await wsJoinWallet(redisClient, connInfo, walletId);
 
   await closeRedisClient(redisClient);
 };
