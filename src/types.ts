@@ -83,6 +83,7 @@ export interface AddressInfo {
 export interface ShortAddressInfo {
   address: string;
   index: number;
+  addressPath: string;
 }
 
 export interface TokenBalance {

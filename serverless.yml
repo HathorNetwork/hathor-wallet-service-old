@@ -116,11 +116,11 @@ functions:
           method: get
           cors: true
           authorizer: ${self:custom.authorizer.walletBearer}
-  getAddressesToUseApi:
-    handler: src/api/addressesToUse.get
+  getNewAddresses:
+    handler: src/api/newAddresses.get
     events:
       - http:
-          path: addressestouse
+          path: wallet/addresses/new
           method: get
           cors: true
           authorizer: ${self:custom.authorizer.walletBearer}

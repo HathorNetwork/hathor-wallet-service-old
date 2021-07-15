@@ -12,7 +12,7 @@ import { ApiError } from '@src/api/errors';
 import { closeDbAndGetError } from '@src/api/utils';
 import {
   getWallet,
-  getAddressesToUse,
+  getNewAddresses,
 } from '@src/db';
 import Joi from 'joi';
 import { closeDbConnection, getDbConnection } from '@src/utils';
@@ -28,7 +28,7 @@ const paramsSchema = Joi.object({
  * Get the addresses of a wallet to be used in new transactions
  * It returns the empty addresses after the last used one
  *
- * This lambda is called by API Gateway on GET /addressestouse
+ * This lambda is called by API Gateway on GET /addresses/new
  */
 export const get: APIGatewayProxyHandler = async (event) => {
   const params = event.queryStringParameters;
@@ -58,7 +58,7 @@ export const get: APIGatewayProxyHandler = async (event) => {
     return closeDbAndGetError(mysql, ApiError.WALLET_NOT_READY);
   }
 
-  const addresses = await getAddressesToUse(mysql, walletId);
+  const addresses = await getNewAddresses(mysql, walletId);
 
   await closeDbConnection(mysql);
 

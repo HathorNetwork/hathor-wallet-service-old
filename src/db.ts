@@ -38,7 +38,7 @@ import {
   AddressTotalBalance,
 } from '@src/types';
 
-import { getUnixTimestamp, isAuthority } from '@src/utils';
+import { getUnixTimestamp, isAuthority, getAddressPath } from '@src/utils';
 
 const BLOCK_VERSION = [
   constants.BLOCK_VERSION,
@@ -1065,7 +1065,7 @@ export const getWalletAddresses = async (mysql: ServerlessMysql, walletId: strin
  * @param walletId - Wallet id
  * @returns A list of addresses and their indexes
  */
-export const getAddressesToUse = async (mysql: ServerlessMysql, walletId: string): Promise<ShortAddressInfo[]> => {
+export const getNewAddresses = async (mysql: ServerlessMysql, walletId: string): Promise<ShortAddressInfo[]> => {
   const addresses: ShortAddressInfo[] = [];
   // Select all addresses that are empty and the index is bigger than the last used address index
   const results: DbSelectResult = await mysql.query(`
@@ -1080,12 +1080,16 @@ export const getAddressesToUse = async (mysql: ServerlessMysql, walletId: string
            AND \`transactions\` > 0
        )
   ORDER BY \`index\`
-       ASC`, [walletId, walletId]);
+       ASC
+  LIMIT 100`, [walletId, walletId]);
 
   for (const result of results) {
+    const index = result.index as number;
     const address = {
       address: result.address as string,
-      index: result.index as number,
+      index,
+      addressPath: getAddressPath(index),
+
     };
     addresses.push(address);
   }
