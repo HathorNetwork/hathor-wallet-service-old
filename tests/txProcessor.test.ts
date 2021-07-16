@@ -348,4 +348,4 @@ test('onHandleVoidedTxRequest', async () => {
   await expect(checkUtxoTable(mysql, 5, txId1, 0, token, addr, 2500, 0, null, null, false, null, false)).resolves.toBe(true);
 
   await expect(checkAddressBalanceTable(mysql, 1, addr, token, 2500, 0, 0, 1)).resolves.toBe(true);
-});
+}, 20000);
