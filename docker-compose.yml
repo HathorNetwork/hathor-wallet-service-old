@@ -1,0 +1,27 @@
+version: "3.8"
+services:
+  mysql:
+    image: centos/mysql-80-centos7
+    environment:
+      MYSQL_DATABASE: wallet_service_ci
+      MYSQL_USER: wallet_service_user
+      MYSQL_PASSWORD: password
+      MYSQL_DEFAULT_AUTHENTICATION_PLUGIN: mysql_native_password
+    ports:
+      - 3306:3306
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+  redis:
+    image: redis:6.2
+    ports:
+      - 6379:6379
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
