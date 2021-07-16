@@ -18,6 +18,7 @@ import {
   GenerateAddresses,
   IWalletInput,
   IWalletOutput,
+  ShortAddressInfo,
   StringMap,
   TokenBalanceMap,
   TokenInfo,
@@ -37,7 +38,7 @@ import {
   AddressTotalBalance,
 } from '@src/types';
 
-import { getUnixTimestamp, isAuthority } from '@src/utils';
+import { getUnixTimestamp, isAuthority, getAddressPath } from '@src/utils';
 
 const BLOCK_VERSION = [
   constants.BLOCK_VERSION,
@@ -1053,6 +1054,47 @@ export const getWalletAddresses = async (mysql: ServerlessMysql, walletId: strin
       transactions: result.transactions as number,
     };
     addresses.push(address);
+  }
+  return addresses;
+};
+
+/**
+ * Get the empty addresses of a wallet after the last used address
+ *
+ * @param mysql - Database connection
+ * @param walletId - Wallet id
+ * @returns A list of addresses and their indexes
+ */
+export const getNewAddresses = async (mysql: ServerlessMysql, walletId: string): Promise<ShortAddressInfo[]> => {
+  const addresses: ShortAddressInfo[] = [];
+  const resultsWallet: DbSelectResult = await mysql.query('SELECT * FROM `wallet` WHERE `id` = ?', walletId);
+  if (resultsWallet.length) {
+    const gapLimit = resultsWallet[0].max_gap as number;
+    // Select all addresses that are empty and the index is bigger than the last used address index
+    const results: DbSelectResult = await mysql.query(`
+      SELECT *
+        FROM \`address\`
+       WHERE \`wallet_id\` = ?
+         AND \`transactions\` = 0
+         AND \`index\` > (
+           SELECT MAX(\`index\`)
+             FROM \`address\`
+             WHERE \`wallet_id\` = ?
+             AND \`transactions\` > 0
+         )
+    ORDER BY \`index\`
+         ASC
+    LIMIT ?`, [walletId, walletId, gapLimit]);
+
+    for (const result of results) {
+      const index = result.index as number;
+      const address = {
+        address: result.address as string,
+        index,
+        addressPath: getAddressPath(index),
+      };
+      addresses.push(address);
+    }
   }
   return addresses;
 };

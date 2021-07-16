@@ -116,6 +116,14 @@ functions:
           method: get
           cors: true
           authorizer: ${self:custom.authorizer.walletBearer}
+  getNewAddresses:
+    handler: src/api/newAddresses.get
+    events:
+      - http:
+          path: wallet/addresses/new
+          method: get
+          cors: true
+          authorizer: ${self:custom.authorizer.walletBearer}
   getBalanceApi:
     handler: src/api/balances.get
     events:
