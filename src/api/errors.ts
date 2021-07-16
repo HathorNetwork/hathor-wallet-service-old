@@ -24,6 +24,7 @@ export enum ApiError {
   TX_PROPOSAL_NOT_FOUND = 'tx-proposal-not-found',
   TX_PROPOSAL_NOT_OPEN = 'tx-proposal-not-open',
   TX_PROPOSAL_SEND_ERROR = 'tx-proposal-send-error',
+  TX_PROPOSAL_NO_MATCH = 'tx-proposal-no-match',
   WALLET_NOT_FOUND = 'wallet-not-found',
   WALLET_NOT_READY = 'wallet-not-ready',
   WALLET_ALREADY_LOADED = 'wallet-already-loaded',

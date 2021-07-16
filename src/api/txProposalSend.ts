@@ -8,10 +8,8 @@ import 'source-map-support/register';
 import { ApiError } from '@src/api/errors';
 import {
   getTxProposal,
-  // getTxProposalOutputs,
+  getTxProposalInputs,
   updateTxProposal,
-  // removeTxProposalOutputs,
-  // getTxProposalTokenInfo,
 } from '@src/db';
 import {
   TxProposalStatus,
@@ -93,6 +91,21 @@ export const send: APIGatewayProxyHandler = walletIdProxyHandler(async (walletId
   }
 
   const now = getUnixTimestamp();
+  const txProposalInputs = await getTxProposalInputs(mysql, txProposalId);
+  const tx = hathorLib.helpersUtils.createTxFromHex(txHex, new hathorLib.Network(process.env.NETWORK));
+
+  if (tx.inputs.length !== txProposalInputs.length) {
+    return closeDbAndGetError(mysql, ApiError.TX_PROPOSAL_NO_MATCH);
+  }
+
+  const txHexInputHashes = tx.inputs.map((input) => input.hash);
+
+  for (let i = 0; i < txProposalInputs.length; i++) {
+    // Validate that the inputs on the txHex are the same as those sent on txProposalCreate
+    if (txHexInputHashes.indexOf(txProposalInputs[i].txId) < 0) {
+      return closeDbAndGetError(mysql, ApiError.TX_PROPOSAL_NO_MATCH);
+    }
+  }
 
   try {
     const response: ApiResponse = await new Promise((resolve) => {

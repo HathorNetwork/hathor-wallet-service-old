@@ -36,7 +36,6 @@ import {
   AddressBalance,
   AddressTotalBalance,
   IFilterUtxo,
-  TxProposalTokenInfo,
 } from '@src/types';
 
 import { getUnixTimestamp, isAuthority, getAddressPath } from '@src/utils';
@@ -2169,24 +2168,30 @@ export const addTxProposalTokenInfo = async (
 };
 
 /**
- * Get tx proposal token info
+ * Get tx proposal inputs.
+ *
+ * @remarks
+ * The inputs are taken from the utxo table.
  *
  * @param mysql - Database connection
  * @param txProposalId - The transaction proposal id
- * @returns Information about the new token
+ * @returns A list of inputs.
  */
-export const getTxProposalTokenInfo = async (
+export const getTxProposalInputs = async (
   mysql: ServerlessMysql,
   txProposalId: string,
-): Promise<TxProposalTokenInfo> => {
+): Promise<IWalletInput[]> => {
+  const inputs = [];
   const results: DbSelectResult = await mysql.query(
-    'SELECT * FROM `tx_proposal_token_info` WHERE `tx_proposal_id` = ?',
+    'SELECT * FROM `tx_output` WHERE `tx_proposal` = ? ORDER BY `tx_proposal_index` ASC',
     [txProposalId],
   );
-
-  return {
-    txProposalId: results[0].tx_proposal_id as string,
-    name: results[0].name as string,
-    symbol: results[0].symbol as string,
-  };
+  for (const result of results) {
+    const input: IWalletInput = {
+      txId: result.tx_id as string,
+      index: result.index as number,
+    };
+    inputs.push(input);
+  }
+  return inputs;
 };

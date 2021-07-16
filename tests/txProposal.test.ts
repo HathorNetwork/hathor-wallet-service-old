@@ -5,7 +5,6 @@ import {
   getTxProposal,
   getUtxos,
   updateTxProposal,
-  getTxProposalTokenInfo,
 } from '@src/db';
 import { TxProposalStatus, IWalletInput } from '@src/types';
 import { closeDbConnection, getDbConnection, getUnixTimestamp } from '@src/utils';
@@ -44,14 +43,6 @@ const _checkTxProposalTables = async (txProposalId, inputs): Promise<void> => {
     expect(utxo.txProposalId).toBe(txProposalId);
   }
   expect(await getTxProposal(mysql, txProposalId)).not.toBeNull();
-};
-
-const _checkTxProposalInfoTable = async (txProposalId, name, symbol): Promise<void> => {
-  expect(await getTxProposalTokenInfo(mysql, txProposalId)).toStrictEqual({
-    txProposalId,
-    name,
-    symbol,
-  });
 };
 
 test('POST /txproposals with null as param should fail with ApiError.INVALID_PAYLOAD', async () => {
@@ -883,8 +874,6 @@ test('POST /txproposals a tx create action on txHex', async () => {
   expect(returnBody.inputs).toContainEqual({ txId: utxos[0][0], index: utxos[0][1], addressPath: `${defaultDerivationPath}0` });
   expect(returnBody.outputs).toHaveLength(4);
   expect(returnBody.outputs).toContainEqual({ address: ADDRESSES[0], value: 200, token: '00', tokenData: 0, timelock: null });
-
-  await _checkTxProposalInfoTable(returnBody.txProposalId, name, symbol);
 });
 
 test('PUT /txproposals/{proposalId} with txhex', async () => {
@@ -984,6 +973,112 @@ test('PUT /txproposals/{proposalId} with txhex', async () => {
 
   expect(sendReturnBody.success).toStrictEqual(true);
   expect(txProposal.status).toStrictEqual(TxProposalStatus.SENT);
+
+  spy.mockRestore();
+});
+
+test('PUT /txproposals/{proposalId} with a different txhex than the one sent in txProposalCreate', async () => {
+  expect.hasAssertions();
+
+  // Create the spy to mock wallet-lib
+  const spy = jest.spyOn(hathorLib.axios, 'createRequestInstance');
+  spy.mockReturnValue({
+    post: () => Promise.resolve({
+      data: { success: true },
+    }),
+    get: () => Promise.resolve({
+      data: {
+        success: true,
+        version: '0.38.0',
+        network: 'mainnet',
+        min_weight: 14,
+        min_tx_weight: 14,
+        min_tx_weight_coefficient: 1.6,
+        min_tx_weight_k: 100,
+        token_deposit_percentage: 0.01,
+        reward_spend_min_blocks: 300,
+        max_number_inputs: 255,
+        max_number_outputs: 255,
+      },
+    }),
+  });
+
+  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToAddressTable(mysql, [{
+    address: ADDRESSES[0],
+    index: 0,
+    walletId: 'my-wallet',
+    transactions: 2,
+  }]);
+
+  const token1 = '004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50';
+  const token2 = '002f2bcc3261b4fb8510a458ed9df9f6ba2a413ee35901b3c5f81b0c085287e2';
+
+  const utxos = [
+    ['004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50', 0, token1, ADDRESSES[0], 300, 0, null, null, false],
+    ['0000001e39bc37fe8710c01cc1e8c0a937bf6f9337551fbbfddc222bfc28c197', 0, token1, ADDRESSES[0], 100, 0, null, null, false],
+    ['00000060a25077e48926bcd9473d77259296e123ec6af1c1a16c1c381093ab90', 0, token2, ADDRESSES[0], 300, 0, null, null, false],
+  ];
+
+  await addToUtxoTable(mysql, utxos);
+  await addToWalletBalanceTable(mysql, [{
+    walletId: 'my-wallet',
+    tokenId: 'token1',
+    unlockedBalance: 400,
+    lockedBalance: 0,
+    unlockedAuthorities: 0,
+    lockedAuthorities: 0,
+    timelockExpires: null,
+    transactions: 2,
+  }, {
+    walletId: 'my-wallet',
+    tokenId: 'token2',
+    unlockedBalance: 300,
+    lockedBalance: 0,
+    unlockedAuthorities: 0,
+    lockedAuthorities: 0,
+    timelockExpires: null,
+    transactions: 1,
+  }]);
+
+  await addToAddressTable(mysql, [{
+    address: ADDRESSES[1],
+    index: 1,
+    walletId: 'my-wallet',
+    transactions: 0,
+  }]);
+
+  // only one output, spending the whole 300 utxo of token1
+  const outputs = [
+    new hathorLib.Output(
+      300,
+      new hathorLib.Address(ADDRESSES[0], { network: new hathorLib.Network(process.env.NETWORK) }),
+      { tokenData: 1 },
+    ),
+  ];
+  const inputs = [new hathorLib.Input(utxos[0][0], utxos[0][1])];
+  const transaction = new hathorLib.Transaction(inputs, outputs, { tokens: [token1] });
+  const txHex = transaction.toHex();
+
+  const event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({ txHex }));
+  const result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  const returnBody = JSON.parse(result.body as string);
+
+  const differentInputs = [new hathorLib.Input(utxos[2][0], utxos[2][1])];
+  const transaction2 = new hathorLib.Transaction(differentInputs, outputs, { tokens: [token1] });
+  const txHex2 = transaction2.toHex();
+
+  const txSendEvent = makeGatewayEventWithAuthorizer('my-wallet', { txProposalId: returnBody.txProposalId }, JSON.stringify({
+    txHex: txHex2,
+  }));
+  const txSendResult = await txProposalSend(txSendEvent, null, null) as APIGatewayProxyResult;
+
+  const sendReturnBody = JSON.parse(txSendResult.body as string);
+
+  console.log(sendReturnBody);
+
+  expect(sendReturnBody.success).toStrictEqual(false);
+  expect(sendReturnBody.error).toStrictEqual(ApiError.TX_PROPOSAL_NO_MATCH);
 
   spy.mockRestore();
 });

@@ -47,6 +47,7 @@ import {
   markUtxosAsVoided,
   unspendUtxos,
   filterUtxos,
+  getTxProposalInputs,
 } from '@src/db';
 import {
   Authorities,
@@ -84,7 +85,6 @@ import {
   createOutput,
   createInput,
   countTxOutputTable,
-  getTxProposalInputs,
 } from '@tests/utils';
 
 const mysql = getDbConnection();
