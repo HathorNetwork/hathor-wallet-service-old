@@ -94,7 +94,6 @@ functions:
   loadWalletApi:
     role: arn:aws:iam::769498303037:role/WalletServiceLoadWalletLambda
     handler: src/api/wallet.load
-    role: arn:aws:iam::769498303037:role/WalletServiceLoadWalletLambda
     events:
       - http:
           path: wallet/init
