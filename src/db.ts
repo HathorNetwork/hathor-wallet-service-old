@@ -17,7 +17,6 @@ import {
   DbSelectResult,
   GenerateAddresses,
   IWalletInput,
-  IWalletOutput,
   ShortAddressInfo,
   StringMap,
   TokenBalanceMap,
@@ -1597,72 +1596,6 @@ export const getTxProposal = async (
 };
 
 /**
- * Add tx proposal outputs to the database.
- *
- * @param mysql - Database connection
- * @param txProposalId - The transaction proposal id
- * @param outputs - List of outputs
- */
-export const addTxProposalOutputs = async (
-  mysql: ServerlessMysql,
-  txProposalId: string,
-  outputs: IWalletOutput[],
-): Promise<void> => {
-  const entries = [];
-  for (const [index, output] of outputs.entries()) {
-    entries.push([txProposalId, index, output.address, output.token, output.tokenData, output.value, output.timelock]);
-  }
-  await mysql.query(
-    'INSERT INTO `tx_proposal_outputs` VALUES ?',
-    [entries],
-  );
-};
-
-/**
- * Get tx proposal outputs.
- *
- * @param mysql - Database connection
- * @param txProposalId - The transaction proposal id
- * @returns A list of outputs.
- */
-export const getTxProposalOutputs = async (
-  mysql: ServerlessMysql,
-  txProposalId: string,
-): Promise<IWalletOutput[]> => {
-  const outputs = [];
-  const results: DbSelectResult = await mysql.query(
-    'SELECT * FROM `tx_proposal_outputs` WHERE `tx_proposal_id` = ? ORDER BY `index` ASC',
-    [txProposalId],
-  );
-  for (const result of results) {
-    outputs.push({
-      address: result.address as string,
-      token: result.token_id as string,
-      tokenData: result.token_data as number,
-      value: result.value as number,
-      timelock: result.timelock as number,
-    });
-  }
-  return outputs;
-};
-
-/**
- * Remove the tx proposal outputs.
- *
- * @param mysql - Database connection
- * @param txProposalId - The transaction proposal id
- */
-export const removeTxProposalOutputs = async (
-  mysql: ServerlessMysql,
-  txProposalId: string,
-): Promise<void> => {
-  await mysql.query(
-    'DELETE FROM `tx_proposal_outputs` WHERE `tx_proposal_id` = ?',
-    [txProposalId],
-  );
-};
-
-/**
  * When a tx proposal is cancelled we must release the utxos to be used by others
  *
  * @param mysql - Database connection
@@ -1676,35 +1609,6 @@ export const releaseTxProposalUtxos = async (
     'UPDATE `tx_output` SET `tx_proposal` = NULL, `tx_proposal_index` = NULL WHERE `tx_proposal` = ?',
     [txProposalId],
   );
-};
-
-/**
- * Get tx proposal inputs.
- *
- * @remarks
- * The inputs are taken from the utxo table.
- *
- * @param mysql - Database connection
- * @param txProposalId - The transaction proposal id
- * @returns A list of inputs.
- */
-export const getTxProposalInputs = async (
-  mysql: ServerlessMysql,
-  txProposalId: string,
-): Promise<IWalletInput[]> => {
-  const inputs = [];
-  const results: DbSelectResult = await mysql.query(
-    'SELECT * FROM `tx_output` WHERE `tx_proposal` = ? ORDER BY `tx_proposal_index` ASC',
-    [txProposalId],
-  );
-  for (const result of results) {
-    const input: IWalletInput = {
-      txId: result.tx_id as string,
-      index: result.index as number,
-    };
-    inputs.push(input);
-  }
-  return inputs;
 };
 
 /**

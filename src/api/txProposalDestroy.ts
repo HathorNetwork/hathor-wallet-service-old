@@ -6,7 +6,6 @@ import { ApiError } from '@src/api/errors';
 import {
   getTxProposal,
   updateTxProposal,
-  removeTxProposalOutputs,
   releaseTxProposalUtxos,
 } from '@src/db';
 import { walletIdProxyHandler } from '@src/commons';
@@ -53,9 +52,6 @@ export const destroy: APIGatewayProxyHandler = walletIdProxyHandler(async (walle
     now,
     TxProposalStatus.CANCELLED,
   );
-
-  // Delete elements from tx proposal outputs table
-  await removeTxProposalOutputs(mysql, txProposalId);
 
   // Remove tx_proposal_id and tx_proposal_index from utxo table
   await releaseTxProposalUtxos(mysql, txProposalId);

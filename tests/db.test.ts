@@ -2,7 +2,6 @@ import { v4 as uuidv4 } from 'uuid';
 
 import {
   addNewAddresses,
-  addTxProposalOutputs,
   addUtxos,
   createTxProposal,
   createWallet,
@@ -12,8 +11,6 @@ import {
   getTokenInformation,
   getLockedUtxoFromInputs,
   getTxProposal,
-  getTxProposalInputs,
-  getTxProposalOutputs,
   getUnusedAddresses,
   getUtxos,
   getUtxosLockedAtHeight,
@@ -28,7 +25,6 @@ import {
   initWalletBalance,
   initWalletTxHistory,
   markUtxosWithProposalId,
-  removeTxProposalOutputs,
   updateTxOutputSpentBy,
   storeTokenInformation,
   unlockUtxos,
@@ -88,6 +84,7 @@ import {
   createOutput,
   createInput,
   countTxOutputTable,
+  getTxProposalInputs,
 } from '@tests/utils';
 
 const mysql = getDbConnection();
@@ -1157,24 +1154,6 @@ test('createTxProposal, updateTxProposal and getTxProposal', async () => {
 
   // tx proposal not found
   expect(await getTxProposal(mysql, 'aaa')).toBeNull();
-});
-
-test('addTxProposalOutputs, getTxProposalOutputs, deleteTxProposalOutputs', async () => {
-  expect.hasAssertions();
-
-  const txProposalId = uuidv4();
-  const outputs = [
-    { address: 'addr1', token: 'token1', tokenData: 1, value: 5, timelock: null },
-    { address: 'addr2', token: 'token2', tokenData: 1, value: 10, timelock: null },
-    { address: 'addr2', token: 'token1', tokenData: 1, value: 15, timelock: 10000 },
-  ];
-
-  await addTxProposalOutputs(mysql, txProposalId, outputs);
-  expect(await getTxProposalOutputs(mysql, txProposalId)).toStrictEqual(outputs);
-
-  // remove
-  await removeTxProposalOutputs(mysql, txProposalId);
-  expect(await getTxProposalOutputs(mysql, txProposalId)).toStrictEqual([]);
 });
 
 test('updateVersionData', async () => {

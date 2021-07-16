@@ -8,7 +8,6 @@ import 'source-map-support/register';
 import { ApiError } from '@src/api/errors';
 import {
   getTxProposal,
-  // getTxProposalInputs,
   // getTxProposalOutputs,
   updateTxProposal,
   // removeTxProposalOutputs,
@@ -78,7 +77,6 @@ export const send: APIGatewayProxyHandler = walletIdProxyHandler(async (walletId
   }
 
   const { txHex } = bodyValidation.value;
-
   const txProposal = await getTxProposal(mysql, txProposalId);
 
   if (txProposal === null) {
