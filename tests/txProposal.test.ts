@@ -1075,8 +1075,6 @@ test('PUT /txproposals/{proposalId} with a different txhex than the one sent in 
 
   const sendReturnBody = JSON.parse(txSendResult.body as string);
 
-  console.log(sendReturnBody);
-
   expect(sendReturnBody.success).toStrictEqual(false);
   expect(sendReturnBody.error).toStrictEqual(ApiError.TX_PROPOSAL_NO_MATCH);
 

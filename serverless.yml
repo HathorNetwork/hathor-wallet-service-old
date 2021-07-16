@@ -92,7 +92,6 @@ functions:
   loadWalletAsync:
     handler: src/api/wallet.loadWallet
   loadWalletApi:
-    role: arn:aws:iam::769498303037:role/WalletServiceLoadWalletLambda
     handler: src/api/wallet.load
     events:
       - http:
@@ -127,7 +126,7 @@ functions:
     handler: src/api/utxos.getFilteredUtxos
     events:
       - http:
-          path: utxos
+          path: wallet/utxos
           method: get
           cors: true
           authorizer: ${self:custom.authorizer.walletBearer}
@@ -230,7 +229,7 @@ functions:
     timeout: 1
   authTokenApi:
     handler: src/api/auth.tokenHandler
-    timeout: 1
+    timeout: 6
     events:
       - http:
           path: auth/token
