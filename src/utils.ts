@@ -177,3 +177,12 @@ export const isTxVoided = async (txId: string): Promise<boolean> => {
 
   return true;
 };
+
+/**
+ * Creates default address path from address index
+ *
+ * @returns {string} The address path
+ */
+export const getAddressPath = (index: number): string => (
+  `m/44'/${hathorLib.constants.HATHOR_BIP44_CODE}'/0'/0/${index}`
+);
