@@ -1,10 +1,14 @@
+import redis from 'redis';
+import { promisify } from 'util';
+
 import {
   WsConnectionInfo,
   RedisConfig,
 } from '@src/types';
 
-import redis from 'redis';
-import { promisify } from 'util';
+import {
+  WalletLimitExceeded,
+} from '@src/exceptions';
 
 const redisConfig: RedisConfig = {
   host: process.env.REDIS_HOST,
@@ -84,7 +88,15 @@ export const wsJoinWallet = async (
   client: redis.RedisClient,
   connInfo: WsConnectionInfo,
   walletID: string,
-): Promise<string> => wsJoinChannel(client, connInfo, `wallet-${walletID}`);
+): Promise<string> => {
+  const setAsync = promisify(client.set).bind(client);
+  // verify open connections for walletID
+  const openConns = await scanAll(client, `${svcPrefix}:chan:wallet-${walletID}:*`);
+  if (openConns.length >= +process.env.WALLET_CONN_LIMIT) {
+    throw new WalletLimitExceeded(`${walletID}: Limit of open connections exceeded`);
+  }
+  return setAsync(`${svcPrefix}:chan:wallet-${walletID}:${connInfo.id}`, connInfo.url);
+};
 
 export const wsGetConnection = async (
   client: redis.RedisClient,
