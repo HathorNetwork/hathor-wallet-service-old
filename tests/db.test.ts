@@ -96,7 +96,6 @@ import {
   createOutput,
   createInput,
   countTxOutputTable,
-  getTxProposalInputs,
 } from '@tests/utils';
 
 const mysql = getDbConnection();

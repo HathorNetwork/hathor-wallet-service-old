@@ -36,7 +36,6 @@ import {
   AddressBalance,
   AddressTotalBalance,
   IFilterUtxo,
-  TxProposalTokenInfo,
 } from '@src/types';
 
 import { getUnixTimestamp, isAuthority, getAddressPath } from '@src/utils';

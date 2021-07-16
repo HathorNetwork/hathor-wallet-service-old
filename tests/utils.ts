@@ -6,7 +6,6 @@ import {
   TxInput,
   TxOutput,
   FullNodeVersionData,
-  IWalletInput,
 } from '@src/types';
 
 import { WalletBalanceEntry, AddressTableEntry, TokenTableEntry } from '@tests/types';
@@ -749,33 +748,4 @@ export const redisCleanup = (
   client: RedisClient,
 ): void => {
   client.flushdb();
-};
-
-/**
- * Get tx proposal inputs.
- *
- * @remarks
- * The inputs are taken from the utxo table.
- *
- * @param mysql - Database connection
- * @param txProposalId - The transaction proposal id
- * @returns A list of inputs.
- */
-export const getTxProposalInputs = async (
-  mysql: ServerlessMysql,
-  txProposalId: string,
-): Promise<IWalletInput[]> => {
-  const inputs = [];
-  const results: DbSelectResult = await mysql.query(
-    'SELECT * FROM `tx_output` WHERE `tx_proposal` = ? ORDER BY `tx_proposal_index` ASC',
-    [txProposalId],
-  );
-  for (const result of results) {
-    const input: IWalletInput = {
-      txId: result.tx_id as string,
-      index: result.index as number,
-    };
-    inputs.push(input);
-  }
-  return inputs;
 };
