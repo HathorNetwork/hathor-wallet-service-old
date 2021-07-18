@@ -181,9 +181,9 @@ export const create = walletIdProxyHandler(async (walletId, event) => {
 export const checkMissingUtxos = (inputs: IWalletInput[], utxos: DbTxOutput[]): IWalletInput[] => {
   if (inputs.length === utxos.length) return [];
 
-  const remaining = new Set(inputs.map((input) => [input.txId, input.index]));
+  const remaining = new Set(inputs.map((input) => `${input.txId}_${input.index}`));
   for (const utxo of utxos) {
-    remaining.delete([utxo.txId, utxo.index]);
+    remaining.delete(`${utxo.txId}_${utxo.index}`);
   }
 
   const missing = [];
