@@ -118,7 +118,6 @@ export const send: APIGatewayProxyHandler = walletIdProxyHandler(async (walletId
       TxProposalStatus.SENT,
     );
 
-    // await removeTxProposalOutputs(mysql, txProposalId);
     await closeDbConnection(mysql);
 
     return {

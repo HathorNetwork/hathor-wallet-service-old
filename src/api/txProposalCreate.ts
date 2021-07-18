@@ -138,7 +138,6 @@ export const create = walletIdProxyHandler(async (walletId, event) => {
   markUtxosWithProposalId(mysql, txProposalId, inputUtxos);
 
   await createTxProposal(mysql, txProposalId, walletId, tx.version, now);
-  // await addTxProposalOutputs(mysql, txProposalId, outputs);
 
   await closeDbConnection(mysql);
 
