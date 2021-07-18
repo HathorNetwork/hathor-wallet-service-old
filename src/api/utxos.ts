@@ -51,6 +51,8 @@ export const getFilteredUtxos = walletIdProxyHandler(async (walletId, event) => 
     ignoreLocked: queryString.ignoreLocked,
     biggerThan: queryString.biggerThan,
     smallerThan: queryString.smallerThan,
+    txId: queryString.txId,
+    index: queryString.index,
   };
 
   const { value, error } = bodySchema.validate(eventBody, {
@@ -69,8 +71,8 @@ export const getFilteredUtxos = walletIdProxyHandler(async (walletId, event) => 
 
   const walletAddresses = await getWalletAddresses(mysql, walletId);
 
-  if (value.txId) {
-    if (!value.index) {
+  if (value.txId !== undefined) {
+    if (!Number.isInteger(value.index)) {
       return closeDbAndGetError(mysql, ApiError.NO_TX_INDEX);
     }
 
@@ -149,8 +151,6 @@ export const mapUtxosWithPath = (walletAddresses: AddressInfo[], utxos: DbTxOutp
 export const validateAddresses = async (walletAddresses: AddressInfo[], addresses: string[]): Promise<string[]> => {
   const flatAddresses = walletAddresses.map((walletAddress) => walletAddress.address);
   const denied: string[] = [];
-
-  console.log('flat adresses: ', flatAddresses);
 
   for (let i = 0; i < addresses.length; i++) {
     if (!flatAddresses.includes(addresses[i])) {
