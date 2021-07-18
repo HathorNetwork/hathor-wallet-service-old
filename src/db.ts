@@ -1409,7 +1409,7 @@ export const getLatestHeight = async (mysql: ServerlessMysql): Promise<number> =
          IN (?)`, [BLOCK_VERSION],
   );
 
-  if (results.length > 0) {
+  if (results.length > 0 && results[0].value !== null) {
     return results[0].value as number;
   }
   // it should never come here, as genesis block should be added at startup
