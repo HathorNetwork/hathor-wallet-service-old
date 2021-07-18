@@ -7,6 +7,7 @@ import {
   createWallet,
   generateAddresses,
   getAddressWalletInfo,
+  getBlockByHeight,
   getLatestHeight,
   getTokenInformation,
   getLockedUtxoFromInputs,
@@ -22,6 +23,7 @@ import {
   getVersionData,
   getTxOutputsBySpent,
   getTransactionsById,
+  getTxsAfterHeight,
   initWalletBalance,
   initWalletTxHistory,
   markUtxosWithProposalId,
@@ -39,8 +41,10 @@ import {
   fetchAddressTxHistorySum,
   fetchAddressBalance,
   addOrUpdateTx,
+  updateTx,
   fetchTx,
   markTxsAsVoided,
+  removeTxsHeight,
   rebuildAddressBalancesFromUtxos,
   markAddressTxHistoryAsVoided,
   deleteBlocksAfterHeight,
@@ -965,34 +969,75 @@ test('updateWalletLockedBalance', async () => {
   await expect(checkWalletBalanceTable(mysql, 3, wallet1, tokenId, 25, 5, now, 5, 0b11, 0b01)).resolves.toBe(true);
 });
 
-test('getLatestHeight and deleteBlocksAfterHeight', async () => {
+test('updateTx should add height to a tx', async () => {
   expect.hasAssertions();
 
-  await addOrUpdateTx(mysql, 'txId1', 0, 1, 0);
+  await addOrUpdateTx(mysql, 'txId1', null, 1, 1);
+  await updateTx(mysql, 'txId1', null, 1, 1);
+
+  const txs = await getTransactionsById(mysql, ['txId1']);
+  const tx = txs[0];
+
+  expect(tx.txId).toStrictEqual('txId1');
+});
+
+test('getLatestHeight, getTxsAfterHeight, deleteBlocksAfterHeight and removeTxsHeight', async () => {
+  expect.hasAssertions();
+
+  await addOrUpdateTx(mysql, 'txId0', 0, 1, 0);
 
   expect(await getLatestHeight(mysql)).toBe(0);
 
-  await addOrUpdateTx(mysql, 'txId2', 5, 2, 0);
+  await addOrUpdateTx(mysql, 'txId5', 5, 2, 0);
 
   expect(await getLatestHeight(mysql)).toBe(5);
 
-  await addOrUpdateTx(mysql, 'txId3', 7, 3, 0);
+  await addOrUpdateTx(mysql, 'txId7', 7, 3, 0);
 
   expect(await getLatestHeight(mysql)).toBe(7);
 
-  await addOrUpdateTx(mysql, 'txId4', 8, 4, 0);
-  await addOrUpdateTx(mysql, 'txId5', 9, 5, 0);
-  await addOrUpdateTx(mysql, 'txId6', 10, 6, 0);
+  await addOrUpdateTx(mysql, 'txId8', 8, 4, 0);
+  await addOrUpdateTx(mysql, 'txId9', 9, 5, 0);
+  await addOrUpdateTx(mysql, 'txId10', 10, 6, 0);
+
+  const txsAfterHeight = await getTxsAfterHeight(mysql, 6);
+
+  expect(txsAfterHeight).toHaveLength(4);
 
   expect(await getLatestHeight(mysql)).toBe(10);
 
   await deleteBlocksAfterHeight(mysql, 7);
 
   expect(await getLatestHeight(mysql)).toBe(7);
+
+  // add the transactions again
+  await addOrUpdateTx(mysql, 'txId8', 8, 4, 0);
+  await addOrUpdateTx(mysql, 'txId9', 9, 5, 0);
+  await addOrUpdateTx(mysql, 'txId10', 10, 6, 0);
+
+  // remove their height
+  const transactions = await getTransactionsById(mysql, ['txId8', 'txId9', 'txId10']);
+  await removeTxsHeight(mysql, transactions);
+
+  expect(await getLatestHeight(mysql)).toBe(7);
+});
+
+test('getLatestHeight with no blocks on database should return 0', async () => {
+  expect.hasAssertions();
+
+  expect(await getLatestHeight(mysql)).toBe(0);
+});
+
+test('getBlockByHeight should return null if a block is not found', async () => {
+  expect.hasAssertions();
+
+  expect(await getBlockByHeight(mysql, 100000)).toBeNull();
 });
 
 test('storeTokenInformation and getTokenInformation', async () => {
   expect.hasAssertions();
+
+  expect(await getTokenInformation(mysql, 'invalid')).toBeNull();
 
   const info = new TokenInfo('tokenId', 'tokenName', 'TKNS');
   storeTokenInformation(mysql, info.id, info.name, info.symbol);
@@ -1507,4 +1552,10 @@ test('filterUtxos', async () => {
   expect(utxos[1]).toStrictEqual({
     txId: txId2, index: 1, tokenId, address: addr1, value: 1000, authorities: 0, timelock: null, heightlock: null, locked: false,
   });
+});
+
+test('filterUtxos should throw if addresses are empty', async () => {
+  expect.hasAssertions();
+
+  await expect(filterUtxos(mysql, { addresses: [] })).rejects.toThrow('Addresses can\'t be empty.');
 });

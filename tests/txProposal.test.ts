@@ -1,12 +1,13 @@
-import { create as txProposalCreate } from '@src/api/txProposalCreate';
+import { create as txProposalCreate, checkMissingUtxos } from '@src/api/txProposalCreate';
 import { send as txProposalSend } from '@src/api/txProposalSend';
 import { destroy as txProposalDestroy } from '@src/api/txProposalDestroy';
 import {
   getTxProposal,
   getUtxos,
   updateTxProposal,
+  updateVersionData,
 } from '@src/db';
-import { TxProposalStatus, IWalletInput } from '@src/types';
+import { TxProposalStatus, IWalletInput, DbTxOutput } from '@src/types';
 import { closeDbConnection, getDbConnection, getUnixTimestamp } from '@src/utils';
 import {
   addToWalletBalanceTable,
@@ -17,6 +18,8 @@ import {
   makeGatewayEventWithAuthorizer,
   cleanDatabase,
   ADDRESSES,
+  TX_IDS,
+  addToVersionDataTable,
 } from '@tests/utils';
 import { APIGatewayProxyResult } from 'aws-lambda';
 
@@ -31,6 +34,23 @@ const mysql = getDbConnection();
 
 beforeEach(async () => {
   await cleanDatabase(mysql);
+  const now = getUnixTimestamp();
+
+  const versionData = {
+    timestamp: now,
+    version: '0.38.4',
+    network: process.env.NETWORK,
+    minWeight: 8,
+    minTxWeight: 8,
+    minTxWeightCoefficient: 0,
+    minTxWeightK: 0,
+    tokenDepositPercentage: 0.01,
+    rewardSpendMinBlocks: 300,
+    maxNumberInputs: 255,
+    maxNumberOutputs: 255,
+  };
+
+  await addToVersionDataTable(mysql, versionData);
 });
 
 afterAll(async () => {
@@ -138,6 +158,63 @@ test('POST /txproposals with utxos that are already used on another txproposal s
 
   expect(usedInputsReturnBody.success).toBe(false);
   expect(usedInputsReturnBody.error).toBe(ApiError.INPUTS_ALREADY_USED);
+});
+
+test('POST /txproposals with too many outputs should fail with ApiError.TOO_MANY_OUTPUTS', async () => {
+  expect.hasAssertions();
+
+  const now = getUnixTimestamp();
+
+  await updateVersionData(mysql, {
+    timestamp: now,
+    version: '0.38.4',
+    network: process.env.NETWORK,
+    minWeight: 8,
+    minTxWeight: 8,
+    minTxWeightCoefficient: 0,
+    minTxWeightK: 0,
+    tokenDepositPercentage: 0.01,
+    rewardSpendMinBlocks: 300,
+    maxNumberInputs: 255,
+    maxNumberOutputs: 2, // mocking to force a failure
+  });
+
+  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToAddressTable(mysql, [{
+    address: ADDRESSES[0],
+    index: 0,
+    walletId: 'my-wallet',
+    transactions: 2,
+  }]);
+
+  const token1 = '004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50';
+  const token2 = '002f2bcc3261b4fb8510a458ed9df9f6ba2a413ee35901b3c5f81b0c085287e2';
+
+  const utxos = [
+    ['004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50', 0, token1, ADDRESSES[0], 300, 0, null, null, false],
+    ['0000001e39bc37fe8710c01cc1e8c0a937bf6f9337551fbbfddc222bfc28c197', 0, token1, ADDRESSES[0], 100, 0, null, null, false],
+    ['00000060a25077e48926bcd9473d77259296e123ec6af1c1a16c1c381093ab90', 0, token2, ADDRESSES[0], 300, 0, null, null, false],
+  ];
+
+  const outputs = [...Array(10).keys()].map(() => (
+    new hathorLib.Output(300, new hathorLib.Address(ADDRESSES[0], {
+      network: new hathorLib.Network(process.env.NETWORK),
+    }), {
+      tokenData: 1,
+    })
+  ));
+
+  const inputs = [new hathorLib.Input(utxos[0][0], utxos[0][1])];
+  const transaction = new hathorLib.Transaction(inputs, outputs, { tokens: [token1] });
+
+  const txHex = transaction.toHex();
+  const event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({ txHex }));
+  const result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  const returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.TOO_MANY_OUTPUTS);
 });
 
 test('POST /txproposals with a wallet that is not ready should fail with ApiError.WALLET_NOT_READY', async () => {
@@ -1079,4 +1156,34 @@ test('PUT /txproposals/{proposalId} with a different txhex than the one sent in 
   expect(sendReturnBody.error).toStrictEqual(ApiError.TX_PROPOSAL_NO_MATCH);
 
   spy.mockRestore();
+});
+
+test('checkMissingUtxos', async () => {
+  expect.hasAssertions();
+  const inputs: IWalletInput[] = [{
+    txId: TX_IDS[0],
+    index: 0,
+  }, {
+    txId: TX_IDS[0],
+    index: 1,
+  }];
+
+  const utxos: DbTxOutput[] = [{
+    txId: TX_IDS[0],
+    index: 0,
+    tokenId: '00',
+    address: ADDRESSES[0],
+    value: 0,
+    authorities: 0,
+    timelock: 0,
+    heightlock: 0,
+    locked: false,
+    spentBy: null,
+    txProposalId: null,
+    txProposalIndex: null,
+  }];
+
+  const checkMissingResult = checkMissingUtxos(inputs, utxos);
+
+  expect(checkMissingResult).toHaveLength(1);
 });
