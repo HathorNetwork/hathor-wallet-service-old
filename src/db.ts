@@ -2144,30 +2144,6 @@ export const filterUtxos = async (
 };
 
 /**
- * Add tx proposal token information
- *
- * @param mysql - Database connection
- * @param txProposalId - The transaction proposal id
- * @param name - The token name
- * @param symbol - The token symbol
- */
-export const addTxProposalTokenInfo = async (
-  mysql: ServerlessMysql,
-  txProposalId: string,
-  name: string,
-  symbol: string,
-): Promise<void> => {
-  const entry = [
-    [txProposalId, name, symbol],
-  ];
-
-  await mysql.query(
-    'INSERT INTO `tx_proposal_token_info` VALUES ?',
-    [entry],
-  );
-};
-
-/**
  * Get tx proposal inputs.
  *
  * @remarks

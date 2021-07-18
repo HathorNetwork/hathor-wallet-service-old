@@ -12,14 +12,12 @@ import Joi from 'joi';
 import { ApiError } from '@src/api/errors';
 import { maybeRefreshWalletConstants, walletIdProxyHandler } from '@src/commons';
 import {
-  // addTxProposalOutputs,
   createTxProposal,
   getUtxos,
   getWallet,
   getWalletAddresses,
   getWalletAddressDetail,
   markUtxosWithProposalId,
-  addTxProposalTokenInfo,
 } from '@src/db';
 import {
   AddressInfo,
@@ -138,10 +136,6 @@ export const create = walletIdProxyHandler(async (walletId, event) => {
   // mark utxos with tx-proposal id
   const txProposalId = uuidv4();
   markUtxosWithProposalId(mysql, txProposalId, inputUtxos);
-
-  if (tx.version === hathorLib.constants.CREATE_TOKEN_TX_VERSION) {
-    await addTxProposalTokenInfo(mysql, txProposalId, tx.name, tx.symbol);
-  }
 
   await createTxProposal(mysql, txProposalId, walletId, tx.version, now);
   // await addTxProposalOutputs(mysql, txProposalId, outputs);

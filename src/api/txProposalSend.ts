@@ -14,17 +14,14 @@ import {
 import {
   TxProposalStatus,
   ApiResponse,
-  // TxProposalTokenInfo,
 } from '@src/types';
 import {
   closeDbConnection,
   getDbConnection,
   getUnixTimestamp,
-  // validateWeight,
 } from '@src/utils';
 
 import {
-  // maybeRefreshWalletConstants,
   walletIdProxyHandler,
 } from '@src/commons';
 
