@@ -53,8 +53,6 @@ export const cleanDatabase = async (mysql: ServerlessMysql): Promise<void> => {
     'address_tx_history',
     'token',
     'tx_proposal',
-    'tx_proposal_outputs',
-    'tx_proposal_token_info',
     'transaction',
     'tx_output',
     'version_data',
