@@ -163,7 +163,6 @@ export const create = walletIdProxyHandler(async (walletId, event) => {
    */
   arrayShuffle(finalOutputs);
 
-==== BASE ====
   // mark utxos with tx-proposal id
   const txProposalId = uuidv4();
   markUtxosWithProposalId(mysql, txProposalId, inputUtxos);
