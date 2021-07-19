@@ -1188,6 +1188,30 @@ export const getWalletBalances = async (mysql: ServerlessMysql, walletId: string
 };
 
 /**
+ * Gets a list of tokens that a given walllet has ever interacted with
+ *
+ * @returns A list of tokens.
+ */
+export const getWalletTokens = async (
+  mysql: ServerlessMysql,
+  walletId: string,
+): Promise<string[]> => {
+  const tokenList: string[] = [];
+  const results: DbSelectResult = await mysql.query(
+    `SELECT DISTINCT(token_id)
+       FROM \`wallet_tx_history\`
+      WHERE \`wallet_id\` = ?`,
+    [walletId],
+  );
+
+  for (const result of results) {
+    tokenList.push(<string> result.token_id);
+  }
+
+  return tokenList;
+};
+
+/**
  * Get a wallet's transaction history for a token.
  *
  * @remarks
@@ -1226,6 +1250,7 @@ export const getWalletTxHistory = async (
     const tx: TxTokenBalance = {
       txId: <string>result.tx_id,
       timestamp: <number>result.timestamp,
+      voided: <boolean>result.voided,
       balance: <Balance>result.balance,
     };
     history.push(tx);

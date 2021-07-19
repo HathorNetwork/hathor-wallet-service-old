@@ -18,6 +18,7 @@ import {
   getWallet,
   getWalletAddressDetail,
   getWalletAddresses,
+  getWalletTokens,
   getWalletBalances,
   getWalletSortedValueUtxos,
   getVersionData,
@@ -77,6 +78,7 @@ import {
   addToTokenTable,
   addToUtxoTable,
   addToWalletBalanceTable,
+  addToWalletTxHistoryTable,
   addToWalletTable,
   cleanDatabase,
   checkAddressBalanceTable,
@@ -691,6 +693,28 @@ test('updateAddressTablesWithTx', async () => {
   };
   await updateAddressTablesWithTx(mysql, txId5, timestamp5, addrMap5);
   await expect(checkAddressBalanceTable(mysql, 5, address1, 'token1', 5, 7, lockExpires - 1, 5)).resolves.toBe(true);
+});
+
+test('getWalletTokens', async () => {
+  expect.hasAssertions();
+  const wallet1 = 'wallet1';
+  const wallet2 = 'wallet2';
+
+  await addToWalletTxHistoryTable(mysql, [
+    [wallet1, 'tx1', '00', 5, 1000, false],
+    [wallet1, 'tx1', 'token2', 70, 1000, false],
+    [wallet1, 'tx2', 'token3', 10, 1001, false],
+    [wallet1, 'tx3', 'token4', 25, 1001, false],
+    [wallet1, 'tx4', 'token2', 30, 1001, false],
+    [wallet2, 'tx5', '00', 35, 1001, false],
+    [wallet2, 'tx6', 'token2', 31, 1001, false],
+  ]);
+
+  const wallet1Tokens = await getWalletTokens(mysql, wallet1);
+  const wallet2Tokens = await getWalletTokens(mysql, wallet2);
+
+  expect(wallet1Tokens).toHaveLength(4);
+  expect(wallet2Tokens).toHaveLength(2);
 });
 
 test('getWalletAddresses', async () => {

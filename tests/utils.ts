@@ -522,7 +522,7 @@ export const addToWalletTxHistoryTable = async (
   await mysql.query(`
     INSERT INTO \`wallet_tx_history\`(\`wallet_id\`, \`tx_id\`,
                                       \`token_id\`, \`balance\`,
-                                      \`timestamp\`)
+                                      \`timestamp\`, \`voided\`)
     VALUES ?`,
   [entries]);
 };
