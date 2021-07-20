@@ -128,12 +128,7 @@ test('wsJoinWallet', async () => {
   // throw error when limit is exceeded
   client.flushdb();
   let connId = 'a';
-  let limit: number;
-  if (!process.env.WALLET_CONN_LIMIT) {
-    limit = 5;
-  } else {
-    limit = +process.env.WALLET_CONN_LIMIT;
-  }
+  const limit: number = +process.env.WALLET_CONN_LIMIT || 5;
   for (let i = 0; i < limit; i++) {
     await wsJoinWallet(client, { id: connId, url: 'http://url.com' }, 'bar');
     connId += 'a';
