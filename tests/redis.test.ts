@@ -100,7 +100,7 @@ test('endWsConnection', async () => {
 test('wsJoinWallet', async () => {
   expect.hasAssertions();
 
-  // works the same way as wsJoinChannel, but with a special channel
+  // works the same way as wsJoinChannel, but with a special channel and limit
 
   const connInfo = {
     id: 'abcd',
@@ -124,6 +124,17 @@ test('wsJoinWallet', async () => {
   await keysAsync('*').then((keys) => {
     expect(keys.sort()).toStrictEqual(Object.keys(connKeys).concat([chanKey]).sort());
   });
+
+  // throw error when limit is exceeded
+  client.flushdb();
+  let connId = 'a';
+  const limit: number = +process.env.WALLET_CONN_LIMIT || 5;
+  for (let i = 0; i < limit; i++) {
+    await wsJoinWallet(client, { id: connId, url: 'http://url.com' }, 'bar');
+    connId += 'a';
+  }
+  const msg = 'bar: Limit of open connections exceeded';
+  await expect(wsJoinWallet(client, { id: connId, url: 'http://url.com' }, 'bar')).rejects.toThrow(msg);
 });
 
 test('wsJoinChannel', async () => {

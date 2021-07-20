@@ -92,7 +92,9 @@ export const wsJoinWallet = async (
   const setAsync = promisify(client.set).bind(client);
   // verify open connections for walletID
   const openConns = await scanAll(client, `${svcPrefix}:chan:wallet-${walletID}:*`);
-  if (openConns.length >= +process.env.WALLET_CONN_LIMIT) {
+  // wallet connection limit
+  const limit: number = +process.env.WALLET_CONN_LIMIT || 5;
+  if (openConns.length >= limit) {
     throw new WalletLimitExceeded(`${walletID}: Limit of open connections exceeded`);
   }
   return setAsync(`${svcPrefix}:chan:wallet-${walletID}:${connInfo.id}`, connInfo.url);

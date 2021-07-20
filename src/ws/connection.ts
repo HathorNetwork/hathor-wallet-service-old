@@ -18,9 +18,6 @@ import {
   endWsConnection,
   wsJoinWallet,
 } from '@src/redis';
-import {
-  WalletLimitExceeded,
-} from '@src/exceptions';
 
 // Route: @connect
 export const connect = async (
@@ -55,12 +52,7 @@ export const connect = async (
     await wsJoinWallet(redisClient, connInfo, walletId);
   } catch (ex) {
     // wallet limit exceeded, disconnect user
-    if (ex instanceof WalletLimitExceeded) {
-      // disconnect client because he exceeds the limit
-      await disconnectClient(redisClient, connInfo);
-    } else {
-      throw ex;
-    }
+    await disconnectClient(redisClient, connInfo);
   } finally {
     await closeRedisClient(redisClient);
   }
