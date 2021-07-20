@@ -220,7 +220,7 @@ functions:
     timeout: 1
   authTokenApi:
     handler: src/api/auth.tokenHandler
-    timeout: 1
+    timeout: 5
     events:
       - http:
           path: auth/token
