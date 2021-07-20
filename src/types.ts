@@ -80,6 +80,12 @@ export interface AddressInfo {
   transactions: number;
 }
 
+export interface ShortAddressInfo {
+  address: string;
+  index: number;
+  addressPath: string;
+}
+
 export interface TokenBalance {
   tokenId: string;
   balance: Balance;

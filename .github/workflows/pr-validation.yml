@@ -1,0 +1,79 @@
+name: PR Validation
+on:
+  pull_request:
+    types: [ready_for_review, synchronize]
+    paths-ignore:
+      - '**.md'
+  push:
+    branches: [master, dev]
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 20
+    strategy:
+      matrix:
+        node-version: [14.x]
+    services:
+      mysql:
+        # We are using this image because the official one didn't
+        #  support settings default-authentication-plugin using env var
+        # About the --default-authentication-plugin: https://stackoverflow.com/questions/50093144/mysql-8-0-client-does-not-support-authentication-protocol-requested-by-server/56509065#56509065
+        image: centos/mysql-80-centos7
+        env:
+          MYSQL_DATABASE: wallet_service_ci
+          MYSQL_USER: wallet_service_user
+          MYSQL_PASSWORD: password
+          MYSQL_DEFAULT_AUTHENTICATION_PLUGIN: mysql_native_password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 3
+      redis:
+        image: redis:6.2
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout to branch
+        uses: actions/checkout@v2
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Install dependencies
+        run: |
+          npm i --also=dev
+      - name: Initialize DB
+        run: |
+          make migrate
+          make seed_testnet
+        env:
+          NODE_ENV: test
+          CI_DB_NAME: wallet_service_ci
+          CI_DB_USERNAME: wallet_service_user
+          CI_DB_PASSWORD: password
+          CI_DB_HOST: 127.0.0.1
+          CI_DB_PORT: 3306
+      - name: Run Tests
+        run: |
+          npm run test
+        env:
+          NODE_ENV: test
+          NETWORK: mainnet
+          DB_ENDPOINT: 127.0.0.1
+          DB_PORT: 3306
+          DB_NAME: wallet_service_ci
+          DB_USER: wallet_service_user
+          DB_PASS: password
+          REDIS_HOST: 127.0.0.1
+          REDIS_PORT: 6379
+          MAX_ADDRESS_GAP: 10
+          BLOCK_REWARD_LOCK: 300
+          CONFIRM_FIRST_ADDRESS: true

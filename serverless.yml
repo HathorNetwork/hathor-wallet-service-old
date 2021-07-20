@@ -108,7 +108,6 @@ functions:
     handler: src/api/wallet.loadWallet
   loadWalletApi:
     handler: src/api/wallet.load
-    role: arn:aws:iam::769498303037:role/WalletServiceLoadWalletLambda
     events:
       - http:
           path: wallet/init
@@ -127,6 +126,14 @@ functions:
     events:
       - http:
           path: wallet/addresses
+          method: get
+          cors: true
+          authorizer: ${self:custom.authorizer.walletBearer}
+  getNewAddresses:
+    handler: src/api/newAddresses.get
+    events:
+      - http:
+          path: wallet/addresses/new
           method: get
           cors: true
           authorizer: ${self:custom.authorizer.walletBearer}

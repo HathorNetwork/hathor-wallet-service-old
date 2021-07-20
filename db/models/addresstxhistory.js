@@ -30,7 +30,7 @@ module.exports = (sequelize, DataTypes) => {
       primaryKey: true,
     },
     balance: {
-      type: DataTypes.BIGINT.UNSIGNED,
+      type: DataTypes.BIGINT,
       allowNull: false,
     },
     timestamp: {
