@@ -146,26 +146,41 @@ export const tokenHandler: APIGatewayProxyHandler = async (event) => {
   };
 };
 
-/**
- * Generates a aws policy document to allow/deny access to the resource
- */
-const _generatePolicy = (principalId: string, effect: string, resource: string) => {
-  const resourcePrefix = `${resource.split('/').slice(0, 2).join('/')}/*`;
-  const policyDocument: PolicyDocument = {
-    Version: '2012-10-17',
-    Statement: [],
-  };
-
+const _generateAPIStatement = (methodArn: string) => {
+  const resourcePrefix = `${methodArn.split('/').slice(0, 2).join('/')}/*`;
   const statementOne: Statement = {
     Action: 'execute-api:Invoke',
-    Effect: effect,
+    Effect: 'Allow',
     Resource: [
       `${resourcePrefix}/wallet/*`,
       `${resourcePrefix}/tx/*`,
     ],
   };
+  console.info('Generated statement:', statementOne);
+  return [statementOne];
+};
 
-  policyDocument.Statement[0] = statementOne;
+const _generateWsStatement = (methodArn: string) => {
+  // For Websocket, only $connect access is needed, and it's also always the caller
+  const statementOne: Statement = {
+    Action: 'execute-api:Invoke',
+    Effect: 'Allow',
+    Resource: [
+      methodArn,
+    ],
+  };
+  console.info('Generated statement:', statementOne);
+  return [statementOne];
+};
+
+/**
+ * Generates a aws policy document to allow/deny access to the api
+ */
+const _generatePolicy = (principalId: string, statement: Statement[]) => {
+  const policyDocument: PolicyDocument = {
+    Version: '2012-10-17',
+    Statement: statement,
+  };
 
   const authResponse: CustomAuthorizerResult = {
     policyDocument,
@@ -177,12 +192,10 @@ const _generatePolicy = (principalId: string, effect: string, resource: string) 
 
   // XXX: to get the resulting policy on the logs, since we can't check the cached policy
   console.info('Generated policy:', authResponse);
-  console.info('Generated statement:', statementOne);
   return authResponse;
 };
 
-export const bearerAuthorizer: APIGatewayAuthorizerHandler = async (event) => {
-  console.log(event);
+export const extractTokenFromEvent = (event) => {
   let token: string;
   if (event.type === 'REQUEST') {
     token = event.headers.Authorization || event.queryStringParameters.token || null;
@@ -193,11 +206,16 @@ export const bearerAuthorizer: APIGatewayAuthorizerHandler = async (event) => {
     console.error('No token found');
     throw new Error('Unauthorized'); // returns a 401
   }
-  const tokenSanitized: string = token.trim().startsWith('Bearer ') ? token.trim().replace(/Bearer /gi, '') : token.trim();
+
+  // Sanitize token
+  return token.trim().startsWith('Bearer ') ? token.trim().replace(/Bearer /gi, '') : token.trim();
+};
+
+export const verifyToken = (token) => {
   let data;
   try {
     data = jwt.verify(
-      tokenSanitized,
+      token,
       process.env.AUTH_SECRET,
     );
   } catch (e) {
@@ -221,11 +239,69 @@ export const bearerAuthorizer: APIGatewayAuthorizerHandler = async (event) => {
   const walletId = data.wid;
 
   const address = new bitcore.Address(addr, hathorLib.network.getNetwork());
-
-  if (verifySignature(signature, timestamp, address, walletId)) {
-    return _generatePolicy(walletId, 'Allow', event.methodArn);
+  if (!verifySignature(signature, timestamp, address, walletId)) {
+    return null;
   }
 
-  console.error('Could not verify ownership');
-  throw new Error('Unauthorized');
+  return walletId;
+};
+
+export const bearerAuthorizer: APIGatewayAuthorizerHandler = async (event) => {
+  console.log(event);
+  // extract token from event
+  let token: string;
+  try {
+    token = extractTokenFromEvent(event);
+  } catch (e) {
+    console.error(e);
+    throw new Error('Unauthorized');
+  }
+
+  // extract walletId from token (and validation)
+  let walletId: string;
+  try {
+    walletId = verifyToken(token);
+  } catch (e) {
+    console.error(e);
+    throw new Error('Unauthorized');
+  }
+
+  if (!walletId) {
+    console.error('Could not verify ownership');
+    throw new Error('Unauthorized');
+  }
+
+  const statement = _generateAPIStatement(event.methodArn);
+
+  return _generatePolicy(walletId, statement);
+};
+
+export const wsAuthorizer: APIGatewayAuthorizerHandler = async (event) => {
+  console.log(event);
+  // extract token from event
+  let token: string;
+  try {
+    token = extractTokenFromEvent(event);
+  } catch (e) {
+    console.error(e);
+    throw new Error('Unauthorized');
+  }
+
+  // extract walletId from token (and validation)
+  let walletId: string;
+  try {
+    walletId = verifyToken(token);
+  } catch (e) {
+    console.error(e);
+    throw new Error('Unauthorized');
+  }
+
+  if (!walletId) {
+    console.error('Could not verify ownership');
+    throw new Error('Unauthorized');
+  }
+
+  const statement = _generateWsStatement(event.methodArn);
+
+  return _generatePolicy(walletId, statement);
 };

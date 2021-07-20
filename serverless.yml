@@ -22,8 +22,8 @@ custom:
       identitySource:
         - method.request.header.Authorization
       resultTtlInSeconds: 600
-    wsBearer:
-      name: bearerAuthorizer
+    wsAuth:
+      name: wsAuthorizer
       type: REQUEST
       identitySource:
         - route.request.querystring.token
@@ -191,7 +191,7 @@ functions:
     events:
       - websocket:
           route: $connect
-          authorizer: ${self:custom.authorizer.wsBearer}
+          authorizer: ${self:custom.authorizer.wsAuth}
   wsDisconnect:
     handler: src/ws/connection.disconnect
     events:
@@ -235,3 +235,5 @@ functions:
           cors: true
   bearerAuthorizer:
     handler: src/api/auth.bearerAuthorizer
+  wsAuthorizer:
+    handler: src/api/auth.wsAuthorizer
