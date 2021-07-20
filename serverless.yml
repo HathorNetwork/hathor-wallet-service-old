@@ -18,16 +18,16 @@ custom:
   authorizer:
     walletBearer:
       name: bearerAuthorizer
-      type: token
+      type: TOKEN
       identitySource:
         - method.request.header.Authorization
       resultTtlInSeconds: 600
     wsBearer:
       name: bearerAuthorizer
-      type: token
+      type: REQUEST
       identitySource:
         - route.request.querystring.token
-      resultTtlInSeconds: 600
+      resultTtlInSeconds: 60
 
 plugins:
   - serverless-offline

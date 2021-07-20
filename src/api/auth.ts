@@ -7,7 +7,7 @@
 
 import {
   APIGatewayProxyHandler,
-  APIGatewayTokenAuthorizerHandler,
+  APIGatewayAuthorizerHandler,
   CustomAuthorizerResult,
   PolicyDocument,
   Statement,
@@ -181,12 +181,19 @@ const _generatePolicy = (principalId: string, effect: string, resource: string) 
   return authResponse;
 };
 
-export const bearerAuthorizer: APIGatewayTokenAuthorizerHandler = async (event) => {
-  const { authorizationToken } = event;
-  if (!authorizationToken) {
-    throw new Error('No token found!'); // returns a 401
+export const bearerAuthorizer: APIGatewayAuthorizerHandler = async (event) => {
+  console.log(event);
+  let token: string;
+  if (event.type === 'REQUEST') {
+    token = event.headers.Authorization || event.queryStringParameters.token || null;
+  } else {
+    token = event.authorizationToken || null;
   }
-  const tokenSanitized = authorizationToken.replace(/Bearer /gi, '');
+  if (!token) {
+    console.error('No token found');
+    throw new Error('Unauthorized'); // returns a 401
+  }
+  const tokenSanitized: string = token.trim().startsWith('Bearer ') ? token.trim().replace(/Bearer /gi, '') : token.trim();
   let data;
   try {
     data = jwt.verify(
@@ -197,9 +204,11 @@ export const bearerAuthorizer: APIGatewayTokenAuthorizerHandler = async (event) 
     // Identify exception from jsonwebtoken by the name property
     // https://github.com/auth0/node-jsonwebtoken/blob/master/lib/TokenExpiredError.js#L5
     if (e.name === 'JsonWebTokenError') {
-      throw new Error('Invalid Token');
+      console.error('Invalid Token');
+      throw new Error('Unauthorized');
     } else if (e.name === 'TokenExpiredError') {
-      throw new Error('Expired Token');
+      console.error('Expired Token');
+      throw new Error('Unauthorized');
     } else {
       console.log('Error on bearerAuthorizer: ', e);
       throw e;
@@ -217,5 +226,6 @@ export const bearerAuthorizer: APIGatewayTokenAuthorizerHandler = async (event) 
     return _generatePolicy(walletId, 'Allow', event.methodArn);
   }
 
-  throw new Error('Could not verify ownership.');
+  console.error('Could not verify ownership');
+  throw new Error('Unauthorized');
 };
