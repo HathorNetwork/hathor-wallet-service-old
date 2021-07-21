@@ -51,7 +51,7 @@ provider:
   memorySize: 256
   # This is the default timeout. Each function can specify a different value
   timeout: 6
-  websocketsApiName: wallet-realtime-ws-api
+  websocketsApiName: wallet-realtime-ws-api-${opt:stage, 'dev'}
   websocketsApiRouteSelectionExpression: $request.body.action
   vpc:
     securityGroupIds:
