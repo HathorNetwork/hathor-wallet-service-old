@@ -1188,7 +1188,7 @@ export const getWalletBalances = async (mysql: ServerlessMysql, walletId: string
 };
 
 /**
- * Gets a list of tokens that a given walllet has ever interacted with
+ * Gets a list of tokens that a given wallet has ever interacted with
  *
  * @returns A list of tokens.
  */
