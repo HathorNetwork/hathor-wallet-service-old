@@ -11,8 +11,7 @@ import {
 } from '@src/exceptions';
 
 const redisConfig: RedisConfig = {
-  host: process.env.REDIS_HOST,
-  port: parseInt(process.env.REDIS_PORT, 10),
+  url: process.env.REDIS_URL,
   password: process.env.REDIS_PASSWORD,
 };
 

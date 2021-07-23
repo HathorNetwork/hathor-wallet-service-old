@@ -556,8 +556,7 @@ export type WsConnectionInfo = {
 }
 
 export type RedisConfig = {
-  host: string;
-  port?: number;
+  url: string;
   password?: string;
 };
 
