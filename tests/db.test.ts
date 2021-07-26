@@ -973,12 +973,13 @@ test('updateTx should add height to a tx', async () => {
   expect.hasAssertions();
 
   await addOrUpdateTx(mysql, 'txId1', null, 1, 1);
-  await updateTx(mysql, 'txId1', null, 1, 1);
+  await updateTx(mysql, 'txId1', 5, 1, 1);
 
   const txs = await getTransactionsById(mysql, ['txId1']);
   const tx = txs[0];
 
   expect(tx.txId).toStrictEqual('txId1');
+  expect(tx.height).toStrictEqual(5);
 });
 
 test('getLatestHeight, getTxsAfterHeight, deleteBlocksAfterHeight and removeTxsHeight', async () => {
