@@ -643,9 +643,3 @@ export interface IWalletInsufficientFunds {
   requested: number;
   available: number;
 }
-
-export interface TxProposalTokenInfo {
-  txProposalId: string;
-  symbol: string;
-  name: string;
-}
