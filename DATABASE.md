@@ -73,7 +73,6 @@ CREATE TABLE `tx_proposal` (
   `id` varchar(36) NOT NULL,
   `wallet_id` varchar(64) NOT NULL,
   `status` enum('open','sent','send_error','cancelled') NOT NULL,
-  `version` int unsigned NOT NULL DEFAULT 1,
   `created_at` int unsigned NOT NULL,
   `updated_at` int unsigned DEFAULT NULL,
   PRIMARY KEY (`id`)

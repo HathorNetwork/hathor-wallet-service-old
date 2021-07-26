@@ -1188,14 +1188,14 @@ test('createTxProposal, updateTxProposal and getTxProposal', async () => {
   const txProposalId = uuidv4();
   const walletId = 'walletId';
 
-  await createTxProposal(mysql, txProposalId, walletId, 1, now);
+  await createTxProposal(mysql, txProposalId, walletId, now);
   let txProposal = await getTxProposal(mysql, txProposalId);
-  expect(txProposal).toStrictEqual({ id: txProposalId, walletId, version: 1, status: TxProposalStatus.OPEN, createdAt: now, updatedAt: null });
+  expect(txProposal).toStrictEqual({ id: txProposalId, walletId, status: TxProposalStatus.OPEN, createdAt: now, updatedAt: null });
 
   // update
   await updateTxProposal(mysql, txProposalId, now + 7, TxProposalStatus.SENT);
   txProposal = await getTxProposal(mysql, txProposalId);
-  expect(txProposal).toStrictEqual({ id: txProposalId, walletId, version: 1, status: TxProposalStatus.SENT, createdAt: now, updatedAt: now + 7 });
+  expect(txProposal).toStrictEqual({ id: txProposalId, walletId, status: TxProposalStatus.SENT, createdAt: now, updatedAt: now + 7 });
 
   // tx proposal not found
   expect(await getTxProposal(mysql, 'aaa')).toBeNull();
