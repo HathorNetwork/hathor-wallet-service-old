@@ -10,6 +10,7 @@ import {
 } from '@src/db';
 import {
   DbTxOutput,
+  DbTxOutputWithPath,
   IFilterUtxo,
   AddressInfo,
 } from '@src/types';
@@ -90,7 +91,7 @@ export const getFilteredUtxos = walletIdProxyHandler(async (walletId, event) => 
       return closeDbAndGetError(mysql, ApiError.FORBIDDEN);
     }
 
-    const utxoList = mapUtxosWithPath(walletAddresses, [utxo]);
+    const utxoList: DbTxOutputWithPath[] = mapUtxosWithPath(walletAddresses, [utxo]);
 
     return {
       statusCode: 200,
@@ -113,7 +114,7 @@ export const getFilteredUtxos = walletIdProxyHandler(async (walletId, event) => 
 
   const body: IFilterUtxo = value;
   const utxos: DbTxOutput[] = await filterUtxos(mysql, body);
-  const utxosWithPath = mapUtxosWithPath(walletAddresses, utxos);
+  const utxosWithPath: DbTxOutputWithPath[] = mapUtxosWithPath(walletAddresses, utxos);
 
   return {
     statusCode: 200,
@@ -131,7 +132,7 @@ export const getFilteredUtxos = walletIdProxyHandler(async (walletId, event) => 
  * @param utxos - A list of utxos to map
  * @returns A list with the mapped utxos
  */
-export const mapUtxosWithPath = (walletAddresses: AddressInfo[], utxos: DbTxOutput[]) => utxos.map((utxo) => {
+export const mapUtxosWithPath = (walletAddresses: AddressInfo[], utxos: DbTxOutput[]): DbTxOutputWithPath[] => utxos.map((utxo) => {
   const addressDetail: AddressInfo = walletAddresses.find((address) => address.address === utxo.address);
   if (!addressDetail) {
     // this should never happen, so we will throw here
