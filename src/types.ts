@@ -628,12 +628,6 @@ export interface IFilterUtxo {
   index?: number;
 }
 
-export interface IWalletInsufficientFunds {
-  tokenId: string;
-  requested: number;
-  available: number;
-}
-
 export interface DbTxOutputWithPath extends DbTxOutput {
   addressPath: string;
 }
