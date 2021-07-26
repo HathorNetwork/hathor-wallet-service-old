@@ -32,7 +32,7 @@ const bodySchema = Joi.object({
   smallerThan: Joi.number().integer().positive().default(constants.MAX_OUTPUT_VALUE + 1),
   maxUtxos: Joi.number().integer().positive().default(constants.MAX_OUTPUTS),
   txId: Joi.string().optional(),
-  index: Joi.number().optional(),
+  index: Joi.number().optional().min(0),
 });
 
 /*
