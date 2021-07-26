@@ -78,24 +78,6 @@ CREATE TABLE `tx_proposal` (
   PRIMARY KEY (`id`)
 );
 
-CREATE TABLE `tx_proposal_outputs` (
-  `tx_proposal_id` varchar(36) NOT NULL,
-  `index` tinyint unsigned NOT NULL,
-  `address` varchar(34) NOT NULL,
-  `token_id` varchar(64), -- Can be null because it might be a token creation action
-  `token_data` int unsigned NOT NULL,
-  `value` bigint DEFAULT NULL,
-  `timelock` int unsigned DEFAULT NULL,
-  PRIMARY KEY (`tx_proposal_id`,`index`)
-);
-
-CREATE TABLE `tx_proposal_token_info` (
-  `tx_proposal_id` varchar(36) NOT NULL,
-  `name` varchar(30) NOT NULL,
-  `symbol` varchar(5) NOT NULL,
-  PRIMARY KEY (`tx_proposal_id`)
-);
-
 CREATE TABLE `tx_output` (
   `tx_id` varchar(64) NOT NULL, -- tx_id might point to a block
   `index` tinyint unsigned NOT NULL,
