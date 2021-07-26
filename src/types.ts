@@ -643,3 +643,7 @@ export interface IWalletInsufficientFunds {
   requested: number;
   available: number;
 }
+
+export interface DbTxOutputWithPath extends DbTxOutput {
+  addressPath: string;
+}
