@@ -149,6 +149,8 @@ test('get utxos with wallet id', async () => {
     heightlock: utxo[7],
     locked: utxo[8],
     addressPath: `m/44'/280'/0'/0/${path}`,
+    txProposalId: null,
+    txProposalIndex: null,
   });
 
   expect(result.statusCode).toBe(200);

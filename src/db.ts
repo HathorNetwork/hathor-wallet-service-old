@@ -655,19 +655,7 @@ export const getUtxo = async (
 
   const result = results[0];
 
-  const utxo: DbTxOutput = {
-    txId: result.tx_id as string,
-    index: result.index as number,
-    tokenId: result.token_id as string,
-    address: result.address as string,
-    value: result.value as number,
-    authorities: result.authorities as number,
-    timelock: result.timelock as number,
-    heightlock: result.heightlock as number,
-    locked: result.locked > 0,
-    txProposalId: result.tx_proposal as string,
-    txProposalIndex: result.tx_proposal_index as number,
-  };
+  const utxo: DbTxOutput = mapDbResultToDbTxOutput(result);
 
   return utxo;
 };
@@ -683,7 +671,6 @@ export const getUtxos = async (
   mysql: ServerlessMysql,
   utxosInfo: IWalletInput[],
 ): Promise<DbTxOutput[]> => {
-  const utxos = [];
   const entries = utxosInfo.map((utxo) => [utxo.txId, utxo.index]);
   const results: DbSelectResult = await mysql.query(
     `SELECT *
@@ -694,22 +681,9 @@ export const getUtxos = async (
         AND \`voided\` = FALSE`,
     [entries],
   );
-  for (const result of results) {
-    const utxo: DbTxOutput = {
-      txId: result.tx_id as string,
-      index: result.index as number,
-      tokenId: result.token_id as string,
-      address: result.address as string,
-      value: result.value as number,
-      authorities: result.authorities as number,
-      timelock: result.timelock as number,
-      heightlock: result.heightlock as number,
-      locked: result.locked > 0,
-      txProposalId: result.tx_proposal as string,
-      txProposalIndex: result.tx_proposal_index as number,
-    };
-    utxos.push(utxo);
-  }
+
+  const utxos = results.map(mapDbResultToDbTxOutput);
+
   return utxos;
 };
 
@@ -1412,6 +1386,7 @@ export const getLatestHeight = async (mysql: ServerlessMysql): Promise<number> =
   if (results.length > 0 && results[0].value !== null) {
     return results[0].value as number;
   }
+
   // it should never come here, as genesis block should be added at startup
   return 0;
 };
@@ -2126,20 +2101,30 @@ export const filterUtxos = async (
     ],
   );
 
-  const utxos: DbTxOutput[] = results.map((utxo) => ({
-    txId: utxo.tx_id as string,
-    index: utxo.index as number,
-    tokenId: utxo.token_id as string,
-    address: utxo.address as string,
-    value: utxo.value as number,
-    authorities: utxo.authorities as number,
-    timelock: utxo.timelock as number,
-    heightlock: utxo.heightlock as number,
-    locked: utxo.locked > 0,
-  }));
+  const utxos: DbTxOutput[] = results.map(mapDbResultToDbTxOutput);
 
   return utxos;
 };
+
+/**
+ * Maps the result from the database to DbTxOutput
+ *
+ * @param results - The tx_output results from the database
+ * @returns A list of tx_outputs mapped to the DbTxOutput type
+ */
+export const mapDbResultToDbTxOutput = (result: any): DbTxOutput => ({
+  txId: result.tx_id as string,
+  index: result.index as number,
+  tokenId: result.token_id as string,
+  address: result.address as string,
+  value: result.value as number,
+  authorities: result.authorities as number,
+  timelock: result.timelock as number,
+  heightlock: result.heightlock as number,
+  locked: result.locked > 0,
+  txProposalId: result.tx_proposal as string,
+  txProposalIndex: result.tx_proposal_index as number,
+});
 
 /**
  * Get tx proposal inputs.
