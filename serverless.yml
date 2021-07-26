@@ -130,16 +130,6 @@ functions:
           method: get
           cors: true
           authorizer: ${self:custom.authorizer.walletBearer}
-          request:
-            parameters:
-              querystrings:
-                addresses: true
-                tokenId: true
-                authority: true
-                ignoreLocked: true
-                biggerThan: true
-                smallerThan: true
-                maxUtxos: true
   getBalanceApi:
     handler: src/api/balances.get
     events:
