@@ -145,7 +145,7 @@ export const mapUtxosWithPath = (walletAddresses: AddressInfo[], utxos: DbTxOutp
 /**
  * Confirm that the requested addresses belongs to the user's wallet
  *
- * @param walletId - The user wallet id
+ * @param walletAddresses - The user wallet id
  * @param addresses - List of addresses to validate
  * @returns A list with the denied addresses, if any
  */
