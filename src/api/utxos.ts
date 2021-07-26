@@ -82,6 +82,7 @@ export const getFilteredUtxos = walletIdProxyHandler(async (walletId, event) => 
       return closeDbAndGetError(mysql, ApiError.UTXO_NOT_FOUND);
     }
 
+    // check if the utxo is a member of the user's wallet
     const denied = await validateAddresses(walletAddresses, [utxo.address]);
 
     if (denied.length > 0) {
@@ -89,7 +90,6 @@ export const getFilteredUtxos = walletIdProxyHandler(async (walletId, event) => 
       return closeDbAndGetError(mysql, ApiError.FORBIDDEN);
     }
 
-    // check if the utxo is a member of the user's wallet
     const utxoList = mapUtxosWithPath(walletAddresses, [utxo]);
 
     return {
