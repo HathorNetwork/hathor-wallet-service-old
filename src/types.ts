@@ -624,10 +624,8 @@ export interface IFilterUtxo {
   biggerThan?: number;
   smallerThan?: number;
   maxUtxos?: number;
-}
-
-export enum InputSelectionAlgo {
-  USE_LARGER_UTXOS = 'use-larger-utxos',
+  txId?: string;
+  index?: number;
 }
 
 export interface IWalletInsufficientFunds {
