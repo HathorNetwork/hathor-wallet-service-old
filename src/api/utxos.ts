@@ -38,7 +38,7 @@ const bodySchema = Joi.object({
 /*
  * Filter utxos
  *
- * This lambda is called by API Gateway on POST /filter_utxos
+ * This lambda is called by API Gateway on GET /wallet/utxos
  */
 export const getFilteredUtxos = walletIdProxyHandler(async (walletId, event) => {
   const multiQueryString = event.multiValueQueryStringParameters || {};
