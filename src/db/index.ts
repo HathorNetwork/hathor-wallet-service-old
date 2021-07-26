@@ -1553,10 +1553,9 @@ export const createTxProposal = async (
   mysql: ServerlessMysql,
   txProposalId: string,
   walletId: string,
-  version: number,
   now: number,
 ): Promise<void> => {
-  const entry = { id: txProposalId, wallet_id: walletId, version, status: TxProposalStatus.OPEN, created_at: now };
+  const entry = { id: txProposalId, wallet_id: walletId, status: TxProposalStatus.OPEN, created_at: now };
   await mysql.query(
     'INSERT INTO `tx_proposal` SET ?',
     [entry],
@@ -1603,7 +1602,6 @@ export const getTxProposal = async (
     id: txProposalId,
     walletId: results[0].wallet_id as string,
     status: results[0].status as TxProposalStatus,
-    version: results[0].version as number,
     createdAt: results[0].created_at as number,
     updatedAt: results[0].updated_at as number,
   };

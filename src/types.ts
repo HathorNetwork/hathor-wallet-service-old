@@ -55,7 +55,6 @@ export interface TxProposal {
   id: string;
   walletId: string;
   status: TxProposalStatus;
-  version: number;
   createdAt: number;
   updatedAt: number;
 }
