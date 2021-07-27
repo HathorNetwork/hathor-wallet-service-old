@@ -347,6 +347,7 @@ export class WalletTokenBalance {
 export interface TxTokenBalance {
   txId: string;
   timestamp: number;
+  voided: boolean;
   balance: Balance;
 }
 
