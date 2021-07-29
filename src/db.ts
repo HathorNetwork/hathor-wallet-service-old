@@ -169,6 +169,7 @@ export const getWallet = async (mysql: ServerlessMysql, walletId: string): Promi
       walletId,
       xpubkey: result.xpubkey as string,
       status: result.status as WalletStatus,
+      retryCount: result.retry_count as number,
       maxGap: result.max_gap as number,
       createdAt: result.created_at as number,
       readyAt: result.ready_at as number,

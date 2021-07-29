@@ -70,6 +70,7 @@ export interface Wallet {
   xpubkey: string;
   maxGap: number;
   status?: WalletStatus;
+  retryCount?: number;
   createdAt?: number;
   readyAt?: number;
 }

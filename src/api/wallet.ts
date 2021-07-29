@@ -29,6 +29,8 @@ import { walletUtils } from '@hathor/wallet-lib';
 
 const mysql = getDbConnection();
 
+const MAX_LOAD_WALLET_RETRIES: number = parseInt(process.env.MAX_LOAD_WALLET_RETRIES || '0', 10);
+
 /*
  * Get the status of a wallet
  *
@@ -92,9 +94,18 @@ export const load: APIGatewayProxyHandler = async (event) => {
 
   // is wallet already loaded/loading?
   const walletId = getWalletId(xpubkey);
-  let status = await getWallet(mysql, walletId);
-  if (status) {
-    return closeDbAndGetError(mysql, ApiError.WALLET_ALREADY_LOADED, { status });
+  let wallet = await getWallet(mysql, walletId);
+
+  if (wallet) {
+    if (wallet.status === WalletStatus.READY
+      || wallet.status === WalletStatus.CREATING) {
+      return closeDbAndGetError(mysql, ApiError.WALLET_ALREADY_LOADED, { status: wallet });
+    }
+
+    if (wallet.status === WalletStatus.ERROR
+        && wallet.retryCount < MAX_LOAD_WALLET_RETRIES) {
+      return closeDbAndGetError(mysql, ApiError.WALLET_MAX_RETRIES, { status: wallet });
+    }
   }
 
   if (process.env.CONFIRM_FIRST_ADDRESS === 'true') {
@@ -114,12 +125,12 @@ export const load: APIGatewayProxyHandler = async (event) => {
   const maxGap = parseInt(process.env.MAX_ADDRESS_GAP, 10);
 
   // add to wallet table with 'creating' status
-  status = await createWallet(mysql, walletId, xpubkey, maxGap);
+  wallet = await createWallet(mysql, walletId, xpubkey, maxGap);
 
   // invoke lambda asynchronously to handle wallet creation
   const lambda = new Lambda({
     apiVersion: '2015-03-31',
-    endpoint: process.env.STAGE === 'local'
+    endpoint: process.env.STAGE === 'dev'
       ? 'http://localhost:3002'
       : `https://lambda.${process.env.AWS_REGION}.amazonaws.com`,
   });
@@ -132,17 +143,21 @@ export const load: APIGatewayProxyHandler = async (event) => {
   };
 
   try {
-    // TODO setup lambda error handling. It's not an error on lambda.invoke, but an error during lambda execution
-    await lambda.invoke(params).promise();
+    const response = await lambda.invoke(params).promise();
+    // Event InvocationType returns 202 for a successful invokation
+    if (response.StatusCode !== 202) {
+      throw new Error('Lambda invoke failed');
+    }
   } catch (e) {
-    // TODO handle
+    // update wallet status to 'error'
+    await updateWalletStatus(mysql, walletId, WalletStatus.ERROR);
   }
 
   await closeDbConnection(mysql);
 
   return {
     statusCode: 200,
-    body: JSON.stringify({ success: true, status }),
+    body: JSON.stringify({ success: true, status: wallet }),
   };
 };
 

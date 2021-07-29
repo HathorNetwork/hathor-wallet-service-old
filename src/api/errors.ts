@@ -28,6 +28,7 @@ export enum ApiError {
   WALLET_NOT_FOUND = 'wallet-not-found',
   WALLET_NOT_READY = 'wallet-not-ready',
   WALLET_ALREADY_LOADED = 'wallet-already-loaded',
+  WALLET_MAX_RETRIES = 'wallet-max-retries',
   ADDRESS_NOT_IN_WALLET = 'address-not-in-wallet',
   NO_TX_INDEX = 'no-tx-index',
   UTXO_NOT_FOUND = 'utxo-not-found',
