@@ -1540,6 +1540,8 @@ test('filterUtxos', async () => {
     [txId2, 2, tokenId, addr2, 1500, 0, null, null, true],
     // authority utxo:
     [txId2, 3, tokenId, addr2, 0, 0b01, null, null, false],
+    // another authority utxo:
+    [txId2, 4, tokenId, addr2, 0, 0b01, null, null, false],
   ]);
 
   // filter all hathor utxos from addr1 and addr2
@@ -1556,7 +1558,7 @@ test('filterUtxos', async () => {
 
   // filter all authority utxos from addr1 and addr2
   utxos = await filterUtxos(mysql, { addresses: [addr1, addr2], tokenId, authority: 0b01 });
-  expect(utxos).toHaveLength(1);
+  expect(utxos).toHaveLength(2);
 
   // filter all utxos between 100 and 1500
   utxos = await filterUtxos(mysql, { addresses: [addr1, addr2], tokenId, biggerThan: 100, smallerThan: 1500 });
@@ -1617,6 +1619,11 @@ test('filterUtxos', async () => {
     txProposalId: null,
     txProposalIndex: null,
   });
+
+  // authorities != 0 and maxUtxos == 1 should return only one authority utxo
+  utxos = await filterUtxos(mysql, { addresses: [addr1, addr2], biggerThan: 0, smallerThan: 3, authority: 1, tokenId, maxUtxos: 1 });
+
+  expect(utxos.length).toStrictEqual(1);
 });
 
 test('filterUtxos should throw if addresses are empty', async () => {

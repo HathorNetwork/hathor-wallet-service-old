@@ -2100,6 +2100,19 @@ export const filterUtxos = async (
     throw new Error('Addresses can\'t be empty.');
   }
 
+  const queryParams = [
+    finalFilters.addresses,
+    finalFilters.tokenId,
+    finalFilters.authority,
+  ];
+
+  if (finalFilters.authority === 0) {
+    queryParams.push(finalFilters.smallerThan);
+    queryParams.push(finalFilters.biggerThan);
+  }
+
+  queryParams.push(finalFilters.maxUtxos);
+
   const results: DbSelectResult = await mysql.query(
     `SELECT *
        FROM \`tx_output\`
@@ -2116,14 +2129,7 @@ export const filterUtxos = async (
    ORDER BY \`value\` DESC
         ${finalFilters.maxUtxos ? 'LIMIT ?' : ''}
        `,
-    [
-      finalFilters.addresses,
-      finalFilters.tokenId,
-      finalFilters.authority,
-      finalFilters.smallerThan,
-      finalFilters.biggerThan,
-      finalFilters.maxUtxos,
-    ],
+    queryParams,
   );
 
   const utxos: DbTxOutput[] = results.map(mapDbResultToDbTxOutput);
