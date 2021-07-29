@@ -62,6 +62,33 @@ const loadBodySchema = Joi.object({
 });
 
 /*
+ * Invoke lambda methods
+ */
+export const lambdaInvoke = async (xpubkey: string, maxGap: number): Promise<void> => {
+  // invoke lambda asynchronously to handle wallet creation
+  const lambda = new Lambda({
+    apiVersion: '2015-03-31',
+    endpoint: process.env.STAGE === 'dev'
+      ? 'http://localhost:3002'
+      : `https://lambda.${process.env.AWS_REGION}.amazonaws.com`,
+  });
+
+  const params = {
+    // FunctionName is composed of: service name - stage - function name
+    FunctionName: `${process.env.SERVICE_NAME}-${process.env.STAGE}-loadWalletAsync`,
+    InvocationType: 'Event',
+    Payload: JSON.stringify({ xpubkey, maxGap }),
+  };
+
+  const response = await lambda.invoke(params).promise();
+
+  // Event InvocationType returns 202 for a successful invokation
+  if (response.StatusCode !== 202) {
+    throw new Error('Lambda invoke failed');
+  }
+};
+
+/*
  * Load a wallet. First checks if the wallet doesn't exist already and then call another
  * lamdba to asynchronously add new wallet info to database
  *
@@ -91,6 +118,7 @@ export const load: APIGatewayProxyHandler = async (event) => {
   }
 
   const xpubkey = value.xpubkey;
+  const maxGap = parseInt(process.env.MAX_ADDRESS_GAP, 10);
 
   // is wallet already loaded/loading?
   const walletId = getWalletId(xpubkey);
@@ -106,6 +134,9 @@ export const load: APIGatewayProxyHandler = async (event) => {
         && wallet.retryCount < MAX_LOAD_WALLET_RETRIES) {
       return closeDbAndGetError(mysql, ApiError.WALLET_MAX_RETRIES, { status: wallet });
     }
+  } else {
+    // wallet does not exist yet. Add to wallet table with 'creating' status
+    wallet = await createWallet(mysql, walletId, xpubkey, maxGap);
   }
 
   if (process.env.CONFIRM_FIRST_ADDRESS === 'true') {
@@ -122,35 +153,16 @@ export const load: APIGatewayProxyHandler = async (event) => {
     }
   }
 
-  const maxGap = parseInt(process.env.MAX_ADDRESS_GAP, 10);
-
-  // add to wallet table with 'creating' status
-  wallet = await createWallet(mysql, walletId, xpubkey, maxGap);
-
-  // invoke lambda asynchronously to handle wallet creation
-  const lambda = new Lambda({
-    apiVersion: '2015-03-31',
-    endpoint: process.env.STAGE === 'dev'
-      ? 'http://localhost:3002'
-      : `https://lambda.${process.env.AWS_REGION}.amazonaws.com`,
-  });
-
-  const params = {
-    // FunctionName is composed of: service name - stage - function name
-    FunctionName: `${process.env.SERVICE_NAME}-${process.env.STAGE}-loadWalletAsync`,
-    InvocationType: 'Event',
-    Payload: JSON.stringify({ xpubkey, maxGap }),
-  };
-
   try {
-    const response = await lambda.invoke(params).promise();
-    // Event InvocationType returns 202 for a successful invokation
-    if (response.StatusCode !== 202) {
-      throw new Error('Lambda invoke failed');
-    }
+    /* This calls the lambda function as a "Event", so we don't care here for the response,
+     * we only care if the invokation failed or not
+     */
+    await lambdaInvoke(xpubkey, maxGap);
   } catch (e) {
+    console.error('Error on lambda wallet invoke', e);
+    const newRetryCount = wallet.retryCount ? wallet.retryCount + 1 : 1;
     // update wallet status to 'error'
-    await updateWalletStatus(mysql, walletId, WalletStatus.ERROR);
+    await updateWalletStatus(mysql, walletId, WalletStatus.ERROR, newRetryCount);
   }
 
   await closeDbConnection(mysql);
@@ -167,6 +179,7 @@ interface LoadEvent {
 }
 
 interface LoadResult {
+  success: boolean;
   walletId: string;
   xpubkey: string;
 }
@@ -182,27 +195,43 @@ export const loadWallet: Handler<LoadEvent, LoadResult> = async (event) => {
   const maxGap = event.maxGap;
   const walletId = getWalletId(xpubkey);
 
-  const { addresses, existingAddresses, newAddresses } = await generateAddresses(mysql, xpubkey, maxGap);
+  try {
+    const { addresses, existingAddresses, newAddresses } = await generateAddresses(mysql, xpubkey, maxGap);
 
-  // update address table with new addresses
-  await addNewAddresses(mysql, walletId, newAddresses);
+    // update address table with new addresses
+    await addNewAddresses(mysql, walletId, newAddresses);
 
-  // update existing addresses' walletId and index
-  await updateExistingAddresses(mysql, walletId, existingAddresses);
+    // update existing addresses' walletId and index
+    await updateExistingAddresses(mysql, walletId, existingAddresses);
 
-  // from address_tx_history, update wallet_tx_history
-  await initWalletTxHistory(mysql, walletId, addresses);
+    // from address_tx_history, update wallet_tx_history
+    await initWalletTxHistory(mysql, walletId, addresses);
 
-  // from address_balance table, update balance table
-  await initWalletBalance(mysql, walletId, addresses);
+    // from address_balance table, update balance table
+    await initWalletBalance(mysql, walletId, addresses);
 
-  // update wallet status to 'ready'
-  await updateWalletStatus(mysql, walletId, WalletStatus.READY);
+    // update wallet status to 'ready'
+    await updateWalletStatus(mysql, walletId, WalletStatus.READY);
 
-  await closeDbConnection(mysql);
+    await closeDbConnection(mysql);
 
-  return {
-    walletId,
-    xpubkey,
-  };
+    return {
+      success: true,
+      walletId,
+      xpubkey,
+    };
+  } catch (e) {
+    console.error('Erroed on loadWalletAsync: ', e);
+
+    const wallet = await getWallet(mysql, walletId);
+    const newRetryCount = wallet.retryCount ? wallet.retryCount + 1 : 1;
+
+    await updateWalletStatus(mysql, walletId, WalletStatus.ERROR, newRetryCount);
+
+    return {
+      success: false,
+      walletId,
+      xpubkey,
+    };
+  }
 };

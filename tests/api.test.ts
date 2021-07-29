@@ -5,6 +5,7 @@ import { get as newAddressesGet } from '@src/api/newAddresses';
 import { get as balancesGet } from '@src/api/balances';
 import { get as txHistoryGet } from '@src/api/txhistory';
 import { get as walletGet, load as walletLoad } from '@src/api/wallet';
+import * as Wallet from '@src/api/wallet';
 import { ApiError } from '@src/api/errors';
 import { closeDbConnection, getDbConnection, getUnixTimestamp } from '@src/utils';
 import {
@@ -401,7 +402,15 @@ test('GET /wallet', async () => {
   const returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(200);
   expect(returnBody.success).toBe(true);
-  expect(returnBody.status).toStrictEqual({ walletId: 'my-wallet', xpubkey: 'xpubkey', status: 'ready', maxGap: 5, createdAt: 10000, readyAt: 10001 });
+  expect(returnBody.status).toStrictEqual({
+    walletId: 'my-wallet',
+    xpubkey: 'xpubkey',
+    status: 'ready',
+    maxGap: 5,
+    retryCount: 0,
+    createdAt: 10000,
+    readyAt: 10001,
+  });
 });
 
 test('POST /wallet', async () => {
@@ -443,6 +452,16 @@ test('POST /wallet', async () => {
   expect(returnBody.success).toBe(false);
   expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
   expect(returnBody.message).toStrictEqual('Expected first address to be a but it is HNwiHGHKBNbeJPo9ToWvFWeNQkJrpicYci');
+
+  // Clean database so our pubkey is free to be used again:
+
+  await cleanDatabase(mysql);
+
+  const spy = jest.spyOn(Wallet, 'lambdaInvoke');
+
+  const mockImplementation = jest.fn(() => Promise.resolve());
+
+  spy.mockImplementation(mockImplementation);
 
   // Load success
   event = makeGatewayEvent({}, JSON.stringify({ xpubkey: XPUBKEY, firstAddress: 'HNwiHGHKBNbeJPo9ToWvFWeNQkJrpicYci' }));
