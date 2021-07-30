@@ -29,7 +29,7 @@ import { walletUtils } from '@hathor/wallet-lib';
 
 const mysql = getDbConnection();
 
-const MAX_LOAD_WALLET_RETRIES: number = parseInt(process.env.MAX_LOAD_WALLET_RETRIES || '0', 10);
+const MAX_LOAD_WALLET_RETRIES: number = parseInt(process.env.MAX_LOAD_WALLET_RETRIES || '5', 10);
 
 /*
  * Get the status of a wallet
