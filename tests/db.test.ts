@@ -1623,7 +1623,7 @@ test('filterUtxos', async () => {
   // authorities != 0 and maxUtxos == 1 should return only one authority utxo
   utxos = await filterUtxos(mysql, { addresses: [addr1, addr2], biggerThan: 0, smallerThan: 3, authority: 1, tokenId, maxUtxos: 1 });
 
-  expect(utxos.length).toStrictEqual(1);
+  expect(utxos).toHaveLength(1);
 });
 
 test('filterUtxos should throw if addresses are empty', async () => {
