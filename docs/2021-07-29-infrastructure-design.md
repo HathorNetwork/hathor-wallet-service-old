@@ -1,6 +1,7 @@
 # Infrastructure Design
 
 Date: 2021-07-29
+
 Issue: https://github.com/HathorNetwork/hathor-wallet-service/issues/80
 
 ## Summary
