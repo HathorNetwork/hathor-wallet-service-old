@@ -95,12 +95,12 @@ This is a table summarizing the main events and how they will be monitored. We w
 The proposed solution for this is also the one with the highest uncertainty.
 
 To be able to expose metrics to Prometheus, we have 2 options:
-- Deploy a PushGateway
-- Expose an endpoint with API Gateway
+- Deploy a PushGateway. Then we would need to make the Lambdas send the metrics to PushGateway.
+- Expose an endpoint with API Gateway, then configure Prometheus to scrape from this endpoint.
 
 The alternative solution 1 is simpler, but also needs some additional work to create the Lambda that would manage this.
 
-The alternative solution 2 is simpler, but would not get delays on the sync, it would alert only in case of full stop.
+The alternative solution 2 is the simplest, but would not get delays on the sync, it would alert only in case of full stop.
 
 
 ### Daemon
