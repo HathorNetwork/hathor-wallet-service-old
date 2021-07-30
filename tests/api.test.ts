@@ -457,7 +457,7 @@ test('POST /wallet', async () => {
 
   await cleanDatabase(mysql);
 
-  const spy = jest.spyOn(Wallet, 'lambdaInvoke');
+  const spy = jest.spyOn(Wallet, 'invokeLoadWalletAsync');
 
   const mockImplementation = jest.fn(() => Promise.resolve());
 
