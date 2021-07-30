@@ -61,10 +61,13 @@ const loadBodySchema = Joi.object({
   firstAddress: firstAddressJoi,
 });
 
-/*
- * Invoke lambda methods
+/**
+ * Invoke the loadWalletAsync function
+ *
+ * @param xpubkey - The xpubkey to load
+ * @param maxGap - The max gap
  */
-export const lambdaInvoke = async (xpubkey: string, maxGap: number): Promise<void> => {
+export const invokeLoadWalletAsync = async (xpubkey: string, maxGap: number): Promise<void> => {
   // invoke lambda asynchronously to handle wallet creation
   const lambda = new Lambda({
     apiVersion: '2015-03-31',
@@ -157,7 +160,7 @@ export const load: APIGatewayProxyHandler = async (event) => {
     /* This calls the lambda function as a "Event", so we don't care here for the response,
      * we only care if the invokation failed or not
      */
-    await lambdaInvoke(xpubkey, maxGap);
+    await invokeLoadWalletAsync(xpubkey, maxGap);
   } catch (e) {
     console.error('Error on lambda wallet invoke', e);
     const newRetryCount = wallet.retryCount ? wallet.retryCount + 1 : 1;

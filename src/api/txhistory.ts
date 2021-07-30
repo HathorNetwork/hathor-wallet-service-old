@@ -67,7 +67,6 @@ export const get = walletIdProxyHandler(async (walletId, event) => {
   const tokenId = value.token_id;
   const skip = value.skip;
   const count = Math.min(MAX_COUNT, value.count);
-
   const status = await getWallet(mysql, walletId);
 
   if (!status) {
