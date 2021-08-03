@@ -134,7 +134,7 @@ export const load: APIGatewayProxyHandler = async (event) => {
     }
 
     if (wallet.status === WalletStatus.ERROR
-        && wallet.retryCount < MAX_LOAD_WALLET_RETRIES) {
+        && wallet.retryCount >= MAX_LOAD_WALLET_RETRIES) {
       return closeDbAndGetError(mysql, ApiError.WALLET_MAX_RETRIES, { status: wallet });
     }
   } else {
@@ -163,6 +163,7 @@ export const load: APIGatewayProxyHandler = async (event) => {
     await invokeLoadWalletAsync(xpubkey, maxGap);
   } catch (e) {
     console.error('Error on lambda wallet invoke', e);
+
     const newRetryCount = wallet.retryCount ? wallet.retryCount + 1 : 1;
     // update wallet status to 'error'
     await updateWalletStatus(mysql, walletId, WalletStatus.ERROR, newRetryCount);
