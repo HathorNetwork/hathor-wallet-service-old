@@ -459,9 +459,10 @@ test('POST /wallet', async () => {
 
   const spy = jest.spyOn(Wallet, 'invokeLoadWalletAsync');
 
-  const mockImplementation = jest.fn(() => Promise.resolve());
+  const mockImplementationSuccess = jest.fn(() => Promise.resolve());
+  const mockImplementationFailure = jest.fn(() => Promise.reject(new Error('error!')));
 
-  spy.mockImplementation(mockImplementation);
+  let mockFn = spy.mockImplementation(mockImplementationSuccess);
 
   // Load success
   event = makeGatewayEvent({}, JSON.stringify({ xpubkey: XPUBKEY, firstAddress: 'HNwiHGHKBNbeJPo9ToWvFWeNQkJrpicYci' }));
@@ -475,4 +476,35 @@ test('POST /wallet', async () => {
   expect(result.statusCode).toBe(400);
   expect(returnBody.success).toBe(false);
   expect(returnBody.error).toBe(ApiError.WALLET_ALREADY_LOADED);
+
+  await cleanDatabase(mysql);
+
+  mockFn = spy.mockImplementation(mockImplementationFailure);
+
+  // fail load and then retry
+  event = makeGatewayEvent({}, JSON.stringify({ xpubkey: XPUBKEY, firstAddress: 'HNwiHGHKBNbeJPo9ToWvFWeNQkJrpicYci' }));
+  result = await walletLoad(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(true);
+
+  // wallet should be in error state:
+  event = makeGatewayEventWithAuthorizer(returnBody.status.walletId, null);
+  result = await walletGet(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(true);
+  expect(returnBody.status.status).toStrictEqual('error');
+
+  // retrying should succeed
+  mockFn = spy.mockImplementation(mockImplementationSuccess);
+  // mockFn.mockRestore();
+
+  event = makeGatewayEvent({}, JSON.stringify({ xpubkey: XPUBKEY, firstAddress: 'HNwiHGHKBNbeJPo9ToWvFWeNQkJrpicYci' }));
+  result = await walletLoad(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(true);
+  // XXX: invoking lambdas is not working on serverless-offline, so for now we are considering a call to the mocked lambda a success:
+  expect(mockFn).toHaveBeenCalledWith(XPUBKEY, 10);
 });
