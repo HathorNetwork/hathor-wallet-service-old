@@ -114,7 +114,7 @@ This is a table summarizing the main events and how they will be monitored.
 | Event | Proposed Solution |
 |-----------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------ |
 | Error on balance calculation, on MySQL connection or on FullNode connection | Log an error or exit error in the Lambda, then put CloudWatch alarms on then. |
-| Database metrics alerts, like CPU credits used up | CloudWatch alarms |
+| Database metrics alerts | CloudWatch alarms and MySQL Exporter, each of them will provide us with different metrics |
 | WalletService and FullNode out of sync | Expose the highest block height to Prometheus through API Gateway, and compare with the FullNode. |
 
 
