@@ -74,6 +74,32 @@ The steps to be run by CodePipeline are:
 - Run our `serverless deploy` command defined in Makefile. This makes it build and upload the Lambdas.
 - Build a new Docker image for the daemon and push to our ECR repository. We will configure Flux inside our Kubernetes to monitor this repository and rollout the Daemon to run the new version whenever a new image is detected.
 
+### Avoiding downtimes during schema migrations
+
+There are 2 possible causes of downtime during schema migrations:
+
+1. Downtime because of mismatch between DB schema and application code
+2. Tables locked while migration runs
+
+The first case is only solvable by making sure we only do backwards-compatible changes in the DB schema. This article has some good examples: https://spring.io/blog/2016/05/31/zero-downtime-deployment-with-a-database
+
+The second case is more difficult to solve completely. I don't think we should try to do it, because it would introduce a lot of additional complexity to our setup.
+
+Probably something like a Blue-Green deployment would be needed, including replication of the database, and this creates too much complexity, like making sure the DBs are in-sync, which includes syncing them even when one has run the schema migrations while the other hasn't yey. Besides building this Blue-Green mechanism.
+
+So the best option seems to be simply minimize the effects of possible locks in the database.
+
+MySQL includes features for online schema changes, and a lot of operations already allow running DML operations while a DDL operation is running. So schema migrations that just run those operations could be run without locking the table: https://dev.mysql.com/doc/refman/8.0/en/innodb-online-ddl-operations.html#online-ddl-column-operations
+
+In some cases it will work out of the box, but to be 100% sure, we should include the options `LOCK=NONE, ALGORITHM=INPLACE` in the schema migrations performed in big tables.
+
+So, my suggestions are:
+
+- We measure the time the migrations are taking to run during CD, and alert in case they take too long. This way we would be warned if they take too long during testnet deployments, which occur before mainnet deployments.
+- We run MySQL Exporters to get metrics from our MySQL instances: https://github.com/prometheus/mysqld_exporter. With this, we would be able to follow a lot of metrics, including locks in the tables, and confirm if the locks are really not affecting us.
+- In tables we know are too large, use `LOCK=NONE, ALGORITHM=INPLACE`
+- Do the usual backwards-compatibility stuff to make sure we do not run breaking migrations
+
 ### Alternatives
 Other options were discussed in https://github.com/HathorNetwork/hathor-wallet-service/issues/80#issuecomment-879973859
 
