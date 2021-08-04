@@ -96,7 +96,7 @@ In some cases it will work out of the box, but to be 100% sure, we should includ
 So, my suggestions are:
 
 - We measure the time the migrations are taking to run during CD, and alert in case they take too long. This way we would be warned if they take too long during testnet deployments, which occur before mainnet deployments.
-- We run MySQL Exporters to get metrics from our MySQL instances: https://github.com/prometheus/mysqld_exporter. With this, we would be able to follow a lot of metrics, including locks in the tables, and confirm if the locks are really not affecting us.
+- We run MySQL Exporters to get metrics from our MySQL instances: https://github.com/prometheus/mysqld_exporter. With this, we would be able to follow a lot of metrics, including locks in the tables, and confirm if the locks are really not affecting us: https://grafana.com/oss/prometheus/exporters/mysql-exporter/?tab=dashboards#metrics-usage
 - In tables we know are too large, use `LOCK=NONE, ALGORITHM=INPLACE`
 - Do the usual backwards-compatibility stuff to make sure we do not run breaking migrations
 
