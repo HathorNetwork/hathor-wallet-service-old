@@ -81,48 +81,32 @@ Other options were discussed in https://github.com/HathorNetwork/hathor-wallet-s
 
 We will employ different strategies to monitor the critical events we want to be alerted of.
 
-This is a table summarizing the main events and how they will be monitored. We will talk about each solution in the sequence.
+This is a table summarizing the main events and how they will be monitored.
 
 ### Wallet Service
 
-| Event | Proposed Solution | Alternative Solution 1 | Alternative Solution 2 |
-|-----------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------|-----------------------------------------------------------|
-| Error on balance calculation, on MySQL connection or on FullNode connection | Log an error or exit error in the Lambda, then put CloudWatch alarms on then. | Have the involved Lambdas send a message to SNS | |
-| Database metrics alerts, like CPU credits used up | CloudWatch alarms | | |
-| WalletService and FullNode out of sync | Expose the highest block height to Prometheus, and compare with the FullNode. | Have a Lambda that compares the FullNode metric with `getLatestBlock` Lambda return | CloudWatch alarm when `onNewTxRequest` stops being called |
-
-#### WalletService and FullNode out of sync
-The proposed solution for this is also the one with the highest uncertainty.
-
-To be able to expose metrics to Prometheus, we have 2 options:
-- Deploy a PushGateway. Then we would need to make the Lambdas send the metrics to PushGateway.
-- Expose an endpoint with API Gateway, then configure Prometheus to scrape from this endpoint.
-
-The alternative solution 1 is simpler, but also needs some additional work to create the Lambda that would manage this.
-
-The alternative solution 2 is the simplest, but would not get delays on the sync, it would alert only in case of full stop.
+| Event | Proposed Solution |
+|-----------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------ |
+| Error on balance calculation, on MySQL connection or on FullNode connection | Log an error or exit error in the Lambda, then put CloudWatch alarms on then. |
+| Database metrics alerts, like CPU credits used up | CloudWatch alarms |
+| WalletService and FullNode out of sync | Expose the highest block height to Prometheus through API Gateway, and compare with the FullNode. |
 
 
 ### Daemon
 
-|  Event | Proposed Solution | Alternative Solution 1 | Alternative Solution 2 |
-|-----------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------|-----------------------------------------------------------|
-| A reorg is detected with more than 1000 blocks difference | Log this event with a marker, then create Alarms when the marker appears | Monitor this in the FullNodes instead | Have the daemon send a message to SNS |
+|  Event | Proposed Solution |
+|-----------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------ |
+| A reorg is detected with more than 1000 blocks difference | Log this event with a marker, then create Alarms when the marker appears |
 | More than X minutes/seconds without a new block from the connected fullnode | Already monitored in the full-nodes. | | |
-| Websocket connection lost with the full-node after X retries | Log this event with a marker, then create Alarms when the marker appears | | |
-| Daemon and FullNode out of sync | Expose the highest block height from the Daemon to Prometheus | Do not monitor this and use only the WalletService <> FullNode monitoring | |
-
-#### Daemon and FullNode out of sync
-This one is optional. It's needed only if we want a more precise alerting, that already points whether the sync stopped between the FullNode and Daemon or between the Daemon and WalletService.
-
-If we think we don't need this, this could be left out.
+| Websocket connection lost with the full-node after X retries | Log this event with a marker, then create Alarms when the marker appears |
+| Daemon and FullNode out of sync | Expose the highest block height from the Daemon to Prometheus |
 
 ## Security
 
 Those are the security measures we will be taking:
 
 - The Database, Redis Server and FullNode will be exposed only inside our VPC
-- Rate Limits will be configure in Api Gateway
+- Rate Limits will be configured in Api Gateway
     - TODO: Which ones?
 - An authentication mechanism to assure only the owner can listen to a wallet in websocket is being designed in https://github.com/HathorNetwork/hathor-wallet-service/issues/84
 
