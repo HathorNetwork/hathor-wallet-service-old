@@ -87,6 +87,10 @@ provider:
         Fn::GetAtt: [ WalletServiceNewTxQueue, Arn ]
 
 functions:
+  onHandleOldVoidedTxs:
+    handler: src/mempool.onHandleOldVoidedTxs
+    events:
+      - schedule: rate(20 minutes)
   getLatestBlock:
     handler: src/height.getLatestBlock
   onNewTxRequest:
