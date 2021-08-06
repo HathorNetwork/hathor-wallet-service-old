@@ -2201,3 +2201,40 @@ export const getTxProposalInputs = async (
   }
   return inputs;
 };
+
+/**
+ * Get mempool txs before a date
+ *
+ * @param mysql - Database connection
+ * @param date - The date to search for
+
+ * @returns A list of txs
+ */
+export const getMempoolTransactionsBeforeDate = async (
+  mysql: ServerlessMysql,
+  date: number,
+): Promise<Tx[]> => {
+  const results: DbSelectResult = await mysql.query(
+    `SELECT *
+       FROM \`transaction\`
+      WHERE \`timestamp\` < ?
+        AND \`voided\` = TRUE
+        AND \`height\` IS NULL`,
+    [date],
+  );
+  const transactions = [];
+
+  for (const result of results) {
+    const tx: Tx = {
+      txId: result.tx_id as string,
+      timestamp: result.timestamp as number,
+      version: result.version as number,
+      voided: result.voided as boolean,
+      height: result.height as number,
+    };
+
+    transactions.push(tx);
+  }
+
+  return transactions;
+};
