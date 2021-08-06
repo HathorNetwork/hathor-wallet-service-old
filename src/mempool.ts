@@ -6,14 +6,16 @@
  */
 
 import 'source-map-support/register';
-import { Handler } from 'aws-lambda';
 import { getMempoolTransactionsBeforeDate } from '@src/db';
 import { Tx } from '@src/types';
-import fullnode from '@src/fullnode';
 import { handleVoided } from '@src/commons';
-import { closeDbConnection, getDbConnection, getUnixTimestamp } from '@src/utils';
+import {
+  isTxVoided,
+  closeDbConnection,
+  getDbConnection,
+  getUnixTimestamp,
+} from '@src/utils';
 
-const VOIDED_TX_OFFSET: number = parseInt(process.env.VOIDED_TX_OFFSET || `${20 * 60}`, 10); // 20 minutes default
 const mysql = getDbConnection();
 
 /**
@@ -26,7 +28,8 @@ const mysql = getDbConnection();
  *
  * @param event - The SQS event
  */
-export const onHandleOldVoidedTxs: Handler<void, void> = async () => {
+export const onHandleOldVoidedTxs = async () => {
+  const VOIDED_TX_OFFSET: number = parseInt(process.env.VOIDED_TX_OFFSET || `${20 * 60}`, 10); // 20 minutes default
   const now: number = getUnixTimestamp();
   const date: number = now - VOIDED_TX_OFFSET;
 
@@ -36,19 +39,18 @@ export const onHandleOldVoidedTxs: Handler<void, void> = async () => {
 
   // confirm that all of them are actually voided on the fullnode
   for (const tx of voidedTransactions) {
-    const downloadedTx = await fullnode.downloadTx(tx.txId);
-    const { meta } = downloadedTx;
+    const isVoided = await isTxVoided(tx.txId);
 
     /* We could fetch the height from the first_block and confirm it on our database, but this probably is telling us that
      * there is a problem with the sync mechanism, so I think we should throw here and let it crash
      *
      * TODO: [ALERT] should be replaced with the correct string to get alerted on CloudWatch/Slack
      */
-    if (!meta.voided_by.length || meta.voided_by.length === 0) {
+    if (!isVoided) {
       console.error(`[ALERT] Transaction ${tx.txId} is not yet confirmed on our database but it is not voided on the fullnode.`);
       await closeDbConnection(mysql);
 
-      throw new Error('Transaction not voided');
+      throw new Error(`Transaction ${tx.txId} not voided`);
     }
 
     await handleVoided(mysql, tx);
