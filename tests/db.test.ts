@@ -53,6 +53,9 @@ import {
   unspendUtxos,
   filterUtxos,
   getTxProposalInputs,
+  beginTransaction,
+  rollbackTransaction,
+  commitTransaction,
 } from '@src/db';
 import {
   Authorities,
@@ -1630,4 +1633,41 @@ test('filterUtxos should throw if addresses are empty', async () => {
   expect.hasAssertions();
 
   await expect(filterUtxos(mysql, { addresses: [] })).rejects.toThrow('Addresses can\'t be empty.');
+});
+
+test('beginTransaction, commitTransaction, rollbackTransaction', async () => {
+  expect.hasAssertions();
+
+  const addr1 = 'addr1';
+  const addr2 = 'addr2';
+  const tokenId = 'tokenId';
+  const txId = 'txId';
+
+  await beginTransaction(mysql);
+
+  await addToUtxoTable(mysql, [
+    [txId, 0, tokenId, addr1, 0, 0b01, null, null, false],
+    [txId, 1, tokenId, addr1, 10, 0, 10000, null, true],
+    [txId, 2, tokenId, 'otherAddr', 10, 0, null, null, false],
+  ]);
+
+  await commitTransaction(mysql);
+
+  await expect(checkUtxoTable(mysql, 3, txId, 0, tokenId, addr1, 0, 0b01, null, null, false)).resolves.toBe(true);
+  await expect(checkUtxoTable(mysql, 3, txId, 1, tokenId, addr1, 10, 0, 10000, null, true)).resolves.toBe(true);
+  await expect(checkUtxoTable(mysql, 3, txId, 2, tokenId, 'otherAddr', 10, 0, null, null, false)).resolves.toBe(true);
+
+  await beginTransaction(mysql);
+
+  await addToUtxoTable(mysql, [
+    [txId, 3, 'tokenId2', addr1, 5, 0, null, null, false],
+    [txId, 4, tokenId, addr1, 4, 0, null, null, false],
+    [txId, 5, tokenId, addr2, 1, 0, null, null, false],
+    [txId, 6, tokenId, addr1, 7, 0, null, null, false],
+  ]);
+
+  await rollbackTransaction(mysql);
+
+  // check if the database still has 3 elements only
+  await expect(checkUtxoTable(mysql, 3, txId, 2, tokenId, 'otherAddr', 10, 0, null, null, false)).resolves.toBe(true);
 });

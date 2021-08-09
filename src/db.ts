@@ -2193,3 +2193,21 @@ export const getTxProposalInputs = async (
   }
   return inputs;
 };
+
+export const beginTransaction = async (
+  mysql: ServerlessMysql,
+): Promise<void> => {
+  await mysql.query('START TRANSACTION');
+};
+
+export const commitTransaction = async (
+  mysql: ServerlessMysql,
+): Promise<void> => {
+  await mysql.query('COMMIT');
+};
+
+export const rollbackTransaction = async (
+  mysql: ServerlessMysql,
+): Promise<void> => {
+  await mysql.query('ROLLBACK');
+};
