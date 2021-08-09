@@ -294,7 +294,7 @@ export const addNewTx = async (tx: Transaction, now: number, blockRewardLock: nu
       QueueUrl: queueUrl,
     };
     await sqs.sendMessage(params).promise();
-  } catch(e) {
+  } catch (e) {
     console.error(e);
     await rollbackTransaction(mysql);
   }
