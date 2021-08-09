@@ -19,14 +19,12 @@ import {
 const mysql = getDbConnection();
 
 /**
- * Function called when a new transaction arrives.
+ * Function called to void unconfirmed transactions on the database
  *
  * @remarks
- * This is a lambda function that should be triggered by an SQS event. The queue might batch
- * messages, so we expect a list of transactions. This function only parses the SQS event and
- * calls the appropriate function to handle the transaction.
- *
- * @param event - The SQS event
+ * This is a lambda function that should be triggered by an scheduled event. This will run by default on every
+ * 20 minutes (configurable on serverless.yml) and will query for transactions older than 20 minutes that are not
+ * confirmed by a block and are not voided.
  */
 export const onHandleOldVoidedTxs = async () => {
   const VOIDED_TX_OFFSET: number = parseInt(process.env.VOIDED_TX_OFFSET || `${20 * 60}`, 10); // 20 minutes default
