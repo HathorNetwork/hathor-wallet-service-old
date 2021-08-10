@@ -443,6 +443,83 @@ test('PUT /txproposals/{proposalId} on a proposal which status is not OPEN or SE
   expect(JSON.parse(txSendResult.body as string).error).toStrictEqual(ApiError.TX_PROPOSAL_NOT_OPEN);
 });
 
+test('PUT /txproposals/{proposalId} on a proposal which is not owned by the user\'s wallet should fail with ApiError.FORBIDDEN', async () => {
+  expect.hasAssertions();
+
+  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToAddressTable(mysql, [{
+    address: ADDRESSES[0],
+    index: 0,
+    walletId: 'my-wallet',
+    transactions: 2,
+  }]);
+
+  const token1 = '004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50';
+  const token2 = '002f2bcc3261b4fb8510a458ed9df9f6ba2a413ee35901b3c5f81b0c085287e2';
+
+  const utxos = [
+    ['004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50', 0, token1, ADDRESSES[0], 300, 0, null, null, false],
+    ['0000001e39bc37fe8710c01cc1e8c0a937bf6f9337551fbbfddc222bfc28c197', 0, token1, ADDRESSES[0], 100, 0, null, null, false],
+    ['00000060a25077e48926bcd9473d77259296e123ec6af1c1a16c1c381093ab90', 0, token2, ADDRESSES[0], 300, 0, null, null, false],
+  ];
+
+  await addToUtxoTable(mysql, utxos);
+  await addToWalletBalanceTable(mysql, [{
+    walletId: 'my-wallet',
+    tokenId: 'token1',
+    unlockedBalance: 400,
+    lockedBalance: 0,
+    unlockedAuthorities: 0,
+    lockedAuthorities: 0,
+    timelockExpires: null,
+    transactions: 2,
+  }, {
+    walletId: 'my-wallet',
+    tokenId: 'token2',
+    unlockedBalance: 300,
+    lockedBalance: 0,
+    unlockedAuthorities: 0,
+    lockedAuthorities: 0,
+    timelockExpires: null,
+    transactions: 1,
+  }]);
+
+  await addToAddressTable(mysql, [{
+    address: ADDRESSES[1],
+    index: 1,
+    walletId: 'my-wallet',
+    transactions: 0,
+  }]);
+
+  // only one output, spending the whole 300 utxo of token1
+  const outputs = [new hathorLib.Output(300, new hathorLib.Address(ADDRESSES[0], { network: new hathorLib.Network(process.env.NETWORK) }), {
+    tokenData: 1,
+  })];
+  const inputs = [new hathorLib.Input(utxos[0][0], utxos[0][1])];
+  const transaction = new hathorLib.Transaction(inputs, outputs, { tokens: [token1] });
+
+  const txHex = transaction.toHex();
+  const event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({ txHex }));
+  const txCreateResult = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  const returnBody = JSON.parse(txCreateResult.body as string);
+
+  // Set tx_proposal status to CANCELLED so it will fail on txProposalSend
+  const now = getUnixTimestamp();
+  await updateTxProposal(
+    mysql,
+    returnBody.txProposalId,
+    now,
+    TxProposalStatus.CANCELLED,
+  );
+
+  const txSendEvent = makeGatewayEventWithAuthorizer('another-wallet', { txProposalId: returnBody.txProposalId }, JSON.stringify({
+    txHex,
+  }));
+  const txSendResult = await txProposalSend(txSendEvent, null, null) as APIGatewayProxyResult;
+
+  expect(JSON.parse(txSendResult.body as string).error).toStrictEqual(ApiError.FORBIDDEN);
+});
+
 test('PUT /txproposals/{proposalId} with an invalid txHex should fail and update tx_proposal to SEND_ERROR', async () => {
   expect.hasAssertions();
 
