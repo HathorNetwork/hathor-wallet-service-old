@@ -295,6 +295,7 @@ export const addNewTx = async (tx: Transaction, now: number, blockRewardLock: nu
     };
     await sqs.sendMessage(params).promise();
   } catch (e) {
+    console.error(`[ALERT] Error in onNewTx on txId: ${txId}`);
     console.error(e);
     await rollbackTransaction(mysql);
   }

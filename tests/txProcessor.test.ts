@@ -1,6 +1,7 @@
 import eventTemplate from '@events/eventTemplate.json';
 import tokenCreationTx from '@events/tokenCreationTx.json';
 import { getLatestHeight, getTokenInformation } from '@src/db';
+import * as Db from '@src/db';
 import * as txProcessor from '@src/txProcessor';
 import { closeDbConnection, getDbConnection, isAuthority } from '@src/utils';
 import {
@@ -349,3 +350,85 @@ test('onHandleVoidedTxRequest', async () => {
 
   await expect(checkAddressBalanceTable(mysql, 1, addr, token, 2500, 0, 0, 1)).resolves.toBe(true);
 }, 20000);
+
+test('txProcessor should rollback the entire transaction if an error occurs on balance calculation', async () => {
+  expect.hasAssertions();
+  const blockRewardLock = parseInt(process.env.BLOCK_REWARD_LOCK, 10);
+
+  // receive a block
+  const evt = JSON.parse(JSON.stringify(eventTemplate));
+  const block = evt.Records[0].body;
+  block.version = 0;
+  block.tx_id = 'txId1';
+  block.height = 1;
+  block.inputs = [];
+  block.outputs = [createOutput(blockReward, 'address1')];
+  await txProcessor.onNewTxEvent(evt);
+
+  // check databases
+  await expect(checkUtxoTable(mysql, 1, 'txId1', 0, '00', 'address1', blockReward, 0, null, block.height + blockRewardLock, true)).resolves.toBe(true);
+  await expect(checkAddressTable(mysql, 1, 'address1', null, null, 1)).resolves.toBe(true);
+  await expect(checkAddressBalanceTable(mysql, 1, 'address1', '00', 0, blockReward, null, 1)).resolves.toBe(true);
+  await expect(checkAddressTxHistoryTable(mysql, 1, 'address1', 'txId1', '00', blockReward, block.timestamp)).resolves.toBe(true);
+  expect(await getLatestHeight(mysql)).toBe(block.height);
+
+  // receive another block, for the same address and make it fail so it will rollback the entire transaction
+  block.tx_id = 'txId2';
+  block.timestamp += 10;
+  block.height = 2;
+
+  const spy = jest.spyOn(Db, 'unlockUtxos');
+  spy.mockImplementationOnce(() => {
+    throw new Error('unlock-utxos-error');
+  });
+
+  await txProcessor.onNewTxEvent(evt);
+
+  let latestHeight = await getLatestHeight(mysql);
+
+  // last transaction should have been rolled back and latest height will be the first successful block's height
+  expect(latestHeight).toBe(block.height - 1);
+
+  // send again should work (we are using mockImplementationOnce)
+  await txProcessor.onNewTxEvent(evt);
+  latestHeight = await getLatestHeight(mysql);
+  expect(latestHeight).toBe(block.height);
+
+  // test subsequent calls
+  block.tx_id = 'txId3';
+  block.timestamp += 10;
+  block.height = 3;
+  await txProcessor.onNewTxEvent(evt);
+  block.tx_id = 'txId4';
+  block.timestamp += 10;
+  block.height = 4;
+  await txProcessor.onNewTxEvent(evt);
+  block.tx_id = 'txId5';
+  block.timestamp += 10;
+  block.height = 5;
+  await txProcessor.onNewTxEvent(evt);
+
+  latestHeight = await getLatestHeight(mysql);
+  expect(latestHeight).toBe(block.height);
+
+  // Send another one that will also rollback
+  spy.mockImplementationOnce(() => {
+    throw new Error('unlock-utxos-error');
+  });
+  block.tx_id = 'txId6';
+  block.timestamp += 10;
+  block.height = 6;
+  await txProcessor.onNewTxEvent(evt);
+
+  latestHeight = await getLatestHeight(mysql);
+  expect(latestHeight).toBe(block.height - 1);
+
+  // finally, test the balances
+  await expect(checkUtxoTable(mysql, 5, 'txId2', 0, '00', 'address1', blockReward, 0, null, 2 + blockRewardLock, false)).resolves.toBe(true);
+  await expect(checkUtxoTable(mysql, 5, 'txId3', 0, '00', 'address1', blockReward, 0, null, 3 + blockRewardLock, false)).resolves.toBe(true);
+  await expect(checkUtxoTable(mysql, 5, 'txId4', 0, '00', 'address1', blockReward, 0, null, 4 + blockRewardLock, false)).resolves.toBe(true);
+  await expect(checkUtxoTable(mysql, 5, 'txId5', 0, '00', 'address1', blockReward, 0, null, 5 + blockRewardLock, true)).resolves.toBe(true);
+  await expect(checkAddressTable(mysql, 1, 'address1', null, null, 5)).resolves.toBe(true);
+  // txId5 is locked, so our address balance will be 25600
+  await expect(checkAddressBalanceTable(mysql, 1, 'address1', '00', blockReward * 4, blockReward, null, 5)).resolves.toBe(true);
+});
