@@ -4,8 +4,9 @@ import { get as addressesGet } from '@src/api/addresses';
 import { get as newAddressesGet } from '@src/api/newAddresses';
 import { get as balancesGet } from '@src/api/balances';
 import { get as txHistoryGet } from '@src/api/txhistory';
-import { get as walletGet, load as walletLoad } from '@src/api/wallet';
+import { get as walletGet, load as walletLoad, loadWallet } from '@src/api/wallet';
 import * as Wallet from '@src/api/wallet';
+import * as Db from '@src/db';
 import { ApiError } from '@src/api/errors';
 import { closeDbConnection, getDbConnection, getUnixTimestamp } from '@src/utils';
 import { WalletStatus } from '@src/types';
@@ -559,4 +560,50 @@ test('POST /wallet should fail with ApiError.WALLET_MAX_RETRIES when max retries
   expect(returnBody.status.status).toStrictEqual(WalletStatus.ERROR);
   expect(returnBody.error).toStrictEqual(ApiError.WALLET_MAX_RETRIES);
   expect(returnBody.status.retryCount).toStrictEqual(5);
+});
+
+test('loadWallet should update wallet status to ERROR if an error occurs', async () => {
+  expect.hasAssertions();
+
+  const loadWalletAsyncSpy = jest.spyOn(Wallet, 'invokeLoadWalletAsync');
+  const mockImplementationSuccess = jest.fn(() => Promise.resolve());
+  loadWalletAsyncSpy.mockImplementation(mockImplementationSuccess);
+
+  // wallet should be 'creating'
+  const event = makeGatewayEvent({}, JSON.stringify({ xpubkey: XPUBKEY, firstAddress: 'HNwiHGHKBNbeJPo9ToWvFWeNQkJrpicYci' }));
+  const result = await walletLoad(event, null, null) as APIGatewayProxyResult;
+  const returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.status.status).toStrictEqual(WalletStatus.CREATING);
+
+  const walletId = returnBody.status.walletId;
+
+  const dbSpy = jest.spyOn(Db, 'addNewAddresses');
+  const mockImplementationFailure = jest.fn(() => Promise.reject(new Error('error!')));
+  dbSpy.mockImplementation(mockImplementationFailure);
+
+  const loadEvent = { xpubkey: XPUBKEY, maxGap: 10 };
+
+  const noop = () => false;
+
+  // mocking an event call from aws
+  await loadWallet(loadEvent, {
+    callbackWaitsForEmptyEventLoop: true,
+    logGroupName: '/aws/lambda/mock-lambda',
+    logStreamName: '2018/11/29/[$LATEST]xxxxxxxxxxxb',
+    functionName: 'loadWalletAsync',
+    memoryLimitInMB: '1024',
+    functionVersion: '$LATEST',
+    awsRequestId: 'xxxxxx-xxxxx-11e8-xxxx-xxxxxxxxx',
+    invokedFunctionArn: 'arn:aws:lambda:us-east-1:xxxxxxxx:function:loadWalletAsync',
+    getRemainingTimeInMillis: () => 1000,
+    done: noop,
+    fail: noop,
+    succeed: noop,
+  }, noop);
+
+  const wallet = await Db.getWallet(mysql, walletId);
+
+  expect(wallet.status).toStrictEqual(WalletStatus.ERROR);
 });
