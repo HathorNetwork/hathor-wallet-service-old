@@ -67,6 +67,7 @@ const loadBodySchema = Joi.object({
  * @param xpubkey - The xpubkey to load
  * @param maxGap - The max gap
  */
+/* istanbul ignore next */
 export const invokeLoadWalletAsync = async (xpubkey: string, maxGap: number): Promise<void> => {
   // invoke lambda asynchronously to handle wallet creation
   const lambda = new Lambda({
