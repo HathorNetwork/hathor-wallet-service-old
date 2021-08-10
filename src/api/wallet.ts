@@ -167,6 +167,9 @@ export const load: APIGatewayProxyHandler = async (event) => {
     const newRetryCount = wallet.retryCount ? wallet.retryCount + 1 : 1;
     // update wallet status to 'error'
     await updateWalletStatus(mysql, walletId, WalletStatus.ERROR, newRetryCount);
+
+    // refresh the variable with latest status, so we can return it properly
+    wallet = await getWallet(mysql, walletId);
   }
 
   await closeDbConnection(mysql);
