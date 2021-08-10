@@ -41,8 +41,6 @@ export const onHandleOldVoidedTxs = async () => {
 
     /* We could fetch the height from the first_block and confirm it on our database, but this probably is telling us that
      * there is a problem with the sync mechanism, so I think we should throw here and let it crash
-     *
-     * TODO: [ALERT] should be replaced with the correct string to get alerted on CloudWatch/Slack
      */
     if (!isVoided) {
       console.error(`[ALERT] Transaction ${tx.txId} is not yet confirmed on our database but it is not voided on the fullnode.`);
