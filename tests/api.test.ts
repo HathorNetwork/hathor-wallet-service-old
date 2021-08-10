@@ -8,6 +8,7 @@ import { get as walletGet, load as walletLoad } from '@src/api/wallet';
 import * as Wallet from '@src/api/wallet';
 import { ApiError } from '@src/api/errors';
 import { closeDbConnection, getDbConnection, getUnixTimestamp } from '@src/utils';
+import { WalletStatus } from '@src/types';
 import {
   ADDRESSES,
   XPUBKEY,
@@ -498,7 +499,6 @@ test('POST /wallet', async () => {
 
   // retrying should succeed
   mockFn = spy.mockImplementation(mockImplementationSuccess);
-  // mockFn.mockRestore();
 
   event = makeGatewayEvent({}, JSON.stringify({ xpubkey: XPUBKEY, firstAddress: 'HNwiHGHKBNbeJPo9ToWvFWeNQkJrpicYci' }));
   result = await walletLoad(event, null, null) as APIGatewayProxyResult;
@@ -507,4 +507,56 @@ test('POST /wallet', async () => {
   expect(returnBody.success).toBe(true);
   // XXX: invoking lambdas is not working on serverless-offline, so for now we are considering a call to the mocked lambda a success:
   expect(mockFn).toHaveBeenCalledWith(XPUBKEY, 10);
+});
+
+test('POST /wallet should fail with ApiError.WALLET_MAX_RETRIES when max retries are reached', async () => {
+  expect.hasAssertions();
+
+  const spy = jest.spyOn(Wallet, 'invokeLoadWalletAsync');
+  const mockImplementationFailure = jest.fn(() => Promise.reject(new Error('error!')));
+  spy.mockImplementation(mockImplementationFailure);
+
+  // Load failure
+  let event = makeGatewayEvent({}, JSON.stringify({ xpubkey: XPUBKEY, firstAddress: 'HNwiHGHKBNbeJPo9ToWvFWeNQkJrpicYci' }));
+  let result = await walletLoad(event, null, null) as APIGatewayProxyResult;
+  let returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.status.status).toStrictEqual(WalletStatus.ERROR);
+  expect(returnBody.status.retryCount).toStrictEqual(1);
+
+  event = makeGatewayEvent({}, JSON.stringify({ xpubkey: XPUBKEY, firstAddress: 'HNwiHGHKBNbeJPo9ToWvFWeNQkJrpicYci' }));
+  result = await walletLoad(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.status.status).toStrictEqual(WalletStatus.ERROR);
+  expect(returnBody.status.retryCount).toStrictEqual(2);
+
+  event = makeGatewayEvent({}, JSON.stringify({ xpubkey: XPUBKEY, firstAddress: 'HNwiHGHKBNbeJPo9ToWvFWeNQkJrpicYci' }));
+  result = await walletLoad(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.status.status).toStrictEqual(WalletStatus.ERROR);
+  expect(returnBody.status.retryCount).toStrictEqual(3);
+
+  event = makeGatewayEvent({}, JSON.stringify({ xpubkey: XPUBKEY, firstAddress: 'HNwiHGHKBNbeJPo9ToWvFWeNQkJrpicYci' }));
+  result = await walletLoad(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.status.status).toStrictEqual(WalletStatus.ERROR);
+  expect(returnBody.status.retryCount).toStrictEqual(4);
+
+  event = makeGatewayEvent({}, JSON.stringify({ xpubkey: XPUBKEY, firstAddress: 'HNwiHGHKBNbeJPo9ToWvFWeNQkJrpicYci' }));
+  result = await walletLoad(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.status.status).toStrictEqual(WalletStatus.ERROR);
+  expect(returnBody.status.retryCount).toStrictEqual(5);
+
+  event = makeGatewayEvent({}, JSON.stringify({ xpubkey: XPUBKEY, firstAddress: 'HNwiHGHKBNbeJPo9ToWvFWeNQkJrpicYci' }));
+  result = await walletLoad(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.status.status).toStrictEqual(WalletStatus.ERROR);
+  expect(returnBody.error).toStrictEqual(ApiError.WALLET_MAX_RETRIES);
+  expect(returnBody.status.retryCount).toStrictEqual(5);
 });
