@@ -394,7 +394,7 @@ test('searchForLatestValidBlock should find the first voided block', async () =>
 
   const spy = jest.spyOn(Utils, 'isTxVoided');
 
-  const mockImplementation = jest.fn((block) => {
+  const mockImplementation = jest.fn(async (block: string): Promise<[boolean, any]> => {
     const voidedList = [
       '0000000f1fbb4bd8a8e71735af832be210ac9a6c1e2081b21faeea3c0f5797f7',
       '00000649d769de25fcca204faaa23d4974d00fcb01130ab3f736fade4013598d',
@@ -403,10 +403,10 @@ test('searchForLatestValidBlock should find the first voided block', async () =>
     ];
 
     if (voidedList.indexOf(block) > -1) {
-      return Promise.resolve(true);
+      return [true, {}];
     }
 
-    return Promise.resolve(false);
+    return [false, {}];
   });
 
   spy.mockImplementation(mockImplementation);

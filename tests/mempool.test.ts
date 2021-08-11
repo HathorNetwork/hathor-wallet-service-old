@@ -9,6 +9,7 @@ import {
   TX_IDS,
 } from '@tests/utils';
 import * as Utils from '@src/utils';
+import * as Db from '@src/db';
 
 const mysql = getDbConnection();
 const OLD_ENV = process.env;
@@ -47,7 +48,7 @@ test('onHandleOldVoidedTxs', async () => {
   // we need to mock current timestamp
   timestampSpy.mockReturnValue(15);
   // and the check on the fullnode
-  isTxVoidedSpy.mockReturnValue(Promise.resolve(true));
+  isTxVoidedSpy.mockReturnValue(Promise.resolve([true, {}]));
   // we also need to mock the offset
   process.env.VOIDED_TX_OFFSET = '10'; // query will be on timestamp < 5
 
@@ -56,7 +57,7 @@ test('onHandleOldVoidedTxs', async () => {
   await expect(checkUtxoTable(mysql, 4, TX_IDS[0], 0, '00', ADDRESSES[0], 50, 0, null, null, false, null, true)).resolves.toBe(true);
 });
 
-test('onHandleOldVoidedTxs should fail if the transaction is not voided on the fullnode', async () => {
+test('onHandleOldVoidedTxs should try to confirm the block by fetching the first_block', async () => {
   expect.hasAssertions();
 
   const transactions = [
@@ -72,13 +73,25 @@ test('onHandleOldVoidedTxs should fail if the transaction is not voided on the f
 
   const timestampSpy = jest.spyOn(Utils, 'getUnixTimestamp');
   const isTxVoidedSpy = jest.spyOn(Utils, 'isTxVoided');
+  const fetchBlockHeightSpy = jest.spyOn(Utils, 'fetchBlockHeight');
+  const updateTxSpy = jest.spyOn(Db, 'updateTx');
 
   // we need to mock current timestamp
   timestampSpy.mockReturnValue(15);
-  // and the check on the fullnode
-  isTxVoidedSpy.mockReturnValue(Promise.resolve(false));
+  // also the fetchBlockHeight that goes to the fullnode
+  fetchBlockHeightSpy.mockReturnValue(Promise.resolve([5, {}] as [number, any]));
+  // also the check on the fullnode
+  isTxVoidedSpy.mockReturnValue(Promise.resolve([false, {
+    meta: {
+      first_block: TX_IDS[1],
+    },
+  }]));
+  // and finally, the updateTx so we can expect it to be called
+  const updateTxMock = updateTxSpy.mockReturnValue(Promise.resolve());
+
   // we also need to mock the offset
   process.env.VOIDED_TX_OFFSET = '10'; // query will be on timestamp < 5
 
-  await expect(onHandleOldVoidedTxs()).rejects.toThrow(`Transaction ${TX_IDS[0]} not voided`);
+  await onHandleOldVoidedTxs();
+  expect(updateTxMock).toHaveBeenCalledTimes(1);
 });
