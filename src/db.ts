@@ -169,6 +169,7 @@ export const getWallet = async (mysql: ServerlessMysql, walletId: string): Promi
       walletId,
       xpubkey: result.xpubkey as string,
       status: result.status as WalletStatus,
+      retryCount: result.retry_count as number,
       maxGap: result.max_gap as number,
       createdAt: result.created_at as number,
       readyAt: result.ready_at as number,
@@ -203,6 +204,7 @@ export const createWallet = async (
     walletId,
     xpubkey,
     maxGap,
+    retryCount: 0,
     status: WalletStatus.CREATING,
     createdAt: ts,
     readyAt: null,
@@ -220,11 +222,16 @@ export const updateWalletStatus = async (
   mysql: ServerlessMysql,
   walletId: string,
   status: WalletStatus,
+  retryCount = 0,
 ): Promise<void> => {
   const ts = getUnixTimestamp();
   await mysql.query(
-    'UPDATE `wallet` SET `status` = ?, `ready_at` = ? WHERE `id`= ?',
-    [status, ts, walletId],
+    `UPDATE \`wallet\`
+        SET \`status\` = ?,
+            \`ready_at\` = ?,
+            \`retry_count\` = ?
+      WHERE \`id\` = ?`,
+    [status, ts, retryCount, walletId],
   );
 };
 

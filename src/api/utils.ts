@@ -40,6 +40,7 @@ export const STATUS_CODE_TABLE = {
   [ApiError.NO_TX_INDEX]: 400,
   [ApiError.UTXO_NOT_FOUND]: 400,
   [ApiError.ADDRESS_NOT_IN_WALLET]: 400,
+  [ApiError.WALLET_MAX_RETRIES]: 400,
 };
 
 /**
