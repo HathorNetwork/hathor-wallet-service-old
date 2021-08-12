@@ -28,8 +28,8 @@ test('onHandleOldVoidedTxs', async () => {
 
   const transactions = [
     [TX_IDS[0], 1, 2, false, null],
-    [TX_IDS[1], 5, 2, false, null],
-    [TX_IDS[2], 10, 2, false, null],
+    [TX_IDS[1], 601, 2, false, null],
+    [TX_IDS[2], 1000, 2, false, null],
   ];
 
   const utxos = [
@@ -46,11 +46,11 @@ test('onHandleOldVoidedTxs', async () => {
   const isTxVoidedSpy = jest.spyOn(Utils, 'isTxVoided');
 
   // we need to mock current timestamp
-  timestampSpy.mockReturnValue(15);
+  timestampSpy.mockReturnValue(20 * 60);
   // and the check on the fullnode
   isTxVoidedSpy.mockReturnValue(Promise.resolve([true, {}]));
   // we also need to mock the offset
-  process.env.VOIDED_TX_OFFSET = '10'; // query will be on timestamp < 5
+  process.env.VOIDED_TX_OFFSET = '10'; // query will be on timestamp < 600
 
   await onHandleOldVoidedTxs();
 
@@ -77,7 +77,7 @@ test('onHandleOldVoidedTxs should try to confirm the block by fetching the first
   const updateTxSpy = jest.spyOn(Db, 'updateTx');
 
   // we need to mock current timestamp
-  timestampSpy.mockReturnValue(15);
+  timestampSpy.mockReturnValue(15 * 60);
   // also the fetchBlockHeight that goes to the fullnode
   fetchBlockHeightSpy.mockReturnValue(Promise.resolve([5, {}] as [number, any]));
   // also the check on the fullnode

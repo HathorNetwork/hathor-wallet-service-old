@@ -31,13 +31,13 @@ const mysql = getDbConnection();
  * confirmed by a block and are not voided.
  */
 export const onHandleOldVoidedTxs = async () => {
-  const VOIDED_TX_OFFSET: number = parseInt(process.env.VOIDED_TX_OFFSET || `${20 * 60}`, 10); // 20 minutes default
+  const VOIDED_TX_OFFSET: number = parseInt(process.env.VOIDED_TX_OFFSET, 10) * 60; // env is in minutes
   const now: number = getUnixTimestamp();
   const date: number = now - VOIDED_TX_OFFSET;
 
   // Fetch voided transactions that are older than 20m
   const voidedTransactions: Tx[] = await getMempoolTransactionsBeforeDate(mysql, date);
-  console.log(`Found ${voidedTransactions.length} voided transactions older than 20m`);
+  console.log(`Found ${voidedTransactions.length} voided transactions older than ${process.env.VOIDED_TX_OFFSET}m`);
 
   /* This loop will check if all transactions are in fact voided on the fullnode and try to fix it (by updating the height) if
    * they are not.
