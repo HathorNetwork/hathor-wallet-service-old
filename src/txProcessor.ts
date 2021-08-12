@@ -9,7 +9,6 @@ import AWS from 'aws-sdk';
 import { APIGatewayProxyHandler, APIGatewayProxyResult, SQSEvent } from 'aws-lambda';
 import 'source-map-support/register';
 import hathorLib from '@hathor/wallet-lib';
-
 import {
   getAddressBalanceMap,
   getWalletBalanceMap,
@@ -33,10 +32,10 @@ import {
   updateAddressTablesWithTx,
   updateWalletTablesWithTx,
   fetchTx,
-  beginTransaction,
-  commitTransaction,
-  rollbackTransaction,
 } from '@src/db';
+import {
+  transactionDecorator,
+} from '@src/db/utils';
 import {
   StringMap,
   Transaction,
@@ -76,9 +75,8 @@ export const onNewTxEvent = async (event: SQSEvent): Promise<APIGatewayProxyResu
   const now = getUnixTimestamp();
   const blockRewardLock = parseInt(process.env.BLOCK_REWARD_LOCK, 10);
   for (const evt of event.Records) {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    await addNewTx(evt.body, now, blockRewardLock);
+    const wrappedAddNewTx = await transactionDecorator(mysql, addNewTx);
+    await wrappedAddNewTx(evt.body, now, blockRewardLock);
   }
 
   await closeDbConnection(mysql);
@@ -106,9 +104,8 @@ export const onNewTxRequest: APIGatewayProxyHandler = async (event) => {
   const blockRewardLock = parseInt(process.env.BLOCK_REWARD_LOCK, 10);
 
   try {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    await addNewTx(event.body, now, blockRewardLock);
+    const wrappedAddNewTx = await transactionDecorator(mysql, addNewTx);
+    await wrappedAddNewTx(event.body, now, blockRewardLock);
 
     return {
       statusCode: 200,
@@ -220,83 +217,73 @@ export const addNewTx = async (tx: Transaction, now: number, blockRewardLock: nu
     return;
   }
 
-  await beginTransaction(mysql);
+  let heightlock = null;
+  if (tx.version === hathorLib.constants.BLOCK_VERSION
+    || tx.version === hathorLib.constants.MERGED_MINED_BLOCK_VERSION) {
+    // unlock older blocks
+    const utxos = await getUtxosLockedAtHeight(mysql, now, tx.height);
+    await unlockUtxos(mysql, utxos, false);
 
-  try {
-    let heightlock = null;
-    if (tx.version === hathorLib.constants.BLOCK_VERSION
-      || tx.version === hathorLib.constants.MERGED_MINED_BLOCK_VERSION) {
-      // unlock older blocks
-      const utxos = await getUtxosLockedAtHeight(mysql, now, tx.height);
-      await unlockUtxos(mysql, utxos, false);
-
-      // set heightlock
-      heightlock = tx.height + blockRewardLock;
-    }
-
-    if (tx.version === hathorLib.constants.CREATE_TOKEN_TX_VERSION) {
-      await storeTokenInformation(mysql, tx.tx_id, tx.token_name, tx.token_symbol);
-    }
-
-    // check if any of the inputs are still marked as locked and update tables accordingly.
-    // See remarks on getLockedUtxoFromInputs for more explanation. It's important to perform this
-    // before updating the balances
-    const lockedInputs = await getLockedUtxoFromInputs(mysql, tx.inputs);
-    await unlockUtxos(mysql, lockedInputs, true);
-
-    // add transaction outputs to the tx_outputs table
-    markLockedOutputs(tx.outputs, now, heightlock !== null);
-    await addOrUpdateTx(mysql, txId, tx.height, tx.timestamp, tx.version);
-    await addUtxos(mysql, txId, tx.outputs, heightlock);
-
-    // mark the tx_outputs used in the transaction (tx.inputs) as spent by txId
-    await updateTxOutputSpentBy(mysql, tx.inputs, txId);
-
-    // get balance of each token for each address
-    const addressBalanceMap: StringMap<TokenBalanceMap> = getAddressBalanceMap(tx.inputs, tx.outputs);
-
-    // update address tables (address, address_balance, address_tx_history)
-    await updateAddressTablesWithTx(mysql, txId, tx.timestamp, addressBalanceMap);
-
-    // for the addresses present on the tx, check if there are any wallets associated
-    const addressWalletMap: StringMap<Wallet> = await getAddressWalletInfo(mysql, Object.keys(addressBalanceMap));
-
-    // for each already started wallet, update databases
-    const seenWallets = new Set();
-    for (const wallet of Object.values(addressWalletMap)) {
-      const walletId = wallet.walletId;
-
-      // this map might contain duplicate wallet values, as 2 different addresses might belong to the same wallet
-      if (seenWallets.has(walletId)) continue;
-      seenWallets.add(walletId);
-
-      const { newAddresses } = await generateAddresses(mysql, wallet.xpubkey, wallet.maxGap);
-      // might need to generate new addresses to keep maxGap
-      await addNewAddresses(mysql, walletId, newAddresses);
-      // update existing addresses' walletId and index
-    }
-    // update wallet_balance and wallet_tx_history tables
-    const walletBalanceMap: StringMap<TokenBalanceMap> = getWalletBalanceMap(addressWalletMap, addressBalanceMap);
-    await updateWalletTablesWithTx(mysql, txId, tx.timestamp, walletBalanceMap);
-
-    // commit before sending to sqs
-    await commitTransaction(mysql);
-
-    const queueUrl = process.env.NEW_TX_SQS;
-    if (!queueUrl) return;
-
-    const sqs = new AWS.SQS({ apiVersion: '2012-11-05' });
-    const params = {
-      MessageBody: JSON.stringify({
-        wallets: Array.from(seenWallets),
-        tx,
-      }),
-      QueueUrl: queueUrl,
-    };
-    await sqs.sendMessage(params).promise();
-  } catch (e) {
-    console.error(`[ALERT] Error in onNewTx on txId: ${txId}`);
-    console.error(e);
-    await rollbackTransaction(mysql);
+    // set heightlock
+    heightlock = tx.height + blockRewardLock;
   }
+
+  if (tx.version === hathorLib.constants.CREATE_TOKEN_TX_VERSION) {
+    await storeTokenInformation(mysql, tx.tx_id, tx.token_name, tx.token_symbol);
+  }
+
+  // check if any of the inputs are still marked as locked and update tables accordingly.
+  // See remarks on getLockedUtxoFromInputs for more explanation. It's important to perform this
+  // before updating the balances
+  const lockedInputs = await getLockedUtxoFromInputs(mysql, tx.inputs);
+  await unlockUtxos(mysql, lockedInputs, true);
+
+  // add transaction outputs to the tx_outputs table
+  markLockedOutputs(tx.outputs, now, heightlock !== null);
+  await addOrUpdateTx(mysql, txId, tx.height, tx.timestamp, tx.version);
+  await addUtxos(mysql, txId, tx.outputs, heightlock);
+
+  // mark the tx_outputs used in the transaction (tx.inputs) as spent by txId
+  await updateTxOutputSpentBy(mysql, tx.inputs, txId);
+
+  // get balance of each token for each address
+  const addressBalanceMap: StringMap<TokenBalanceMap> = getAddressBalanceMap(tx.inputs, tx.outputs);
+
+  // update address tables (address, address_balance, address_tx_history)
+  await updateAddressTablesWithTx(mysql, txId, tx.timestamp, addressBalanceMap);
+
+  // for the addresses present on the tx, check if there are any wallets associated
+  const addressWalletMap: StringMap<Wallet> = await getAddressWalletInfo(mysql, Object.keys(addressBalanceMap));
+
+  // for each already started wallet, update databases
+  const seenWallets = new Set();
+  for (const wallet of Object.values(addressWalletMap)) {
+    const walletId = wallet.walletId;
+
+    // this map might contain duplicate wallet values, as 2 different addresses might belong to the same wallet
+    if (seenWallets.has(walletId)) continue;
+    seenWallets.add(walletId);
+
+    const { newAddresses } = await generateAddresses(mysql, wallet.xpubkey, wallet.maxGap);
+    // might need to generate new addresses to keep maxGap
+    await addNewAddresses(mysql, walletId, newAddresses);
+    // update existing addresses' walletId and index
+  }
+  // update wallet_balance and wallet_tx_history tables
+  const walletBalanceMap: StringMap<TokenBalanceMap> = getWalletBalanceMap(addressWalletMap, addressBalanceMap);
+  await updateWalletTablesWithTx(mysql, txId, tx.timestamp, walletBalanceMap);
+
+  const queueUrl = process.env.NEW_TX_SQS;
+  if (!queueUrl) return;
+
+  const sqs = new AWS.SQS({ apiVersion: '2012-11-05' });
+  const params = {
+    MessageBody: JSON.stringify({
+      wallets: Array.from(seenWallets),
+      tx,
+    }),
+    QueueUrl: queueUrl,
+  };
+
+  await sqs.sendMessage(params).promise();
 };

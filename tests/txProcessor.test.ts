@@ -382,7 +382,7 @@ test('txProcessor should rollback the entire transaction if an error occurs on b
     throw new Error('unlock-utxos-error');
   });
 
-  await txProcessor.onNewTxEvent(evt);
+  await expect(() => txProcessor.onNewTxEvent(evt)).rejects.toThrow('unlock-utxos-error');
 
   let latestHeight = await getLatestHeight(mysql);
 
@@ -418,7 +418,7 @@ test('txProcessor should rollback the entire transaction if an error occurs on b
   block.tx_id = 'txId6';
   block.timestamp += 10;
   block.height = 6;
-  await txProcessor.onNewTxEvent(evt);
+  await expect(() => txProcessor.onNewTxEvent(evt)).rejects.toThrow('unlock-utxos-error');
 
   latestHeight = await getLatestHeight(mysql);
   expect(latestHeight).toBe(block.height - 1);

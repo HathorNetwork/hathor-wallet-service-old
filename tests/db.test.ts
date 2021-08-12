@@ -53,10 +53,12 @@ import {
   unspendUtxos,
   filterUtxos,
   getTxProposalInputs,
+} from '@src/db';
+import {
   beginTransaction,
   rollbackTransaction,
   commitTransaction,
-} from '@src/db';
+} from '@src/db/utils';
 import {
   Authorities,
   TokenBalanceMap,
