@@ -1409,10 +1409,13 @@ export const getVersionData = async (mysql: ServerlessMysql): Promise<FullNodeVe
  */
 export const getLatestHeight = async (mysql: ServerlessMysql): Promise<number> => {
   const results: DbSelectResult = await mysql.query(
-    `SELECT MAX(\`height\`) AS value
+    `SELECT \`height\` AS value
        FROM \`transaction\`
       WHERE version
-         IN (?)`, [BLOCK_VERSION],
+         IN (?)
+      ORDER BY height
+       DESC
+      LIMIT 1`, [BLOCK_VERSION],
   );
 
   if (results.length > 0 && results[0].value !== null) {
