@@ -75,8 +75,9 @@ export const onNewTxEvent = async (event: SQSEvent): Promise<APIGatewayProxyResu
   const now = getUnixTimestamp();
   const blockRewardLock = parseInt(process.env.BLOCK_REWARD_LOCK, 10);
   for (const evt of event.Records) {
-    const wrappedAddNewTx = await transactionDecorator(mysql, addNewTx);
-    await wrappedAddNewTx(evt.body, now, blockRewardLock);
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    await addNewTx(evt.body, now, blockRewardLock);
   }
 
   await closeDbConnection(mysql);
@@ -104,8 +105,9 @@ export const onNewTxRequest: APIGatewayProxyHandler = async (event) => {
   const blockRewardLock = parseInt(process.env.BLOCK_REWARD_LOCK, 10);
 
   try {
-    const wrappedAddNewTx = await transactionDecorator(mysql, addNewTx);
-    await wrappedAddNewTx(event.body, now, blockRewardLock);
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    await addNewTx(event.body, now, blockRewardLock);
 
     return {
       statusCode: 200,
@@ -186,7 +188,7 @@ export const handleVoidedTx = async (tx: Transaction): Promise<void> => {
  * @param now - Current timestamp
  * @param blockRewardLock - The block reward lock
  */
-export const addNewTx = async (tx: Transaction, now: number, blockRewardLock: number): Promise<void> => {
+const _unsafeAddNewTx = async (tx: Transaction, now: number, blockRewardLock: number): Promise<void> => {
   // TODO mysql error treatment
 
   const txId = tx.tx_id;
@@ -286,4 +288,18 @@ export const addNewTx = async (tx: Transaction, now: number, blockRewardLock: nu
   };
 
   await sqs.sendMessage(params).promise();
+};
+
+/**
+ * Add a new transaction or block, updating the proper tables.
+ * @remarks This is a wrapper for _unsafeAddNewTx that adds automatic transaction and rollback on failure
+ *
+ * @param tx - The transaction or block
+ * @param now - Current timestamp
+ * @param blockRewardLock - The block reward lock
+ */
+export const addNewTx = async (tx: Transaction, now: number, blockRewardLock: number) => {
+  const wrappedAddNewTx = await transactionDecorator(mysql, _unsafeAddNewTx);
+
+  return wrappedAddNewTx(tx, now, blockRewardLock);
 };
