@@ -28,6 +28,11 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false,
       defaultValue: 'creating',
     },
+    retry_count: {
+      type: DataTypes.SMALLINT.UNSIGNED,
+      allowNull: false,
+      defaultValue: 0,
+    },
     max_gap: {
       type: DataTypes.SMALLINT.UNSIGNED,
       allowNull: false,

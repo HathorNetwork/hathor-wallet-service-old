@@ -123,11 +123,27 @@ functions:
           method: get
           cors: true
           authorizer: ${self:custom.authorizer.walletBearer}
+  getUtxos:
+    handler: src/api/utxos.getFilteredUtxos
+    events:
+      - http:
+          path: wallet/utxos
+          method: get
+          cors: true
+          authorizer: ${self:custom.authorizer.walletBearer}
   getBalanceApi:
     handler: src/api/balances.get
     events:
       - http:
           path: wallet/balances
+          method: get
+          cors: true
+          authorizer: ${self:custom.authorizer.walletBearer}
+  getTokensApi:
+    handler: src/api/tokens.get
+    events:
+      - http:
+          path: wallet/tokens
           method: get
           cors: true
           authorizer: ${self:custom.authorizer.walletBearer}
@@ -212,7 +228,7 @@ functions:
     timeout: 1
   authTokenApi:
     handler: src/api/auth.tokenHandler
-    timeout: 1
+    timeout: 6
     events:
       - http:
           path: auth/token

@@ -53,7 +53,6 @@ export const cleanDatabase = async (mysql: ServerlessMysql): Promise<void> => {
     'address_tx_history',
     'token',
     'tx_proposal',
-    'tx_proposal_outputs',
     'transaction',
     'tx_output',
     'version_data',
@@ -523,7 +522,7 @@ export const addToWalletTxHistoryTable = async (
   await mysql.query(`
     INSERT INTO \`wallet_tx_history\`(\`wallet_id\`, \`tx_id\`,
                                       \`token_id\`, \`balance\`,
-                                      \`timestamp\`)
+                                      \`timestamp\`, \`voided\`)
     VALUES ?`,
   [entries]);
 };
@@ -597,9 +596,11 @@ export const addToTxProposalTable = async (
   );
 };
 
-export const makeGatewayEvent = (params: {
-    [name: string]: string,
-  }, body = null): APIGatewayProxyEvent => ({
+export const makeGatewayEvent = (
+  params: { [name: string]: string },
+  body = null,
+  multiValueQueryStringParameters = null,
+): APIGatewayProxyEvent => ({
   body,
   queryStringParameters: params,
   pathParameters: params,
@@ -608,7 +609,7 @@ export const makeGatewayEvent = (params: {
   httpMethod: '',
   isBase64Encoded: false,
   path: '',
-  multiValueQueryStringParameters: null,
+  multiValueQueryStringParameters,
   stageVariables: null,
   requestContext: null,
   resource: null,
@@ -622,6 +623,7 @@ export const makeGatewayEventWithAuthorizer = (
   walletId: string,
   params: { [name: string]: string },
   body = null,
+  multiValueQueryStringParameters: { [name: string]: string[] } = null,
 ): APIGatewayProxyEvent => ({
   body,
   queryStringParameters: params,
@@ -631,7 +633,7 @@ export const makeGatewayEventWithAuthorizer = (
   httpMethod: '',
   isBase64Encoded: false,
   path: '',
-  multiValueQueryStringParameters: null,
+  multiValueQueryStringParameters,
   stageVariables: null,
   requestContext: {
     authorizer: { principalId: walletId },
@@ -649,6 +651,34 @@ export const makeGatewayEventWithAuthorizer = (
   },
   resource: null,
 });
+
+export const addToVersionDataTable = async (mysql: ServerlessMysql, versionData: FullNodeVersionData): Promise<void> => {
+  const payload = [[
+    1,
+    versionData.timestamp,
+    versionData.version,
+    versionData.network,
+    versionData.minWeight,
+    versionData.minTxWeight,
+    versionData.minTxWeightCoefficient,
+    versionData.minTxWeightK,
+    versionData.tokenDepositPercentage,
+    versionData.rewardSpendMinBlocks,
+    versionData.maxNumberInputs,
+    versionData.maxNumberOutputs,
+  ]];
+
+  await mysql.query(
+    `INSERT INTO \`version_data\`(\`id\`, \`timestamp\`,
+                          \`version\`, \`network\`,
+                          \`min_weight\`, \`min_tx_weight\`,
+                          \`min_tx_weight_coefficient\`, \`min_tx_weight_k\`,
+                          \`token_deposit_percentage\`, \`reward_spend_min_blocks\`,
+                          \`max_number_inputs\`, \`max_number_outputs\`)
+     VALUES ?`,
+    [payload],
+  );
+};
 
 export const checkVersionDataTable = async (mysql: ServerlessMysql, versionData: FullNodeVersionData): Promise<boolean | Record<string, unknown>> => {
   // first check the total number of rows in the table

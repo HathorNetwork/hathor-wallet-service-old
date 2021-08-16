@@ -70,6 +70,7 @@ export interface Wallet {
   xpubkey: string;
   maxGap: number;
   status?: WalletStatus;
+  retryCount?: number;
   createdAt?: number;
   readyAt?: number;
 }
@@ -233,8 +234,8 @@ export class Authorities {
   toJSON(): Record<string, unknown> {
     const authorities = this.toInteger();
     return {
-      mint: (authorities & hathorLib.constants.TOKEN_MINT_MASK) > 0,   // eslint-disable-line no-bitwise
-      melt: (authorities & hathorLib.constants.TOKEN_MELT_MASK) > 0,   // eslint-disable-line no-bitwise
+      mint: (authorities & hathorLib.constants.TOKEN_MINT_MASK) > 0, // eslint-disable-line no-bitwise
+      melt: (authorities & hathorLib.constants.TOKEN_MELT_MASK) > 0, // eslint-disable-line no-bitwise
     };
   }
 }
@@ -347,6 +348,7 @@ export class WalletTokenBalance {
 export interface TxTokenBalance {
   txId: string;
   timestamp: number;
+  voided: boolean;
   balance: Balance;
 }
 
@@ -537,6 +539,7 @@ export interface IWalletOutput {
   address: string;
   value: number;
   token: string;
+  tokenData: number;
   timelock: number;
 }
 
@@ -614,3 +617,19 @@ export type WalletProxyHandler = (
   context?: Context,
   callback?: Callback<APIGatewayProxyResult>
 ) => Promise<APIGatewayProxyResult>;
+
+export interface IFilterUtxo {
+  addresses: string[];
+  tokenId?: string;
+  authority?: number;
+  ignoreLocked?: boolean;
+  biggerThan?: number;
+  smallerThan?: number;
+  maxUtxos?: number;
+  txId?: string;
+  index?: number;
+}
+
+export interface DbTxOutputWithPath extends DbTxOutput {
+  addressPath: string;
+}

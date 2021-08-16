@@ -4,10 +4,12 @@ import { get as addressesGet } from '@src/api/addresses';
 import { get as newAddressesGet } from '@src/api/newAddresses';
 import { get as balancesGet } from '@src/api/balances';
 import { get as txHistoryGet } from '@src/api/txhistory';
-import { create as txProposalCreate } from '@src/api/txProposalCreate';
-import { get as walletGet, load as walletLoad } from '@src/api/wallet';
+import { get as walletGet, load as walletLoad, loadWallet } from '@src/api/wallet';
+import * as Wallet from '@src/api/wallet';
+import * as Db from '@src/db';
 import { ApiError } from '@src/api/errors';
 import { closeDbConnection, getDbConnection, getUnixTimestamp } from '@src/utils';
+import { WalletStatus } from '@src/types';
 import {
   ADDRESSES,
   XPUBKEY,
@@ -320,7 +322,12 @@ test('GET /txhistory', async () => {
   expect.hasAssertions();
 
   await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
-  await addToWalletTxHistoryTable(mysql, [['my-wallet', 'tx1', '00', 5, 1000], ['my-wallet', 'tx1', 'token2', '7', 1000], ['my-wallet', 'tx2', '00', 7, 1001]]);
+  await addToWalletTxHistoryTable(mysql, [
+    ['my-wallet', 'tx1', '00', 5, 1000, false],
+    ['my-wallet', 'tx1', 'token2', '7', 1000, false],
+    ['my-wallet', 'tx2', '00', 7, 1001, false],
+    ['my-wallet', 'tx2', 'token3', 7, 1001, true],
+  ]);
 
   // missing wallet
   await _testMissingWallet(txHistoryGet, 'some-wallet');
@@ -341,8 +348,8 @@ test('GET /txhistory', async () => {
   expect(result.statusCode).toBe(200);
   expect(returnBody.success).toBe(true);
   expect(returnBody.history).toHaveLength(2);
-  expect(returnBody.history).toContainEqual({ txId: 'tx1', timestamp: 1000, balance: 5 });
-  expect(returnBody.history).toContainEqual({ txId: 'tx2', timestamp: 1001, balance: 7 });
+  expect(returnBody.history).toContainEqual({ txId: 'tx1', timestamp: 1000, balance: 5, voided: 0 });
+  expect(returnBody.history).toContainEqual({ txId: 'tx2', timestamp: 1001, balance: 7, voided: 0 });
 
   // with count just 1, return only the most recent tx
   event = makeGatewayEventWithAuthorizer('my-wallet', { count: '1' });
@@ -352,7 +359,7 @@ test('GET /txhistory', async () => {
   expect(returnBody.success).toBe(true);
   expect(returnBody.count).toBe(1);
   expect(returnBody.history).toHaveLength(1);
-  expect(returnBody.history).toContainEqual({ txId: 'tx2', timestamp: 1001, balance: 7 });
+  expect(returnBody.history).toContainEqual({ txId: 'tx2', timestamp: 1001, balance: 7, voided: 0 });
 
   // skip first item
   event = makeGatewayEventWithAuthorizer('my-wallet', { skip: '1' });
@@ -362,7 +369,7 @@ test('GET /txhistory', async () => {
   expect(returnBody.success).toBe(true);
   expect(returnBody.skip).toBe(1);
   expect(returnBody.history).toHaveLength(1);
-  expect(returnBody.history).toContainEqual({ txId: 'tx1', timestamp: 1000, balance: 5 });
+  expect(returnBody.history).toContainEqual({ txId: 'tx1', timestamp: 1000, balance: 5, voided: 0 });
 
   // use other token id
   event = makeGatewayEventWithAuthorizer('my-wallet', { token_id: 'token2' });
@@ -371,7 +378,16 @@ test('GET /txhistory', async () => {
   expect(result.statusCode).toBe(200);
   expect(returnBody.success).toBe(true);
   expect(returnBody.history).toHaveLength(1);
-  expect(returnBody.history).toContainEqual({ txId: 'tx1', timestamp: 1000, balance: 7 });
+  expect(returnBody.history).toContainEqual({ txId: 'tx1', timestamp: 1000, balance: 7, voided: 0 });
+
+  // it should also return voided transactions
+  event = makeGatewayEventWithAuthorizer('my-wallet', { token_id: 'token3' });
+  result = await txHistoryGet(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(true);
+  expect(returnBody.history).toHaveLength(1);
+  expect(returnBody.history).toContainEqual({ txId: 'tx2', timestamp: 1001, balance: 7, voided: 1 });
 });
 
 test('GET /wallet', async () => {
@@ -388,7 +404,15 @@ test('GET /wallet', async () => {
   const returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(200);
   expect(returnBody.success).toBe(true);
-  expect(returnBody.status).toStrictEqual({ walletId: 'my-wallet', xpubkey: 'xpubkey', status: 'ready', maxGap: 5, createdAt: 10000, readyAt: 10001 });
+  expect(returnBody.status).toStrictEqual({
+    walletId: 'my-wallet',
+    xpubkey: 'xpubkey',
+    status: 'ready',
+    maxGap: 5,
+    retryCount: 0,
+    createdAt: 10000,
+    readyAt: 10001,
+  });
 });
 
 test('POST /wallet', async () => {
@@ -431,6 +455,17 @@ test('POST /wallet', async () => {
   expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
   expect(returnBody.message).toStrictEqual('Expected first address to be a but it is HNwiHGHKBNbeJPo9ToWvFWeNQkJrpicYci');
 
+  // Clean database so our pubkey is free to be used again:
+
+  await cleanDatabase(mysql);
+
+  const spy = jest.spyOn(Wallet, 'invokeLoadWalletAsync');
+
+  const mockImplementationSuccess = jest.fn(() => Promise.resolve());
+  const mockImplementationFailure = jest.fn(() => Promise.reject(new Error('error!')));
+
+  let mockFn = spy.mockImplementation(mockImplementationSuccess);
+
   // Load success
   event = makeGatewayEvent({}, JSON.stringify({ xpubkey: XPUBKEY, firstAddress: 'HNwiHGHKBNbeJPo9ToWvFWeNQkJrpicYci' }));
   result = await walletLoad(event, null, null) as APIGatewayProxyResult;
@@ -443,280 +478,132 @@ test('POST /wallet', async () => {
   expect(result.statusCode).toBe(400);
   expect(returnBody.success).toBe(false);
   expect(returnBody.error).toBe(ApiError.WALLET_ALREADY_LOADED);
+
+  await cleanDatabase(mysql);
+
+  mockFn = spy.mockImplementation(mockImplementationFailure);
+
+  // fail load and then retry
+  event = makeGatewayEvent({}, JSON.stringify({ xpubkey: XPUBKEY, firstAddress: 'HNwiHGHKBNbeJPo9ToWvFWeNQkJrpicYci' }));
+  result = await walletLoad(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(true);
+
+  // wallet should be in error state:
+  event = makeGatewayEventWithAuthorizer(returnBody.status.walletId, null);
+  result = await walletGet(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(true);
+  expect(returnBody.status.status).toStrictEqual('error');
+
+  // retrying should succeed
+  mockFn = spy.mockImplementation(mockImplementationSuccess);
+
+  event = makeGatewayEvent({}, JSON.stringify({ xpubkey: XPUBKEY, firstAddress: 'HNwiHGHKBNbeJPo9ToWvFWeNQkJrpicYci' }));
+  result = await walletLoad(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(true);
+  // XXX: invoking lambdas is not working on serverless-offline, so for now we are considering a call to the mocked lambda a success:
+  expect(mockFn).toHaveBeenCalledWith(XPUBKEY, 10);
 });
 
-test('POST /txproposals params validation', async () => {
+test('POST /wallet should fail with ApiError.WALLET_MAX_RETRIES when max retries are reached', async () => {
   expect.hasAssertions();
 
-  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
-  await addToAddressTable(mysql, [{
-    address: 'address',
-    index: 0,
-    walletId: 'my-wallet',
-    transactions: 2,
-  }]);
+  const spy = jest.spyOn(Wallet, 'invokeLoadWalletAsync');
+  const mockImplementationFailure = jest.fn(() => Promise.reject(new Error('error!')));
+  spy.mockImplementation(mockImplementationFailure);
 
-  // invalid body
-  let event = makeGatewayEventWithAuthorizer('my-wallet', null);
-  let result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  // Load failure
+  let event = makeGatewayEvent({}, JSON.stringify({ xpubkey: XPUBKEY, firstAddress: 'HNwiHGHKBNbeJPo9ToWvFWeNQkJrpicYci' }));
+  let result = await walletLoad(event, null, null) as APIGatewayProxyResult;
   let returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.status.status).toStrictEqual(WalletStatus.ERROR);
+  expect(returnBody.status.retryCount).toStrictEqual(1);
 
-  expect(result.statusCode).toBe(400);
-  expect(returnBody.success).toBe(false);
-  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+  event = makeGatewayEvent({}, JSON.stringify({ xpubkey: XPUBKEY, firstAddress: 'HNwiHGHKBNbeJPo9ToWvFWeNQkJrpicYci' }));
+  result = await walletLoad(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.status.status).toStrictEqual(WalletStatus.ERROR);
+  expect(returnBody.status.retryCount).toStrictEqual(2);
 
-  event = makeGatewayEventWithAuthorizer('my-wallet', null, 'aaa');
-  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  event = makeGatewayEvent({}, JSON.stringify({ xpubkey: XPUBKEY, firstAddress: 'HNwiHGHKBNbeJPo9ToWvFWeNQkJrpicYci' }));
+  result = await walletLoad(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.status.status).toStrictEqual(WalletStatus.ERROR);
+  expect(returnBody.status.retryCount).toStrictEqual(3);
+
+  event = makeGatewayEvent({}, JSON.stringify({ xpubkey: XPUBKEY, firstAddress: 'HNwiHGHKBNbeJPo9ToWvFWeNQkJrpicYci' }));
+  result = await walletLoad(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.status.status).toStrictEqual(WalletStatus.ERROR);
+  expect(returnBody.status.retryCount).toStrictEqual(4);
+
+  event = makeGatewayEvent({}, JSON.stringify({ xpubkey: XPUBKEY, firstAddress: 'HNwiHGHKBNbeJPo9ToWvFWeNQkJrpicYci' }));
+  result = await walletLoad(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.status.status).toStrictEqual(WalletStatus.ERROR);
+  expect(returnBody.status.retryCount).toStrictEqual(5);
+
+  event = makeGatewayEvent({}, JSON.stringify({ xpubkey: XPUBKEY, firstAddress: 'HNwiHGHKBNbeJPo9ToWvFWeNQkJrpicYci' }));
+  result = await walletLoad(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(400);
-  expect(returnBody.success).toBe(false);
-  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
-
-  // missing outputs
-  event = makeGatewayEventWithAuthorizer('my-wallet', null, '{}');
-  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
-  returnBody = JSON.parse(result.body as string);
-  expect(result.statusCode).toBe(400);
-  expect(returnBody.success).toBe(false);
-  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
-  expect(returnBody.details).toHaveLength(1);
-  expect(returnBody.details[0].message).toStrictEqual('"outputs" is required');
-
-  // empty outputs
-  event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({ outputs: [], inputs: [] }));
-  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
-  returnBody = JSON.parse(result.body as string);
-  expect(result.statusCode).toBe(400);
-  expect(returnBody.success).toBe(false);
-  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
-  expect(returnBody.details).toHaveLength(1);
-  expect(returnBody.details[0].message).toStrictEqual('"outputs" must contain at least 1 items');
-
-  // invalid outputs
-  event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({
-    outputs: [{ address: ADDRESSES[0], value: '10', token: 'token', timelock: 100000 }],
-  }));
-  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
-  returnBody = JSON.parse(result.body as string);
-  expect(result.statusCode).toBe(400);
-  expect(returnBody.success).toBe(false);
-  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
-  expect(returnBody.details).toHaveLength(1);
-  expect(returnBody.details[0].message).toStrictEqual('"outputs[0].value" must be a number');
-
-  // invalid outputs 2
-  event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({
-    outputs: [{
-      address: ADDRESSES[0],
-      value: 10,
-      token: 'token',
-      timelock: '1005',
-    }],
-  }));
-  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
-  returnBody = JSON.parse(result.body as string);
-  expect(result.statusCode).toBe(400);
-  expect(returnBody.success).toBe(false);
-  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
-  expect(returnBody.details).toHaveLength(1);
-  expect(returnBody.details[0].message).toStrictEqual('"outputs[0].timelock" must be a number');
-
-  // invalid inputs
-  event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({
-    outputs: [{ address: ADDRESSES[0], value: 10, token: 'token1', timelock: 100000 }],
-    inputs: [{ txId: 'txId', index: '0' }],
-  }));
-  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
-  returnBody = JSON.parse(result.body as string);
-  expect(result.statusCode).toBe(400);
-  expect(returnBody.success).toBe(false);
-  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
-  expect(returnBody.details).toHaveLength(1);
-  expect(returnBody.details[0].message).toStrictEqual('"inputs[0].index" must be a number');
-
-  // invalid inputs 2
-  event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({
-    outputs: [{ address: ADDRESSES[0], value: 10, token: 'token1', timelock: 100000 }],
-    inputs: [{ txId: 'txId' }],
-  }));
-  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
-  returnBody = JSON.parse(result.body as string);
-  expect(result.statusCode).toBe(400);
-  expect(returnBody.success).toBe(false);
-  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
-  expect(returnBody.details).toHaveLength(1);
-  expect(returnBody.details[0].message).toStrictEqual('"inputs[0].index" is required');
-
-  // missing wallet
-  event = makeGatewayEventWithAuthorizer('other-wallet', null, JSON.stringify({
-    outputs: [{ address: ADDRESSES[0], value: 10, token: 'token', timelock: 100000 }],
-  }));
-  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
-  returnBody = JSON.parse(result.body as string);
-  expect(result.statusCode).toBe(404);
-  expect(returnBody.success).toBe(false);
-  expect(returnBody.error).toBe(ApiError.WALLET_NOT_FOUND);
+  expect(returnBody.status.status).toStrictEqual(WalletStatus.ERROR);
+  expect(returnBody.error).toStrictEqual(ApiError.WALLET_MAX_RETRIES);
+  expect(returnBody.status.retryCount).toStrictEqual(5);
 });
 
-test('POST /txproposals inputs error', async () => {
+test('loadWallet should update wallet status to ERROR if an error occurs', async () => {
   expect.hasAssertions();
 
-  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
-  await addToAddressTable(mysql, [{
-    address: ADDRESSES[0],
-    index: 0,
-    walletId: 'my-wallet',
-    transactions: 2,
-  }]);
+  const loadWalletAsyncSpy = jest.spyOn(Wallet, 'invokeLoadWalletAsync');
+  const mockImplementationSuccess = jest.fn(() => Promise.resolve());
+  loadWalletAsyncSpy.mockImplementation(mockImplementationSuccess);
 
-  // insufficient funds
-  await addToTokenTable(mysql, [{
-    id: 'token1',
-    name: 'MyToken1',
-    symbol: 'MTK1',
-  }]);
-  await addToWalletBalanceTable(mysql, [{
-    walletId: 'my-wallet',
-    tokenId: 'token1',
-    unlockedBalance: 10,
-    lockedBalance: 0,
-    unlockedAuthorities: 0,
-    lockedAuthorities: 0,
-    timelockExpires: null,
-    transactions: 3,
-  }]);
+  // wallet should be 'creating'
+  const event = makeGatewayEvent({}, JSON.stringify({ xpubkey: XPUBKEY, firstAddress: 'HNwiHGHKBNbeJPo9ToWvFWeNQkJrpicYci' }));
+  const result = await walletLoad(event, null, null) as APIGatewayProxyResult;
+  const returnBody = JSON.parse(result.body as string);
 
-  let event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({ outputs: [{ address: ADDRESSES[0], value: 20, token: 'token1', timelock: 100000 }] }));
-  let result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
-  let returnBody = JSON.parse(result.body as string);
-  expect(result.statusCode).toBe(400);
-  expect(returnBody.success).toBe(false);
-  expect(returnBody.error).toBe(ApiError.INSUFFICIENT_FUNDS);
-  expect(returnBody.insufficient[0]).toStrictEqual({ tokenId: 'token1', requested: 20, available: 10 });
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.status.status).toStrictEqual(WalletStatus.CREATING);
 
-  // too many inputs
-  await addToTokenTable(mysql, [{
-    id: 'token2',
-    name: 'MyToken2',
-    symbol: 'MTK2',
-  }]);
-  await addToWalletBalanceTable(mysql, [{
-    walletId: 'my-wallet',
-    tokenId: 'token2',
-    unlockedBalance: 300,
-    lockedBalance: 0,
-    unlockedAuthorities: 0,
-    lockedAuthorities: 0,
-    timelockExpires: null,
-    transactions: 300,
-  }]);
+  const walletId = returnBody.status.walletId;
 
-  const utxos = [];
-  for (let i = 0; i < 300; i++) {
-    utxos.push([`tx${i}`, 0, 'token2', ADDRESSES[0], 1, 0, null, null, false]);
-  }
-  await addToUtxoTable(mysql, utxos);
-  event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({ outputs: [{ address: ADDRESSES[0], value: 300, token: 'token2', timelock: 100000 }] }));
-  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
-  returnBody = JSON.parse(result.body as string);
-  expect(result.statusCode).toBe(400);
-  expect(returnBody.success).toBe(false);
-  expect(returnBody.error).toBe(ApiError.TOO_MANY_INPUTS);
-  expect(returnBody.inputs).toBe(300);
+  const dbSpy = jest.spyOn(Db, 'addNewAddresses');
+  const mockImplementationFailure = jest.fn(() => Promise.reject(new Error('error!')));
+  dbSpy.mockImplementation(mockImplementationFailure);
 
-  // inputs not found
-  event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({
-    outputs: [{ address: ADDRESSES[0], value: 10, token: 'token1', timelock: 100000 }],
-    inputs: [{ txId: 'txId', index: 0 }],
-  }));
-  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
-  returnBody = JSON.parse(result.body as string);
-  expect(result.statusCode).toBe(400);
-  expect(returnBody.success).toBe(false);
-  expect(returnBody.error).toBe(ApiError.INPUTS_NOT_FOUND);
-  expect(returnBody.missing).toStrictEqual([{ txId: 'txId', index: 0 }]);
+  const loadEvent = { xpubkey: XPUBKEY, maxGap: 10 };
 
-  // insufficient inputs (sent by user)
-  event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({
-    outputs: [{ address: ADDRESSES[0], value: 10, token: 'token2', timelock: 100000 }],
-    inputs: [{ txId: 'tx0', index: 0 }],
-  }));
-  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
-  returnBody = JSON.parse(result.body as string);
-  expect(result.statusCode).toBe(400);
-  expect(returnBody.success).toBe(false);
-  expect(returnBody.error).toBe(ApiError.INSUFFICIENT_INPUTS);
-  expect(returnBody.insufficient[0]).toStrictEqual('token2');
-});
+  const noop = () => false;
 
-test('POST /txproposals outputs error', async () => {
-  expect.hasAssertions();
+  // mocking an event call from aws
+  await loadWallet(loadEvent, {
+    callbackWaitsForEmptyEventLoop: true,
+    logGroupName: '/aws/lambda/mock-lambda',
+    logStreamName: '2018/11/29/[$LATEST]xxxxxxxxxxxb',
+    functionName: 'loadWalletAsync',
+    memoryLimitInMB: '1024',
+    functionVersion: '$LATEST',
+    awsRequestId: 'xxxxxx-xxxxx-11e8-xxxx-xxxxxxxxx',
+    invokedFunctionArn: 'arn:aws:lambda:us-east-1:xxxxxxxx:function:loadWalletAsync',
+    getRemainingTimeInMillis: () => 1000,
+    done: noop,
+    fail: noop,
+    succeed: noop,
+  }, noop);
 
-  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
-  await addToAddressTable(mysql, [{
-    address: ADDRESSES[0],
-    index: 0,
-    walletId: 'my-wallet',
-    transactions: 2,
-  }]);
+  const wallet = await Db.getWallet(mysql, walletId);
 
-  // too many outputs (sent by user)
-  let outputs = [];
-  for (let i = 1; i < 300; i++) {
-    outputs.push({ address: ADDRESSES[0], value: i, token: 'token', timelock: null });
-  }
-  let event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({ outputs }));
-  let result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
-  let returnBody = JSON.parse(result.body as string);
-  expect(result.statusCode).toBe(400);
-  expect(returnBody.success).toBe(false);
-  expect(returnBody.error).toBe(ApiError.TOO_MANY_OUTPUTS);
-  expect(returnBody.outputs).toBe(outputs.length);
-
-  // output with value < 0 should fail
-  outputs = [{ address: ADDRESSES[0], value: -1, token: 'token', timelock: null }];
-  event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({ outputs }));
-  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
-  returnBody = JSON.parse(result.body as string);
-  expect(result.statusCode).toBe(400);
-  expect(returnBody.success).toBe(false);
-  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
-  expect(returnBody.details).toHaveLength(1);
-  expect(returnBody.details[0].message).toStrictEqual('"outputs[0].value" must be a positive number');
-
-  // output with value == 0 should fail
-  outputs = [{ address: ADDRESSES[0], value: 0, token: 'token', timelock: null }];
-  event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({ outputs }));
-  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
-  returnBody = JSON.parse(result.body as string);
-  expect(result.statusCode).toBe(400);
-  expect(returnBody.success).toBe(false);
-  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
-  expect(returnBody.details).toHaveLength(1);
-  expect(returnBody.details[0].message).toStrictEqual('"outputs[0].value" must be a positive number');
-
-  // too many outputs (after adding change output)
-  const utxos = [['txBig', 0, 'token2', ADDRESSES[0], 300, 0, null, null, false]];
-  await addToUtxoTable(mysql, utxos);
-  await addToWalletBalanceTable(mysql, [{
-    walletId: 'my-wallet',
-    tokenId: 'token2',
-    unlockedBalance: 300,
-    lockedBalance: 0,
-    unlockedAuthorities: 0,
-    lockedAuthorities: 0,
-    timelockExpires: null,
-    transactions: 300,
-  }]);
-  outputs = [];
-  for (let i = 0; i < 255; i++) {
-    outputs.push({ address: ADDRESSES[0], value: 1, token: 'token2', timelock: null });
-  }
-  event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({ outputs }));
-  result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
-  returnBody = JSON.parse(result.body as string);
-  expect(result.statusCode).toBe(400);
-  expect(returnBody.success).toBe(false);
-  expect(returnBody.error).toBe(ApiError.TOO_MANY_OUTPUTS);
-  expect(returnBody.outputs).toBe(outputs.length + 1);
+  expect(wallet.status).toStrictEqual(WalletStatus.ERROR);
 });
