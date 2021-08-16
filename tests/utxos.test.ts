@@ -160,6 +160,77 @@ test('get utxos with wallet id', async () => {
   expect(returnBody.utxos[1]).toStrictEqual(formatUtxo(utxos[1], 0));
 });
 
+test('get authority utxos', async () => {
+  expect.hasAssertions();
+
+  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToAddressTable(mysql, [{
+    address: ADDRESSES[0],
+    index: 0,
+    walletId: 'my-wallet',
+    transactions: 4,
+  }, {
+    address: ADDRESSES[1],
+    index: 1,
+    walletId: 'my-wallet',
+    transactions: 4,
+  }]);
+
+  const token1 = '004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50';
+
+  const utxos = [
+    [TX_IDS[0], 0, token1, ADDRESSES[0], 0, 1, null, null, false],
+    [TX_IDS[1], 0, token1, ADDRESSES[0], 0, 2, null, null, false],
+    [TX_IDS[2], 0, token1, ADDRESSES[1], 0, 1, null, null, false],
+    [TX_IDS[2], 1, token1, ADDRESSES[0], 0, 1, null, null, false],
+    [TX_IDS[3], 0, token1, ADDRESSES[0], 150, 0, null, null, false],
+  ];
+
+  await addToUtxoTable(mysql, utxos);
+
+  const formatUtxo = (utxo, path) => ({
+    txId: utxo[0],
+    index: utxo[1],
+    tokenId: utxo[2],
+    address: utxo[3],
+    value: utxo[4],
+    authorities: utxo[5],
+    timelock: utxo[6],
+    heightlock: utxo[7],
+    locked: utxo[8],
+    addressPath: `m/44'/280'/0'/0/${path}`,
+    txProposalId: null,
+    txProposalIndex: null,
+  });
+
+  let event = makeGatewayEventWithAuthorizer('my-wallet', {
+    tokenId: token1,
+    authority: '1', // Only mint authorities
+  }, null);
+
+  let result = await getFilteredUtxos(event, null, null) as APIGatewayProxyResult;
+  let returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(true);
+  expect(returnBody.utxos).toHaveLength(3);
+  expect(returnBody.utxos[0]).toStrictEqual(formatUtxo(utxos[0], 0));
+  expect(returnBody.utxos[1]).toStrictEqual(formatUtxo(utxos[2], 1));
+  expect(returnBody.utxos[2]).toStrictEqual(formatUtxo(utxos[3], 0));
+
+  event = makeGatewayEventWithAuthorizer('my-wallet', {
+    tokenId: token1,
+    authority: '3', // Mint and melt authorities
+  }, null);
+
+  result = await getFilteredUtxos(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(true);
+  expect(returnBody.utxos).toHaveLength(4);
+});
+
 test('get a specific utxo', async () => {
   expect.hasAssertions();
 

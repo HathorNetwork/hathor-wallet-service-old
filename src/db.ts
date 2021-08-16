@@ -2107,15 +2107,16 @@ export const filterUtxos = async (
     throw new Error('Addresses can\'t be empty.');
   }
 
-  const queryParams = [
+  const queryParams: any[] = [
     finalFilters.addresses,
     finalFilters.tokenId,
-    finalFilters.authority,
   ];
 
   if (finalFilters.authority === 0) {
     queryParams.push(finalFilters.smallerThan);
     queryParams.push(finalFilters.biggerThan);
+  } else {
+    queryParams.push(finalFilters.authority);
   }
 
   queryParams.push(finalFilters.maxUtxos);
@@ -2126,7 +2127,7 @@ export const filterUtxos = async (
       WHERE \`address\`
          IN (?)
         AND \`token_id\` = ?
-        AND \`authorities\` = ?
+        ${finalFilters.authority !== 0 ? 'AND `authorities` & ? > 0' : 'AND `authorities` = 0'}
         ${finalFilters.ignoreLocked ? 'AND `locked` = FALSE' : ''}
         ${finalFilters.authority === 0 ? 'AND value < ?' : ''}
         ${finalFilters.authority === 0 ? 'AND value > ?' : ''}
