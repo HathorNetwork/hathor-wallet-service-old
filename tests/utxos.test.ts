@@ -73,7 +73,7 @@ test('filter utxo api with invalid parameters', async () => {
 
   expect(result.statusCode).toStrictEqual(400);
   expect(returnBody.success).toStrictEqual(false);
-  expect(returnBody.error).toStrictEqual(ApiError.NO_TX_INDEX);
+  expect(returnBody.details[0].message).toStrictEqual('"value" contains [txId] without its required peers [index]');
 
   event = makeGatewayEventWithAuthorizer('my-wallet', {
     txId: TX_IDS[3],

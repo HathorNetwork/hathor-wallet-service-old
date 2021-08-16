@@ -34,7 +34,7 @@ const bodySchema = Joi.object({
   maxUtxos: Joi.number().integer().positive().default(constants.MAX_OUTPUTS),
   txId: Joi.string().optional(),
   index: Joi.number().optional().min(0),
-});
+}).and('txId', 'index');
 
 /*
  * Filter utxos
@@ -73,10 +73,6 @@ export const getFilteredUtxos = walletIdProxyHandler(async (walletId, event) => 
   const walletAddresses = await getWalletAddresses(mysql, walletId);
 
   if (value.txId !== undefined) {
-    if (!Number.isInteger(value.index)) {
-      return closeDbAndGetError(mysql, ApiError.NO_TX_INDEX);
-    }
-
     const utxo: DbTxOutput = await getUtxo(mysql, value.txId, value.index);
 
     if (!utxo) {
