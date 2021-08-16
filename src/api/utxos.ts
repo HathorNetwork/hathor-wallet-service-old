@@ -72,6 +72,7 @@ export const getFilteredUtxos = walletIdProxyHandler(async (walletId, event) => 
 
   const walletAddresses = await getWalletAddresses(mysql, walletId);
 
+  // txId will only be on the body when the user is searching for specific utxos
   if (value.txId !== undefined) {
     const utxo: DbTxOutput = await getUtxo(mysql, value.txId, value.index);
 
