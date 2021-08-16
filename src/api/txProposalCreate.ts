@@ -66,7 +66,7 @@ export const create = walletIdProxyHandler(async (walletId, event) => {
   }
 
   const body = value;
-  const tx = hathorLib.helpersUtils.createTxFromHex(body.txHex, new hathorLib.Network(process.env.NETWORK));
+  const tx: hathorLib.Transaction = hathorLib.helpersUtils.createTxFromHex(body.txHex, new hathorLib.Network(process.env.NETWORK));
 
   if (tx.outputs.length > hathorLib.transaction.getMaxOutputsConstant()) {
     return closeDbAndGetError(mysql, ApiError.TOO_MANY_OUTPUTS, { outputs: tx.outputs.length });
