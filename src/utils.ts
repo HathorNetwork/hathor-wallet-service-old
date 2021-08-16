@@ -11,8 +11,6 @@ import serverlessMysql, { ServerlessMysql } from 'serverless-mysql';
 import hathorLib from '@hathor/wallet-lib';
 import fullnode from '@src/fullnode';
 
-const ACCEPTABLE_WEIGHT_RANGE = 1.1; // 10%
-
 /* TODO: We should remove this as soon as the wallet-lib is refactored
 *  (https://github.com/HathorNetwork/hathor-wallet-lib/issues/122)
 */
@@ -150,17 +148,6 @@ export const arrayShuffle = <T extends unknown>(array: T[]): T[] => {
   return array;
   /* eslint-enable no-param-reassign */
 };
-
-/**
- * Check if the received weight is in the acceptable weight range.
- * This is calculated using the calculateTxWeight from the wallet-lib.
- *
- * @returns A boolean with the result
- */
-export const validateWeight = (calculated: number, received: number): boolean => (
-  (received >= calculated)
-  && (received < (calculated * ACCEPTABLE_WEIGHT_RANGE))
-);
 
 /**
  * Requests the fullnode for the requested block information and returns

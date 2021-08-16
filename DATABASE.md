@@ -78,16 +78,6 @@ CREATE TABLE `tx_proposal` (
   PRIMARY KEY (`id`)
 );
 
-CREATE TABLE `tx_proposal_outputs` (
-  `tx_proposal_id` varchar(36) NOT NULL,
-  `index` tinyint unsigned NOT NULL,
-  `address` varchar(34) NOT NULL,
-  `token_id` varchar(64) NOT NULL,
-  `value` bigint DEFAULT NULL,
-  `timelock` int unsigned DEFAULT NULL,
-  PRIMARY KEY (`tx_proposal_id`,`index`)
-);
-
 CREATE TABLE `tx_output` (
   `tx_id` varchar(64) NOT NULL, -- tx_id might point to a block
   `index` tinyint unsigned NOT NULL,
@@ -148,6 +138,9 @@ CREATE TABLE `transaction` (
 );
 
 CREATE INDEX transaction_version_idx USING HASH ON `transaction`(`version`);
+CREATE INDEX tx_output_heightlock_idx USING HASH ON `tx_output`(`heightlock`);
+CREATE INDEX tx_output_timelock_idx USING HASH ON `tx_output`(`timelock`);
+CREATE INDEX transaction_height_idx USING HASH ON `transaction`(`height`);
 
 ```
 
