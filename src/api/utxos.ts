@@ -80,7 +80,7 @@ export const getFilteredUtxos = walletIdProxyHandler(async (walletId, event) => 
     }
 
     // check if the utxo is a member of the user's wallet
-    const denied = await validateAddresses(walletAddresses, [utxo.address]);
+    const denied = validateAddresses(walletAddresses, [utxo.address]);
 
     if (denied.length > 0) {
       // the requested utxo does not belong to the user's wallet.
@@ -99,7 +99,7 @@ export const getFilteredUtxos = walletIdProxyHandler(async (walletId, event) => 
   }
 
   if (value.addresses) {
-    const denied = await validateAddresses(walletAddresses, value.addresses);
+    const denied = validateAddresses(walletAddresses, value.addresses);
 
     if (denied.length > 0) {
       return closeDbAndGetError(mysql, ApiError.ADDRESS_NOT_IN_WALLET, { missing: denied });
@@ -145,7 +145,7 @@ export const mapUtxosWithPath = (walletAddresses: AddressInfo[], utxos: DbTxOutp
  * @param addresses - List of addresses to validate
  * @returns A list with the denied addresses, if any
  */
-export const validateAddresses = async (walletAddresses: AddressInfo[], addresses: string[]): Promise<string[]> => {
+export const validateAddresses = (walletAddresses: AddressInfo[], addresses: string[]): string[] => {
   const flatAddresses = walletAddresses.map((walletAddress) => walletAddress.address);
   const denied: string[] = [];
 
