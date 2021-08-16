@@ -31,6 +31,7 @@ export enum ApiError {
   WALLET_MAX_RETRIES = 'wallet-max-retries',
   ADDRESS_NOT_IN_WALLET = 'address-not-in-wallet',
   UTXO_NOT_FOUND = 'utxo-not-found',
+  UTXO_NOT_IN_WALLET = 'utxo-not-in-wallet',
   FORBIDDEN = 'forbidden',
   UNAUTHORIZED = 'unauthorized',
 }

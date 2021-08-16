@@ -85,7 +85,7 @@ export const getFilteredUtxos = walletIdProxyHandler(async (walletId, event) => 
 
     if (denied.length > 0) {
       // the requested utxo does not belong to the user's wallet.
-      return closeDbAndGetError(mysql, ApiError.FORBIDDEN);
+      return closeDbAndGetError(mysql, ApiError.UTXO_NOT_IN_WALLET);
     }
 
     const utxoList: DbTxOutputWithPath[] = mapUtxosWithPath(walletAddresses, [utxo]);

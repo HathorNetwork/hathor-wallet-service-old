@@ -38,6 +38,7 @@ export const STATUS_CODE_TABLE = {
   [ApiError.UNAUTHORIZED]: 401,
   [ApiError.INPUTS_NOT_IN_WALLET]: 400,
   [ApiError.UTXO_NOT_FOUND]: 400,
+  [ApiError.UTXO_NOT_IN_WALLET]: 403,
   [ApiError.ADDRESS_NOT_IN_WALLET]: 400,
   [ApiError.WALLET_MAX_RETRIES]: 400,
 };

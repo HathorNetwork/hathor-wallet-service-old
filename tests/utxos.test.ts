@@ -99,7 +99,7 @@ test('filter utxo api with invalid parameters', async () => {
 
   expect(result.statusCode).toStrictEqual(403);
   expect(returnBody.success).toStrictEqual(false);
-  expect(returnBody.error).toStrictEqual(ApiError.FORBIDDEN);
+  expect(returnBody.error).toStrictEqual(ApiError.UTXO_NOT_IN_WALLET);
 });
 
 test('get utxos with wallet id', async () => {
