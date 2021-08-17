@@ -5,17 +5,17 @@ module.exports = {
     return queryInterface.sequelize.transaction((t) => {
       return Promise.all([
         queryInterface.bulkInsert('transaction', [{
-          tx_id: '000006cb93385b8b87a545a1cbb6197e6caff600c12cc12fc54250d39c8088fc',
+          tx_id: '0000033139d08176d1051fb3a272c3610457f0c7f686afbe0afe3d37f966db85',
           height: 0,
-          timestamp: 1578075305,
+          timestamp: 1577836800,
           version: 0,
           voided: false,
         }], { transaction: t }),
         queryInterface.bulkInsert('tx_output', [{
-          tx_id: '000006cb93385b8b87a545a1cbb6197e6caff600c12cc12fc54250d39c8088fc',
+          tx_id: '0000033139d08176d1051fb3a272c3610457f0c7f686afbe0afe3d37f966db85',
           index: 0,
           token_id: '00',
-          address: 'HJB2yxxsHtudGGy3jmVeadwMfRi2zNCKKD',
+          address: 'WdmDUMp8KvzhWB7KLgguA2wBiKsh4Ha8eX',
           value: 100000000000,
         }], { transaction: t }),
       ]);
@@ -26,10 +26,10 @@ module.exports = {
     return queryInterface.sequelize.transaction((t) => {
       return Promise.all([
         queryInterface.bulkDelete('transaction', {
-          tx_id: '000006cb93385b8b87a545a1cbb6197e6caff600c12cc12fc54250d39c8088fc',
+          tx_id: '0000033139d08176d1051fb3a272c3610457f0c7f686afbe0afe3d37f966db85',
         }, { transaction: t }),
         queryInterface.bulkDelete('tx_output', {
-          tx_id: '000006cb93385b8b87a545a1cbb6197e6caff600c12cc12fc54250d39c8088fc',
+          tx_id: '0000033139d08176d1051fb3a272c3610457f0c7f686afbe0afe3d37f966db85',
           index: 0,
         }, { transaction: t }),
       ]);
