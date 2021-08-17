@@ -59,18 +59,32 @@ The main tasks that will be performed during deploy are:
 
 Those tasks will be orchestrated by AWS Code Pipeline.
 
-The reason for choosing Code Pipeline is that it's capable of accesing the database through our VPC to perform migrations.
+The reason for choosing Code Pipeline is that it's capable of accessing the database through our VPC to perform migrations.
 
 The way it works is similar to Github Actions. We create a spec file declaring the steps that we want it to run, and configuring which branch we want to trigger the build. It seems to be possible to trigger it on GitHub releases too.
 
-Also, we need to create the Pipeline in AWS CodePipeline, create a connection to GitHub, create a build configuration in AWs CodeBuild, among other things.
+Also, we need to create the Pipeline in AWS CodePipeline, create a build configuration in AWs CodeBuild, among other things.
 
 We will create those AWS resources using Terraform.
 
-### Deployment Steps
-The steps to be run by CodePipeline are:
+### Maintenance mode
+A maintenance mode will be implemented in the WalletService, if we need to warn users before we run some potentially dangerous or slow migration that could cause downtimes.
 
-- Run our migrations command defined in Makefile. This will make it connect directly to the database.
+This maintenance mode will work by setting a flag in our Redis instance, that the service will use to know that this mode is enabled and warn the wallets.
+
+A Lambda function will be built that enables/disables the mode, and its execution will be triggered in the deployment pipeline, when needed.
+
+### Deployment Steps
+We will have two kinds of deployments. The one with maintenance mode enabled, and the one with it disabled.
+
+Both will be trigger manually, and we need to have the option to choose which one we would like to trigger.
+
+If we run the one with maintenance mode enabled, it will call the Lambda function responsible for enabling it before procceeding to the common steps.
+
+The common steps that will need to be run in both cases are:
+
+- Someone triggers the pipeline manually. The trigger will be manual as a precaution to avoid unexpected downtimes.
+- The pipelines runs our migrations command defined in Makefile. This will make it connect directly to the database.
 - Run our `serverless deploy` command defined in Makefile. This makes it build and upload the Lambdas.
 - Build a new Docker image for the daemon and push to our ECR repository. We will configure Flux inside our Kubernetes to monitor this repository and rollout the Daemon to run the new version whenever a new image is detected.
 
@@ -85,7 +99,7 @@ The first case is only solvable by making sure we only do backwards-compatible c
 
 The second case is more difficult to solve completely. I don't think we should try to do it, because it would introduce a lot of additional complexity to our setup.
 
-Probably something like a Blue-Green deployment would be needed, including replication of the database, and this creates too much complexity, like making sure the DBs are in-sync, which includes syncing them even when one has run the schema migrations while the other hasn't yey. Besides building this Blue-Green mechanism.
+Probably something like a Blue-Green deployment would be needed, including replication of the database, and this creates too much complexity, like making sure the DBs are in-sync, which includes syncing them even when one has run the schema migrations while the other hasn't yet.
 
 So the best option seems to be simply minimize the effects of possible locks in the database.
 
