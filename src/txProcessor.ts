@@ -9,7 +9,6 @@ import AWS from 'aws-sdk';
 import { APIGatewayProxyHandler, APIGatewayProxyResult, SQSEvent } from 'aws-lambda';
 import 'source-map-support/register';
 import hathorLib from '@hathor/wallet-lib';
-
 import {
   getAddressBalanceMap,
   getWalletBalanceMap,
@@ -34,6 +33,9 @@ import {
   updateWalletTablesWithTx,
   fetchTx,
 } from '@src/db';
+import {
+  transactionDecorator,
+} from '@src/db/utils';
 import {
   StringMap,
   Transaction,
@@ -186,7 +188,7 @@ export const handleVoidedTx = async (tx: Transaction): Promise<void> => {
  * @param now - Current timestamp
  * @param blockRewardLock - The block reward lock
  */
-export const addNewTx = async (tx: Transaction, now: number, blockRewardLock: number): Promise<void> => {
+const _unsafeAddNewTx = async (tx: Transaction, now: number, blockRewardLock: number): Promise<void> => {
   // TODO mysql error treatment
 
   const txId = tx.tx_id;
@@ -284,5 +286,21 @@ export const addNewTx = async (tx: Transaction, now: number, blockRewardLock: nu
     }),
     QueueUrl: queueUrl,
   };
+
   await sqs.sendMessage(params).promise();
+};
+
+/**
+ * Add a new transaction or block, updating the proper tables.
+ * @remarks This is a wrapper for _unsafeAddNewTx that adds automatic transaction and rollback on failure
+ *
+ * @param tx - The transaction or block
+ * @param now - Current timestamp
+ * @param blockRewardLock - The block reward lock
+ */
+export const addNewTx = async (tx: Transaction, now: number, blockRewardLock: number) => {
+  /* eslint-disable-next-line  @typescript-eslint/ban-types */
+  const wrappedAddNewTx = await transactionDecorator(mysql, _unsafeAddNewTx);
+
+  return wrappedAddNewTx(tx, now, blockRewardLock);
 };
