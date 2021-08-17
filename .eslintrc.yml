@@ -54,7 +54,6 @@ rules:
   jest/no-conditional-expect: 'off'
   jest/no-expect-resolves: 'off'
   jest/lowercase-name: 'off'
-  "@typescript-eslint/ban-types": 'off'
   "@typescript-eslint/naming-convention":
   - error
   - selector: variableLike

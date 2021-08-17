@@ -33,6 +33,7 @@ export const rollbackTransaction = async (
   await mysql.query('ROLLBACK');
 };
 
+/* eslint-disable-next-line  @typescript-eslint/ban-types */
 export async function transactionDecorator(_mysql: ServerlessMysql, wrapped: Function): Promise<Function> {
   return async function wrapper(...args) {
     try {

@@ -299,6 +299,7 @@ const _unsafeAddNewTx = async (tx: Transaction, now: number, blockRewardLock: nu
  * @param blockRewardLock - The block reward lock
  */
 export const addNewTx = async (tx: Transaction, now: number, blockRewardLock: number) => {
+  /* eslint-disable-next-line  @typescript-eslint/ban-types */
   const wrappedAddNewTx = await transactionDecorator(mysql, _unsafeAddNewTx);
 
   return wrappedAddNewTx(tx, now, blockRewardLock);
