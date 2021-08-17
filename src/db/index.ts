@@ -22,7 +22,7 @@ import {
   TokenBalanceMap,
   TokenInfo,
   TxInput,
-  TxOutputWithIndex,
+  TxOutput,
   TxProposal,
   TxProposalStatus,
   TxTokenBalance,
@@ -523,14 +523,14 @@ export const updateWalletTablesWithTx = async (
 export const addUtxos = async (
   mysql: ServerlessMysql,
   txId: string,
-  outputs: TxOutputWithIndex[],
+  outputs: TxOutput[],
   heightlock: number = null,
 ): Promise<void> => {
   // outputs might be empty if we're destroying authorities
   if (outputs.length === 0) return;
 
   const entries = outputs.map(
-    (output) => {
+    (output, index) => {
       let authorities = 0;
       let value = output.value;
 
@@ -541,7 +541,7 @@ export const addUtxos = async (
 
       return [
         txId,
-        output.index,
+        index,
         output.token,
         value,
         authorities,
@@ -623,25 +623,8 @@ export const updateTxOutputSpentBy = async (mysql: ServerlessMysql, inputs: TxIn
   // entries might be empty if there are no inputs
   if (entries.length) {
     // get the rows before deleting
-
-    /* We are forcing this query to use the PRIMARY index because MySQL is not using the index when there is
-     * more than 185 elements in the IN query. I couldn't find a reason for that. Here is the EXPLAIN with exactly 185
-     * elements:
-     * +----+-------------+-----------+------------+-------+---------------+---------+---------+-------------+------+
-     * | id | select_type | table     | partitions | type  | possible_keys | key     | key_len | ref         | rows |
-     * +----+-------------+-----------+------------+-------+---------------+---------+---------+-------------+------+
-     * |  1 | UPDATE      | tx_output | NULL       | range | PRIMARY       | PRIMARY | 259     | const,const |  250 |
-     * +----+-------------+-----------+------------+-------+---------------+---------+---------+-------------+------+
-     *
-     * And here is the EXPLAIN query with exactly 186 elements:
-     * +----+-------------+-----------+------------+-------+---------------+---------+---------+------+---------+
-     * | id | select_type | table     | partitions | type  | possible_keys | key     | key_len | ref  | rows    |
-     * +----+-------------+-----------+------------+-------+---------------+---------+---------+------+---------+
-     * |  1 | UPDATE      | tx_output | NULL       | index | NULL          | PRIMARY | 259     | NULL | 1933979 |
-     * +----+-------------+-----------+------------+-------+---------------+---------+---------+------+---------+
-     */
     await mysql.query(
-      `UPDATE \`tx_output\` USE INDEX (PRIMARY)
+      `UPDATE \`tx_output\`
           SET \`spent_by\` = ?
         WHERE (\`tx_id\` ,\`index\`)
            IN (?)`,
@@ -1121,15 +1104,10 @@ export const getNewAddresses = async (mysql: ServerlessMysql, walletId: string):
        WHERE \`wallet_id\` = ?
          AND \`transactions\` = 0
          AND \`index\` > (
-           IFNULL(
-             (
-               SELECT MAX(\`index\`)
-                FROM \`address\`
-               WHERE \`wallet_id\` = ?
-                 AND \`transactions\` > 0
-             ),
-             -1
-           )
+           SELECT MAX(\`index\`)
+             FROM \`address\`
+             WHERE \`wallet_id\` = ?
+             AND \`transactions\` > 0
          )
     ORDER BY \`index\`
          ASC
@@ -2217,41 +2195,4 @@ export const getTxProposalInputs = async (
     inputs.push(input);
   }
   return inputs;
-};
-
-/**
- * Get mempool txs before a date
- *
- * @param mysql - Database connection
- * @param date - The date to search for
-
- * @returns A list of txs
- */
-export const getMempoolTransactionsBeforeDate = async (
-  mysql: ServerlessMysql,
-  date: number,
-): Promise<Tx[]> => {
-  const results: DbSelectResult = await mysql.query(
-    `SELECT *
-       FROM \`transaction\`
-      WHERE \`timestamp\` < ?
-        AND \`voided\` = FALSE
-        AND \`height\` IS NULL`,
-    [date],
-  );
-  const transactions = [];
-
-  for (const result of results) {
-    const tx: Tx = {
-      txId: result.tx_id as string,
-      timestamp: result.timestamp as number,
-      version: result.version as number,
-      voided: result.voided as boolean,
-      height: result.height as number,
-    };
-
-    transactions.push(tx);
-  }
-
-  return transactions;
 };
