@@ -51,44 +51,41 @@ We will be using additional tools that are already installed in our cluster to s
 Everything will be commited as code in our infra private repo.
 
 ## Continuous Deployment
-The main tasks that will be performed during deploy are:
+We have two differente services to deploy, WalletService and Daemon.
+
+WalletService's deploy will consist of:
 
 - Run migrations in the database
 - Deploy the new Lambdas
-- Deploy the new Daemon
 
-Those tasks will be orchestrated by AWS Code Pipeline.
+Daemon's deploy will consist of:
+- Build and push a new Docker image
+- Flux detects the image and updates the container
 
-The reason for choosing Code Pipeline is that it's capable of accessing the database through our VPC to perform migrations.
+Those tasks will be orchestrated by AWS Code Pipeline, and will be automatically triggered by events in the Github repository. For deployments in the mainnet, the event will be the creation of a release tag. For testnet and dev environments, commits in master and dev branches.
+
+The reason for choosing Code Pipeline is that it's capable of accessing the database through our VPC to perform migrations in a safe manner.
 
 The way it works is similar to Github Actions. We create a spec file declaring the steps that we want it to run, and configuring which branch we want to trigger the build. It seems to be possible to trigger it on GitHub releases too.
 
-Also, we need to create the Pipeline in AWS CodePipeline, create a build configuration in AWs CodeBuild, among other things.
-
-We will create those AWS resources using Terraform.
+All the configuration needed by CodePipeline will be defined and created using Terraform.
 
 ### Maintenance mode
 A maintenance mode will be implemented in the WalletService, if we need to warn users before we run some potentially dangerous or slow migration that could cause downtimes.
 
 This maintenance mode will work by setting a flag in our Redis instance, that the service will use to know that this mode is enabled and warn the wallets.
 
-A Lambda function will be built that enables/disables the mode, and its execution will be triggered in the deployment pipeline, when needed.
+A Lambda function will be built that enables/disables the mode, and its execution will be triggered by the developers before deploying a new version.
 
-### Deployment Steps
-We will have two kinds of deployments. The one with maintenance mode enabled, and the one with it disabled.
+We will use CodePipeline's Manual Approval mechanism to ALWAYS stop the deployment pipeline and warn the user that he should think about whether the maintenance mode should be activated for this deployment or not.
 
-Both will be trigger manually, and we need to have the option to choose which one we would like to trigger.
+It will be the developer's responsibility to make this decision.
 
-If we run the one with maintenance mode enabled, it will call the Lambda function responsible for enabling it before procceeding to the common steps.
+If he/she thinks that it's safe to proceed, then the deployment can be approved. Otherwise, he/she will have to enable the maintenance mode manually before approving the deployment, and disabling it afterwards.
 
-The common steps that will need to be run in both cases are:
+### Extra: Avoiding downtimes during schema migrations
 
-- Someone triggers the pipeline manually. The trigger will be manual as a precaution to avoid unexpected downtimes.
-- The pipelines runs our migrations command defined in Makefile. This will make it connect directly to the database.
-- Run our `serverless deploy` command defined in Makefile. This makes it build and upload the Lambdas.
-- Build a new Docker image for the daemon and push to our ECR repository. We will configure Flux inside our Kubernetes to monitor this repository and rollout the Daemon to run the new version whenever a new image is detected.
-
-### Avoiding downtimes during schema migrations
+The thing that inspired the maintenance mode above is the possibility we have of generating downtimes during database schema migrations.
 
 There are 2 possible causes of downtime during schema migrations:
 
@@ -97,22 +94,19 @@ There are 2 possible causes of downtime during schema migrations:
 
 The first case is only solvable by making sure we only do backwards-compatible changes in the DB schema. This article has some good examples: https://spring.io/blog/2016/05/31/zero-downtime-deployment-with-a-database
 
-The second case is more difficult to solve completely. I don't think we should try to do it, because it would introduce a lot of additional complexity to our setup.
+The second case is more difficult to solve completely. It doesn't seem to be worth it to try, because it would introduce a lot of additional complexity to our setup. Probably something like a Blue-Green deployment would be needed, including replication of the database, and this creates too much complexity, like making sure the DBs are in-sync, which includes syncing them even when one has run the schema migrations while the other hasn't yet.
 
-Probably something like a Blue-Green deployment would be needed, including replication of the database, and this creates too much complexity, like making sure the DBs are in-sync, which includes syncing them even when one has run the schema migrations while the other hasn't yet.
+So the best option seems to be simply minimize the effects of possible locks in the database. And that's where the maintenance mode comes into hand.
 
-So the best option seems to be simply minimize the effects of possible locks in the database.
+#### How to know if a migration is downtime-safe
+
+1. Make sure all changes in the schema are backwards compatible. To know this, just think: If I run the migrations but do not update the application, will it still work?
+
+2. Make sure all operations run by the migrations do not lock whole tables, especially if they are big ones.
 
 MySQL includes features for online schema changes, and a lot of operations already allow running DML operations while a DDL operation is running. So schema migrations that just run those operations could be run without locking the table: https://dev.mysql.com/doc/refman/8.0/en/innodb-online-ddl-operations.html#online-ddl-column-operations
 
 In some cases it will work out of the box, but to be 100% sure, we should include the options `LOCK=NONE, ALGORITHM=INPLACE` in the schema migrations performed in big tables.
-
-So, my suggestions are:
-
-- We measure the time the migrations are taking to run during CD, and alert in case they take too long. This way we would be warned if they take too long during testnet deployments, which occur before mainnet deployments.
-- We run MySQL Exporters to get metrics from our MySQL instances: https://github.com/prometheus/mysqld_exporter. With this, we would be able to follow a lot of metrics, including locks in the tables, and confirm if the locks are really not affecting us: https://grafana.com/oss/prometheus/exporters/mysql-exporter/?tab=dashboards#metrics-usage
-- In tables we know are too large, use `LOCK=NONE, ALGORITHM=INPLACE`
-- Do the usual backwards-compatibility stuff to make sure we do not run breaking migrations
 
 ### Alternatives
 Other options were discussed in https://github.com/HathorNetwork/hathor-wallet-service/issues/80#issuecomment-879973859
@@ -126,20 +120,29 @@ This is a table summarizing the main events and how they will be monitored.
 ### Wallet Service
 
 | Event | Proposed Solution |
-|-----------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------ |
+|-----------------------------------------------------------------------------|--------------------------------------------------------------------------- |
 | Error on balance calculation, on MySQL connection or on FullNode connection | Log an error or exit error in the Lambda, then put CloudWatch alarms on then. |
-| Database metrics alerts | CloudWatch alarms and MySQL Exporter, each of them will provide us with different metrics |
 | WalletService and FullNode out of sync | Expose the highest block height to Prometheus through API Gateway, and compare with the FullNode. |
 
 
 ### Daemon
 
 |  Event | Proposed Solution |
-|-----------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------ |
+|-----------------------------------------------------------------------------|------------------------------------------------------------------------ |
 | A reorg is detected with more than 1000 blocks difference | Log this event with a marker, then create Alarms when the marker appears |
 | More than X minutes/seconds without a new block from the connected fullnode | Already monitored in the full-nodes. | | |
 | Websocket connection lost with the full-node after X retries | Log this event with a marker, then create Alarms when the marker appears |
 | Daemon and FullNode out of sync | Expose the highest block height from the Daemon to Prometheus |
+
+
+### Databases
+
+| Event | Proposed Solution |
+|-----------------------------------------------------------------------------|------------------------------------------------------------------------- |
+| AWS RDS metrics | CloudWatch alarms to warn about the most important ones |
+| Locks in tables | Use MySQL Exporter to extract metrics to Prometheus and create alerts on this |
+| Slow Queries | Use MySQL Exporter to extract metrics to Prometheus and create alerts on this |
+| Slow Migrations | Measure the time they take to run in AWS CodePipeline |
 
 ## Security
 
