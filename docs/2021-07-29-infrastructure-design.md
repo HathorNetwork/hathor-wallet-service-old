@@ -64,7 +64,7 @@ Daemon's deploy will consist of:
 
 Those tasks will be orchestrated by AWS Code Pipeline, and will be automatically triggered by events in the Github repository. For deployments in the mainnet, the event will be the creation of a release tag. For testnet and dev environments, commits in master and dev branches.
 
-The reason for choosing Code Pipeline is that it's capable of accessing the database through our VPC to perform migrations in a safe manner.
+The reason for choosing Code Pipeline is that it's capable of accessing the database through our VPC to perform migrations in a safe manner. Check this issue for more details about this decision: https://github.com/HathorNetwork/ops-tools/issues/113
 
 The way it works is similar to Github Actions. We create a spec file declaring the steps that we want it to run, and configuring which branch we want to trigger the build. It seems to be possible to trigger it on GitHub releases too.
 
@@ -83,7 +83,7 @@ It will be the developer's responsibility to make this decision.
 
 If he/she thinks that it's safe to proceed, then the deployment can be approved. Otherwise, he/she will have to enable the maintenance mode manually before approving the deployment, and disabling it afterwards.
 
-### Extra: Avoiding downtimes during schema migrations
+### Avoiding downtimes during schema migrations
 
 The thing that inspired the maintenance mode above is the possibility we have of generating downtimes during database schema migrations.
 
