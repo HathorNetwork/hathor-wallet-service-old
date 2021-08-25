@@ -16,11 +16,17 @@ custom:
       type: TOKEN
       identitySource: method.request.header.Authorization
       identityValidationExpression: Bearer (.*)
+  # Configures throttling settings for the API Gateway stage
+  # They apply to all http endpoints, unless specifically overridden
+  apiGatewayThrottling:
+    maxRequestsPerSecond: 500
+    maxConcurrentRequests: 250
 
 plugins:
   - serverless-offline
   - serverless-webpack
   - serverless-prune-plugin
+  - serverless-api-gateway-throttling
 
 resources:
   Resources:
@@ -245,3 +251,6 @@ functions:
       - http:
           path: metrics
           method: get
+          throttling:
+            maxRequestsPerSecond: 2
+            maxConcurrentRequests: 2
