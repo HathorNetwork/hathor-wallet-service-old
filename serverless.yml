@@ -63,7 +63,6 @@ provider:
     DB_NAME: ${env:DB_NAME}
     DB_USER: ${env:DB_USER}
     DB_PASS: ${env:DB_PASS}
-    ENVIRONMENT: ${opt:stage, 'dev'}
     SERVICE_NAME: ${self:service}
     MAX_ADDRESS_GAP: ${env:MAX_ADDRESS_GAP}
     NETWORK: ${env:NETWORK}

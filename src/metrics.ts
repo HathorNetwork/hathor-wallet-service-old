@@ -17,7 +17,7 @@ const mysql = getDbConnection();
 // Default labels
 const defaultLabels = {
   network: process.env.NETWORK,
-  environment: process.env.ENVIRONMENT
+  environment: process.env.STAGE
 };
 prom_client.register.setDefaultLabels(defaultLabels);
 
