@@ -63,13 +63,14 @@ provider:
     DB_NAME: ${env:DB_NAME}
     DB_USER: ${env:DB_USER}
     DB_PASS: ${env:DB_PASS}
-    SERVICE_NAME: ${self:service}
     MAX_ADDRESS_GAP: ${env:MAX_ADDRESS_GAP}
     NETWORK: ${env:NETWORK}
     NEW_TX_SQS: { Ref: WalletServiceNewTxQueue }
     REDIS_HOST: ${env:REDIS_HOST}
     REDIS_PORT: ${env:REDIS_PORT}
     REDIS_PASSWORD: ${env:REDIS_PASSWORD}
+    SERVICE_NAME: ${self:service}
+    STAGE: ${opt:stage, 'dev'}
   iamRoleStatements:
     - Effect: Allow
       Action:
@@ -236,3 +237,9 @@ functions:
           cors: true
   bearerAuthorizer:
     handler: src/api/auth.bearerAuthorizer
+  metrics:
+    handler: src/metrics.getMetrics
+    events:
+      - http:
+          path: metrics
+          method: get
