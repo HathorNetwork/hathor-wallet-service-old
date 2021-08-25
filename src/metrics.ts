@@ -6,7 +6,7 @@
  */
 
 import { APIGatewayProxyHandler } from 'aws-lambda';
-import prom_client from 'prom-client';
+import promClient from 'prom-client';
 import 'source-map-support/register';
 
 import { getLatestHeight } from '@src/db';
@@ -17,12 +17,12 @@ const mysql = getDbConnection();
 // Default labels
 const defaultLabels = {
   network: process.env.NETWORK,
-  environment: process.env.STAGE
+  environment: process.env.STAGE,
 };
-prom_client.register.setDefaultLabels(defaultLabels);
+promClient.register.setDefaultLabels(defaultLabels);
 
 // Best block height metric
-new prom_client.Gauge({
+new promClient.Gauge({  // eslint-disable-line no-new
   name: 'wallet_service:best_block_height',
   help: 'The height of the latest block received',
   async collect() {
@@ -37,7 +37,7 @@ new prom_client.Gauge({
  * This lambda is called by API Gateway on GET /metrics
  */
 export const getMetrics: APIGatewayProxyHandler = async () => {
-  const body = await prom_client.register.metrics();
+  const body = await promClient.register.metrics();
   await closeDbConnection(mysql);
 
   return {
