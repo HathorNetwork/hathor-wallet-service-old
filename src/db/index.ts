@@ -1104,10 +1104,15 @@ export const getNewAddresses = async (mysql: ServerlessMysql, walletId: string):
        WHERE \`wallet_id\` = ?
          AND \`transactions\` = 0
          AND \`index\` > (
-           SELECT MAX(\`index\`)
-             FROM \`address\`
-             WHERE \`wallet_id\` = ?
-             AND \`transactions\` > 0
+           IFNULL(
+             (
+               SELECT MAX(\`index\`)
+                FROM \`address\`
+               WHERE \`wallet_id\` = ?
+                 AND \`transactions\` > 0
+             ),
+             -1
+           )
          )
     ORDER BY \`index\`
          ASC
