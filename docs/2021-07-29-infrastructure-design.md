@@ -150,7 +150,6 @@ Those are the security measures we will be taking:
 
 - The Database, Redis Server and FullNode will be exposed only inside our VPC
 - Rate Limits will be configured in Api Gateway
-    - TODO: Which ones?
 - An authentication mechanism to assure only the owner can listen to a wallet in websocket is being designed in https://github.com/HathorNetwork/hathor-wallet-service/issues/84
 
 ## Other Aspects
