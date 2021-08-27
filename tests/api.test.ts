@@ -136,6 +136,44 @@ test('GET /addresses/new', async () => {
   expect(returnBody.addresses).toContainEqual({ address: ADDRESSES[8], index: 8, addressPath: "m/44'/280'/0'/0/8" });
 });
 
+test('GET /addresses/new with no transactions', async () => {
+  expect.hasAssertions();
+
+  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToAddressTable(mysql, [
+    { address: ADDRESSES[0], index: 0, walletId: 'my-wallet', transactions: 0 },
+    { address: ADDRESSES[1], index: 1, walletId: 'my-wallet', transactions: 0 },
+    { address: ADDRESSES[2], index: 2, walletId: 'my-wallet', transactions: 0 },
+    { address: ADDRESSES[3], index: 3, walletId: 'my-wallet', transactions: 0 },
+    { address: ADDRESSES[4], index: 4, walletId: 'my-wallet', transactions: 0 },
+    { address: ADDRESSES[5], index: 5, walletId: 'my-wallet', transactions: 0 },
+    { address: ADDRESSES[6], index: 6, walletId: 'my-wallet', transactions: 0 },
+    { address: ADDRESSES[7], index: 7, walletId: 'my-wallet', transactions: 0 },
+    { address: ADDRESSES[8], index: 8, walletId: 'my-wallet', transactions: 0 },
+    { address: ADDRESSES[9], index: 0, walletId: null, transactions: 0 },
+    { address: ADDRESSES[10], index: 0, walletId: 'test', transactions: 0 },
+  ]);
+
+  // missing wallet
+  await _testMissingWallet(newAddressesGet, 'some-wallet');
+
+  // wallet not ready
+  await _testWalletNotReady(newAddressesGet);
+
+  // success case
+  const event = makeGatewayEventWithAuthorizer('my-wallet', {});
+  const result = await newAddressesGet(event, null, null) as APIGatewayProxyResult;
+  const returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(true);
+  expect(returnBody.addresses).toHaveLength(5); // max gap for this wallet is 5
+  expect(returnBody.addresses).toContainEqual({ address: ADDRESSES[0], index: 0, addressPath: "m/44'/280'/0'/0/0" });
+  expect(returnBody.addresses).toContainEqual({ address: ADDRESSES[1], index: 1, addressPath: "m/44'/280'/0'/0/1" });
+  expect(returnBody.addresses).toContainEqual({ address: ADDRESSES[2], index: 2, addressPath: "m/44'/280'/0'/0/2" });
+  expect(returnBody.addresses).toContainEqual({ address: ADDRESSES[3], index: 3, addressPath: "m/44'/280'/0'/0/3" });
+  expect(returnBody.addresses).toContainEqual({ address: ADDRESSES[4], index: 4, addressPath: "m/44'/280'/0'/0/4" });
+});
+
 test('GET /balances', async () => {
   expect.hasAssertions();
 
