@@ -1,14 +1,14 @@
 .PHONY: deploy-lambdas-dev-testnet
 deploy-lambdas-dev-testnet:
-	serverless deploy --stage dev-testnet --region eu-central-1
+	npx serverless deploy --stage dev-testnet --region eu-central-1
 
 .PHONY: deploy-lambdas-testnet
 deploy-lambdas-testnet:
-	serverless deploy --stage testnet --region eu-central-1
+	npx serverless deploy --stage testnet --region eu-central-1
 
 .PHONY: deploy-lambdas-mainnet
 deploy-lambdas-mainnet:
-	serverless deploy --stage mainnet --region eu-central-1
+	npx serverless deploy --stage mainnet --region eu-central-1
 
 .PHONY: migrate
 migrate:
