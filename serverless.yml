@@ -1,5 +1,7 @@
-service:
-  name: hathor-wallet-service
+service: hathor-wallet-service
+frameworkVersion: '2'
+
+useDotenv: true
 
 custom:
   webpack:
@@ -14,12 +16,17 @@ custom:
       type: TOKEN
       identitySource: method.request.header.Authorization
       identityValidationExpression: Bearer (.*)
+  # Configures throttling settings for the API Gateway stage
+  # They apply to all http endpoints, unless specifically overridden
+  apiGatewayThrottling:
+    maxRequestsPerSecond: 500
+    maxConcurrentRequests: 250
 
 plugins:
   - serverless-offline
   - serverless-webpack
   - serverless-prune-plugin
-  - serverless-dotenv-plugin
+  - serverless-api-gateway-throttling
 
 resources:
   Resources:
@@ -32,12 +39,13 @@ resources:
 provider:
   name: aws
   runtime: nodejs12.x
+  lambdaHashingVersion: 20201221
   # In MB. This is the memory allocated for the Lambdas, they cannot use more than this
   # and will break if they try.
   memorySize: 256
   # This is the default timeout. Each function can specify a different value
   timeout: 6
-  websocketsApiName: wallet-realtime-ws-api
+  websocketsApiName: wallet-realtime-ws-api-${opt:stage, 'dev'}
   websocketsApiRouteSelectionExpression: $request.body.action
   vpc:
     securityGroupIds:
@@ -243,3 +251,6 @@ functions:
       - http:
           path: metrics
           method: get
+          throttling:
+            maxRequestsPerSecond: 2
+            maxConcurrentRequests: 2
