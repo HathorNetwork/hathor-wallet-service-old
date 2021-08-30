@@ -1,0 +1,124 @@
+version: 0.2
+
+# The envs are organized in a way that some of them will have prefixes, indicating the environment corresponding to them.
+# In the build section we check which environment is being deployed and choose the envs accordingly.
+# The ones without prefixes are used in all environments.
+env:
+  shell: bash
+  git-credential-helper: yes
+  variables:
+    NODE_ENV: "production"
+    MAX_ADDRESS_GAP: 20
+    WALLET_CONN_LIMIT: 10
+    BLOCK_REWARD_LOCK: 300
+    CONFIRM_FIRST_ADDRESS: true
+    dev_DEFAULT_SERVER: "https://dev.testnet.wallet-service.private-nodes.hathor.network/v1a/"
+    dev_NETWORK: "testnet"
+    testnet_DEFAULT_SERVER: "https://testnet.wallet-service.private-nodes.hathor.network/v1a/"
+    testnet_NETWORK: "testnet"
+    mainnet_DEFAULT_SERVER: "https://wallet-service.private-nodes.hathor.network/v1a/"
+    mainnet_NETWORK: "mainnet"
+  # https://eu-central-1.console.aws.amazon.com/secretsmanager/home?region=eu-central-1#!/listSecrets
+  secrets-manager:
+    # Dev secrets
+    dev_ADMINTOKEN: "WalletService/dev:admintoken"
+    dev_AUTH_SECRET: "WalletService/dev:auth_secret"
+    dev_AWS_VPC_DEFAULT_SG_ID: "WalletService/dev:aws_vpc_default_sg_id"
+    dev_AWS_SUBNET_ID_1: "WalletService/dev:aws_subnet_id_1"
+    dev_AWS_SUBNET_ID_2: "WalletService/dev:aws_subnet_id_2"
+    dev_AWS_SUBNET_ID_3: "WalletService/dev:aws_subnet_id_3"
+    dev_DB_NAME: "WalletService/rds/dev:dbname"
+    dev_DB_USERNAME: "WalletService/rds/dev:username"
+    dev_DB_PASSWORD: "WalletService/rds/dev:password"
+    dev_DB_HOSTNAME: "WalletService/rds/dev:host"
+    dev_DB_PORT: "WalletService/rds/dev:port"
+    dev_REDIS_URL: "WalletService/redis/dev:url"
+    dev_REDIS_PASSWORD: "WalletService/redis/dev:password"
+    # Testnet secrets
+    testnet_ADMINTOKEN: "WalletService/testnet:admintoken"
+    testnet_AUTH_SECRET: "WalletService/testnet:auth_secret"
+    testnet_AWS_VPC_DEFAULT_SG_ID: "WalletService/testnet:aws_vpc_default_sg_id"
+    testnet_AWS_SUBNET_ID_1: "WalletService/testnet:aws_subnet_id_1"
+    testnet_AWS_SUBNET_ID_2: "WalletService/testnet:aws_subnet_id_2"
+    testnet_AWS_SUBNET_ID_3: "WalletService/testnet:aws_subnet_id_3"
+    testnet_DB_NAME: "WalletService/rds/testnet:dbname"
+    testnet_DB_USERNAME: "WalletService/rds/testnet:username"
+    testnet_DB_PASSWORD: "WalletService/rds/testnet:password"
+    testnet_DB_HOSTNAME: "WalletService/rds/testnet:host"
+    testnet_DB_PORT: "WalletService/rds/testnet:port"
+    testnet_REDIS_URL: "WalletService/redis/testnet:url"
+    testnet_REDIS_PASSWORD: "WalletService/redis/testnet:password"
+    # Mainnet secrets
+    mainnet_ADMINTOKEN: "WalletService/mainnet:admintoken"
+    mainnet_AUTH_SECRET: "WalletService/mainnet:auth_secret"
+    mainnet_AWS_VPC_DEFAULT_SG_ID: "WalletService/mainnet:aws_vpc_default_sg_id"
+    mainnet_AWS_SUBNET_ID_1: "WalletService/mainnet:aws_subnet_id_1"
+    mainnet_AWS_SUBNET_ID_2: "WalletService/mainnet:aws_subnet_id_2"
+    mainnet_AWS_SUBNET_ID_3: "WalletService/mainnet:aws_subnet_id_3"
+    mainnet_DB_NAME: "WalletService/rds/mainnet:dbname"
+    mainnet_DB_USERNAME: "WalletService/rds/mainnet:username"
+    mainnet_DB_PASSWORD: "WalletService/rds/mainnet:password"
+    mainnet_DB_HOSTNAME: "WalletService/rds/mainnet:host"
+    mainnet_DB_PORT: "WalletService/rds/mainnet:port"
+    mainnet_REDIS_URL: "WalletService/redis/mainnet:url"
+    mainnet_REDIS_PASSWORD: "WalletService/redis/mainnet:password"
+phases:
+  install:
+    #If you use the Ubuntu standard image 2.0 or later, you must specify runtime-versions.
+    #If you specify runtime-versions and use an image other than Ubuntu standard image 2.0, the build fails.
+    runtime-versions:
+      nodejs: 14
+      # name: version
+    commands:
+      - npm i --also=dev
+  pre_build:
+    commands:
+      # This file is created in another CodeBuild specification that runs before this and is not commited to this repo.
+      - export GIT_REF_TO_DEPLOY=$(cat git_ref_to_deploy)
+  build:
+    commands:
+      - |
+        if expr "${GIT_REF_TO_DEPLOY}" : "dev" >/dev/null; then
+          # Gets all env vars with `dev_` prefix and re-exports them without the prefix
+          for var in "${!dev_@}"; do
+            export ${var#dev_}=${!var}
+          done
+
+          make migrate;
+          make deploy-lambdas-dev-testnet;
+        fi
+      - |
+        if expr "${GIT_REF_TO_DEPLOY}" : "master" >/dev/null; then
+          # Gets all env vars with `testnet_` prefix and re-exports them without the prefix
+          for var in "${!testnet_@}"; do
+            export ${var#testnet_}=${!var}
+          done
+
+          make migrate;
+          make deploy-lambdas-testnet;
+        fi
+      - |
+        if expr "${GIT_REF_TO_DEPLOY}" : "v.*" >/dev/null; then
+          # Gets all env vars with `mainnet_` prefix and re-exports them without the prefix
+          for var in "${!mainnet_@}"; do
+            export ${var#mainet_}=${!var}
+          done
+
+          make migrate;
+          make deploy-lambdas-mainnet;
+        fi
+  #post_build:
+    #commands:
+      # - command
+      # - command
+#artifacts:
+#  files:
+#    - application.zip
+    # - location
+  #name: $(date +%Y-%m-%d)
+  #discard-paths: yes
+  #base-directory: location
+#cache:
+  #paths:
+    # - paths
+
