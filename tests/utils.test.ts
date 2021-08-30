@@ -68,6 +68,12 @@ test('isTxVoided', async () => {
 
   spy.mockImplementation(mockImplementation);
 
-  expect(await isTxVoided('0000000f1fbb4bd8a8e71735af832be210ac9a6c1e2081b21faeea3c0f5797f7')).toStrictEqual(false);
-  expect(await isTxVoided('5c690b78d489f158d8575e7ed271521d056c445e8bd3978c8295775c1743bec0')).toStrictEqual(true);
+  expect(await isTxVoided('0000000f1fbb4bd8a8e71735af832be210ac9a6c1e2081b21faeea3c0f5797f7')).toStrictEqual([
+    false,
+    { meta: { voided_by: [] } },
+  ]);
+  expect(await isTxVoided('5c690b78d489f158d8575e7ed271521d056c445e8bd3978c8295775c1743bec0')).toStrictEqual([
+    true,
+    { meta: { voided_by: ['0000000f1fbb4bd8a8e71735af832be210ac9a6c1e2081b21faeea3c0f5797f7'] } },
+  ]);
 });

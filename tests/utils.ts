@@ -464,6 +464,19 @@ export const countTxOutputTable = async (
   return 0;
 };
 
+export const addToTransactionTable = async (
+  mysql: ServerlessMysql,
+  entries: unknown[][],
+): Promise<void> => {
+  await mysql.query(
+    `INSERT INTO \`transaction\`(\`tx_id\`, \`timestamp\`,
+                          \`version\`, \`voided\`,
+                          \`height\`)
+     VALUES ?`,
+    [entries],
+  );
+};
+
 export const addToUtxoTable = async (
   mysql: ServerlessMysql,
   entries: unknown[][],
