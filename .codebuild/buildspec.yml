@@ -107,18 +107,4 @@ phases:
           make migrate;
           make deploy-lambdas-mainnet;
         fi
-  #post_build:
-    #commands:
-      # - command
-      # - command
-#artifacts:
-#  files:
-#    - application.zip
-    # - location
-  #name: $(date +%Y-%m-%d)
-  #discard-paths: yes
-  #base-directory: location
-#cache:
-  #paths:
-    # - paths
 
