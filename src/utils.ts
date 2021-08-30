@@ -150,19 +150,39 @@ export const arrayShuffle = <T extends unknown>(array: T[]): T[] => {
 };
 
 /**
- * Requests the fullnode for the requested block information and returns
- * if it is voided or not
+ * Requests the fullnode for the requested transaction information and returns
+ * if it is voided or not and the downloaded object
  *
- * @returns A boolean with the result
+ * @param txId - The transaction id
+ *
+ * @returns A tuple with the result and the downloaded transaction
  */
-export const isTxVoided = async (txId: string): Promise<boolean> => {
-  const blockInfo = await fullnode.downloadTx(txId);
+export const isTxVoided = async (txId: string): Promise<[boolean, any]> => {
+  const transaction = await fullnode.downloadTx(txId);
 
-  if (!blockInfo.meta.voided_by || blockInfo.meta.voided_by.length === 0) {
-    return false;
+  if (!transaction.meta.voided_by || transaction.meta.voided_by.length === 0) {
+    return [false, transaction];
   }
 
-  return true;
+  return [true, transaction];
+};
+
+/**
+ * Requests the fullnode for a block and returns a tuple with the height and the
+ * downloaded block
+ *
+ * @param txId - The transaction id
+ *
+ * @returns A tuple with the result and the downloaded transaction
+ */
+export const fetchBlockHeight = async (txId: string): Promise<[number, any]> => {
+  const transaction = await fullnode.downloadTx(txId);
+
+  if (!transaction.height) {
+    throw new Error(`Block ${txId} has no height.`);
+  }
+
+  return [transaction.height, transaction];
 };
 
 /**
