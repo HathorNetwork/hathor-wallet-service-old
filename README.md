@@ -200,3 +200,7 @@ Sometimes, jest will use old cached js files, even after you modified the typesc
 ```
 ./node_modules/.bin/jest --clearCache
 ```
+
+## Standard Operating Procedures
+
+Check it in [docs/SOP.md](docs/SOP.md)

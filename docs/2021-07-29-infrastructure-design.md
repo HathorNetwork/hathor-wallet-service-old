@@ -62,13 +62,22 @@ Daemon's deploy will consist of:
 - Build and push a new Docker image
 - Flux detects the image and updates the container
 
-Those tasks will be orchestrated by AWS Code Pipeline, and will be automatically triggered by events in the Github repository. For deployments in the mainnet, the event will be the creation of a release tag. For testnet and dev environments, commits in master and dev branches.
+Those tasks will be orchestrated by AWS CodePipeline and CodeBuild, and will be automatically triggered by events in the Github repository. For deployments in the mainnet, the event will be the creation of a release tag. For testnet and dev environments, commits in master and dev branches.
 
 The reason for choosing Code Pipeline is that it's capable of accessing the database through our VPC to perform migrations in a safe manner. Check this issue for more details about this decision: https://github.com/HathorNetwork/ops-tools/issues/113
 
-The way it works is similar to Github Actions. We create a spec file declaring the steps that we want it to run, and configuring which branch we want to trigger the build. It seems to be possible to trigger it on GitHub releases too.
+### How the process works
+We use CodeBuild and CodePipeline in conjunction, in a series of steps.
 
-All the configuration needed by CodePipeline will be defined and created using Terraform.
+Those are the steps that happen when a commit or tag is created in Github:
+
+1. A Github Webhook in the repo sends a request to one of our CodeBuild projects, that we will call [github-trigger](https://eu-central-1.console.aws.amazon.com/codesuite/codebuild/769498303037/projects/hathor-wallet-service-github-trigger/history).
+2. This project checks the branch and the author of the commit, to decide if it should run the build. If so, it runs some steps that are defined inline in the project, to write to a file which branch is being deployed, and uploads the project's code and this file to an S3 bucket: https://eu-central-1.console.aws.amazon.com/codesuite/codebuild/projects/hathor-wallet-service-github-trigger/edit/buildspec?region=eu-central-1
+3. A CodePipeline project is listening to changes in the bucket, and triggers when it detects them.
+4. CodePipeline calls its next step, which is asking for Manual Approval. A message is sent to Slack channel `#deploys`.
+5. After the approval is granted, CodePipeline procceeds to the next step, which is another CodeBuild project, which we will call `deploy`. The files deployed to the S3 bucket in step 2 are passed to this CodeBuild project.
+6. The `deploy` CodeBuild runs the steps defined in `.codebuild/buildspec.yml` in this repo, to run migrations and deploy the Lambdas.
+
 
 ### Maintenance mode
 A maintenance mode will be implemented in the WalletService, if we need to warn users before we run some potentially dangerous or slow migration that could cause downtimes.
