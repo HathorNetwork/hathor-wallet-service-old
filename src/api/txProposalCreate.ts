@@ -85,13 +85,6 @@ export const create = walletIdProxyHandler(async (walletId, event) => {
   };
 
   const tokens = tx.tokens;
-  const outputs: IWalletOutput[] = tx.outputs.map((output) => ({
-    address: output.address.base58,
-    value: output.value,
-    token: getToken(output.tokenData, tokens),
-    tokenData: output.tokenData,
-    timelock: output.timelock,
-  }));
   const inputs: IWalletInput[] = tx.inputs.map((input) => ({
     txId: input.hash,
     index: input.index,
@@ -158,7 +151,6 @@ export const create = walletIdProxyHandler(async (walletId, event) => {
       success: true,
       txProposalId,
       inputs: retInputs,
-      outputs,
       tokens,
     }),
   };
