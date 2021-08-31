@@ -79,6 +79,8 @@ provider:
     REDIS_PASSWORD: ${env:REDIS_PASSWORD}
     SERVICE_NAME: ${self:service}
     STAGE: ${opt:stage, 'dev'}
+    VOIDED_TX_OFFSET: ${env:VOIDED_TX_OFFSET}
+    DEFAULT_SERVER: ${env:DEFAULT_SERVER}
   iamRoleStatements:
     - Effect: Allow
       Action:
