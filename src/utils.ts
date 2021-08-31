@@ -178,11 +178,12 @@ export const isTxVoided = async (txId: string): Promise<[boolean, any]> => {
 export const fetchBlockHeight = async (txId: string): Promise<[number, any]> => {
   const transaction = await fullnode.downloadTx(txId);
 
-  if (!transaction.height) {
+  if (!transaction.tx.height) {
+    console.error(JSON.stringify(transaction));
     throw new Error(`Block ${txId} has no height.`);
   }
 
-  return [transaction.height, transaction];
+  return [transaction.tx.height, transaction];
 };
 
 /**
