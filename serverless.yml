@@ -100,8 +100,6 @@ functions:
   onHandleReorgRequest:
     handler: src/txProcessor.onHandleReorgRequest
     timeout: 300 # 5 minutes
-  onSearchForLatestValidBlockRequest:
-    handler: src/txProcessor.onSearchForLatestValidBlockRequest
   onNewTxEvent:
     handler: src/txProcessor.onNewTxEvent
   loadWalletAsync:
