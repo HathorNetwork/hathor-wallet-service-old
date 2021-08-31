@@ -623,8 +623,25 @@ export const updateTxOutputSpentBy = async (mysql: ServerlessMysql, inputs: TxIn
   // entries might be empty if there are no inputs
   if (entries.length) {
     // get the rows before deleting
+
+    /* We are forcing this query to use the PRIMARY index because MySQL is not using the index when there is
+     * more than 185 elements in the IN query. I couldn't find a reason for that. Here is the EXPLAIN with exactly 185
+     * elements:
+     * +----+-------------+-----------+------------+-------+---------------+---------+---------+-------------+------+
+     * | id | select_type | table     | partitions | type  | possible_keys | key     | key_len | ref         | rows |
+     * +----+-------------+-----------+------------+-------+---------------+---------+---------+-------------+------+
+     * |  1 | UPDATE      | tx_output | NULL       | range | PRIMARY       | PRIMARY | 259     | const,const |  250 |
+     * +----+-------------+-----------+------------+-------+---------------+---------+---------+-------------+------+
+     *
+     * And here is the EXPLAIN query with exactly 186 elements:
+     * +----+-------------+-----------+------------+-------+---------------+---------+---------+------+---------+
+     * | id | select_type | table     | partitions | type  | possible_keys | key     | key_len | ref  | rows    |
+     * +----+-------------+-----------+------------+-------+---------------+---------+---------+------+---------+
+     * |  1 | UPDATE      | tx_output | NULL       | index | NULL          | PRIMARY | 259     | NULL | 1933979 |
+     * +----+-------------+-----------+------------+-------+---------------+---------+---------+------+---------+
+     */
     await mysql.query(
-      `UPDATE \`tx_output\`
+      `UPDATE \`tx_output\` USE INDEX (PRIMARY)
           SET \`spent_by\` = ?
         WHERE (\`tx_id\` ,\`index\`)
            IN (?)`,
