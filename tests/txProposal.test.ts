@@ -142,14 +142,6 @@ test('POST /txproposals with utxos that are already used on another txproposal s
   expect(returnBody.txProposalId).toHaveLength(36);
   expect(returnBody.inputs).toHaveLength(1);
   expect(returnBody.inputs).toContainEqual({ txId: utxos[0][0], index: utxos[0][1], addressPath: `${defaultDerivationPath}0` });
-  expect(returnBody.outputs).toHaveLength(1);
-  expect(returnBody.outputs).toContainEqual({
-    address: outputs[0].address.base58,
-    value: outputs[0].value,
-    tokenData: 1,
-    token: token1,
-    timelock: null,
-  });
 
   // Send the same tx (same txHex) again
   const usedInputsEvent = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({ txHex }));
@@ -906,9 +898,6 @@ test('POST /txproposals one output and input on txHex', async () => {
   expect(returnBody.txProposalId).toHaveLength(36);
   expect(returnBody.inputs).toHaveLength(1);
   expect(returnBody.inputs).toContainEqual({ txId: utxos[0][0], index: utxos[0][1], addressPath: `${defaultDerivationPath}0` });
-  expect(returnBody.outputs).toHaveLength(1);
-  expect(returnBody.outputs).toContainEqual({ address: ADDRESSES[0], value: 300, token: token1, tokenData: 1, timelock: null });
-  expect(returnBody.tokens).toContainEqual(token1);
 
   await _checkTxProposalTables(returnBody.txProposalId, returnBody.inputs);
 });
@@ -1026,8 +1015,6 @@ test('POST /txproposals a tx create action on txHex', async () => {
   expect(returnBody.txProposalId).toHaveLength(36);
   expect(returnBody.inputs).toHaveLength(1);
   expect(returnBody.inputs).toContainEqual({ txId: utxos[0][0], index: utxos[0][1], addressPath: `${defaultDerivationPath}0` });
-  expect(returnBody.outputs).toHaveLength(4);
-  expect(returnBody.outputs).toContainEqual({ address: ADDRESSES[0], value: 200, token: '00', tokenData: 0, timelock: null });
 });
 
 test('PUT /txproposals/{proposalId} with txhex', async () => {
