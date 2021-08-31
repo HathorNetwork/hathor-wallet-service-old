@@ -22,7 +22,6 @@ import {
 import {
   AddressInfo,
   IWalletInput,
-  IWalletOutput,
   DbTxOutput,
 } from '@src/types';
 import { closeDbAndGetError } from '@src/api/utils';
