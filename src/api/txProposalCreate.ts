@@ -72,19 +72,6 @@ export const create = walletIdProxyHandler(async (walletId, event) => {
     return closeDbAndGetError(mysql, ApiError.TOO_MANY_OUTPUTS, { outputs: tx.outputs.length });
   }
 
-  const getToken = (tokenData, tokens) => {
-    if (tokenData === 0) {
-      return '00';
-    }
-
-    if (!tokenData) {
-      return null;
-    }
-
-    return tokens[hathorLib.wallet.getTokenIndex(tokenData) - 1];
-  };
-
-  const tokens = tx.tokens;
   const inputs: IWalletInput[] = tx.inputs.map((input) => ({
     txId: input.hash,
     index: input.index,
@@ -151,7 +138,6 @@ export const create = walletIdProxyHandler(async (walletId, event) => {
       success: true,
       txProposalId,
       inputs: retInputs,
-      tokens,
     }),
   };
 });
