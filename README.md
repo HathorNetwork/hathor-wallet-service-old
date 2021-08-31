@@ -202,3 +202,5 @@ Sometimes, jest will use old cached js files, even after you modified the typesc
 ```
 
 ## Standard Operating Procedures
+
+Check it in [docs/SOP.md](docs/SOP.md)
