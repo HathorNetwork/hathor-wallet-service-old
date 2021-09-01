@@ -22,7 +22,7 @@ import {
   TokenBalanceMap,
   TokenInfo,
   TxInput,
-  TxOutput,
+  TxOutputWithIndex,
   TxProposal,
   TxProposalStatus,
   TxTokenBalance,
@@ -523,14 +523,14 @@ export const updateWalletTablesWithTx = async (
 export const addUtxos = async (
   mysql: ServerlessMysql,
   txId: string,
-  outputs: TxOutput[],
+  outputs: TxOutputWithIndex[],
   heightlock: number = null,
 ): Promise<void> => {
   // outputs might be empty if we're destroying authorities
   if (outputs.length === 0) return;
 
   const entries = outputs.map(
-    (output, index) => {
+    (output) => {
       let authorities = 0;
       let value = output.value;
 
@@ -541,7 +541,7 @@ export const addUtxos = async (
 
       return [
         txId,
-        index,
+        output.index,
         output.token,
         value,
         authorities,
