@@ -72,9 +72,9 @@ test('markLockedOutputs and getAddressBalanceMap', () => {
     createInput(3, 'address2', 'inputTx', 2, 'token1'),
   ];
   tx.outputs = [
-    createOutput(5, 'address1', 'token1'),
-    createOutput(2, 'address1', 'token3'),
-    createOutput(11, 'address2', 'token1'),
+    createOutput(0, 5, 'address1', 'token1'),
+    createOutput(1, 2, 'address1', 'token3'),
+    createOutput(2, 11, 'address2', 'token1'),
   ];
   const map1 = new TokenBalanceMap();
   map1.set('token1', new Balance(-10, 0));
@@ -114,7 +114,7 @@ test('markLockedOutputs and getAddressBalanceMap', () => {
   // a block will have its rewards locked, even with no timelock
   tx.inputs = [];
   tx.outputs = [
-    createOutput(100, 'address1', 'token1'),
+    createOutput(0, 100, 'address1', 'token1'),
   ];
   markLockedOutputs(tx.outputs, now, true);
   for (const output of tx.outputs) {
@@ -134,8 +134,8 @@ test('markLockedOutputs and getAddressBalanceMap', () => {
     createInput(0b10, 'address1', 'inputTx', 1, 'token2', null, 129),
   ];
   tx.outputs = [
-    createOutput(0b01, 'address1', 'token1', null, false, 129),
-    createOutput(0b10, 'address1', 'token2', 1000, true, 129),
+    createOutput(0, 0b01, 'address1', 'token1', null, false, 129),
+    createOutput(1, 0b10, 'address1', 'token2', 1000, true, 129),
   ];
   const map4 = new TokenBalanceMap();
   map4.set('token1', new Balance(0, 0, null));
