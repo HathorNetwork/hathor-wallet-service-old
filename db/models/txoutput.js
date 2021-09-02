@@ -94,6 +94,9 @@ module.exports = (sequelize, DataTypes) => {
     }, {
       name: 'tx_output_timelock_idx',
       fields: 'timelock',
+    }, {
+      name: 'tx_output_txproposal_idx',
+      fields: 'tx_proposal',
     }],
   });
   return TxOutput;
