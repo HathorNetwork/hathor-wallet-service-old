@@ -4,7 +4,7 @@ import { ServerlessMysql } from 'serverless-mysql';
 import {
   DbSelectResult,
   TxInput,
-  TxOutput,
+  TxOutputWithIndex,
   FullNodeVersionData,
 } from '@src/types';
 
@@ -66,11 +66,12 @@ export const cleanDatabase = async (mysql: ServerlessMysql): Promise<void> => {
   }
 };
 
-export const createOutput = (value: number, address: string, token = '00', timelock: number = null, locked = false, tokenData = 0): TxOutput => (
+export const createOutput = (index: number, value: number, address: string, token = '00', timelock: number = null, locked = false, tokenData = 0): TxOutputWithIndex => (
   {
     value,
     token,
     locked,
+    index,
     decoded: {
       type: 'P2PKH',
       address,

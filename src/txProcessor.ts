@@ -17,6 +17,7 @@ import {
   searchForLatestValidBlock,
   handleReorg,
   handleVoided,
+  prepareOutputs,
 } from '@src/commons';
 import {
   addNewAddresses,
@@ -37,13 +38,18 @@ import {
   transactionDecorator,
 } from '@src/db/utils';
 import {
+  TxOutputWithIndex,
   StringMap,
   Transaction,
   TokenBalanceMap,
   Wallet,
   Tx,
 } from '@src/types';
-import { closeDbConnection, getDbConnection, getUnixTimestamp } from '@src/utils';
+import {
+  closeDbConnection,
+  getDbConnection,
+  getUnixTimestamp,
+} from '@src/utils';
 
 const mysql = getDbConnection();
 
@@ -234,6 +240,8 @@ const _unsafeAddNewTx = async (tx: Transaction, now: number, blockRewardLock: nu
     await storeTokenInformation(mysql, tx.tx_id, tx.token_name, tx.token_symbol);
   }
 
+  const outputs: TxOutputWithIndex[] = prepareOutputs(tx.outputs, txId);
+
   // check if any of the inputs are still marked as locked and update tables accordingly.
   // See remarks on getLockedUtxoFromInputs for more explanation. It's important to perform this
   // before updating the balances
@@ -241,15 +249,15 @@ const _unsafeAddNewTx = async (tx: Transaction, now: number, blockRewardLock: nu
   await unlockUtxos(mysql, lockedInputs, true);
 
   // add transaction outputs to the tx_outputs table
-  markLockedOutputs(tx.outputs, now, heightlock !== null);
+  markLockedOutputs(outputs, now, heightlock !== null);
   await addOrUpdateTx(mysql, txId, tx.height, tx.timestamp, tx.version);
-  await addUtxos(mysql, txId, tx.outputs, heightlock);
+  await addUtxos(mysql, txId, outputs, heightlock);
 
   // mark the tx_outputs used in the transaction (tx.inputs) as spent by txId
   await updateTxOutputSpentBy(mysql, tx.inputs, txId);
 
   // get balance of each token for each address
-  const addressBalanceMap: StringMap<TokenBalanceMap> = getAddressBalanceMap(tx.inputs, tx.outputs);
+  const addressBalanceMap: StringMap<TokenBalanceMap> = getAddressBalanceMap(tx.inputs, outputs);
 
   // update address tables (address, address_balance, address_tx_history)
   await updateAddressTablesWithTx(mysql, txId, tx.timestamp, addressBalanceMap);

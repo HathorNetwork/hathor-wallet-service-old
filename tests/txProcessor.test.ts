@@ -93,8 +93,8 @@ test('spend "locked" utxo', async () => {
   tx.timestamp += timelock + 1;
   tx.inputs = [createInput(2500, addr, txId1, 0, token)];
   tx.outputs = [
-    createOutput(2000, addr, token),    // one output to the same address
-    createOutput(500, 'other', token),  // and one to another address
+    createOutput(0, 2000, addr, token),    // one output to the same address
+    createOutput(1, 500, 'other', token),  // and one to another address
   ];
   await txProcessor.onNewTxEvent(evt);
 
@@ -160,7 +160,7 @@ test('txProcessor', async () => {
   block.tx_id = 'txId1';
   block.height = 1;
   block.inputs = [];
-  block.outputs = [createOutput(blockReward, 'address1')];
+  block.outputs = [createOutput(0, blockReward, 'address1')];
   await txProcessor.onNewTxEvent(evt);
   // check databases
   await expect(checkUtxoTable(mysql, 1, 'txId1', 0, '00', 'address1', blockReward, 0, null, block.height + blockRewardLock, true)).resolves.toBe(true);
@@ -185,7 +185,7 @@ test('txProcessor', async () => {
   block.tx_id = 'txId3';
   block.timestamp += 10;
   block.height += 1;
-  block.outputs = [createOutput(blockReward, 'address2')];
+  block.outputs = [createOutput(0, blockReward, 'address2')];
   await txProcessor.onNewTxEvent(evt);
   // we now have 3 blocks and 2 addresses
   await expect(checkUtxoTable(mysql, 3, 'txId3', 0, '00', 'address2', blockReward, 0, null, block.height + blockRewardLock, true)).resolves.toBe(true);
@@ -204,8 +204,8 @@ test('txProcessor', async () => {
   tx.timestamp += 10;
   tx.inputs = [createInput(blockReward, 'address1', 'txId1', 0)];
   tx.outputs = [
-    createOutput(5, 'address3'),
-    createOutput(blockReward - 5, 'address4'),
+    createOutput(0, 5, 'address3'),
+    createOutput(1, blockReward - 5, 'address4'),
   ];
   await txProcessor.onNewTxEvent(evt);
   expect(await getLatestHeight(mysql)).toBe(block.height);
@@ -228,6 +228,68 @@ test('txProcessor', async () => {
   await expect(checkAddressBalanceTable(mysql, 4, 'address1', '00', blockReward, 0, null, 3)).resolves.toBe(true);
   // address2 balance is still locked
   await expect(checkAddressBalanceTable(mysql, 4, 'address2', '00', 0, blockReward, null, 1)).resolves.toBe(true);
+});
+
+test('txProcessor should ignore NFT outputs', async () => {
+  expect.hasAssertions();
+
+  const txId1 = 'txId1';
+  const txId2 = 'txId2';
+  const token = 'tokenId';
+  const addr = 'address';
+  const walletId = 'walletId';
+  const timelock = 1000;
+
+  await addToWalletTable(mysql, [
+    [walletId, XPUBKEY, 'ready', 10, 1, 2],
+  ]);
+
+  await addToUtxoTable(mysql, [
+    [txId1, 0, '00', addr, 41, 0, null, null, false],
+  ]);
+
+  await addToAddressTable(mysql, [
+    { address: addr, index: 0, walletId, transactions: 1 },
+  ]);
+
+  await addToAddressBalanceTable(mysql, [
+    [addr, '00', 41, 0, null, 1, 0, 0],
+  ]);
+
+  await addToAddressTxHistoryTable(mysql, [
+    [addr, txId1, '00', 41, 0],
+  ]);
+
+  await addToWalletBalanceTable(mysql, [{
+    walletId,
+    tokenId: '00',
+    unlockedBalance: 41,
+    lockedBalance: 0,
+    unlockedAuthorities: 0,
+    lockedAuthorities: 0,
+    timelockExpires: null,
+    transactions: 1,
+  }]);
+
+  const evt = JSON.parse(JSON.stringify(eventTemplate));
+  const tx = evt.Records[0].body;
+  tx.version = 1;
+  tx.tx_id = txId2;
+  tx.timestamp += timelock + 1;
+  tx.inputs = [createInput(41, addr, txId1, 0, '00')];
+  const invalidScriptOutput = createOutput(0, 1, addr, '00');
+  console.log('NFTOutput', invalidScriptOutput);
+  tx.outputs = [
+    {
+      ...invalidScriptOutput,
+      index: null,
+      decoded: null,
+    },
+    createOutput(1, 39, addr, '00'),
+  ];
+  await txProcessor.onNewTxEvent(evt);
+  // check databases
+  await expect(checkUtxoTable(mysql, 1, txId2, 1, '00', addr, 39, 0, null, null, false)).resolves.toBe(true);
 });
 
 test('receive token creation tx', async () => {
@@ -318,8 +380,8 @@ test('onHandleVoidedTxRequest', async () => {
   tx.timestamp += timelock + 1;
   tx.inputs = [createInput(2500, addr, txId1, 0, token)];
   tx.outputs = [
-    createOutput(2000, addr, token),    // one output to the same address
-    createOutput(500, 'other', token),  // and one to another address
+    createOutput(0, 2000, addr, token),    // one output to the same address
+    createOutput(1, 500, 'other', token),  // and one to another address
   ];
 
   await txProcessor.onNewTxEvent(evt);
@@ -331,8 +393,8 @@ test('onHandleVoidedTxRequest', async () => {
   tx2.timestamp += 1;
   tx2.inputs = [createInput(2000, addr, txId2, 0, token)];
   tx2.outputs = [
-    createOutput(1500, addr, token),    // one output to the same address
-    createOutput(500, 'other', token),  // and one to another address
+    createOutput(0, 1500, addr, token),    // one output to the same address
+    createOutput(1, 500, 'other', token),  // and one to another address
   ];
 
   await txProcessor.onNewTxEvent(evt2);
@@ -362,7 +424,7 @@ test('txProcessor should rollback the entire transaction if an error occurs on b
   block.tx_id = 'txId1';
   block.height = 1;
   block.inputs = [];
-  block.outputs = [createOutput(blockReward, 'address1')];
+  block.outputs = [createOutput(0, blockReward, 'address1')];
   await txProcessor.onNewTxEvent(evt);
 
   // check databases

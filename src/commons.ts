@@ -42,6 +42,7 @@ import {
   TokenBalanceMap,
   TxInput,
   TxOutput,
+  TxOutputWithIndex,
   DbTxOutput,
   Tx,
   Wallet,
@@ -121,7 +122,7 @@ export const unlockUtxos = async (mysql: ServerlessMysql, utxos: DbTxOutput[], u
  * @param now - Current timestamp
  * @param hasHeightLock - Flag that tells if outputs are locked by height
  */
-export const markLockedOutputs = (outputs: TxOutput[], now: number, hasHeightLock = false): void => {
+export const markLockedOutputs = (outputs: TxOutputWithIndex[], now: number, hasHeightLock = false): void => {
   for (const output of outputs) {
     output.locked = false;
     if (hasHeightLock || output.decoded.timelock > now) {
@@ -506,3 +507,30 @@ export const walletIdProxyHandler = (handler: WalletProxyHandler): APIGatewayPro
     return handler(walletId, event, context);
   }
 );
+
+export const prepareOutputs = (outputs: TxOutput[], txId): TxOutputWithIndex[] => {
+  const preparedOutputs: [number, TxOutputWithIndex[]] = outputs.reduce(
+    ([currIndex, newOutputs]: [number, TxOutputWithIndex[]], output: TxOutput): [number, TxOutputWithIndex[]] => {
+      if (!output.decoded
+          || output.decoded.type === null
+          || output.decoded.type === undefined) {
+        console.warn(`Ignoring tx output with index ${currIndex} from tx ${txId} as script couldn't be decoded.`);
+        return [currIndex + 1, newOutputs];
+      }
+
+      return [
+        currIndex + 1,
+        [
+          ...newOutputs,
+          {
+            ...output,
+            index: currIndex,
+          },
+        ],
+      ];
+    },
+    [0, []],
+  );
+
+  return preparedOutputs[1];
+};

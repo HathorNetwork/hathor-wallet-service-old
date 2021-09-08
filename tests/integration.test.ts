@@ -44,7 +44,7 @@ const txId1 = 'txId1';
 block.tx_id = txId1;
 block.timestamp = now;
 block.height = 1;
-block.outputs = [createOutput(blockReward, 'HNwiHGHKBNbeJPo9ToWvFWeNQkJrpicYci')];
+block.outputs = [createOutput(0, blockReward, 'HNwiHGHKBNbeJPo9ToWvFWeNQkJrpicYci')];
 
 // receive another block. Reward from first block should now be unlocked
 const blockEvent2 = JSON.parse(JSON.stringify(eventTemplate));
@@ -53,7 +53,7 @@ const txId2 = 'txId2';
 block2.tx_id = txId2;
 block2.timestamp = block.timestamp + 30;
 block2.height = block.height + 1;
-block2.outputs = [createOutput(blockReward, 'HNwiHGHKBNbeJPo9ToWvFWeNQkJrpicYci')];
+block2.outputs = [createOutput(0, blockReward, 'HNwiHGHKBNbeJPo9ToWvFWeNQkJrpicYci')];
 
 // tx sends first block rewards to 2 addresses on the same wallet
 const txEvent = JSON.parse(JSON.stringify(eventTemplate));
@@ -64,8 +64,8 @@ tx.tx_id = txId3;
 tx.timestamp += 20;
 tx.inputs = [createInput(blockReward, 'HNwiHGHKBNbeJPo9ToWvFWeNQkJrpicYci', txId1, 0)];
 tx.outputs = [
-  createOutput(blockReward - 5000, 'HUxu47MwBYNHG8jWebvzQ2jymV6PcEfWB4'),
-  createOutput(5000, 'H7ehmrWPqEQWJUqSKAxtQJX99gTPzW3aag'),
+  createOutput(0, blockReward - 5000, 'HUxu47MwBYNHG8jWebvzQ2jymV6PcEfWB4'),
+  createOutput(1, 5000, 'H7ehmrWPqEQWJUqSKAxtQJX99gTPzW3aag'),
 ];
 
 // tx sends one of last tx's outputs to 2 addresses, one of which is not from this wallet. Also, output sent to this wallet is locked
@@ -78,8 +78,8 @@ tx2.tx_id = txId4;
 tx2.timestamp += 20;
 tx2.inputs = [createInput(5000, 'H7ehmrWPqEQWJUqSKAxtQJX99gTPzW3aag', txId2, 1)];
 tx2.outputs = [
-  createOutput(1000, 'HGTfVrFshpTD6Dapuq6z9hrRaiwDYxwLcr', '00', timelock),   // belongs to this wallet
-  createOutput(4000, 'HCuWC2qgNP47BtWtsTM48PokKitVdR6pch'),   // other wallet
+  createOutput(0, 1000, 'HGTfVrFshpTD6Dapuq6z9hrRaiwDYxwLcr', '00', timelock),   // belongs to this wallet
+  createOutput(1, 4000, 'HCuWC2qgNP47BtWtsTM48PokKitVdR6pch'),   // other wallet
 ];
 
 beforeEach(async () => {
