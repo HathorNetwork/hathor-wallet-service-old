@@ -509,9 +509,8 @@ export const walletIdProxyHandler = (handler: WalletProxyHandler): APIGatewayPro
 );
 
 export const prepareOutputs = (outputs: TxOutput[], txId): TxOutputWithIndex[] => {
-  /* tslint:disable:no-unused-variable */
-  const [_, preparedOutputs] = outputs.reduce(
-    ([currIndex, newOutputs], output) => {
+  const preparedOutputs: [number, TxOutputWithIndex[]] = outputs.reduce(
+    ([currIndex, newOutputs]: [number, TxOutputWithIndex[]], output: TxOutput): [number, TxOutputWithIndex[]] => {
       if (!output.decoded
           || output.decoded.type === null
           || output.decoded.type === undefined) {
@@ -533,5 +532,5 @@ export const prepareOutputs = (outputs: TxOutput[], txId): TxOutputWithIndex[] =
     [0, []],
   );
 
-  return preparedOutputs;
+  return preparedOutputs[1];
 };
