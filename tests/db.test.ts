@@ -499,10 +499,18 @@ test('addUtxos, getUtxos, unlockUtxos, updateTxOutputSpentBy, unspendUtxos, getT
   await addUtxos(mysql, txId, []);
 
   // add to utxo table
-  const outputs = utxos.map((utxo) => createOutput(utxo.value, utxo.address, utxo.tokenId, utxo.timelock || null, utxo.locked, utxo.tokenData || 0));
+  const outputs = utxos.map((utxo, index) => createOutput(
+    index,
+    utxo.value,
+    utxo.address,
+    utxo.tokenId,
+    utxo.timelock || null,
+    utxo.locked,
+    utxo.tokenData || 0,
+  ));
   await addUtxos(mysql, txId, outputs);
 
-  for (const [index, output] of outputs.entries()) {
+  for (const [_, output] of outputs.entries()) {
     let { value } = output;
     const { token, decoded } = output;
     let authorities = 0;
@@ -511,7 +519,7 @@ test('addUtxos, getUtxos, unlockUtxos, updateTxOutputSpentBy, unspendUtxos, getT
       value = 0;
     }
     await expect(
-      checkUtxoTable(mysql, utxos.length, txId, index, token, decoded.address, value, authorities, decoded.timelock, null, output.locked),
+      checkUtxoTable(mysql, utxos.length, txId, output.index, token, decoded.address, value, authorities, decoded.timelock, null, output.locked),
     ).resolves.toBe(true);
   }
 
@@ -593,7 +601,7 @@ test('getLockedUtxoFromInputs', async () => {
   ];
 
   // add to utxo table
-  const outputs = utxos.map((utxo) => createOutput(utxo.value, utxo.address, utxo.token, utxo.timelock || null, utxo.locked));
+  const outputs = utxos.map((utxo, index) => createOutput(index, utxo.value, utxo.address, utxo.token, utxo.timelock || null, utxo.locked));
   await addUtxos(mysql, txId, outputs);
   for (const [index, output] of outputs.entries()) {
     const { token, decoded, value } = output;
@@ -883,9 +891,9 @@ test('getUtxosLockedAtHeight', async () => {
   ];
 
   // add to utxo table
-  const outputs = utxos.map((utxo) => createOutput(utxo.value, utxo.address, utxo.token, utxo.timelock, utxo.locked));
+  const outputs = utxos.map((utxo, index) => createOutput(index, utxo.value, utxo.address, utxo.token, utxo.timelock, utxo.locked));
   await addUtxos(mysql, txId, outputs, null);
-  const outputs2 = utxos2.map((utxo) => createOutput(utxo.value, utxo.address, utxo.token, utxo.timelock, utxo.locked));
+  const outputs2 = utxos2.map((utxo, index) => createOutput(index, utxo.value, utxo.address, utxo.token, utxo.timelock, utxo.locked));
   await addUtxos(mysql, txId2, outputs2, 10);
 
   // fetch on timestamp=99 and heightlock=10. Should return:
@@ -1191,7 +1199,7 @@ test('markUtxosWithProposalId and getTxProposalInputs', async () => {
   }];
 
   // add to utxo table
-  const outputs = utxos.map((utxo) => createOutput(utxo.value, utxo.address, utxo.tokenId, utxo.timelock, utxo.locked));
+  const outputs = utxos.map((utxo, index) => createOutput(index, utxo.value, utxo.address, utxo.tokenId, utxo.timelock, utxo.locked));
   await addUtxos(mysql, txId, outputs);
 
   // we'll only mark utxos with indexes 0 and 2
@@ -1437,7 +1445,15 @@ test('rebuildAddressBalancesFromUtxos', async () => {
     { value: 0b11, address: addr1, token: 'token1', locked: false, tokenData: 129 },
   ];
 
-  const outputs = utxos.map((utxo) => createOutput(utxo.value, utxo.address, utxo.token, utxo.timelock || null, utxo.locked, utxo.tokenData || 0));
+  const outputs = utxos.map((utxo, index) => createOutput(
+    index,
+    utxo.value,
+    utxo.address,
+    utxo.token,
+    utxo.timelock || null,
+    utxo.locked,
+    utxo.tokenData || 0,
+  ));
 
   await addUtxos(mysql, txId, outputs);
   await rebuildAddressBalancesFromUtxos(mysql, ['address1', 'address2']);

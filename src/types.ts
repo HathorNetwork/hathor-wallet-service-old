@@ -506,6 +506,10 @@ export interface TxOutput {
   locked?: boolean;
 }
 
+export interface TxOutputWithIndex extends TxOutput {
+  index: number;
+}
+
 export interface TxInput {
   // eslint-disable-next-line camelcase
   tx_id: string;
