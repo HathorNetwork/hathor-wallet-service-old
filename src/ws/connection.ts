@@ -12,6 +12,7 @@ import {
 import {
   connectionInfoFromEvent,
   sendMessageToClient,
+  DEFAULT_API_GATEWAY_RESPONSE,
 } from '@src/ws/utils';
 import {
   getRedisClient,
@@ -46,7 +47,5 @@ export const connect = async (
   await closeRedisClient(redisClient);
   await closeDbConnection(mysql);
 
-  return {
-    statusCode: 200,
-  };
+  return DEFAULT_API_GATEWAY_RESPONSE;
 };
