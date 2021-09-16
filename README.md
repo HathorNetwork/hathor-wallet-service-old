@@ -169,7 +169,7 @@ This action is idempotent, the lambda just responds with a `PONG` message.
 
 #### WebSocket Action: Join Wallet
 - Trigger: Client initiated
-- body: `{"action":"joinWallet", "wallet":"my-wallet-id"}`
+- body: `{"action":"join", "id":"my-wallet-id"}`
 
 This action will subscribe the client to any updates of the wallet identified by the id on the body.
 
