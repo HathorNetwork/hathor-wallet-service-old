@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { APIGatewayProxyEvent } from 'aws-lambda';
+import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { ServerlessMysql } from 'serverless-mysql';
 import { RedisClient } from 'redis';
 import Joi from 'joi';
@@ -14,6 +14,7 @@ import { closeDbConnection, getDbConnection } from '@src/utils';
 import {
   connectionInfoFromEvent,
   sendMessageToClient,
+  DEFAULT_API_GATEWAY_RESPONSE,
 } from '@src/ws/utils';
 import {
   getRedisClient,
@@ -42,13 +43,16 @@ const parseBody = (body: string) => {
 
 export const handler = async (
   event: APIGatewayProxyEvent,
-): Promise<void> => {
+): Promise<APIGatewayProxyResult> => {
   const redisClient = getRedisClient();
   const connInfo = connectionInfoFromEvent(event);
 
   await joinWallet(event, connInfo, mysql, redisClient);
   await closeDbConnection(mysql);
   await closeRedisClient(redisClient);
+
+  // Since this is served by ApiGateway, we need to return a APIGatewayProxyResult
+  return DEFAULT_API_GATEWAY_RESPONSE;
 };
 
 const joinWallet = async (
@@ -56,7 +60,7 @@ const joinWallet = async (
   connInfo: WsConnectionInfo,
   _mysql: ServerlessMysql,
   _client: RedisClient,
-): Promise<void> => {
+): Promise<APIGatewayProxyResult> => {
   // parse body and extract wallet
   const body = parseBody(event.body);
   const { value, error } = joinSchema.validate(body, {
@@ -69,7 +73,7 @@ const joinWallet = async (
       success: false,
       message: 'Invalid parameters',
     });
-    return;
+    return DEFAULT_API_GATEWAY_RESPONSE;
   }
 
   // TODO: Verify ownership of the wallet upon subscription.
@@ -84,7 +88,7 @@ const joinWallet = async (
       success: false,
       message: 'Invalid parameters',
     });
-    return;
+    return DEFAULT_API_GATEWAY_RESPONSE;
   }
 
   await wsJoinWallet(_client, connInfo, walletId);
@@ -93,4 +97,6 @@ const joinWallet = async (
     message: 'Listening',
     id: walletId,
   });
+
+  return DEFAULT_API_GATEWAY_RESPONSE;
 };
