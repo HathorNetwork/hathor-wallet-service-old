@@ -1,0 +1,84 @@
+parser: "@typescript-eslint/parser"
+env:
+  browser: false
+  node: true
+  es6: true
+extends:
+- airbnb-base
+- plugin:jest/all
+- plugin:import/errors
+- plugin:import/warnings
+- plugin:import/typescript
+- plugin:@typescript-eslint/recommended
+plugins:
+- jest
+- "@typescript-eslint"
+root: true
+globals: {}
+rules:
+  import/no-unresolved:
+  - 2
+  - commonjs: true
+    amd: true
+  max-len:
+  - error
+  - code: 150
+    ignoreComments: true
+    ignoreTrailingComments: true
+    ignoreUrls: true
+    ignoreStrings: true
+  prefer-destructuring: 'off'
+  no-await-in-loop: 'off'
+  no-plusplus: 'off'
+  no-continue: 'off'
+  no-restricted-syntax:
+  - error
+  - ForInStatement
+  - LabeledStatement
+  - WithStatement
+  no-use-before-define:
+  - error
+  - functions: false
+    variables: false
+  no-underscore-dangle: 'off'
+  object-curly-newline:
+  - error
+  - consistent: true
+  import/prefer-default-export: 'off'
+  no-multi-spaces:
+  - error
+  - ignoreEOLComments: true
+  jest/require-top-level-describe: 'off'
+  jest/no-hooks: 'off'
+  jest/no-if: 'off'
+  jest/no-conditional-expect: 'off'
+  jest/no-expect-resolves: 'off'
+  jest/lowercase-name: 'off'
+  "@typescript-eslint/naming-convention":
+  - error
+  - selector: variableLike
+    format:
+    - camelCase
+    leadingUnderscore: allow
+  - selector: variable
+    format:
+    - camelCase
+    - UPPER_CASE
+    leadingUnderscore: allow
+  "@typescript-eslint/no-unused-vars":
+  - warn
+  - argsIgnorePattern: "^_"
+overrides: []
+settings:
+  import/resolver:
+    alias:
+      map:
+      - - "@src"
+        - "./src"
+      - - "@tests"
+        - "./tests"
+      - - "@events"
+        - "./events"
+      extensions:
+      - ".ts"
+      - ".js"

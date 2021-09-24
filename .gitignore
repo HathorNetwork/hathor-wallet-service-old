@@ -1,0 +1,22 @@
+# package directories
+node_modules
+
+# serverless directories
+.serverless
+
+# webpack directories
+.webpack
+
+# code coverage directories
+coverage
+
+# eslint
+.eslintcache
+
+# env variables
+.env
+.env.*
+
+# open files
+*.swp
+*.swo
