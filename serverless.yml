@@ -224,8 +224,8 @@ functions:
             Fn::GetAtt:
               - WalletServiceNewTxQueue
               - Arn
-          batchSize: 10
-          maximumBatchingWindow: 60
+          batchSize: 1
+          maximumBatchingWindow: 0
   wsTxNotifyUpdate:
     handler: src/ws/txNotify.onUpdateTx
     timeout: 1
