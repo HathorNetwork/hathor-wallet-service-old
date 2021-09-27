@@ -225,7 +225,7 @@ functions:
               - WalletServiceNewTxQueue
               - Arn
           batchSize: 10
-          maximumBatchingWindow: 60
+          maximumBatchingWindow: 3
   wsTxNotifyUpdate:
     handler: src/ws/txNotify.onUpdateTx
     timeout: 1
