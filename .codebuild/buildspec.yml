@@ -102,7 +102,7 @@ phases:
         if expr "${GIT_REF_TO_DEPLOY}" : "v.*" >/dev/null; then
           # Gets all env vars with `mainnet_` prefix and re-exports them without the prefix
           for var in "${!mainnet_@}"; do
-            export ${var#mainet_}=${!var}
+            export ${var#mainnet_}=${!var}
           done
 
           make migrate;
