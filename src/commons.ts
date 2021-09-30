@@ -62,6 +62,7 @@ import {
 import hathorLib from '@hathor/wallet-lib';
 
 const VERSION_CHECK_MAX_DIFF = 60 * 60 * 1000; // 1 hour
+const WARN_MAX_REORG_SIZE = parseInt(process.env.WARN_MAX_REORG_SIZE || '100', 10);
 
 /**
  * Update the unlocked/locked balances for addresses and wallets connected to the given UTXOs.
@@ -441,8 +442,13 @@ export const validateAddressBalances = async (mysql: ServerlessMysql, addresses:
  */
 export const handleReorg = async (mysql: ServerlessMysql): Promise<number> => {
   const { height } = await searchForLatestValidBlock(mysql);
+  const currentHeight = await getLatestHeight(mysql);
 
   console.log(`Handling reorg. Our latest best block is ${height}`);
+
+  if ((currentHeight - height) > WARN_MAX_REORG_SIZE) {
+    console.log(`[ALERT] A reorg with ${currentHeight - height} blocks has been detected`);
+  }
 
   // remove blocks where height > latestValidBlock
   await deleteBlocksAfterHeight(mysql, height);
