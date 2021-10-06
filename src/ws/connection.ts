@@ -41,7 +41,7 @@ export const connect = async (
   }
 
   if (routeKey === 'ping') {
-    await sendMessageToClient(redisClient, connInfo, { message: 'PONG' });
+    await sendMessageToClient(redisClient, connInfo, { type: 'pong' });
   }
 
   await closeRedisClient(redisClient);

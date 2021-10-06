@@ -63,13 +63,18 @@ export const onNewTx: SQSHandler = async (event) => {
     const wallets = value.wallets;
     const tx = value.tx;
 
+    const payload = {
+      type: 'new-tx',
+      data: tx,
+    };
+
     // This will create a promise that for each walletId on wallets it will search for all open connections
     // and for each connection send the payload (the JSON representation of the tx) using sendMessageToClient
     promises.push(
       Promise.all(wallets.map((walletId) => (
         wsGetWalletConnections(redisClient, walletId).then((connections) => (
           Promise.all(connections.map((connInfo) => (
-            sendMessageToClient(redisClient, connInfo, tx)
+            sendMessageToClient(redisClient, connInfo, payload)
           )))
         ))
       ))),
@@ -100,13 +105,17 @@ export const onUpdateTx: SQSHandler = async (event) => {
 
     const wallets = value.wallets;
     const updateBody = value.update;
+    const payload = {
+      type: 'update-tx',
+      data: updateBody,
+    };
 
     // Same logic as onNewTx, but sending `updateBody` as payload
     promises.push(
       Promise.all(wallets.map((walletId) => (
         wsGetWalletConnections(redisClient, walletId).then((connections) => (
           Promise.all(connections.map((connInfo) => (
-            sendMessageToClient(redisClient, connInfo, updateBody)
+            sendMessageToClient(redisClient, connInfo, payload)
           )))
         ))
       ))),
