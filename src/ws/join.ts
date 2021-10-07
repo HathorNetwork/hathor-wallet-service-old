@@ -70,7 +70,7 @@ const joinWallet = async (
 
   if (error) {
     await sendMessageToClient(_client, connInfo, {
-      success: false,
+      type: 'error',
       message: 'Invalid parameters',
     });
     return DEFAULT_API_GATEWAY_RESPONSE;
@@ -85,7 +85,7 @@ const joinWallet = async (
   if (wallet === null) {
     // wallet does not exist, but should we return an error?
     await sendMessageToClient(_client, connInfo, {
-      success: false,
+      type: 'error',
       message: 'Invalid parameters',
     });
     return DEFAULT_API_GATEWAY_RESPONSE;
@@ -93,7 +93,7 @@ const joinWallet = async (
 
   await wsJoinWallet(_client, connInfo, walletId);
   await sendMessageToClient(_client, connInfo, {
-    success: true,
+    type: 'join-success',
     message: 'Listening',
     id: walletId,
   });
