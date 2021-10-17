@@ -47,6 +47,10 @@ module.exports = (sequelize, DataTypes) => {
     modelName: 'AddressTxHistory',
     tableName: 'address_tx_history',
     timestamps: false,
+    indexes: [{
+      name: 'address_tx_history_txid_idx',
+      fields: ['tx_id'],
+    }],
   });
   return AddressTxHistory;
 };
