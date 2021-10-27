@@ -25,6 +25,8 @@ const mysql = getDbConnection();
 export const onMinersListRequest: APIGatewayProxyHandler = async () => {
   const minersList: string[] = await getMinersList(mysql);
 
+  await closeDbConnection(mysql);
+
   return {
     statusCode: 200,
     body: JSON.stringify({
