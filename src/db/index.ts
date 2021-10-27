@@ -2255,3 +2255,34 @@ export const getMempoolTransactionsBeforeDate = async (
 
   return transactions;
 };
+
+/**
+ * Get the list of miners on database
+ *
+ * @param mysql - Database connection
+
+ * @returns A list of strings with miners addresses
+ */
+export const getMinersList = async (
+  mysql: ServerlessMysql,
+): Promise<string[]> => {
+  const results: DbSelectResult = await mysql.query(`
+    SELECT DISTINCT(address) AS address
+      FROM tx_output
+     WHERE tx_id
+        IN (
+            SELECT tx_id
+              FROM transaction
+             WHERE version
+                IN (0, 3)
+        );
+  `);
+
+  const minerList: string[] = [];
+
+  for (const result of results) {
+    minerList.push(result.address as string);
+  }
+
+  return minerList;
+};
