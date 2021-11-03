@@ -36,6 +36,7 @@ import {
   AddressBalance,
   AddressTotalBalance,
   IFilterUtxo,
+  Miner,
 } from '@src/types';
 
 import { getUnixTimestamp, isAuthority, getAddressPath } from '@src/utils';
@@ -2264,12 +2265,13 @@ export const getMempoolTransactionsBeforeDate = async (
 export const addMiner = async (
   mysql: ServerlessMysql,
   address: string,
+  txId: string,
 ): Promise<void> => {
   await mysql.query(
-    `INSERT INTO \`miner\` (address)
-     VALUES (?)
-         ON DUPLICATE KEY UPDATE address = ?`,
-    [address, address],
+    `INSERT INTO \`miner\` (address, first_block, last_block)
+     VALUES (?, ?, ?)
+         ON DUPLICATE KEY UPDATE last_block = ?`,
+    [address, txId, txId, txId],
   );
 };
 
@@ -2282,15 +2284,20 @@ export const addMiner = async (
  */
 export const getMinersList = async (
   mysql: ServerlessMysql,
-): Promise<string[]> => {
+): Promise<Miner[]> => {
   const results: DbSelectResult = await mysql.query(`
-    SELECT address FROM miner;
+    SELECT address, first_block, last_block
+      FROM miner;
   `);
 
-  const minerList: string[] = [];
+  const minerList: Miner[] = [];
 
   for (const result of results) {
-    minerList.push(result.address as string);
+    minerList.push({
+      address: result.address as string,
+      firstBlock: result.first_block as string,
+      lastBlock: result.last_block as string,
+    });
   }
 
   return minerList;

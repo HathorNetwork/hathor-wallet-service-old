@@ -98,7 +98,6 @@ import {
   createOutput,
   createInput,
   countTxOutputTable,
-  addToTransactionTable,
   TX_IDS,
 } from '@tests/utils';
 
@@ -1697,16 +1696,28 @@ test('beginTransaction, commitTransaction, rollbackTransaction', async () => {
 test('getMinersList', async () => {
   expect.hasAssertions();
 
-  await addMiner(mysql, 'address1');
-  await addMiner(mysql, 'address2');
-  await addMiner(mysql, 'address3');
+  await addMiner(mysql, 'address1', 'txId1');
+  await addMiner(mysql, 'address2', 'txId2');
+  await addMiner(mysql, 'address3', 'txId3');
 
-  const results = await getMinersList(mysql);
+  let results = await getMinersList(mysql);
 
   expect(results).toHaveLength(3);
   expect(new Set(results)).toStrictEqual(new Set([
-    'address1',
-    'address2',
-    'address3',
+    { address: 'address1', firstBlock: 'txId1', lastBlock: 'txId1' },
+    { address: 'address2', firstBlock: 'txId2', lastBlock: 'txId2' },
+    { address: 'address3', firstBlock: 'txId3', lastBlock: 'txId3' },
+  ]));
+
+  await addMiner(mysql, 'address3', 'txId4');
+
+  results = await getMinersList(mysql);
+
+  expect(results).toHaveLength(3);
+
+  expect(new Set(results)).toStrictEqual(new Set([
+    { address: 'address1', firstBlock: 'txId1', lastBlock: 'txId1' },
+    { address: 'address2', firstBlock: 'txId2', lastBlock: 'txId2' },
+    { address: 'address3', firstBlock: 'txId3', lastBlock: 'txId4' },
   ]));
 });

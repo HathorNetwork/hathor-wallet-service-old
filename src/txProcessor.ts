@@ -240,7 +240,7 @@ const _unsafeAddNewTx = async (tx: Transaction, now: number, blockRewardLock: nu
     const blockRewardOutput = tx.outputs[0];
 
     // add miner to the miners table
-    await addMiner(mysql, blockRewardOutput.decoded.address);
+    await addMiner(mysql, blockRewardOutput.decoded.address, tx.tx_id);
   }
 
   if (tx.version === hathorLib.constants.CREATE_TOKEN_TX_VERSION) {

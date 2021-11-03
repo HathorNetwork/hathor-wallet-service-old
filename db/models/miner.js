@@ -19,6 +19,16 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false,
       primaryKey: true,
     },
+    first_block: {
+      type: DataTypes.STRING(64),
+      allowNull: false,
+      primaryKey: false,
+    },
+    last_block: {
+      type: DataTypes.STRING(64),
+      allowNull: false,
+      primaryKey: false,
+    },
   }, {
     sequelize,
     modelName: 'Miner',

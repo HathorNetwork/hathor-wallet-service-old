@@ -12,6 +12,7 @@ import {
   getMinersList,
 } from '@src/db';
 import { closeDbConnection, getDbConnection } from '@src/utils';
+import { Miner } from '@src/types';
 
 const mysql = getDbConnection();
 
@@ -23,7 +24,7 @@ const mysql = getDbConnection();
  * This is a lambda function that should be invoked using the aws-sdk.
  */
 export const onMinersListRequest: APIGatewayProxyHandler = async () => {
-  const minersList: string[] = await getMinersList(mysql);
+  const minersList: Miner[] = await getMinersList(mysql);
 
   await closeDbConnection(mysql);
 
