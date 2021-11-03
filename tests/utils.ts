@@ -59,6 +59,7 @@ export const cleanDatabase = async (mysql: ServerlessMysql): Promise<void> => {
     'wallet',
     'wallet_balance',
     'wallet_tx_history',
+    'miner',
   ];
 
   for (const table of TABLES) {

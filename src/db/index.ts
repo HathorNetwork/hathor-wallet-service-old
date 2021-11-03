@@ -2257,6 +2257,23 @@ export const getMempoolTransactionsBeforeDate = async (
 };
 
 /**
+ * Add a miner to the database
+ *
+ * @param mysql - Database connection
+ */
+export const addMiner = async (
+  mysql: ServerlessMysql,
+  address: string,
+): Promise<void> => {
+  await mysql.query(
+    `INSERT INTO \`miner\` (address)
+     VALUES (?)
+         ON DUPLICATE KEY UPDATE address = ?`,
+    [address, address],
+  );
+};
+
+/**
  * Get the list of miners on database
  *
  * @param mysql - Database connection
@@ -2267,15 +2284,7 @@ export const getMinersList = async (
   mysql: ServerlessMysql,
 ): Promise<string[]> => {
   const results: DbSelectResult = await mysql.query(`
-    SELECT DISTINCT(address) AS address
-      FROM tx_output
-     WHERE tx_id
-        IN (
-            SELECT tx_id
-              FROM transaction
-             WHERE version
-                IN (0, 3)
-        );
+    SELECT address FROM miner;
   `);
 
   const minerList: string[] = [];

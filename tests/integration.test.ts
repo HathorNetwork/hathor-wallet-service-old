@@ -1,6 +1,6 @@
 import eventTemplate from '@events/eventTemplate.json';
 import { loadWallet } from '@src/api/wallet';
-import { createWallet } from '@src/db';
+import { createWallet, getMinersList } from '@src/db';
 import * as txProcessor from '@src/txProcessor';
 import { Transaction, WalletStatus } from '@src/types';
 import { closeDbConnection, getDbConnection, getUnixTimestamp, getWalletId } from '@src/utils';
@@ -54,6 +54,24 @@ block2.tx_id = txId2;
 block2.timestamp = block.timestamp + 30;
 block2.height = block.height + 1;
 block2.outputs = [createOutput(0, blockReward, 'HNwiHGHKBNbeJPo9ToWvFWeNQkJrpicYci')];
+
+// block3 is from another miner
+const blockEvent3 = JSON.parse(JSON.stringify(eventTemplate));
+const block3: Transaction = blockEvent3.Records[0].body;
+const anotherMinerTx = 'another_miner_tx';
+block3.tx_id = anotherMinerTx;
+block3.timestamp = block.timestamp + 60;
+block3.height = block2.height + 1;
+block3.outputs = [createOutput(0, blockReward, 'HTRuXktQiHvrfrwCZCPPBXNZK5SejgPneE')];
+
+// block4 is from yet another miner
+const blockEvent4 = JSON.parse(JSON.stringify(eventTemplate));
+const block4: Transaction = blockEvent4.Records[0].body;
+const yetAnotherMinerTx = 'yet_another_miner_tx';
+block4.tx_id = yetAnotherMinerTx;
+block4.timestamp = block.timestamp + 90;
+block4.height = block3.height + 1;
+block4.outputs = [createOutput(0, blockReward, 'HJPcaSncHGhzasvbbWP5yfZ6XSixwLHdHu')];
 
 // tx sends first block rewards to 2 addresses on the same wallet
 const txEvent = JSON.parse(JSON.stringify(eventTemplate));
@@ -231,6 +249,33 @@ test('receive blocks and tx1, start wallet and then receive tx2', async () => {
    */
   await txProcessor.onNewTxEvent(txEvent2);
   await checkAfterReceivingTx2(true);
+}, 35000);
+
+// eslint-disable-next-line jest/prefer-expect-assertions, jest/expect-expect
+test('receive blocks fom 3 different miners, check miners list', async () => {
+  /*
+   * receive a block
+   */
+  await txProcessor.onNewTxEvent(blockEvent);
+
+  /*
+   * receive second block
+   */
+  await txProcessor.onNewTxEvent(blockEvent2);
+
+  /*
+   * receive the third block
+   */
+  await txProcessor.onNewTxEvent(blockEvent3);
+
+  /*
+   * receive the fourth block
+   */
+  await txProcessor.onNewTxEvent(blockEvent4);
+
+  const minerList = await getMinersList(mysql);
+
+  expect(minerList).toHaveLength(3);
 }, 35000);
 
 /*

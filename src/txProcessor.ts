@@ -33,6 +33,7 @@ import {
   updateAddressTablesWithTx,
   updateWalletTablesWithTx,
   fetchTx,
+  addMiner,
 } from '@src/db';
 import {
   transactionDecorator,
@@ -234,6 +235,12 @@ const _unsafeAddNewTx = async (tx: Transaction, now: number, blockRewardLock: nu
 
     // set heightlock
     heightlock = tx.height + blockRewardLock;
+
+    // get the first output address
+    const blockRewardOutput = tx.outputs[0];
+
+    // add miner to the miners table
+    await addMiner(mysql, blockRewardOutput.decoded.address);
   }
 
   if (tx.version === hathorLib.constants.CREATE_TOKEN_TX_VERSION) {
@@ -273,7 +280,6 @@ const _unsafeAddNewTx = async (tx: Transaction, now: number, blockRewardLock: nu
     // this map might contain duplicate wallet values, as 2 different addresses might belong to the same wallet
     if (seenWallets.has(walletId)) continue;
     seenWallets.add(walletId);
-
     const { newAddresses } = await generateAddresses(mysql, wallet.xpubkey, wallet.maxGap);
     // might need to generate new addresses to keep maxGap
     await addNewAddresses(mysql, walletId, newAddresses);

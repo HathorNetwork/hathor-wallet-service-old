@@ -53,6 +53,7 @@ import {
   unspendUtxos,
   filterUtxos,
   getTxProposalInputs,
+  addMiner,
   getMinersList,
 } from '@src/db';
 import {
@@ -1696,86 +1697,16 @@ test('beginTransaction, commitTransaction, rollbackTransaction', async () => {
 test('getMinersList', async () => {
   expect.hasAssertions();
 
-  const txId1 = TX_IDS[0];
-  const txId2 = TX_IDS[1];
-  const txId3 = TX_IDS[2];
-  const txId4 = TX_IDS[4];
-
-  const utxos = [
-    { value: 64, address: 'address1', tokenId: '00', locked: false },
-    { value: 64, address: 'address2', tokenId: '00', locked: false },
-    { value: 64, address: 'address3', tokenId: '00', locked: false },
-    { value: 3000, address: 'address4', tokenId: '00', locked: false },
-  ];
-
-  // add miner1 utxo
-  await addUtxos(mysql, txId1, [
-    createOutput(
-      0,
-      utxos[0].value,
-      utxos[0].address,
-      utxos[0].tokenId,
-      null,
-      utxos[0].locked,
-      0,
-    ),
-  ]);
-
-  // add miner2 utxo
-  await addUtxos(mysql, txId2, [
-    createOutput(
-      0,
-      utxos[1].value,
-      utxos[1].address,
-      utxos[1].tokenId,
-      null,
-      utxos[1].locked,
-      0,
-    ),
-  ]);
-
-  // add miner3 utxo
-  await addUtxos(mysql, txId3, [
-    createOutput(
-      0,
-      utxos[2].value,
-      utxos[2].address,
-      utxos[2].tokenId,
-      null,
-      utxos[2].locked,
-      0,
-    ),
-  ]);
-
-  // add regular transaction utxo
-  await addUtxos(mysql, txId4, [
-    createOutput(
-      0,
-      utxos[2].value,
-      utxos[2].address,
-      utxos[2].tokenId,
-      null,
-      utxos[2].locked,
-      0,
-    ),
-  ]);
-
-  // add the mining transactions (0 = BLOCK, 1 = REGULAR TX, 3 = MERGED MINING BLOCK)
-  const transactions = [
-    [TX_IDS[0], 1, 0, false, null],
-    [TX_IDS[1], 1, 3, false, null],
-    [TX_IDS[2], 1, 0, false, null],
-    [TX_IDS[3], 1, 1, false, null],
-  ];
-
-  await addToTransactionTable(mysql, transactions);
+  await addMiner(mysql, 'address1');
+  await addMiner(mysql, 'address2');
+  await addMiner(mysql, 'address3');
 
   const results = await getMinersList(mysql);
 
   expect(results).toHaveLength(3);
   expect(new Set(results)).toStrictEqual(new Set([
     'address1',
-    'address3',
     'address2',
+    'address3',
   ]));
 });
