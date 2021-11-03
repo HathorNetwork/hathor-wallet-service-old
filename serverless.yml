@@ -98,7 +98,6 @@ functions:
     handler: src/txProcessor.onNewTxRequest
   onMinersListRequest:
     handler: src/api/miners.onMinersListRequest
-    timeout: 120 # 2 minutes
   onHandleReorgRequest:
     handler: src/txProcessor.onHandleReorgRequest
     timeout: 300 # 5 minutes
