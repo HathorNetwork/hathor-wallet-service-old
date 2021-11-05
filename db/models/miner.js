@@ -29,6 +29,11 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false,
       primaryKey: false,
     },
+    count: {
+      type: DataTypes.BIGINT.UNSIGNED,
+      allowNull: false,
+      primaryKey: false,
+    },
   }, {
     sequelize,
     modelName: 'Miner',

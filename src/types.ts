@@ -651,4 +651,5 @@ export interface Miner {
   address: string;
   firstBlock: string;
   lastBlock: string;
+  count: number;
 }

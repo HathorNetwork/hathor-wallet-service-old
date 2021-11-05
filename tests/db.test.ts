@@ -1704,20 +1704,21 @@ test('getMinersList', async () => {
 
   expect(results).toHaveLength(3);
   expect(new Set(results)).toStrictEqual(new Set([
-    { address: 'address1', firstBlock: 'txId1', lastBlock: 'txId1' },
-    { address: 'address2', firstBlock: 'txId2', lastBlock: 'txId2' },
-    { address: 'address3', firstBlock: 'txId3', lastBlock: 'txId3' },
+    { address: 'address1', firstBlock: 'txId1', lastBlock: 'txId1', count: 1 },
+    { address: 'address2', firstBlock: 'txId2', lastBlock: 'txId2', count: 1 },
+    { address: 'address3', firstBlock: 'txId3', lastBlock: 'txId3', count: 1 },
   ]));
 
   await addMiner(mysql, 'address3', 'txId4');
+  await addMiner(mysql, 'address3', 'txId5');
 
   results = await getMinersList(mysql);
 
   expect(results).toHaveLength(3);
 
   expect(new Set(results)).toStrictEqual(new Set([
-    { address: 'address1', firstBlock: 'txId1', lastBlock: 'txId1' },
-    { address: 'address2', firstBlock: 'txId2', lastBlock: 'txId2' },
-    { address: 'address3', firstBlock: 'txId3', lastBlock: 'txId4' },
+    { address: 'address1', firstBlock: 'txId1', lastBlock: 'txId1', count: 1 },
+    { address: 'address2', firstBlock: 'txId2', lastBlock: 'txId2', count: 1 },
+    { address: 'address3', firstBlock: 'txId3', lastBlock: 'txId5', count: 3 },
   ]));
 });

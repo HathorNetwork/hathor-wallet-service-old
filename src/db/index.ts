@@ -2268,9 +2268,9 @@ export const addMiner = async (
   txId: string,
 ): Promise<void> => {
   await mysql.query(
-    `INSERT INTO \`miner\` (address, first_block, last_block)
-     VALUES (?, ?, ?)
-         ON DUPLICATE KEY UPDATE last_block = ?`,
+    `INSERT INTO \`miner\` (address, first_block, last_block, count)
+     VALUES (?, ?, ?, 1)
+         ON DUPLICATE KEY UPDATE last_block = ?, count = count + 1`,
     [address, txId, txId, txId],
   );
 };
@@ -2286,7 +2286,7 @@ export const getMinersList = async (
   mysql: ServerlessMysql,
 ): Promise<Miner[]> => {
   const results: DbSelectResult = await mysql.query(`
-    SELECT address, first_block, last_block
+    SELECT address, first_block, last_block, count
       FROM miner;
   `);
 
@@ -2297,6 +2297,7 @@ export const getMinersList = async (
       address: result.address as string,
       firstBlock: result.first_block as string,
       lastBlock: result.last_block as string,
+      count: result.count as number,
     });
   }
 

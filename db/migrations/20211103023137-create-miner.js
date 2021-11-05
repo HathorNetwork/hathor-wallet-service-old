@@ -17,6 +17,11 @@ module.exports = {
         allowNull: false,
         primaryKey: false,
       },
+      count: {
+        type: Sequelize.BIGINT.UNSIGNED,
+        allowNull: false,
+        primaryKey: false,
+      },
     });
   },
   down: async (queryInterface, Sequelize) => {
