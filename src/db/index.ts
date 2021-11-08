@@ -2303,3 +2303,29 @@ export const getMinersList = async (
 
   return minerList;
 };
+
+/**
+ * Get the total sum of HTR utxos, excluding the burned and voided ones
+ *
+ * @param mysql - Database connection
+
+ * @returns The calculated sum
+ */
+export const getTotalSupply = async (
+  mysql: ServerlessMysql,
+): Promise<number> => {
+  const results: DbSelectResult = await mysql.query(`
+    SELECT SUM(value) as value
+      FROM tx_output
+     WHERE spent_by IS NULL
+       AND token_id = '00'
+       AND voided = FALSE
+       AND address != 'HDeadDeadDeadDeadDeadDeadDeagTPgmn'`);
+
+  if (!results.length) {
+    // This should never happen.
+    throw new Error('[ALERT] Total supply query returned no results');
+  }
+
+  return results[0].value as number;
+};

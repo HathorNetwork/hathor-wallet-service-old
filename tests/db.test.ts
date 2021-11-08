@@ -55,6 +55,7 @@ import {
   getTxProposalInputs,
   addMiner,
   getMinersList,
+  getTotalSupply,
 } from '@src/db';
 import {
   beginTransaction,
@@ -1721,4 +1722,33 @@ test('getMinersList', async () => {
     { address: 'address2', firstBlock: 'txId2', lastBlock: 'txId2', count: 1 },
     { address: 'address3', firstBlock: 'txId3', lastBlock: 'txId5', count: 3 },
   ]));
+});
+
+test('getTotalSupply', async () => {
+  expect.hasAssertions();
+
+  const txId = 'txId';
+  const utxos = [
+    { value: 5, address: 'address1', tokenId: '00', locked: false },
+    { value: 15, address: 'address1', tokenId: '00', locked: false },
+    { value: 25, address: 'address2', tokenId: 'token2', timelock: 500, locked: true },
+    { value: 35, address: 'address2', tokenId: 'token1', locked: false },
+    // authority utxo
+    { value: 0b11, address: 'address1', tokenId: 'token1', locked: false, tokenData: 129 },
+  ];
+
+  // add to utxo table
+  const outputs = utxos.map((utxo, index) => createOutput(
+    index,
+    utxo.value,
+    utxo.address,
+    utxo.tokenId,
+    utxo.timelock || null,
+    utxo.locked,
+    utxo.tokenData || 0,
+  ));
+
+  await addUtxos(mysql, txId, outputs);
+
+  expect(await getTotalSupply(mysql)).toStrictEqual(20);
 });
