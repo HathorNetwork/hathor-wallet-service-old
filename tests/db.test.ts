@@ -1729,6 +1729,7 @@ test('getTotalSupply', async () => {
 
   const txId = 'txId';
   const utxos = [
+    { value: 500, address: 'HDeadDeadDeadDeadDeadDeadDeagTPgmn', tokenId: '00', locked: false },
     { value: 5, address: 'address1', tokenId: '00', locked: false },
     { value: 15, address: 'address1', tokenId: '00', locked: false },
     { value: 25, address: 'address2', tokenId: 'token2', timelock: 500, locked: true },
