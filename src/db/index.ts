@@ -45,6 +45,7 @@ const BLOCK_VERSION = [
   constants.BLOCK_VERSION,
   constants.MERGED_MINED_BLOCK_VERSION,
 ];
+const BURN_ADDRESS = 'HDeadDeadDeadDeadDeadDeadDeagTPgmn';
 
 /**
  * Given an xpubkey, generate its addresses.
@@ -2320,7 +2321,7 @@ export const getTotalSupply = async (
      WHERE spent_by IS NULL
        AND token_id = '00'
        AND voided = FALSE
-       AND address != 'HDeadDeadDeadDeadDeadDeadDeagTPgmn'`);
+       AND address != '${BURN_ADDRESS}'`);
 
   if (!results.length) {
     // This should never happen.
