@@ -1751,5 +1751,7 @@ test('getTotalSupply', async () => {
 
   await addUtxos(mysql, txId, outputs);
 
-  expect(await getTotalSupply(mysql)).toStrictEqual(20);
+  expect(await getTotalSupply(mysql, '00')).toStrictEqual(20);
+  expect(await getTotalSupply(mysql, 'token2')).toStrictEqual(25);
+  expect(await getTotalSupply(mysql, 'token1')).toStrictEqual(35);
 });

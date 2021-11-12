@@ -2314,14 +2314,16 @@ export const getMinersList = async (
  */
 export const getTotalSupply = async (
   mysql: ServerlessMysql,
+  tokenId: string,
 ): Promise<number> => {
   const results: DbSelectResult = await mysql.query(`
     SELECT SUM(value) as value
       FROM tx_output
      WHERE spent_by IS NULL
-       AND token_id = '00'
+       AND token_id = ?
        AND voided = FALSE
-       AND address != '${BURN_ADDRESS}'`);
+       AND address != '${BURN_ADDRESS}'
+  `, [tokenId]);
 
   if (!results.length) {
     // This should never happen.
