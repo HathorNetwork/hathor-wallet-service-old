@@ -45,6 +45,7 @@ const BLOCK_VERSION = [
   constants.BLOCK_VERSION,
   constants.MERGED_MINED_BLOCK_VERSION,
 ];
+const BURN_ADDRESS = 'HDeadDeadDeadDeadDeadDeadDeagTPgmn';
 
 /**
  * Given an xpubkey, generate its addresses.
@@ -2302,4 +2303,32 @@ export const getMinersList = async (
   }
 
   return minerList;
+};
+
+/**
+ * Get the total sum of HTR utxos, excluding the burned and voided ones
+ *
+ * @param mysql - Database connection
+
+ * @returns The calculated sum
+ */
+export const getTotalSupply = async (
+  mysql: ServerlessMysql,
+  tokenId: string,
+): Promise<number> => {
+  const results: DbSelectResult = await mysql.query(`
+    SELECT SUM(value) as value
+      FROM tx_output
+     WHERE spent_by IS NULL
+       AND token_id = ?
+       AND voided = FALSE
+       AND address != '${BURN_ADDRESS}'
+  `, [tokenId]);
+
+  if (!results.length) {
+    // This should never happen.
+    throw new Error('[ALERT] Total supply query returned no results');
+  }
+
+  return results[0].value as number;
 };
