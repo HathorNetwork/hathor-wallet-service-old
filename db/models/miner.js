@@ -3,7 +3,7 @@ const {
   Model
 } = require('sequelize');
 module.exports = (sequelize, DataTypes) => {
-  class AddressTxHistory extends Model {
+  class Miner extends Model {
     /**
      * Helper method for defining associations.
      * This method is not a part of Sequelize lifecycle.
@@ -13,44 +13,32 @@ module.exports = (sequelize, DataTypes) => {
       // define association here
     }
   };
-  AddressTxHistory.init({
+  Miner.init({
     address: {
       type: DataTypes.STRING(34),
       allowNull: false,
       primaryKey: true,
     },
-    tx_id: {
+    first_block: {
       type: DataTypes.STRING(64),
       allowNull: false,
-      primaryKey: true,
+      primaryKey: false,
     },
-    token_id: {
+    last_block: {
       type: DataTypes.STRING(64),
       allowNull: false,
-      primaryKey: true,
+      primaryKey: false,
     },
-    balance: {
-      type: DataTypes.BIGINT,
+    count: {
+      type: DataTypes.BIGINT.UNSIGNED,
       allowNull: false,
-    },
-    timestamp: {
-      type: DataTypes.INTEGER.UNSIGNED,
-      allowNull: false,
-    },
-    voided: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false,
+      primaryKey: false,
     },
   }, {
     sequelize,
-    modelName: 'AddressTxHistory',
-    tableName: 'address_tx_history',
+    modelName: 'Miner',
+    tableName: 'miner',
     timestamps: false,
-    indexes: [{
-      name: 'address_tx_history_txid_idx',
-      fields: ['tx_id'],
-    }],
   });
-  return AddressTxHistory;
+  return Transaction;
 };

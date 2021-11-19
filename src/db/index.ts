@@ -36,6 +36,7 @@ import {
   AddressBalance,
   AddressTotalBalance,
   IFilterUtxo,
+  Miner,
 } from '@src/types';
 
 import { getUnixTimestamp, isAuthority, getAddressPath } from '@src/utils';
@@ -44,6 +45,7 @@ const BLOCK_VERSION = [
   constants.BLOCK_VERSION,
   constants.MERGED_MINED_BLOCK_VERSION,
 ];
+const BURN_ADDRESS = 'HDeadDeadDeadDeadDeadDeadDeagTPgmn';
 
 /**
  * Given an xpubkey, generate its addresses.
@@ -2254,4 +2256,79 @@ export const getMempoolTransactionsBeforeDate = async (
   }
 
   return transactions;
+};
+
+/**
+ * Add a miner to the database
+ *
+ * @param mysql - Database connection
+ */
+export const addMiner = async (
+  mysql: ServerlessMysql,
+  address: string,
+  txId: string,
+): Promise<void> => {
+  await mysql.query(
+    `INSERT INTO \`miner\` (address, first_block, last_block, count)
+     VALUES (?, ?, ?, 1)
+         ON DUPLICATE KEY UPDATE last_block = ?, count = count + 1`,
+    [address, txId, txId, txId],
+  );
+};
+
+/**
+ * Get the list of miners on database
+ *
+ * @param mysql - Database connection
+
+ * @returns A list of strings with miners addresses
+ */
+export const getMinersList = async (
+  mysql: ServerlessMysql,
+): Promise<Miner[]> => {
+  const results: DbSelectResult = await mysql.query(`
+    SELECT address, first_block, last_block, count
+      FROM miner;
+  `);
+
+  const minerList: Miner[] = [];
+
+  for (const result of results) {
+    minerList.push({
+      address: result.address as string,
+      firstBlock: result.first_block as string,
+      lastBlock: result.last_block as string,
+      count: result.count as number,
+    });
+  }
+
+  return minerList;
+};
+
+/**
+ * Get the total sum of HTR utxos, excluding the burned and voided ones
+ *
+ * @param mysql - Database connection
+
+ * @returns The calculated sum
+ */
+export const getTotalSupply = async (
+  mysql: ServerlessMysql,
+  tokenId: string,
+): Promise<number> => {
+  const results: DbSelectResult = await mysql.query(`
+    SELECT SUM(value) as value
+      FROM tx_output
+     WHERE spent_by IS NULL
+       AND token_id = ?
+       AND voided = FALSE
+       AND address != '${BURN_ADDRESS}'
+  `, [tokenId]);
+
+  if (!results.length) {
+    // This should never happen.
+    throw new Error('[ALERT] Total supply query returned no results');
+  }
+
+  return results[0].value as number;
 };
