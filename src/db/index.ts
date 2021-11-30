@@ -700,7 +700,7 @@ export const getUtxos = async (
   const entries = utxosInfo.map((utxo) => [utxo.txId, utxo.index]);
   const results: DbSelectResult = await mysql.query(
     `SELECT *
-       FROM \`tx_output\`
+       FROM \`tx_output\` USE INDEX (PRIMARY)
       WHERE (\`tx_id\`, \`index\`)
          IN (?)
         AND \`spent_by\` IS NULL
