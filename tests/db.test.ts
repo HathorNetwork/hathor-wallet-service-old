@@ -56,6 +56,7 @@ import {
   addMiner,
   getMinersList,
   getTotalSupply,
+  unlockTimelockedUtxos,
 } from '@src/db';
 import {
   beginTransaction,
@@ -70,6 +71,7 @@ import {
   WalletStatus,
   FullNodeVersionData,
   Tx,
+  DbTxOutput,
 } from '@src/types';
 import {
   closeDbConnection,
@@ -1754,4 +1756,48 @@ test('getTotalSupply', async () => {
   expect(await getTotalSupply(mysql, '00')).toStrictEqual(20);
   expect(await getTotalSupply(mysql, 'token2')).toStrictEqual(25);
   expect(await getTotalSupply(mysql, 'token1')).toStrictEqual(35);
+});
+
+test('unlockTimelockedUtxos', async () => {
+  expect.hasAssertions();
+
+  const txId = 'txId';
+  const utxos = [
+    { value: 5, address: 'address1', tokenId: 'token1', locked: true },
+    { value: 15, address: 'address1', tokenId: 'token1', locked: true },
+    { value: 25, address: 'address2', tokenId: 'token2', timelock: 100, locked: true },
+    { value: 35, address: 'address2', tokenId: 'token1', timelock: 200, locked: true },
+    // authority utxo
+    { value: 0b11, address: 'address1', tokenId: 'token1', timelock: 300, locked: true, tokenData: 129 },
+  ];
+
+  // empty list should be fine
+  await addUtxos(mysql, txId, []);
+
+  // add to utxo table
+  const outputs = utxos.map((utxo, index) => createOutput(
+    index,
+    utxo.value,
+    utxo.address,
+    utxo.tokenId,
+    utxo.timelock || null,
+    utxo.locked,
+    utxo.tokenData || 0,
+  ));
+
+  await addUtxos(mysql, txId, outputs);
+
+  const unlockedUtxos0: DbTxOutput[] = await unlockTimelockedUtxos(mysql, 100);
+  const unlockedUtxos1: DbTxOutput[] = await unlockTimelockedUtxos(mysql, 101);
+  const unlockedUtxos2: DbTxOutput[] = await unlockTimelockedUtxos(mysql, 201);
+  const unlockedUtxos3: DbTxOutput[] = await unlockTimelockedUtxos(mysql, 301);
+
+  expect(unlockedUtxos0).toHaveLength(0);
+  expect(unlockedUtxos1).toHaveLength(1);
+  expect(unlockedUtxos1[0].value).toStrictEqual(outputs[2].value);
+  expect(unlockedUtxos2).toHaveLength(1);
+  expect(unlockedUtxos2[0].value).toStrictEqual(outputs[3].value);
+  expect(unlockedUtxos3).toHaveLength(1);
+  // last one is an authority utxo
+  expect(unlockedUtxos3[0].authorities).toStrictEqual(outputs[4].value);
 });
