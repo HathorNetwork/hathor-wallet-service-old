@@ -15,8 +15,8 @@ import {
   getLatestHeight,
   getWalletBalances as dbGetWalletBalances,
   getWalletUnlockedUtxos,
+  getTimelockedUtxos,
   unlockUtxos as dbUnlockUtxos,
-  unlockTimelockedUtxos as dbUnlockTimelockedUtxos,
   updateAddressLockedBalance,
   updateWalletLockedBalance,
   getVersionData,
@@ -118,40 +118,9 @@ export const unlockUtxos = async (mysql: ServerlessMysql, utxos: DbTxOutput[], u
  * @param now - Current timestamp
  */
 export const unlockTimelockedUtxos = async (mysql: ServerlessMysql, now: number): Promise<void> => {
-  const utxos: DbTxOutput[] = await dbUnlockTimelockedUtxos(mysql, now);
-  if (utxos.length === 0) return;
+  const utxos: DbTxOutput[] = await getTimelockedUtxos(mysql, now);
 
-  const outputs: TxOutput[] = utxos.map((utxo) => {
-    const decoded: DecodedOutput = {
-      type: 'P2PKH',
-      address: utxo.address,
-      timelock: utxo.timelock,
-    };
-
-    return {
-      value: utxo.authorities > 0 ? utxo.authorities : utxo.value,
-      token: utxo.tokenId,
-      decoded,
-      locked: false,
-      // set authority bit if necessary
-      token_data: utxo.authorities > 0 ? hathorLib.constants.TOKEN_AUTHORITY_MASK : 0,
-      // we don't care about spent_by and script
-      spent_by: null,
-      script: '',
-    };
-  });
-
-  const addressBalanceMap: StringMap<TokenBalanceMap> = getAddressBalanceMap([], outputs);
-
-  // update address_balance table
-  await updateAddressLockedBalance(mysql, addressBalanceMap, true);
-
-  // check if addresses belong to any started wallet
-  const addressWalletMap: StringMap<Wallet> = await getAddressWalletInfo(mysql, Object.keys(addressBalanceMap));
-
-  // update wallet_balance table
-  const walletBalanceMap: StringMap<TokenBalanceMap> = getWalletBalanceMap(addressWalletMap, addressBalanceMap);
-  await updateWalletLockedBalance(mysql, walletBalanceMap, true);
+  await unlockUtxos(mysql, utxos, true);
 };
 
 /**

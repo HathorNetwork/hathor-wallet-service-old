@@ -56,7 +56,7 @@ import {
   addMiner,
   getMinersList,
   getTotalSupply,
-  unlockTimelockedUtxos,
+  getTimelockedUtxos,
 } from '@src/db';
 import {
   beginTransaction,
@@ -1758,7 +1758,7 @@ test('getTotalSupply', async () => {
   expect(await getTotalSupply(mysql, 'token1')).toStrictEqual(35);
 });
 
-test('unlockTimelockedUtxos', async () => {
+test('getTimelockedUtxos', async () => {
   expect.hasAssertions();
 
   const txId = 'txId';
@@ -1787,17 +1787,17 @@ test('unlockTimelockedUtxos', async () => {
 
   await addUtxos(mysql, txId, outputs);
 
-  const unlockedUtxos0: DbTxOutput[] = await unlockTimelockedUtxos(mysql, 100);
-  const unlockedUtxos1: DbTxOutput[] = await unlockTimelockedUtxos(mysql, 101);
-  const unlockedUtxos2: DbTxOutput[] = await unlockTimelockedUtxos(mysql, 201);
-  const unlockedUtxos3: DbTxOutput[] = await unlockTimelockedUtxos(mysql, 301);
+  const unlockedUtxos0: DbTxOutput[] = await getTimelockedUtxos(mysql, 100);
+  const unlockedUtxos1: DbTxOutput[] = await getTimelockedUtxos(mysql, 101);
+  const unlockedUtxos2: DbTxOutput[] = await getTimelockedUtxos(mysql, 201);
+  const unlockedUtxos3: DbTxOutput[] = await getTimelockedUtxos(mysql, 301);
 
   expect(unlockedUtxos0).toHaveLength(0);
   expect(unlockedUtxos1).toHaveLength(1);
   expect(unlockedUtxos1[0].value).toStrictEqual(outputs[2].value);
-  expect(unlockedUtxos2).toHaveLength(1);
-  expect(unlockedUtxos2[0].value).toStrictEqual(outputs[3].value);
-  expect(unlockedUtxos3).toHaveLength(1);
+  expect(unlockedUtxos2).toHaveLength(2);
+  expect(unlockedUtxos2[1].value).toStrictEqual(outputs[3].value);
+  expect(unlockedUtxos3).toHaveLength(3);
   // last one is an authority utxo
-  expect(unlockedUtxos3[0].authorities).toStrictEqual(outputs[4].value);
+  expect(unlockedUtxos3[2].authorities).toStrictEqual(outputs[4].value);
 });

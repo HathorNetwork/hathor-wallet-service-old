@@ -2334,18 +2334,17 @@ export const getTotalSupply = async (
 };
 
 /**
- * Unlock timelocked utxos returning the list of utxos that were updated
+ * Get timelocked utxos from the database
  *
  * @param mysql - Database connection
  * @param now - Current timestamp
 
- * @returns A list of unlocked utxos
+ * @returns A list of timelocked utxos
  */
-export const unlockTimelockedUtxos = async (
+export const getTimelockedUtxos = async (
   mysql: ServerlessMysql,
   now: number,
 ): Promise<DbTxOutput[]> => {
-  // this might be inefficient but MySQL does not support "RETURNING" the updated values
   const results: DbSelectResult = await mysql.query(`
     SELECT *
       FROM tx_output
@@ -2355,8 +2354,6 @@ export const unlockTimelockedUtxos = async (
   `, [now]);
 
   const lockedUtxos: DbTxOutput[] = results.map(mapDbResultToDbTxOutput);
-
-  await unlockUtxos(mysql, lockedUtxos);
 
   return lockedUtxos;
 };
