@@ -2334,14 +2334,14 @@ export const getTotalSupply = async (
 };
 
 /**
- * Get timelocked utxos from the database
+ * Get from database utxos that must be unlocked because their timelocks expired
  *
  * @param mysql - Database connection
  * @param now - Current timestamp
 
  * @returns A list of timelocked utxos
  */
-export const getTimelockedUtxos = async (
+export const getExpiredTimelocksUtxos = async (
   mysql: ServerlessMysql,
   now: number,
 ): Promise<DbTxOutput[]> => {

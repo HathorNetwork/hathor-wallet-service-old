@@ -56,7 +56,7 @@ import {
   addMiner,
   getMinersList,
   getTotalSupply,
-  getTimelockedUtxos,
+  getExpiredTimelocksUtxos,
 } from '@src/db';
 import {
   beginTransaction,
@@ -1758,7 +1758,7 @@ test('getTotalSupply', async () => {
   expect(await getTotalSupply(mysql, 'token1')).toStrictEqual(35);
 });
 
-test('getTimelockedUtxos', async () => {
+test('getExpiredTimelocksUtxos', async () => {
   expect.hasAssertions();
 
   const txId = 'txId';
@@ -1787,10 +1787,10 @@ test('getTimelockedUtxos', async () => {
 
   await addUtxos(mysql, txId, outputs);
 
-  const unlockedUtxos0: DbTxOutput[] = await getTimelockedUtxos(mysql, 100);
-  const unlockedUtxos1: DbTxOutput[] = await getTimelockedUtxos(mysql, 101);
-  const unlockedUtxos2: DbTxOutput[] = await getTimelockedUtxos(mysql, 201);
-  const unlockedUtxos3: DbTxOutput[] = await getTimelockedUtxos(mysql, 301);
+  const unlockedUtxos0: DbTxOutput[] = await getExpiredTimelocksUtxos(mysql, 100);
+  const unlockedUtxos1: DbTxOutput[] = await getExpiredTimelocksUtxos(mysql, 101);
+  const unlockedUtxos2: DbTxOutput[] = await getExpiredTimelocksUtxos(mysql, 201);
+  const unlockedUtxos3: DbTxOutput[] = await getExpiredTimelocksUtxos(mysql, 301);
 
   expect(unlockedUtxos0).toHaveLength(0);
   expect(unlockedUtxos1).toHaveLength(1);

@@ -15,7 +15,7 @@ import {
   getLatestHeight,
   getWalletBalances as dbGetWalletBalances,
   getWalletUnlockedUtxos,
-  getTimelockedUtxos,
+  getExpiredTimelocksUtxos,
   unlockUtxos as dbUnlockUtxos,
   updateAddressLockedBalance,
   updateWalletLockedBalance,
@@ -118,7 +118,7 @@ export const unlockUtxos = async (mysql: ServerlessMysql, utxos: DbTxOutput[], u
  * @param now - Current timestamp
  */
 export const unlockTimelockedUtxos = async (mysql: ServerlessMysql, now: number): Promise<void> => {
-  const utxos: DbTxOutput[] = await getTimelockedUtxos(mysql, now);
+  const utxos: DbTxOutput[] = await getExpiredTimelocksUtxos(mysql, now);
 
   await unlockUtxos(mysql, utxos, true);
 };
