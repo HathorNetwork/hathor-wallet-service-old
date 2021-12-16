@@ -4,6 +4,7 @@ import {
   getWalletBalanceMap,
   markLockedOutputs,
   unlockUtxos,
+  unlockTimelockedUtxos,
   maybeRefreshWalletConstants,
   searchForLatestValidBlock,
 } from '@src/commons';
@@ -309,6 +310,99 @@ test('unlockUtxos', async () => {
   ).resolves.toBe(true);
   await expect(checkAddressBalanceTable(mysql, 1, addr, token, 2 * reward + 5000, 0, null, 5, 0b10, 0)).resolves.toBe(true);
   await expect(checkWalletBalanceTable(mysql, 1, walletId, token, 2 * reward + 5000, 0, null, 5, 0b10, 0)).resolves.toBe(true);
+});
+
+test('unlockTimelockedUtxos', async () => {
+  expect.hasAssertions();
+
+  const reward = 6400;
+  const txId1 = 'txId1';
+  const txId2 = 'txId2';
+  const txId3 = 'txId3';
+  const token = 'tokenId';
+  const addr = 'address';
+  const walletId = 'walletId';
+  const now = 1000;
+  await addToUtxoTable(mysql, [
+    [txId1, 0, token, addr, 2500, 0, now, null, true],
+    [txId2, 0, token, addr, 2500, 0, now * 2, null, true],
+    [txId3, 0, token, addr, 0, 0b10, now * 3, null, true],
+  ]);
+
+  await addToWalletTable(mysql, [
+    [walletId, 'xpub', 'ready', 10, now, now + 1],
+  ]);
+
+  await addToAddressTable(mysql, [{
+    address: addr,
+    index: 0,
+    walletId,
+    transactions: 3,
+  }]);
+
+  await addToAddressBalanceTable(mysql, [
+    [addr, token, 0, 5000, now, 3, 0, 0b10],
+  ]);
+
+  await addToWalletBalanceTable(mysql, [{
+    walletId,
+    tokenId: token,
+    unlockedBalance: 0,
+    lockedBalance: 5000,
+    unlockedAuthorities: 0,
+    lockedAuthorities: 0b10,
+    timelockExpires: now,
+    transactions: 3,
+  }]);
+
+  const utxo: DbTxOutput = {
+    txId: txId1,
+    index: 0,
+    tokenId: token,
+    address: addr,
+    value: reward,
+    authorities: 0,
+    timelock: null,
+    heightlock: 3,
+    locked: true,
+  };
+
+  // unlock txId1, txId2 is still locked
+  utxo.txId = txId1;
+  utxo.value = 2500;
+  utxo.timelock = now;
+  utxo.heightlock = null;
+  await unlockTimelockedUtxos(mysql, now + 1);
+  await expect(
+    checkUtxoTable(mysql, 3, txId1, 0, utxo.tokenId, utxo.address, utxo.value, 0, utxo.timelock, utxo.heightlock, false),
+  ).resolves.toBe(true);
+  await expect(checkAddressBalanceTable(mysql, 1, addr, token, 2500, 2500, 2 * now, 3, 0, 0b10)).resolves.toBe(true);
+  await expect(checkWalletBalanceTable(mysql, 1, walletId, token, 2500, 2500, 2 * now, 3, 0, 0b10)).resolves.toBe(true);
+
+  // unlock txId2
+  utxo.txId = txId2;
+  utxo.value = 2500;
+  utxo.timelock = now * 2;
+  utxo.heightlock = null;
+  await unlockTimelockedUtxos(mysql, (now * 2) + 1);
+  await expect(
+    checkUtxoTable(mysql, 3, txId2, 0, utxo.tokenId, utxo.address, utxo.value, 0, utxo.timelock, utxo.heightlock, false),
+  ).resolves.toBe(true);
+  await expect(checkAddressBalanceTable(mysql, 1, addr, token, 5000, 0, 3 * now, 3, 0, 0b10)).resolves.toBe(true);
+  await expect(checkWalletBalanceTable(mysql, 1, walletId, token, 5000, 0, 3 * now, 3, 0, 0b10)).resolves.toBe(true);
+
+  // unlock txId3
+  utxo.txId = txId3;
+  utxo.value = 0;
+  utxo.authorities = 0b10;
+  utxo.timelock = now * 3;
+  utxo.heightlock = null;
+  await unlockTimelockedUtxos(mysql, (now * 3) + 1);
+  await expect(
+    checkUtxoTable(mysql, 3, txId3, 0, utxo.tokenId, utxo.address, utxo.value, utxo.authorities, utxo.timelock, utxo.heightlock, false),
+  ).resolves.toBe(true);
+  await expect(checkAddressBalanceTable(mysql, 1, addr, token, 5000, 0, null, 3, 0b10, 0)).resolves.toBe(true);
+  await expect(checkWalletBalanceTable(mysql, 1, walletId, token, 5000, 0, null, 3, 0b10, 0)).resolves.toBe(true);
 });
 
 test('maybeRefreshWalletConstants with an uninitialized version_data database should call hathorLib.version.checkApiVersion()', async () => {

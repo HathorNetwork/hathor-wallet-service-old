@@ -15,6 +15,7 @@ import {
   getLatestHeight,
   getWalletBalances as dbGetWalletBalances,
   getWalletUnlockedUtxos,
+  getExpiredTimelocksUtxos,
   unlockUtxos as dbUnlockUtxos,
   updateAddressLockedBalance,
   updateWalletLockedBalance,
@@ -107,6 +108,19 @@ export const unlockUtxos = async (mysql: ServerlessMysql, utxos: DbTxOutput[], u
   // update wallet_balance table
   const walletBalanceMap: StringMap<TokenBalanceMap> = getWalletBalanceMap(addressWalletMap, addressBalanceMap);
   await updateWalletLockedBalance(mysql, walletBalanceMap, updateTimelocks);
+};
+
+/**
+ * Update the unlocked/locked balances for addresses and wallets connected to the UTXOs that were unlocked
+ * because of their timelocks expiring
+ *
+ * @param mysql - Database connection
+ * @param now - Current timestamp
+ */
+export const unlockTimelockedUtxos = async (mysql: ServerlessMysql, now: number): Promise<void> => {
+  const utxos: DbTxOutput[] = await getExpiredTimelocksUtxos(mysql, now);
+
+  await unlockUtxos(mysql, utxos, true);
 };
 
 /**
