@@ -19,6 +19,9 @@ env:
     testnet_NETWORK: "testnet"
     mainnet_DEFAULT_SERVER: "https://wallet-service.private-nodes.hathor.network/v1a/"
     mainnet_NETWORK: "mainnet"
+    mainnet_WS_DOMAIN: "ws.wallet-service.hathor.network"
+    testnet_WS_DOMAIN: "ws.testnet.wallet-service.hathor.network"
+    dev_WS_DOMAIN: "ws.dev.wallet-service.testnet.hathor.network"
   # https://eu-central-1.console.aws.amazon.com/secretsmanager/home?region=eu-central-1#!/listSecrets
   secrets-manager:
     # Dev secrets

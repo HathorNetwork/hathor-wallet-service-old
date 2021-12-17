@@ -19,7 +19,13 @@ export const connectionInfoFromEvent = (
     };
   }
 
-  const domain = event.requestContext.domainName;
+  const domain = process.env.WS_DOMAIN;
+
+  if (!domain) {
+    // Throw so we receive an alert telling us that something is wrong with the env variable
+    // instead of trying to invoke a lambda at https://undefined
+    throw new Error('[ALERT] Domain not on env variables');
+  }
 
   return {
     id: connID,
