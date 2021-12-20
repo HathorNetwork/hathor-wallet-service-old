@@ -16,5 +16,5 @@ test('connectionInfoFromEvent', async () => {
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
   const connInfo = connectionInfoFromEvent(event);
-  expect(connInfo).toStrictEqual({ id: 'abc123', url: 'https://dom123/test123' });
+  expect(connInfo).toStrictEqual({ id: 'abc123', url: `https://${process.env.WS_DOMAIN}` });
 });

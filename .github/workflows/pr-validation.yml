@@ -77,3 +77,4 @@ jobs:
           MAX_ADDRESS_GAP: 10
           BLOCK_REWARD_LOCK: 300
           CONFIRM_FIRST_ADDRESS: true
+          WS_DOMAIN: ws.ci.wallet-service.hathor.network
