@@ -80,6 +80,7 @@ provider:
     STAGE: ${opt:stage, 'dev'}
     VOIDED_TX_OFFSET: ${env:VOIDED_TX_OFFSET}
     DEFAULT_SERVER: ${env:DEFAULT_SERVER}
+    WS_DOMAIN: ${env:WS_DOMAIN}
   iamRoleStatements:
     - Effect: Allow
       Action:

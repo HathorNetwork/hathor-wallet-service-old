@@ -2332,3 +2332,28 @@ export const getTotalSupply = async (
 
   return results[0].value as number;
 };
+
+/**
+ * Get from database utxos that must be unlocked because their timelocks expired
+ *
+ * @param mysql - Database connection
+ * @param now - Current timestamp
+
+ * @returns A list of timelocked utxos
+ */
+export const getExpiredTimelocksUtxos = async (
+  mysql: ServerlessMysql,
+  now: number,
+): Promise<DbTxOutput[]> => {
+  const results: DbSelectResult = await mysql.query(`
+    SELECT *
+      FROM tx_output
+     WHERE locked = TRUE 
+       AND timelock IS NOT NULL
+       AND timelock < ?
+  `, [now]);
+
+  const lockedUtxos: DbTxOutput[] = results.map(mapDbResultToDbTxOutput);
+
+  return lockedUtxos;
+};

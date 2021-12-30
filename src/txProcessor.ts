@@ -14,6 +14,7 @@ import {
   getWalletBalanceMap,
   markLockedOutputs,
   unlockUtxos,
+  unlockTimelockedUtxos,
   searchForLatestValidBlock,
   handleReorg,
   handleVoided,
@@ -241,6 +242,16 @@ const _unsafeAddNewTx = async (tx: Transaction, now: number, blockRewardLock: nu
 
     // add miner to the miners table
     await addMiner(mysql, blockRewardOutput.decoded.address, tx.tx_id);
+
+    // here we check if we have any utxos on our database that is locked but
+    // has its timelock < now
+    //
+    // we've decided to do this here considering that it is acceptable to have
+    // a delay between the actual timelock expiration time and the next block
+    // (that will unlock it). This delay is only perceived on the wallet as the
+    // sync mechanism will unlock the timelocked utxos as soon as they are seen
+    // on a received transaction.
+    await unlockTimelockedUtxos(mysql, now);
   }
 
   if (tx.version === hathorLib.constants.CREATE_TOKEN_TX_VERSION) {

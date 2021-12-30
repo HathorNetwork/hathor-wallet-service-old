@@ -18,11 +18,18 @@ export const connectionInfoFromEvent = (
       url: 'http://localhost:3001',
     };
   }
-  const domain = event.requestContext.domainName;
-  const stage = event.requestContext.stage;
+
+  const domain = process.env.WS_DOMAIN;
+
+  if (!domain) {
+    // Throw so we receive an alert telling us that something is wrong with the env variable
+    // instead of trying to invoke a lambda at https://undefined
+    throw new Error('[ALERT] Domain not on env variables');
+  }
+
   return {
     id: connID,
-    url: util.format(util.format('https://%s/%s', domain, stage)),
+    url: util.format('https://%s', domain),
   };
 };
 
