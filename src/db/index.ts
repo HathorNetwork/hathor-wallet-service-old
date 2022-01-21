@@ -8,6 +8,9 @@
 import { strict as assert } from 'assert';
 import { ServerlessMysql } from 'serverless-mysql';
 import { constants, walletUtils } from '@hathor/wallet-lib';
+import {
+  getWalletId,
+} from '@src/utils';
 
 import {
   AddressIndexMap,
@@ -136,6 +139,7 @@ export const getAddressWalletInfo = async (mysql: ServerlessMysql, addresses: st
   const results: DbSelectResult = await mysql.query(
     `SELECT DISTINCT a.\`address\`,
                      a.\`wallet_id\`,
+                     w.\`auth_xpubkey\`,
                      w.\`xpubkey\`,
                      w.\`max_gap\`
        FROM \`address\` a
@@ -148,6 +152,7 @@ export const getAddressWalletInfo = async (mysql: ServerlessMysql, addresses: st
   for (const entry of results) {
     const walletInfo: Wallet = {
       walletId: entry.wallet_id as string,
+      authXpubkey: entry.auth_xpubkey as string,
       xpubkey: entry.xpubkey as string,
       maxGap: entry.max_gap as number,
     };
@@ -170,6 +175,32 @@ export const getWallet = async (mysql: ServerlessMysql, walletId: string): Promi
     return {
       walletId,
       xpubkey: result.xpubkey as string,
+      authXpubkey: result.auth_xpubkey as string,
+      status: result.status as WalletStatus,
+      retryCount: result.retry_count as number,
+      maxGap: result.max_gap as number,
+      createdAt: result.created_at as number,
+      readyAt: result.ready_at as number,
+    };
+  }
+  return null;
+};
+
+/**
+ * Get wallet data from authXpub
+ *
+ * @param mysql - Database connection
+ * @param walletId - The wallet id
+ * @returns The wallet information or null if it was not found
+ */
+export const getWalletFromAuthXpub = async (mysql: ServerlessMysql, authXpub: string): Promise<Wallet> => {
+  const results: DbSelectResult = await mysql.query('SELECT * FROM `wallet` WHERE `auth_xpubkey` = ?', authXpub);
+  if (results.length) {
+    const result = results[0];
+    return {
+      walletId: getWalletId(result.xpubkey as string),
+      xpubkey: result.xpubkey as string,
+      authXpubkey: result.auth_xpubkey as string,
       status: result.status as WalletStatus,
       retryCount: result.retry_count as number,
       maxGap: result.max_gap as number,
@@ -193,10 +224,18 @@ export const createWallet = async (
   mysql: ServerlessMysql,
   walletId: string,
   xpubkey: string,
+  authXpubkey: string,
   maxGap: number,
 ): Promise<Wallet> => {
   const ts = getUnixTimestamp();
-  const entry = { id: walletId, xpubkey, status: WalletStatus.CREATING, created_at: ts, max_gap: maxGap };
+  const entry = {
+    id: walletId,
+    xpubkey,
+    auth_xpubkey: authXpubkey,
+    status: WalletStatus.CREATING,
+    created_at: ts,
+    max_gap: maxGap,
+  };
   await mysql.query(
     `INSERT INTO \`wallet\`
         SET ?`,
@@ -205,6 +244,7 @@ export const createWallet = async (
   return {
     walletId,
     xpubkey,
+    authXpubkey,
     maxGap,
     retryCount: 0,
     status: WalletStatus.CREATING,

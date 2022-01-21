@@ -58,6 +58,8 @@ const firstAddressJoi = confirmFirstAddress ? Joi.string().required() : Joi.stri
 const loadBodySchema = Joi.object({
   xpubkey: Joi.string()
     .required(),
+  authXpubkey: Joi.string()
+    .required(),
   firstAddress: firstAddressJoi,
 });
 
@@ -122,6 +124,7 @@ export const load: APIGatewayProxyHandler = async (event) => {
   }
 
   const xpubkey = value.xpubkey;
+  const authXpubkey = value.authXpubkey;
   const maxGap = parseInt(process.env.MAX_ADDRESS_GAP, 10);
 
   // is wallet already loaded/loading?
@@ -140,7 +143,7 @@ export const load: APIGatewayProxyHandler = async (event) => {
     }
   } else {
     // wallet does not exist yet. Add to wallet table with 'creating' status
-    wallet = await createWallet(mysql, walletId, xpubkey, maxGap);
+    wallet = await createWallet(mysql, walletId, xpubkey, authXpubkey, maxGap);
   }
 
   if (process.env.CONFIRM_FIRST_ADDRESS === 'true') {
@@ -202,6 +205,8 @@ export const loadWallet: Handler<LoadEvent, LoadResult> = async (event) => {
   const xpubkey = event.xpubkey;
   const maxGap = event.maxGap;
   const walletId = getWalletId(xpubkey);
+
+  console.log('Will load wallet:', walletId);
 
   try {
     const { addresses, existingAddresses, newAddresses } = await generateAddresses(mysql, xpubkey, maxGap);
