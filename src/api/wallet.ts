@@ -26,6 +26,11 @@ import { closeDbAndGetError } from '@src/api/utils';
 import { walletIdProxyHandler } from '@src/commons';
 import Joi from 'joi';
 import { walletUtils } from '@hathor/wallet-lib';
+import {
+  bjsGetAddressAtIndex,
+  bjsGetAddresses,
+  bjsXpubDeriveChild,
+} from '@src/bjsPocUtils';
 
 const mysql = getDbConnection();
 
@@ -126,7 +131,9 @@ export const load: APIGatewayProxyHandler = async (event) => {
 
   // is wallet already loaded/loading?
   const walletId = getWalletId(xpubkey);
+  console.time('getWallet');
   let wallet = await getWallet(mysql, walletId);
+  console.timeEnd('getWallet');
 
   if (wallet) {
     if (wallet.status === WalletStatus.READY
@@ -140,16 +147,22 @@ export const load: APIGatewayProxyHandler = async (event) => {
     }
   } else {
     // wallet does not exist yet. Add to wallet table with 'creating' status
+    console.time('create wallet');
     wallet = await createWallet(mysql, walletId, xpubkey, maxGap);
+    console.timeEnd('create wallet');
   }
 
   if (process.env.CONFIRM_FIRST_ADDRESS === 'true') {
     const expectedFirstAddress = value.firstAddress;
 
     // First derive xpub to change 0 path
-    const derivedXpub = walletUtils.xpubDeriveChild(xpubkey, 0);
+    console.time('xpubDeriveChild');
+    const derivedXpub = bjsXpubDeriveChild(xpubkey, 0);
+    console.timeEnd('xpubDeriveChild');
     // Then get first address
-    const firstAddress = walletUtils.getAddressAtIndex(derivedXpub, 0, process.env.NETWORK);
+    console.time('getAddressAtIndex');
+    const firstAddress = bjsGetAddressAtIndex(derivedXpub, 0);
+    console.timeEnd('getAddressAtIndex');
     if (firstAddress !== expectedFirstAddress) {
       return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, {
         message: `Expected first address to be ${expectedFirstAddress} but it is ${firstAddress}`,
@@ -161,16 +174,22 @@ export const load: APIGatewayProxyHandler = async (event) => {
     /* This calls the lambda function as a "Event", so we don't care here for the response,
      * we only care if the invokation failed or not
      */
+    console.time('invokeLoadWalletAsync');
     await invokeLoadWalletAsync(xpubkey, maxGap);
+    console.timeEnd('invokeLoadWalletAsync');
   } catch (e) {
     console.error('Error on lambda wallet invoke', e);
 
     const newRetryCount = wallet.retryCount ? wallet.retryCount + 1 : 1;
     // update wallet status to 'error'
+    console.time('updateWalletStatus');
     await updateWalletStatus(mysql, walletId, WalletStatus.ERROR, newRetryCount);
+    console.timeEnd('updateWalletStatus');
 
     // refresh the variable with latest status, so we can return it properly
+    console.time('getWallet');
     wallet = await getWallet(mysql, walletId);
+    console.timeEnd('getWallet');
   }
 
   await closeDbConnection(mysql);
@@ -201,25 +220,39 @@ interface LoadResult {
 export const loadWallet: Handler<LoadEvent, LoadResult> = async (event) => {
   const xpubkey = event.xpubkey;
   const maxGap = event.maxGap;
+  console.time('getWalletId');
   const walletId = getWalletId(xpubkey);
+  console.timeEnd('getWalletId');
 
   try {
+    console.time('generateAddresses');
     const { addresses, existingAddresses, newAddresses } = await generateAddresses(mysql, xpubkey, maxGap);
+    console.timeEnd('generateAddresses');
 
     // update address table with new addresses
+    console.time('addNewAddresses');
     await addNewAddresses(mysql, walletId, newAddresses);
+    console.timeEnd('addNewAddresses');
 
     // update existing addresses' walletId and index
+    console.time('updateExistingAddresses');
     await updateExistingAddresses(mysql, walletId, existingAddresses);
+    console.timeEnd('updateExistingAddresses');
 
     // from address_tx_history, update wallet_tx_history
+    console.time('initWalletTxHistory');
     await initWalletTxHistory(mysql, walletId, addresses);
+    console.timeEnd('initWalletTxHistory');
 
     // from address_balance table, update balance table
+    console.time('initWalletBalance');
     await initWalletBalance(mysql, walletId, addresses);
+    console.timeEnd('initWalletBalance');
 
     // update wallet status to 'ready'
+    console.time('updateWalletStatus');
     await updateWalletStatus(mysql, walletId, WalletStatus.READY);
+    console.timeEnd('updateWalletStatus');
 
     await closeDbConnection(mysql);
 
@@ -231,10 +264,14 @@ export const loadWallet: Handler<LoadEvent, LoadResult> = async (event) => {
   } catch (e) {
     console.error('Erroed on loadWalletAsync: ', e);
 
+    console.time('getWallet');
     const wallet = await getWallet(mysql, walletId);
+    console.timeEnd('getWallet');
     const newRetryCount = wallet.retryCount ? wallet.retryCount + 1 : 1;
 
+    console.time('updateWalletStatus');
     await updateWalletStatus(mysql, walletId, WalletStatus.ERROR, newRetryCount);
+    console.timeEnd('updateWalletStatus');
 
     return {
       success: false,

@@ -21,6 +21,10 @@ import jwt from 'jsonwebtoken';
 import bitcore from 'bitcore-lib';
 import { ApiError } from '@src/api/errors';
 import hathorLib from '@hathor/wallet-lib';
+import {
+  bjsVerifySignature,
+  bjsGetAddressFromXpub,
+} from '@src/bjsPocUtils';
 
 const EXPIRATION_TIME_IN_SECONDS = 30 * 60;
 const MAX_TIMESTAMP_SHIFT_IN_SECONDS = 30;
@@ -105,12 +109,21 @@ export const tokenHandler: APIGatewayProxyHandler = async (event) => {
       }),
     };
   }
-
+  /*
   const xpubkey = bitcore.HDPublicKey(xpubkeyStr);
   const address = xpubkey.publicKey.toAddress(hathorLib.network.getNetwork());
+  */
+
+  console.time('get address from xpub');
+  const address = bjsGetAddressFromXpub(xpubkeyStr);
+  console.timeEnd('get address from xpub');
   const walletId = getWalletId(xpubkeyStr);
 
-  if (!verifySignature(signature, timestamp, address, walletId.toString())) {
+  console.time('bjsVerifySignature');
+  const validSignature = bjsVerifySignature(signature, timestamp, address, walletId.toString());
+  console.timeEnd('bjsVerifySignature');
+
+  if (!validSignature) {
     const details = {
       message: `The signature ${signature} does not match with the xpubkey ${xpubkeyStr} and the timestamp ${timestamp}`,
     };
@@ -126,6 +139,7 @@ export const tokenHandler: APIGatewayProxyHandler = async (event) => {
   }
 
   // To understand the other options to the sign method: https://github.com/auth0/node-jsonwebtoken#readme
+  console.time('jwt sign');
   const token = jwt.sign(
     {
       sign: signature,
@@ -139,6 +153,7 @@ export const tokenHandler: APIGatewayProxyHandler = async (event) => {
       jwtid: uuid4(),
     },
   );
+  console.timeEnd('jwt sign');
 
   return {
     statusCode: 200,
@@ -215,8 +230,10 @@ export const bearerAuthorizer: APIGatewayTokenAuthorizerHandler = async (event) 
   // header data
   const expirationTs = data.exp;
 
-  const address = new bitcore.Address(addr, hathorLib.network.getNetwork());
-  const verified = verifySignature(signature, timestamp, address, walletId);
+  // const address = new bitcore.Address(addr, hathorLib.network.getNetwork());
+  console.time('bjsVerifySignature');
+  const verified = bjsVerifySignature(signature, timestamp, addr, walletId);
+  console.timeEnd('bjsVerifySignature');
 
   if (verified && Math.floor(Date.now() / 1000) <= expirationTs) {
     return _generatePolicy(walletId, 'Allow', event.methodArn);

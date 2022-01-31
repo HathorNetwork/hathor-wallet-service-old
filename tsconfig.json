@@ -13,6 +13,10 @@
     "sourceRoot": "/",
     "baseUrl": "./",
     "resolveJsonModule": true,
+    "isolatedModules": true,
+    "allowJs": true,
+    "skipLibCheck": true,
+    "allowSyntheticDefaultImports": true,
     "paths": {
       "@src/*": ["src/*"],
       "@tests/*": ["tests/*"],

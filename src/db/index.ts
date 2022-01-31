@@ -38,6 +38,11 @@ import {
   IFilterUtxo,
   Miner,
 } from '@src/types';
+import {
+  bjsGetAddressAtIndex,
+  bjsGetAddresses,
+  bjsXpubDeriveChild,
+} from '@src/bjsPocUtils';
 
 import { getUnixTimestamp, isAuthority, getAddressPath } from '@src/utils';
 
@@ -69,12 +74,19 @@ export const generateAddresses = async (mysql: ServerlessMysql, xpubkey: string,
   // We currently generate only addresses in change derivation path 0
   // (more details in https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki#Change)
   // so we derive our xpub to this path and use it to get the addresses
-  const derivedXpub = walletUtils.xpubDeriveChild(xpubkey, 0);
+  console.time('bjsXpubDeriveChild');
+  const derivedXpub = bjsXpubDeriveChild(xpubkey, 0); // walletUtils.xpubDeriveChild(xpubkey, 0);
+  console.timeEnd('bjsXpubDeriveChild');
 
   do {
-    const addrMap = walletUtils.getAddresses(derivedXpub, highestCheckedIndex + 1, maxGap, process.env.NETWORK);
+    // const addrMap = walletUtils.getAddresses(derivedXpub, highestCheckedIndex + 1, maxGap, process.env.NETWORK);
+    console.time('bjsGetAddresses');
+    const addrMap = bjsGetAddresses(derivedXpub, highestCheckedIndex + 1, maxGap);
+    console.timeEnd('bjsGetAddresses');
     allAddresses.push(...Object.keys(addrMap));
 
+    console.log('Will get addresses from db: ', JSON.stringify(Object.keys(addrMap)));
+    console.time('getAddresses from database');
     const results: DbSelectResult = await mysql.query(
       `SELECT \`address\`,
               \`index\`,
@@ -84,6 +96,7 @@ export const generateAddresses = async (mysql: ServerlessMysql, xpubkey: string,
            IN (?)`,
       [Object.keys(addrMap)],
     );
+    console.timeEnd('getAddresses from database');
 
     for (const entry of results) {
       const address = entry.address as string;
@@ -164,7 +177,11 @@ export const getAddressWalletInfo = async (mysql: ServerlessMysql, addresses: st
  * @returns The wallet information or null if it was not found
  */
 export const getWallet = async (mysql: ServerlessMysql, walletId: string): Promise<Wallet> => {
+  console.log('Id:', walletId);
+  console.time('select wallet');
   const results: DbSelectResult = await mysql.query('SELECT * FROM `wallet` WHERE `id` = ?', walletId);
+  console.timeEnd('select wallet');
+
   if (results.length) {
     const result = results[0];
     return {
@@ -331,6 +348,9 @@ export const initWalletTxHistory = async (mysql: ServerlessMysql, walletId: stri
 
   if (addresses.length === 0) return;
 
+  console.log('Adress list to init tx history:', addresses);
+
+  console.time('[initWalletTxHistory] select balance sum');
   const results: DbSelectResult = await mysql.query(
     `SELECT \`tx_id\`,
             \`token_id\`,
@@ -344,12 +364,14 @@ export const initWalletTxHistory = async (mysql: ServerlessMysql, walletId: stri
             \`timestamp\``,
     [addresses],
   );
+  console.timeEnd('[initWalletTxHistory] select balance sum');
   if (results.length === 0) return;
 
   const walletTxHistory = [];
   for (const row of results) {
     walletTxHistory.push([walletId, row.token_id, row.tx_id, row.balance, row.timestamp]);
   }
+  console.time('[initWalletTxHistory] insert wallet tx history');
   await mysql.query(
     `INSERT INTO \`wallet_tx_history\`(\`wallet_id\`, \`token_id\`,
                                        \`tx_id\`, \`balance\`,
@@ -357,6 +379,7 @@ export const initWalletTxHistory = async (mysql: ServerlessMysql, walletId: stri
           VALUES ?`,
     [walletTxHistory],
   );
+  console.timeEnd('[initWalletTxHistory] insert wallet tx history');
 };
 
 /**
@@ -1117,6 +1140,7 @@ export const getNewAddresses = async (mysql: ServerlessMysql, walletId: string):
   if (resultsWallet.length) {
     const gapLimit = resultsWallet[0].max_gap as number;
     // Select all addresses that are empty and the index is bigger than the last used address index
+    console.time('get new addresses');
     const results: DbSelectResult = await mysql.query(`
       SELECT *
         FROM \`address\`
@@ -1136,6 +1160,8 @@ export const getNewAddresses = async (mysql: ServerlessMysql, walletId: string):
     ORDER BY \`index\`
          ASC
     LIMIT ?`, [walletId, walletId, gapLimit]);
+    console.timeEnd('get new addresses');
+    console.log(walletId, gapLimit);
 
     for (const result of results) {
       const index = result.index as number;

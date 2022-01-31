@@ -23,6 +23,10 @@
     "aws-lambda": "^1.0.6",
     "aws-sdk": "^2.916.0",
     "axios": "^0.21.1",
+    "bip32": "^3.0.1",
+    "bip39": "^3.0.4",
+    "bitcoinjs-lib": "6.0.1",
+    "bitcoinjs-message": "^2.2.0",
     "bitcore-lib": "^8.25.10",
     "joi": "^17.4.0",
     "jsonwebtoken": "^8.5.1",
@@ -33,6 +37,7 @@
     "sequelize": "^6.6.4",
     "serverless-mysql": "^1.5.4",
     "source-map-support": "^0.5.19",
+    "tiny-secp256k1": "2.1.2",
     "uuid": "^8.3.0"
   },
   "devDependencies": {

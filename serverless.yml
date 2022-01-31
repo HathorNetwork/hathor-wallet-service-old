@@ -109,6 +109,7 @@ functions:
     handler: src/txProcessor.onNewTxEvent
   loadWalletAsync:
     handler: src/api/wallet.loadWallet
+    timeout: 300 # 5 minutes
   loadWalletApi:
     role: arn:aws:iam::769498303037:role/WalletServiceLoadWalletLambda
     handler: src/api/wallet.load
