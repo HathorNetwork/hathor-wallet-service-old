@@ -9,6 +9,7 @@ import { createHash, HexBase64Latin1Encoding } from 'crypto';
 
 import serverlessMysql, { ServerlessMysql } from 'serverless-mysql';
 import hathorLib from '@hathor/wallet-lib';
+import bitcore from 'bitcore-lib';
 import fullnode from '@src/fullnode';
 
 /* TODO: We should remove this as soon as the wallet-lib is refactored
@@ -194,3 +195,22 @@ export const fetchBlockHeight = async (txId: string): Promise<[number, any]> => 
 export const getAddressPath = (index: number): string => (
   `m/44'/${hathorLib.constants.HATHOR_BIP44_CODE}'/0'/0/${index}`
 );
+
+/**
+ * Verify a signature for a given timestamp and xpubkey
+ *
+ * @param signature - The signature done by the xpriv of the wallet
+ * @param timestamp - Unix Timestamp of the signature
+ * @param address - The address of the xpubkey used to create the walletId
+ * @param walletId - The walletId, a sha512d of the xpubkey
+ * @returns true if the signature matches the other params
+ */
+export const verifySignature = (
+  signature: string,
+  timestamp: number,
+  address: bitcore.Address,
+  walletId: string,
+): boolean => {
+  const message = String(timestamp).concat(walletId).concat(address);
+  return new bitcore.Message(message).verify(address, signature);
+};

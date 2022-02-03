@@ -21,11 +21,12 @@ import {
   updateWalletStatus,
 } from '@src/db';
 import { WalletStatus } from '@src/types';
-import { closeDbConnection, getDbConnection, getWalletId } from '@src/utils';
+import { closeDbConnection, getDbConnection, getWalletId, verifySignature } from '@src/utils';
 import { closeDbAndGetError } from '@src/api/utils';
 import { walletIdProxyHandler } from '@src/commons';
 import Joi from 'joi';
-import { walletUtils } from '@hathor/wallet-lib';
+import bitcore from 'bitcore-lib';
+import { walletUtils, network } from '@hathor/wallet-lib';
 
 const mysql = getDbConnection();
 
@@ -60,6 +61,11 @@ const loadBodySchema = Joi.object({
     .required(),
   authXpubkey: Joi.string()
     .required(),
+  xpubkeySignature: Joi.string()
+    .required(),
+  authXpubkeySignature: Joi.string()
+    .required(),
+  timestamp: Joi.number().positive().required(),
   firstAddress: firstAddressJoi,
 });
 
@@ -123,12 +129,16 @@ export const load: APIGatewayProxyHandler = async (event) => {
     return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, { details });
   }
 
-  const xpubkey = value.xpubkey;
-  const authXpubkey = value.authXpubkey;
+  const xpubkeyStr = value.xpubkey;
+  const authXpubkeyStr = value.authXpubkey;
   const maxGap = parseInt(process.env.MAX_ADDRESS_GAP, 10);
 
+  const timestamp = value.timestamp;
+  const xpubkeySignature = value.xpubkeySignature;
+  const authXpubkeySignature = value.authXpubkeySignature;
+
   // is wallet already loaded/loading?
-  const walletId = getWalletId(xpubkey);
+  const walletId = getWalletId(xpubkeyStr);
   let wallet = await getWallet(mysql, walletId);
 
   if (wallet) {
@@ -143,14 +153,14 @@ export const load: APIGatewayProxyHandler = async (event) => {
     }
   } else {
     // wallet does not exist yet. Add to wallet table with 'creating' status
-    wallet = await createWallet(mysql, walletId, xpubkey, authXpubkey, maxGap);
+    wallet = await createWallet(mysql, walletId, xpubkeyStr, authXpubkey, maxGap);
   }
 
   if (process.env.CONFIRM_FIRST_ADDRESS === 'true') {
     const expectedFirstAddress = value.firstAddress;
 
     // First derive xpub to change 0 path
-    const derivedXpub = walletUtils.xpubDeriveChild(xpubkey, 0);
+    const derivedXpub = walletUtils.xpubDeriveChild(xpubkeyStr, 0);
     // Then get first address
     const firstAddress = walletUtils.getAddressAtIndex(derivedXpub, 0, process.env.NETWORK);
     if (firstAddress !== expectedFirstAddress) {
@@ -158,6 +168,32 @@ export const load: APIGatewayProxyHandler = async (event) => {
         message: `Expected first address to be ${expectedFirstAddress} but it is ${firstAddress}`,
       });
     }
+  }
+
+  // verify that the user owns the xpubkey
+  const xpubkey = bitcore.HDPublicKey(xpubkeyStr);
+  const xpubAddress = xpubkey.publicKey.toAddress(network.getNetwork());
+
+  if (!verifySignature(xpubkeySignature, timestamp, xpubAddress, walletId.toString())) {
+    await closeDbConnection(mysql);
+
+    return {
+      statusCode: 403,
+      body: JSON.stringify({ success: false, status: wallet }),
+    };
+  }
+
+  // verify that the user owns the auth_xpubkey
+  const authXpubkey = bitcore.HDPublicKey(authXpubkeyStr);
+  const authXpubAddress = authXpubkey.publicKey.toAddress(network.getNetwork());
+
+  if (!verifySignature(authXpubkeySignature, timestamp, authXpubAddress, walletId.toString())) {
+    await closeDbConnection(mysql);
+
+    return {
+      statusCode: 403,
+      body: JSON.stringify({ success: false, status: wallet }),
+    };
   }
 
   try {
@@ -205,8 +241,6 @@ export const loadWallet: Handler<LoadEvent, LoadResult> = async (event) => {
   const xpubkey = event.xpubkey;
   const maxGap = event.maxGap;
   const walletId = getWalletId(xpubkey);
-
-  console.log('Will load wallet:', walletId);
 
   try {
     const { addresses, existingAddresses, newAddresses } = await generateAddresses(mysql, xpubkey, maxGap);

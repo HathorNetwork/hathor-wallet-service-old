@@ -23,7 +23,7 @@ import { ApiError } from '@src/api/errors';
 import hathorLib from '@hathor/wallet-lib';
 import { Wallet } from '@src/types';
 import { getWalletFromAuthXpub } from '@src/db';
-import { closeDbConnection, getDbConnection } from '@src/utils';
+import { verifySignature, closeDbConnection, getDbConnection } from '@src/utils';
 
 const EXPIRATION_TIME_IN_SECONDS = 30 * 60;
 const MAX_TIMESTAMP_SHIFT_IN_SECONDS = 30;
@@ -45,25 +45,6 @@ function parseBody(body) {
 }
 
 const mysql = getDbConnection();
-
-/**
- * Verify a signature for a given timestamp and xpubkey
- *
- * @param signature - The signature done by the xpriv of the wallet
- * @param timestamp - Unix Timestamp of the signature
- * @param address - The address of the xpubkey used to create the walletId
- * @param walletId - The walletId, a sha512d of the xpubkey
- * @returns true if the signature matches the other params
- */
-export const verifySignature = (
-  signature: string,
-  timestamp: number,
-  address: bitcore.Address,
-  walletId: string,
-): boolean => {
-  const message = String(timestamp).concat(walletId).concat(address);
-  return new bitcore.Message(message).verify(address, signature);
-};
 
 export const tokenHandler: APIGatewayProxyHandler = async (event) => {
   const eventBody = parseBody(event.body);
@@ -95,14 +76,6 @@ export const tokenHandler: APIGatewayProxyHandler = async (event) => {
   const timestamp = value.ts;
   const authXpubStr = value.xpub;
   const wallet: Wallet = await getWalletFromAuthXpub(mysql, authXpubStr);
-
-  console.log('Got wallet from auth xpub:', wallet);
-
-  console.log('Validated successfully', {
-    signature,
-    timestamp,
-    authXpubStr,
-  });
 
   const timestampShiftInSeconds = Math.abs(
     Math.floor(Date.now() / 1000) - timestamp,
