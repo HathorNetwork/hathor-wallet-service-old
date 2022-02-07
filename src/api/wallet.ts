@@ -100,6 +100,29 @@ export const invokeLoadWalletAsync = async (xpubkey: string, maxGap: number): Pr
   }
 };
 
+export const validateSignatures = (
+  walletId: string,
+  timestamp: number,
+  xpubkeyStr: string,
+  xpubkeySignature: string,
+  authXpubkeyStr: string,
+  authXpubkeySignature: string,
+): boolean => {
+  // verify that the user owns the xpubkey
+  const xpubkey = bitcore.HDPublicKey(xpubkeyStr);
+  const xpubAddress = xpubkey.publicKey.toAddress(network.getNetwork());
+
+  const xpubValid = verifySignature(xpubkeySignature, timestamp, xpubAddress, walletId.toString());
+
+  // verify that the user owns the auth_xpubkey
+  const authXpubkey = bitcore.HDPublicKey(authXpubkeyStr);
+  const authXpubAddress = authXpubkey.publicKey.toAddress(network.getNetwork());
+
+  const authXpubValid = verifySignature(authXpubkeySignature, timestamp, authXpubAddress, walletId.toString());
+
+  return xpubValid && authXpubValid;
+};
+
 /*
  * Load a wallet. First checks if the wallet doesn't exist already and then call another
  * lamdba to asynchronously add new wallet info to database
@@ -170,24 +193,9 @@ export const load: APIGatewayProxyHandler = async (event) => {
     }
   }
 
-  // verify that the user owns the xpubkey
-  const xpubkey = bitcore.HDPublicKey(xpubkeyStr);
-  const xpubAddress = xpubkey.publicKey.toAddress(network.getNetwork());
+  const signaturesValid = validateSignatures(walletId, timestamp, xpubkeyStr, xpubkeySignature, authXpubkeyStr, authXpubkeySignature);
 
-  if (!verifySignature(xpubkeySignature, timestamp, xpubAddress, walletId.toString())) {
-    await closeDbConnection(mysql);
-
-    return {
-      statusCode: 403,
-      body: JSON.stringify({ success: false, status: wallet }),
-    };
-  }
-
-  // verify that the user owns the auth_xpubkey
-  const authXpubkey = bitcore.HDPublicKey(authXpubkeyStr);
-  const authXpubAddress = authXpubkey.publicKey.toAddress(network.getNetwork());
-
-  if (!verifySignature(authXpubkeySignature, timestamp, authXpubAddress, walletId.toString())) {
+  if (!signaturesValid) {
     await closeDbConnection(mysql);
 
     return {
@@ -200,7 +208,7 @@ export const load: APIGatewayProxyHandler = async (event) => {
     /* This calls the lambda function as a "Event", so we don't care here for the response,
      * we only care if the invokation failed or not
      */
-    await invokeLoadWalletAsync(xpubkey.toString(), maxGap);
+    await invokeLoadWalletAsync(xpubkeyStr, maxGap);
   } catch (e) {
     console.error('Error on lambda wallet invoke', e);
 
