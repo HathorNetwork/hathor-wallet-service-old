@@ -82,6 +82,7 @@ import {
 import {
   ADDRESSES,
   XPUBKEY,
+  AUTH_XPUBKEY,
   addToAddressBalanceTable,
   addToAddressTable,
   addToAddressTxHistoryTable,
@@ -196,8 +197,8 @@ test('generateAddresses', async () => {
 
 test('getAddressWalletInfo', async () => {
   expect.hasAssertions();
-  const wallet1 = { walletId: 'wallet1', xpubkey: 'xpubkey1', maxGap: 5 };
-  const wallet2 = { walletId: 'wallet2', xpubkey: 'xpubkey2', maxGap: 5 };
+  const wallet1 = { walletId: 'wallet1', xpubkey: 'xpubkey1', authXpubkey: 'authXpubkey', maxGap: 5 };
+  const wallet2 = { walletId: 'wallet2', xpubkey: 'xpubkey2', authXpubkey: 'authXpubkey', maxGap: 5 };
   const finalMap = {
     addr1: wallet1,
     addr2: wallet1,
@@ -223,11 +224,19 @@ test('getAddressWalletInfo', async () => {
 
   // populate wallet table
   for (const wallet of Object.values(finalMap)) {
-    const entry = { id: wallet.walletId, xpubkey: wallet.xpubkey, status: WalletStatus.READY, max_gap: wallet.maxGap, created_at: 0, ready_at: 0 };
+    const entry = {
+      id: wallet.walletId,
+      xpubkey: wallet.xpubkey,
+      auth_xpubkey: wallet.authXpubkey,
+      status: WalletStatus.READY,
+      max_gap: wallet.maxGap,
+      created_at: 0,
+      ready_at: 0,
+    };
     await mysql.query('INSERT INTO `wallet` SET ? ON DUPLICATE KEY UPDATE id=id', [entry]);
   }
   // add wallet that should not be on the results
-  await addToWalletTable(mysql, [['wallet3', 'xpubkey3', WalletStatus.READY, 5, 0, 0]]);
+  await addToWalletTable(mysql, [['wallet3', 'xpubkey3', 'authxpubkey3', WalletStatus.READY, 5, 0, 0]]);
 
   const addressWalletMap = await getAddressWalletInfo(mysql, Object.keys(finalMap));
   expect(addressWalletMap).toStrictEqual(finalMap);
@@ -242,7 +251,7 @@ test('getWallet, createWallet and updateWalletStatus', async () => {
 
   // add entry to database
   let timestamp = getUnixTimestamp();
-  const createRet = await createWallet(mysql, walletId, XPUBKEY, 5);
+  const createRet = await createWallet(mysql, walletId, XPUBKEY, AUTH_XPUBKEY, 5);
 
   // get status
   ret = await getWallet(mysql, walletId);

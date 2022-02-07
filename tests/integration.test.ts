@@ -7,6 +7,7 @@ import { closeDbConnection, getDbConnection, getUnixTimestamp, getWalletId } fro
 import {
   ADDRESSES,
   XPUBKEY,
+  AUTH_XPUBKEY,
   cleanDatabase,
   checkAddressTable,
   checkAddressBalanceTable,
@@ -146,7 +147,7 @@ test('receive blocks and txs and then start wallet', async () => {
   /*
    * create wallet
    */
-  await createWallet(mysql, walletId, XPUBKEY, maxGap);
+  await createWallet(mysql, walletId, XPUBKEY, AUTH_XPUBKEY, maxGap);
   await loadWallet({ xpubkey: XPUBKEY, maxGap }, null, null);
 
   await checkAfterReceivingTx2(true);
@@ -157,7 +158,7 @@ test('start wallet and then receive blocks and txs', async () => {
   /*
    * create wallet
    */
-  await createWallet(mysql, walletId, XPUBKEY, maxGap);
+  await createWallet(mysql, walletId, XPUBKEY, AUTH_XPUBKEY, maxGap);
   await loadWallet({ xpubkey: XPUBKEY, maxGap }, null, null);
 
   /*
@@ -202,7 +203,7 @@ test('receive blocks, start wallet and then receive transactions', async () => {
   /*
    * create wallet
    */
-  await createWallet(mysql, walletId, XPUBKEY, maxGap);
+  await createWallet(mysql, walletId, XPUBKEY, AUTH_XPUBKEY, maxGap);
   await loadWallet({ xpubkey: XPUBKEY, maxGap }, null, null);
 
   /*
@@ -241,7 +242,7 @@ test('receive blocks and tx1, start wallet and then receive tx2', async () => {
   /*
    * create wallet
    */
-  await createWallet(mysql, walletId, XPUBKEY, maxGap);
+  await createWallet(mysql, walletId, XPUBKEY, AUTH_XPUBKEY, maxGap);
   await loadWallet({ xpubkey: XPUBKEY, maxGap }, null, null);
 
   /*
