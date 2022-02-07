@@ -101,6 +101,17 @@ export const invokeLoadWalletAsync = async (xpubkey: string, maxGap: number): Pr
   }
 };
 
+/**
+ * Calls verifySignature for both the wallet's xpub signature and
+ * the auth_xpub signature.
+ *
+ * @param walletId - The wallet id
+ * @param timestamp - The timestamp the message has been signed with
+ * @param xpubkeyStr - A string with the wallet's xpubkey
+ * @param xpubkeySignature - A string with the signature that proves the user owns the xpub
+ * @param authXpubkeyStr - A string with the auth xpubkey
+ * @param authXpubkeySignature- A string with the signature that proves the user owns the xpub
+ */
 export const validateSignatures = (
   walletId: string,
   timestamp: number,
