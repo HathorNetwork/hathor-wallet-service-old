@@ -127,6 +127,7 @@ test('generateAddresses', async () => {
 
   // check first with no addresses on database, so it should return only maxGap addresses
   let addressesInfo = await generateAddresses(mysql, XPUBKEY, maxGap);
+
   expect(addressesInfo.addresses).toHaveLength(maxGap);
   expect(addressesInfo.existingAddresses).toStrictEqual({});
   expect(Object.keys(addressesInfo.newAddresses)).toHaveLength(maxGap);

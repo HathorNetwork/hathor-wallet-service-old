@@ -12,8 +12,10 @@ import { WalletBalanceEntry, AddressTableEntry, TokenTableEntry } from '@tests/t
 
 import { RedisClient } from 'redis';
 
+export const TEST_SEED = 'neither image nasty party brass oyster treat twelve olive menu invest title fan only rack draw call impact use curtain winner horn juice unlock';
 // we'll use this xpubkey and corresponding addresses in some tests
-export const XPUBKEY = 'xpub6EcBoi2vDFcCW5sPAiQpXDYYtXd1mKhUJD64tUi8CPRG1VQFDkAbL8G5gqTmSZD6oq4Yhr5PZ8pKf3Xmb3W3pGcgqzUdFNaCRKL7TZa3res';
+export const XPUBKEY = 'xpub6CsZPtBWMkwxVxyBTKT8AWZcYqzwZ5K2qMkqjFpibMbBZ72JAvLMz7LquJNs4svfTiNYy6GbLo8gqECWsC6hTRt7imnphUFNEMz6VuRSjww';
+export const AUTH_XPUBKEY = 'xpub6BBrYRzvafoaGsgPkrngKNcdRx2w33dL1fcyTxC9CbL8FChKfYyfTb5kLGwjgNrpb8Za9bws8UKkET1ZDJGUvooFk1UEJtssvC6qN987u1J';
 
 export const TX_IDS = [
   '0000033139d08176d1051fb3a272c3610457f0c7f686afbe0afe3d37f966db85',
@@ -26,24 +28,23 @@ export const TX_IDS = [
 ];
 
 export const ADDRESSES = [
-  'HNwiHGHKBNbeJPo9ToWvFWeNQkJrpicYci',
-  'HUxu47MwBYNHG8jWebvzQ2jymV6PcEfWB4',
-  'H7ehmrWPqEQWJUqSKAxtQJX99gTPzW3aag',
-  'HNgJXBgj8UtZK4GD97yvDZhyjCLFoLBdDf',
-  'HGfwgmn86RSQ1gNG6ceiKeiALwL84FuBf8',
-  'HPmbgeKJu9DjNsrSHRZe6VEJC9YiLZ8WLx',
-  'HGTfVrFshpTD6Dapuq6z9hrRaiwDYxwLcr',
-  'H9ke3eZPPWBXCPHemz6ftZHvEHX1KHLTTg',
-  'HSrfhXXAz7FxKzbG3VeqLCeUjVcLx3BpFD',
-  'HQio5xMencxwWuCnPGEYGfwVunz7BDQoFf',
-  'HHVZwDvm7sMXc75foXEceQra1Zbqzp2nHn',
-  'HEibGHSs6tFcUbDKLnnY9nSsaaDFsjSg1t',
-  'HK2eexidww2LvTF7cbBJZVHQghKc9UXUST',
-  'HBh6y1ejjHqfMFxt6VKg8HuE3YGXttWwGh',
-  'HHRUPc7H7wSbwwRpsoPP1m3bnBmjc5DNNq',
-  'HTYFyEtzE9z4oW42k7DXFVPA6wqwBhKPQZ',
-  'HKxw4Am1ecoTbKoVaJNL1xnNxY8dLpPggN',
-  'HSUwYnnRYVnm4bLzV5dsBdqoSvZhunxPKr',
+  'HBCQgVR8Xsyv1BLDjf9NJPK1Hwg4rKUh62',
+  'HPDWdurEygcubNMUUnTDUAzngrSXFaqGQc',
+  'HEYCNNZZYrimD97AtoRcgcNFzyxtkgtt9Q',
+  'HPTtSRrDd4ekU4ZQ2jnSLYayL8hiToE5D4',
+  'HTYymKpjyXnz4ssEAnywtwnXnfneZH1Dbh',
+  'HUp754aDZ7yKndw2JchXEiMvgzKuXasUmF',
+  'HLfGaQoxssGbZ4h9wbLyiCafdE8kPm6Fo4',
+  'HV3ox5B1Dai6Jp5EhV8DvUiucc1z3WJHjL',
+  'HNWxs2bxgYtzfCpU6cJMGLgmqv7eGupTHr',
+  'H9Ef7qteC4vAoVUYx5mvP9jCfmZgU9rSvL',
+  'H7hxR75zsPzwfPWbrdkkFbKN2SiL2Lvyuw',
+  'HVCa4QJbHB6pkqvNkmQZD2vpmwTYMNdzVo',
+  'HBchgf1JLxwJzUg6epckK3YJn6Bq8XJMPV',
+  'HVWf61fwoj9Dx15NvWicqXQgGMYVYedSx4',
+  'H7PfxBmaqjoBisFRzpizoB9JcYSvoo8D2j',
+  'HC1NXVzGcVAd84QMfFngHiKyK2K8SUiTaL',
+  'HCqsSDrbs1cfqnF6QMUQkdGYXjEMyt9N3Y',
 ];
 
 export const cleanDatabase = async (mysql: ServerlessMysql): Promise<void> => {
@@ -385,6 +386,7 @@ export const checkWalletTxHistoryTable = async (mysql: ServerlessMysql,
       timestamp,
     ],
   );
+
   if (results.length !== 1) {
     return {
       error: 'checkWalletTxHistoryTable query',

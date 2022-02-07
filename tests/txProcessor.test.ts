@@ -279,7 +279,6 @@ test('txProcessor should ignore NFT outputs', async () => {
   tx.timestamp += timelock + 1;
   tx.inputs = [createInput(41, addr, txId1, 0, '00')];
   const invalidScriptOutput = createOutput(0, 1, addr, '00');
-  console.log('NFTOutput', invalidScriptOutput);
   tx.outputs = [
     {
       ...invalidScriptOutput,
