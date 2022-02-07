@@ -278,6 +278,26 @@ export const updateWalletStatus = async (
 };
 
 /**
+ * Update an existing wallet's auth_xpubkey
+ *
+ * @param mysql - Database connection
+ * @param walletId - The wallet id
+ * @param authXpubkey - The new wallet auth_xpubkey
+ */
+export const updateWalletAuthXpub = async (
+  mysql: ServerlessMysql,
+  walletId: string,
+  authXpubkey: string,
+): Promise<void> => {
+  await mysql.query(
+    `UPDATE \`wallet\`
+        SET \`auth_xpubkey\` = ?
+      WHERE \`id\` = ?`,
+    [authXpubkey, walletId],
+  );
+};
+
+/**
  * Add addresses to address table.
  *
  * @remarks

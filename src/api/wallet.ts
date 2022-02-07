@@ -19,6 +19,7 @@ import {
   initWalletTxHistory,
   updateExistingAddresses,
   updateWalletStatus,
+  updateWalletAuthXpub,
 } from '@src/db';
 import { WalletStatus } from '@src/types';
 import { closeDbConnection, getDbConnection, getWalletId, verifySignature } from '@src/utils';
@@ -121,6 +122,91 @@ export const validateSignatures = (
   const authXpubValid = verifySignature(authXpubkeySignature, timestamp, authXpubAddress, walletId.toString());
 
   return xpubValid && authXpubValid;
+};
+
+/*
+ * Changes the auth_xpubkey of a wallet after validating the user owns both the xpub and the auth_xpub
+ *
+ * This lambda is called by API Gateway on PUT /wallet/auth
+ */
+export const changeAuthXpub: APIGatewayProxyHandler = async (event) => {
+  const eventBody = (function parseBody(body) {
+    try {
+      return JSON.parse(body);
+    } catch (e) {
+      return null;
+    }
+  }(event.body));
+
+  // body should have the same schema as load
+  const { value, error } = loadBodySchema.validate(eventBody, {
+    abortEarly: false,
+    convert: false,
+  });
+
+  if (error) {
+    const details = error.details.map((err) => ({
+      message: err.message,
+      path: err.path,
+    }));
+
+    return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, { details });
+  }
+
+  const xpubkeyStr = value.xpubkey;
+  const authXpubkeyStr = value.authXpubkey;
+  const maxGap = parseInt(process.env.MAX_ADDRESS_GAP, 10);
+
+  const timestamp = value.timestamp;
+  const xpubkeySignature = value.xpubkeySignature;
+  const authXpubkeySignature = value.authXpubkeySignature;
+
+  // is wallet already loaded/loading?
+  const walletId = getWalletId(xpubkeyStr);
+  const wallet = await getWallet(mysql, walletId);
+
+  if (!wallet) {
+    return closeDbAndGetError(mysql, ApiError.WALLET_NOT_FOUND);
+  }
+
+  if (process.env.CONFIRM_FIRST_ADDRESS === 'true') {
+    const expectedFirstAddress = value.firstAddress;
+
+    // First derive xpub to change 0 path
+    const derivedXpub = walletUtils.xpubDeriveChild(xpubkeyStr, 0);
+    // Then get first address
+    const firstAddress = walletUtils.getAddressAtIndex(derivedXpub, 0, process.env.NETWORK);
+    if (firstAddress !== expectedFirstAddress) {
+      return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, {
+        message: `Expected first address to be ${expectedFirstAddress} but it is ${firstAddress}`,
+      });
+    }
+  }
+
+  const signaturesValid = validateSignatures(walletId, timestamp, xpubkeyStr, xpubkeySignature, authXpubkeyStr, authXpubkeySignature);
+
+  if (!signaturesValid) {
+    await closeDbConnection(mysql);
+
+    return {
+      statusCode: 403,
+      body: JSON.stringify({ success: false, status: wallet }),
+    };
+  }
+
+  await updateWalletAuthXpub(mysql, walletId, authXpubkeyStr);
+
+  const updatedWallet = await getWallet(mysql, walletId);
+
+  await closeDbConnection(mysql);
+
+  return {
+    statusCode: 200,
+    body: JSON.stringify({
+      success: true,
+      status: updatedWallet,
+    }),
+  };
 };
 
 /*

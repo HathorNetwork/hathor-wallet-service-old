@@ -37,6 +37,7 @@ import {
   updateTxProposal,
   updateWalletLockedBalance,
   updateWalletStatus,
+  updateWalletAuthXpub,
   updateWalletTablesWithTx,
   updateVersionData,
   fetchAddressTxHistorySum,
@@ -241,6 +242,19 @@ test('getAddressWalletInfo', async () => {
 
   const addressWalletMap = await getAddressWalletInfo(mysql, Object.keys(finalMap));
   expect(addressWalletMap).toStrictEqual(finalMap);
+});
+
+test('updateWalletAuthXpub', async () => {
+  expect.hasAssertions();
+  const walletId = 'walletId';
+
+  // add the wallet to database
+  const timestamp = getUnixTimestamp();
+  await createWallet(mysql, walletId, XPUBKEY, AUTH_XPUBKEY, 20);
+  await updateWalletAuthXpub(mysql, walletId, 'new_auth_xpubkey');
+
+  const wallet = await getWallet(mysql, walletId);
+  expect(wallet.authXpubkey).toStrictEqual('new_auth_xpubkey');
 });
 
 test('getWallet, createWallet and updateWalletStatus', async () => {

@@ -4,7 +4,12 @@ import { get as addressesGet } from '@src/api/addresses';
 import { get as newAddressesGet } from '@src/api/newAddresses';
 import { get as balancesGet } from '@src/api/balances';
 import { get as txHistoryGet } from '@src/api/txhistory';
-import { get as walletGet, load as walletLoad, loadWallet } from '@src/api/wallet';
+import {
+  get as walletGet,
+  load as walletLoad,
+  loadWallet,
+  changeAuthXpub,
+} from '@src/api/wallet';
 import * as Wallet from '@src/api/wallet';
 import * as Db from '@src/db';
 import { ApiError } from '@src/api/errors';
@@ -709,6 +714,77 @@ test('POST /wallet should fail with ApiError.WALLET_MAX_RETRIES when max retries
   expect(returnBody.error).toStrictEqual(ApiError.WALLET_MAX_RETRIES);
   expect(returnBody.status.retryCount).toStrictEqual(5);
 }, 10000); // This is huge for a test, but bitcore-lib takes too long
+
+test('PUT /wallet/auth should change the auth_xpub only after validating both the xpub and the auth_xpubkey', async () => {
+  expect.hasAssertions();
+
+  // get the first address
+  const xpubChangeDerivation = walletUtils.xpubDeriveChild(XPUBKEY, 0);
+  const firstAddress = walletUtils.getAddressAtIndex(xpubChangeDerivation, 0, process.env.NETWORK);
+
+  // we need signatures for both the account path and the purpose path:
+  const now = 1000;
+  const walletId = getWalletId(XPUBKEY);
+  const xpriv = walletUtils.getXPrivKeyFromSeed(TEST_SEED, {
+    passphrase: '',
+    networkName: process.env.NETWORK,
+  });
+
+  // account path
+  const accountDerivationIndex = '0\'';
+
+  const derivedPrivKey = walletUtils.deriveXpriv(xpriv, accountDerivationIndex);
+  const address = derivedPrivKey.publicKey.toAddress(network.getNetwork()).toString();
+  const message = new bitcore.Message(String(now).concat(walletId).concat(address));
+  const xpubkeySignature = message.sign(derivedPrivKey.privateKey);
+
+  // auth purpose path (m/280'/280')
+  const authDerivedPrivKey = walletUtils.deriveAuthXpriv(xpriv);
+  const authAddress = authDerivedPrivKey.publicKey.toAddress(network.getNetwork());
+  const authMessage = new bitcore.Message(String(now).concat(walletId).concat(authAddress));
+  const authXpubkeySignature = authMessage.sign(authDerivedPrivKey.privateKey);
+
+  const spy = jest.spyOn(Wallet, 'invokeLoadWalletAsync');
+  const mockImplementationSuccess = jest.fn(() => Promise.resolve());
+  spy.mockImplementation(mockImplementationSuccess);
+
+  const params = {
+    xpubkey: XPUBKEY,
+    xpubkeySignature,
+    authXpubkey: AUTH_XPUBKEY,
+    authXpubkeySignature,
+    firstAddress,
+    timestamp: now,
+  };
+  // Load wallet should create the wallet row
+  let event = makeGatewayEvent({}, JSON.stringify(params));
+  let result = await walletLoad(event, null, null) as APIGatewayProxyResult;
+  let returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.status.authXpubkey).toStrictEqual(AUTH_XPUBKEY);
+
+  // m/280'/280'/1
+  const newAuthPurposePath = xpriv.deriveNonCompliantChild('m/280\'/280\'/1');
+  const newAuthXpubkey = newAuthPurposePath.xpubkey;
+  const newAuthAddress = newAuthPurposePath.publicKey.toAddress(network.getNetwork());
+  const newAuthMessage = new bitcore.Message(String(now).concat(walletId).concat(newAuthAddress));
+  const newAuthSignature = newAuthMessage.sign(newAuthPurposePath.privateKey);
+
+  const changeAuthXpubParams = {
+    ...params,
+    authXpubkey: newAuthXpubkey,
+    authXpubkeySignature: newAuthSignature,
+  };
+
+  // Load success
+  event = makeGatewayEvent({}, JSON.stringify(changeAuthXpubParams));
+  result = await changeAuthXpub(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.status.authXpubkey).toStrictEqual(newAuthXpubkey.toString());
+});
 
 test('loadWallet should update wallet status to ERROR if an error occurs', async () => {
   expect.hasAssertions();
