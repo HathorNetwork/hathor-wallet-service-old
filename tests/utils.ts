@@ -502,6 +502,7 @@ export const addToWalletTable = async (
 ): Promise<void> => {
   await mysql.query(`
     INSERT INTO \`wallet\`(\`id\`, \`xpubkey\`,
+                           \`auth_xpubkey\`,
                            \`status\`, \`max_gap\`,
                            \`created_at\`, \`ready_at\`)
     VALUES ?`,

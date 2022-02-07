@@ -153,7 +153,7 @@ export const load: APIGatewayProxyHandler = async (event) => {
     }
   } else {
     // wallet does not exist yet. Add to wallet table with 'creating' status
-    wallet = await createWallet(mysql, walletId, xpubkeyStr, authXpubkey, maxGap);
+    wallet = await createWallet(mysql, walletId, xpubkeyStr, authXpubkeyStr, maxGap);
   }
 
   if (process.env.CONFIRM_FIRST_ADDRESS === 'true') {
@@ -200,7 +200,7 @@ export const load: APIGatewayProxyHandler = async (event) => {
     /* This calls the lambda function as a "Event", so we don't care here for the response,
      * we only care if the invokation failed or not
      */
-    await invokeLoadWalletAsync(xpubkey, maxGap);
+    await invokeLoadWalletAsync(xpubkey.toString(), maxGap);
   } catch (e) {
     console.error('Error on lambda wallet invoke', e);
 

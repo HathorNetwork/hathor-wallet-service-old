@@ -132,8 +132,6 @@ export const tokenHandler: APIGatewayProxyHandler = async (event) => {
     },
   );
 
-  console.log('Signed a token:', token);
-
   return {
     statusCode: 200,
     body: JSON.stringify({ success: true, token }),
@@ -182,8 +180,6 @@ export const bearerAuthorizer: APIGatewayTokenAuthorizerHandler = async (event) 
   const sanitizedToken = authorizationToken.replace(/Bearer /gi, '');
   let data;
 
-  console.log('User is authorized, his token is', sanitizedToken);
-
   try {
     data = jwt.verify(
       sanitizedToken,
@@ -204,8 +200,6 @@ export const bearerAuthorizer: APIGatewayTokenAuthorizerHandler = async (event) 
     }
   }
 
-  console.log('Token was verified to be valid, data: ', data);
-
   // signature data
   const signature = data.sign;
   const timestamp = data.ts;
@@ -214,7 +208,6 @@ export const bearerAuthorizer: APIGatewayTokenAuthorizerHandler = async (event) 
 
   // header data
   const expirationTs = data.exp;
-
   const address = new bitcore.Address(addr, hathorLib.network.getNetwork());
   const verified = verifySignature(signature, timestamp, address, walletId);
 
