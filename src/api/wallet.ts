@@ -166,7 +166,6 @@ export const changeAuthXpub: APIGatewayProxyHandler = async (event) => {
 
   const xpubkeyStr = value.xpubkey;
   const authXpubkeyStr = value.authXpubkey;
-  const maxGap = parseInt(process.env.MAX_ADDRESS_GAP, 10);
 
   const timestamp = value.timestamp;
   const xpubkeySignature = value.xpubkeySignature;
@@ -259,22 +258,6 @@ export const load: APIGatewayProxyHandler = async (event) => {
 
   // is wallet already loaded/loading?
   const walletId = getWalletId(xpubkeyStr);
-  let wallet = await getWallet(mysql, walletId);
-
-  if (wallet) {
-    if (wallet.status === WalletStatus.READY
-      || wallet.status === WalletStatus.CREATING) {
-      return closeDbAndGetError(mysql, ApiError.WALLET_ALREADY_LOADED, { status: wallet });
-    }
-
-    if (wallet.status === WalletStatus.ERROR
-        && wallet.retryCount >= MAX_LOAD_WALLET_RETRIES) {
-      return closeDbAndGetError(mysql, ApiError.WALLET_MAX_RETRIES, { status: wallet });
-    }
-  } else {
-    // wallet does not exist yet. Add to wallet table with 'creating' status
-    wallet = await createWallet(mysql, walletId, xpubkeyStr, authXpubkeyStr, maxGap);
-  }
 
   if (process.env.CONFIRM_FIRST_ADDRESS === 'true') {
     const expectedFirstAddress = value.firstAddress;
@@ -297,8 +280,25 @@ export const load: APIGatewayProxyHandler = async (event) => {
 
     return {
       statusCode: 403,
-      body: JSON.stringify({ success: false, status: wallet }),
+      body: JSON.stringify({ success: false }),
     };
+  }
+
+  let wallet = await getWallet(mysql, walletId);
+
+  if (wallet) {
+    if (wallet.status === WalletStatus.READY
+      || wallet.status === WalletStatus.CREATING) {
+      return closeDbAndGetError(mysql, ApiError.WALLET_ALREADY_LOADED, { status: wallet });
+    }
+
+    if (wallet.status === WalletStatus.ERROR
+        && wallet.retryCount >= MAX_LOAD_WALLET_RETRIES) {
+      return closeDbAndGetError(mysql, ApiError.WALLET_MAX_RETRIES, { status: wallet });
+    }
+  } else {
+    // wallet does not exist yet. Add to wallet table with 'creating' status
+    wallet = await createWallet(mysql, walletId, xpubkeyStr, authXpubkeyStr, maxGap);
   }
 
   try {
