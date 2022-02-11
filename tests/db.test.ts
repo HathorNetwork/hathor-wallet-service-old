@@ -103,7 +103,6 @@ import {
   createOutput,
   createInput,
   countTxOutputTable,
-  TX_IDS,
 } from '@tests/utils';
 
 const mysql = getDbConnection();
@@ -249,7 +248,6 @@ test('updateWalletAuthXpub', async () => {
   const walletId = 'walletId';
 
   // add the wallet to database
-  const timestamp = getUnixTimestamp();
   await createWallet(mysql, walletId, XPUBKEY, AUTH_XPUBKEY, 20);
   await updateWalletAuthXpub(mysql, walletId, 'new_auth_xpubkey');
 

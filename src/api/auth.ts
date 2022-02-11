@@ -13,9 +13,6 @@ import {
   Statement,
 } from 'aws-lambda';
 import { v4 as uuid4 } from 'uuid';
-import {
-  getWalletId,
-} from '@src/utils';
 import Joi from 'joi';
 import jwt from 'jsonwebtoken';
 import bitcore from 'bitcore-lib';

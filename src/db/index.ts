@@ -9,10 +9,6 @@ import { strict as assert } from 'assert';
 import { ServerlessMysql } from 'serverless-mysql';
 import { constants, walletUtils } from '@hathor/wallet-lib';
 import {
-  getWalletId,
-} from '@src/utils';
-
-import {
   AddressIndexMap,
   AddressInfo,
   Authorities,
@@ -41,8 +37,12 @@ import {
   IFilterUtxo,
   Miner,
 } from '@src/types';
-
-import { getUnixTimestamp, isAuthority, getAddressPath } from '@src/utils';
+import {
+  getUnixTimestamp,
+  isAuthority,
+  getAddressPath,
+  getWalletId,
+} from '@src/utils';
 
 const BLOCK_VERSION = [
   constants.BLOCK_VERSION,
