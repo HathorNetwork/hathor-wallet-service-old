@@ -211,8 +211,14 @@ export const verifySignature = (
   address: bitcore.Address,
   walletId: string,
 ): boolean => {
-  const message = String(timestamp).concat(walletId).concat(address);
-  return new bitcore.Message(message).verify(address, signature);
+  try {
+    const message = String(timestamp).concat(walletId).concat(address);
+    return new bitcore.Message(message).verify(address, signature);
+  } catch (e) {
+    // Since this will try to verify the signature passing user input, the verify method might
+    // throw, we can just return false in this case.
+    return false;
+  }
 };
 
 /**

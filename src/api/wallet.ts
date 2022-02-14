@@ -131,7 +131,6 @@ export const validateSignatures = (
   // verify that the user owns the xpubkey
   const xpubkey = bitcore.HDPublicKey(xpubkeyStr);
   const xpubAddress = xpubkey.publicKey.toAddress(network.getNetwork());
-
   const xpubValid = verifySignature(xpubkeySignature, timestamp, xpubAddress, walletId.toString());
 
   // verify that the user owns the auth_xpubkey
