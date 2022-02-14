@@ -440,7 +440,7 @@ test('GET /txhistory', async () => {
 test('GET /wallet', async () => {
   expect.hasAssertions();
 
-  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'auth_xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToWalletTable(mysql, [['my-wallet', XPUBKEY, AUTH_XPUBKEY, 'ready', 5, 10000, 10001]]);
 
   // missing wallet
   await _testMissingWallet(walletGet, 'some-wallet');
@@ -452,9 +452,9 @@ test('GET /wallet', async () => {
   expect(result.statusCode).toBe(200);
   expect(returnBody.success).toBe(true);
   expect(returnBody.status).toStrictEqual({
-    walletId: 'my-wallet',
-    xpubkey: 'xpubkey',
-    authXpubkey: 'auth_xpubkey',
+    walletId: getWalletId(XPUBKEY),
+    xpubkey: XPUBKEY,
+    authXpubkey: AUTH_XPUBKEY,
     status: 'ready',
     maxGap: 5,
     retryCount: 0,
