@@ -626,7 +626,7 @@ test('POST /wallet', async () => {
   expect(returnBody.success).toBe(true);
   // XXX: invoking lambdas is not working on serverless-offline, so for now we are considering a call to the mocked lambda a success:
   expect(mockFn).toHaveBeenCalledWith(XPUBKEY, 10);
-});
+}, 10000);
 
 test('POST /wallet should fail with ApiError.WALLET_MAX_RETRIES when max retries are reached', async () => {
   expect.hasAssertions();
