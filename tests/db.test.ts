@@ -79,6 +79,7 @@ import {
   getDbConnection,
   getUnixTimestamp,
   isAuthority,
+  getWalletId,
 } from '@src/utils';
 import {
   ADDRESSES,
@@ -257,7 +258,7 @@ test('updateWalletAuthXpub', async () => {
 
 test('getWallet, createWallet and updateWalletStatus', async () => {
   expect.hasAssertions();
-  const walletId = 'walletId';
+  const walletId = getWalletId(XPUBKEY);
   // if there are no entries, should return null
   let ret = await getWallet(mysql, walletId);
   expect(ret).toBeNull();

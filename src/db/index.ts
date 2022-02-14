@@ -43,6 +43,9 @@ import {
   getAddressPath,
   getWalletId,
 } from '@src/utils';
+import {
+  getWalletFromDbEntry,
+} from '@src/db/utils';
 
 const BLOCK_VERSION = [
   constants.BLOCK_VERSION,
@@ -172,16 +175,7 @@ export const getWallet = async (mysql: ServerlessMysql, walletId: string): Promi
   const results: DbSelectResult = await mysql.query('SELECT * FROM `wallet` WHERE `id` = ?', walletId);
   if (results.length) {
     const result = results[0];
-    return {
-      walletId,
-      xpubkey: result.xpubkey as string,
-      authXpubkey: result.auth_xpubkey as string,
-      status: result.status as WalletStatus,
-      retryCount: result.retry_count as number,
-      maxGap: result.max_gap as number,
-      createdAt: result.created_at as number,
-      readyAt: result.ready_at as number,
-    };
+    return getWalletFromDbEntry(result);
   }
   return null;
 };
@@ -197,16 +191,7 @@ export const getWalletFromAuthXpub = async (mysql: ServerlessMysql, authXpub: st
   const results: DbSelectResult = await mysql.query('SELECT * FROM `wallet` WHERE `auth_xpubkey` = ?', authXpub);
   if (results.length) {
     const result = results[0];
-    return {
-      walletId: getWalletId(result.xpubkey as string),
-      xpubkey: result.xpubkey as string,
-      authXpubkey: result.auth_xpubkey as string,
-      status: result.status as WalletStatus,
-      retryCount: result.retry_count as number,
-      maxGap: result.max_gap as number,
-      createdAt: result.created_at as number,
-      readyAt: result.ready_at as number,
-    };
+    return getWalletFromDbEntry(result);
   }
   return null;
 };

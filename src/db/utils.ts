@@ -1,4 +1,6 @@
 import { ServerlessMysql } from 'serverless-mysql';
+import { getWalletId } from '@src/utils';
+import { WalletStatus, Wallet } from '@src/types';
 
 /**
  * Begins a transaction on the current connection
@@ -48,3 +50,19 @@ export async function transactionDecorator(_mysql: ServerlessMysql, wrapped: Fun
     }
   };
 }
+
+/**
+ * Returns a Wallet object from a db result row
+ *
+ * @param result - The result row to map to a Wallet object
+ */
+export const getWalletFromDbEntry = (entry: Record<string, unknown>): Wallet => ({
+  walletId: getWalletId(entry.xpubkey as string),
+  xpubkey: entry.xpubkey as string,
+  authXpubkey: entry.auth_xpubkey as string,
+  status: entry.status as WalletStatus,
+  retryCount: entry.retry_count as number,
+  maxGap: entry.max_gap as number,
+  createdAt: entry.created_at as number,
+  readyAt: entry.ready_at as number,
+});
