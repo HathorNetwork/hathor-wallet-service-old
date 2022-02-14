@@ -273,9 +273,7 @@ export const load: APIGatewayProxyHandler = async (event) => {
     }
   }
 
-  const signaturesValid = validateSignatures(walletId, timestamp, xpubkeyStr, xpubkeySignature, authXpubkeyStr, authXpubkeySignature);
-
-  if (!signaturesValid) {
+  if (!validateSignatures(walletId, timestamp, xpubkeyStr, xpubkeySignature, authXpubkeyStr, authXpubkeySignature)) {
     await closeDbConnection(mysql);
 
     return {
