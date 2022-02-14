@@ -261,6 +261,20 @@ export const load: APIGatewayProxyHandler = async (event) => {
 
   // is wallet already loaded/loading?
   const walletId = getWalletId(xpubkeyStr);
+  let wallet = await getWallet(mysql, walletId);
+
+  // check if wallet is already loaded so we can fail early
+  if (wallet) {
+    if (wallet.status === WalletStatus.READY
+      || wallet.status === WalletStatus.CREATING) {
+      return closeDbAndGetError(mysql, ApiError.WALLET_ALREADY_LOADED, { status: wallet });
+    }
+
+    if (wallet.status === WalletStatus.ERROR
+        && wallet.retryCount >= MAX_LOAD_WALLET_RETRIES) {
+      return closeDbAndGetError(mysql, ApiError.WALLET_MAX_RETRIES, { status: wallet });
+    }
+  }
 
   if (shouldConfirmFirstAddress) {
     const expectedFirstAddress = value.firstAddress;
@@ -282,20 +296,8 @@ export const load: APIGatewayProxyHandler = async (event) => {
     };
   }
 
-  let wallet = await getWallet(mysql, walletId);
-
-  if (wallet) {
-    if (wallet.status === WalletStatus.READY
-      || wallet.status === WalletStatus.CREATING) {
-      return closeDbAndGetError(mysql, ApiError.WALLET_ALREADY_LOADED, { status: wallet });
-    }
-
-    if (wallet.status === WalletStatus.ERROR
-        && wallet.retryCount >= MAX_LOAD_WALLET_RETRIES) {
-      return closeDbAndGetError(mysql, ApiError.WALLET_MAX_RETRIES, { status: wallet });
-    }
-  } else {
-    // wallet does not exist yet. Add to wallet table with 'creating' status
+  // if wallet does not exist at this point, we should add it to the wallet table with 'creating' status
+  if (!wallet) {
     wallet = await createWallet(mysql, walletId, xpubkeyStr, authXpubkeyStr, maxGap);
   }
 
