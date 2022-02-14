@@ -19,7 +19,7 @@ import bitcore from 'bitcore-lib';
 import { ApiError } from '@src/api/errors';
 import hathorLib from '@hathor/wallet-lib';
 import { Wallet } from '@src/types';
-import { getWalletFromAuthXpub } from '@src/db';
+import { getWallet } from '@src/db';
 import {
   verifySignature,
   closeDbConnection,
@@ -36,6 +36,7 @@ const bodySchema = Joi.object({
   ts: Joi.number().positive().required(),
   xpub: Joi.string().required(),
   sign: Joi.string().required(),
+  walletId: Joi.string().required(),
 });
 
 function parseBody(body) {
@@ -77,7 +78,7 @@ export const tokenHandler: APIGatewayProxyHandler = async (event) => {
   const signature = value.sign;
   const timestamp = value.ts;
   const authXpubStr = value.xpub;
-  const wallet: Wallet = await getWalletFromAuthXpub(mysql, authXpubStr);
+  const wallet: Wallet = await getWallet(mysql, value.walletId);
 
   const [validTimestamp, timestampShift] = validateAuthTimestamp(timestamp, Date.now() / 1000);
 
@@ -96,11 +97,26 @@ export const tokenHandler: APIGatewayProxyHandler = async (event) => {
     };
   }
 
+  if (wallet.authXpubkey !== authXpubStr) {
+    const details = [{
+      message: 'Provided auth_xpubkey does not match the stored auth_xpubkey',
+    }];
+
+    return {
+      statusCode: 400,
+      body: JSON.stringify({
+        success: false,
+        error: ApiError.INVALID_PAYLOAD,
+        details,
+      }),
+    };
+  }
+
   const xpubkey = bitcore.HDPublicKey(authXpubStr);
   const address = xpubkey.publicKey.toAddress(hathorLib.network.getNetwork());
   const walletId = wallet.walletId;
 
-  if (!verifySignature(signature, timestamp, address, walletId.toString())) {
+  if (!verifySignature(signature, timestamp, address, walletId)) {
     await closeDbConnection(mysql);
 
     const details = {

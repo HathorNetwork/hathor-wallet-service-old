@@ -181,22 +181,6 @@ export const getWallet = async (mysql: ServerlessMysql, walletId: string): Promi
 };
 
 /**
- * Get wallet data from authXpub
- *
- * @param mysql - Database connection
- * @param walletId - The wallet id
- * @returns The wallet information or null if it was not found
- */
-export const getWalletFromAuthXpub = async (mysql: ServerlessMysql, authXpub: string): Promise<Wallet> => {
-  const results: DbSelectResult = await mysql.query('SELECT * FROM `wallet` WHERE `auth_xpubkey` = ?', authXpub);
-  if (results.length) {
-    const result = results[0];
-    return getWalletFromDbEntry(result);
-  }
-  return null;
-};
-
-/**
  * Create a wallet on database.
  *
  * @param mysql - Database connection
