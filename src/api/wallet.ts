@@ -28,6 +28,8 @@ import {
   getWalletId,
   verifySignature,
   confirmFirstAddress,
+  validateAuthTimestamp,
+  AUTH_MAX_TIMESTAMP_SHIFT_IN_SECONDS,
 } from '@src/utils';
 import { closeDbAndGetError } from '@src/api/utils';
 import { walletIdProxyHandler } from '@src/commons';
@@ -177,6 +179,23 @@ export const changeAuthXpub: APIGatewayProxyHandler = async (event) => {
   const xpubkeySignature = value.xpubkeySignature;
   const authXpubkeySignature = value.authXpubkeySignature;
 
+  const [validTimestamp, timestampShift] = validateAuthTimestamp(timestamp, Date.now() / 1000);
+
+  if (!validTimestamp) {
+    const details = [{
+      message: `The timestamp is shifted ${timestampShift}(s). Limit is ${AUTH_MAX_TIMESTAMP_SHIFT_IN_SECONDS}(s).`,
+    }];
+
+    return {
+      statusCode: 400,
+      body: JSON.stringify({
+        success: false,
+        error: ApiError.INVALID_PAYLOAD,
+        details,
+      }),
+    };
+  }
+
   // is wallet already loaded/loading?
   const walletId = getWalletId(xpubkeyStr);
   const wallet = await getWallet(mysql, walletId);
@@ -258,6 +277,23 @@ export const load: APIGatewayProxyHandler = async (event) => {
   const timestamp = value.timestamp;
   const xpubkeySignature = value.xpubkeySignature;
   const authXpubkeySignature = value.authXpubkeySignature;
+
+  const [validTimestamp, timestampShift] = validateAuthTimestamp(timestamp, Date.now() / 1000);
+
+  if (!validTimestamp) {
+    const details = [{
+      message: `The timestamp is shifted ${timestampShift}(s). Limit is ${AUTH_MAX_TIMESTAMP_SHIFT_IN_SECONDS}(s).`,
+    }];
+
+    return {
+      statusCode: 400,
+      body: JSON.stringify({
+        success: false,
+        error: ApiError.INVALID_PAYLOAD,
+        details,
+      }),
+    };
+  }
 
   // is wallet already loaded/loading?
   const walletId = getWalletId(xpubkeyStr);

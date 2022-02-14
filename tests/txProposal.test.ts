@@ -978,7 +978,7 @@ test('POST /txproposals with denied utxos', async () => {
   expect.hasAssertions();
 
   await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'auth_xpubkey', 'ready', 5, 10000, 10001]]);
-  await addToWalletTable(mysql, [['other-wallet', 'xpubkey', 'auth_xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToWalletTable(mysql, [['other-wallet', 'xpubkey', 'auth_xpubkey2', 'ready', 5, 10000, 10001]]);
   await addToAddressTable(mysql, [{
     address: ADDRESSES[0],
     index: 0,

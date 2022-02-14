@@ -20,10 +20,15 @@ import { ApiError } from '@src/api/errors';
 import hathorLib from '@hathor/wallet-lib';
 import { Wallet } from '@src/types';
 import { getWalletFromAuthXpub } from '@src/db';
-import { verifySignature, closeDbConnection, getDbConnection } from '@src/utils';
+import {
+  verifySignature,
+  closeDbConnection,
+  getDbConnection,
+  validateAuthTimestamp,
+  AUTH_MAX_TIMESTAMP_SHIFT_IN_SECONDS,
+} from '@src/utils';
 
-const EXPIRATION_TIME_IN_SECONDS = 30 * 60;
-const MAX_TIMESTAMP_SHIFT_IN_SECONDS = 30;
+const EXPIRATION_TIME_IN_SECONDS = 61;
 
 hathorLib.network.setNetwork(process.env.NETWORK);
 
@@ -74,13 +79,11 @@ export const tokenHandler: APIGatewayProxyHandler = async (event) => {
   const authXpubStr = value.xpub;
   const wallet: Wallet = await getWalletFromAuthXpub(mysql, authXpubStr);
 
-  const timestampShiftInSeconds = Math.abs(
-    Math.floor(Date.now() / 1000) - timestamp,
-  );
+  const [validTimestamp, timestampShift] = validateAuthTimestamp(timestamp, Date.now() / 1000);
 
-  if (timestampShiftInSeconds >= MAX_TIMESTAMP_SHIFT_IN_SECONDS) {
+  if (!validTimestamp) {
     const details = [{
-      message: `The timestamp is shifted ${timestampShiftInSeconds}(s). Limit is ${MAX_TIMESTAMP_SHIFT_IN_SECONDS}(s).`,
+      message: `The timestamp is shifted ${timestampShift}(s). Limit is ${AUTH_MAX_TIMESTAMP_SHIFT_IN_SECONDS}(s).`,
     }];
 
     return {

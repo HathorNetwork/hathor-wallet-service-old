@@ -235,3 +235,22 @@ export const confirmFirstAddress = (expectedFirstAddress: string, xpubkey: strin
     firstAddress,
   ];
 };
+
+/**
+ * A constant for the max shift for the timestamp used in auth
+ */
+export const AUTH_MAX_TIMESTAMP_SHIFT_IN_SECONDS = 30;
+
+/**
+ * Verifies that the timestamp has not shifted for more than AUTH_MAX_TIMESTAMP_SHIFT_IN_SECONDS
+ *
+ * @param timestamp - The timestamp to check, in **seconds**
+ * @param now - The current timestamp
+ *
+ * @returns A tuple with the first value being the result of the comparison and the second value the firstAddress derived
+ */
+export const validateAuthTimestamp = (timestamp: number, now: number): [boolean, number] => {
+  const timestampShiftInSeconds = Math.abs(now - timestamp);
+
+  return [timestampShiftInSeconds < AUTH_MAX_TIMESTAMP_SHIFT_IN_SECONDS, timestampShiftInSeconds];
+};

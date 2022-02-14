@@ -199,7 +199,7 @@ test('generateAddresses', async () => {
 test('getAddressWalletInfo', async () => {
   expect.hasAssertions();
   const wallet1 = { walletId: 'wallet1', xpubkey: 'xpubkey1', authXpubkey: 'authXpubkey', maxGap: 5 };
-  const wallet2 = { walletId: 'wallet2', xpubkey: 'xpubkey2', authXpubkey: 'authXpubkey', maxGap: 5 };
+  const wallet2 = { walletId: 'wallet2', xpubkey: 'xpubkey2', authXpubkey: 'authXpubkey2', maxGap: 5 };
   const finalMap = {
     addr1: wallet1,
     addr2: wallet1,

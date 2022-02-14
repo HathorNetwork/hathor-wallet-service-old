@@ -508,7 +508,7 @@ test('POST /wallet', async () => {
     authXpubkey: AUTH_XPUBKEY,
     xpubkeySignature: 'xpubkeySignature',
     authXpubkeySignature: 'authXpubkeySignature',
-    timestamp: 1000,
+    timestamp: Math.floor(Date.now() / 1000),
     firstAddress: 'a',
   }));
   result = await walletLoad(event, null, null) as APIGatewayProxyResult;
@@ -531,7 +531,7 @@ test('POST /wallet', async () => {
   let mockFn = spy.mockImplementation(mockImplementationSuccess);
 
   // we need signatures for both the account path and the purpose path:
-  const now = 1000;
+  const now = Math.floor(Date.now() / 1000);
   const walletId = getWalletId(XPUBKEY);
   const xpriv = walletUtils.getXPrivKeyFromSeed(TEST_SEED, {
     passphrase: '',
@@ -636,7 +636,7 @@ test('POST /wallet should fail with ApiError.WALLET_MAX_RETRIES when max retries
   const firstAddress = walletUtils.getAddressAtIndex(xpubChangeDerivation, 0, process.env.NETWORK);
 
   // we need signatures for both the account path and the purpose path:
-  const now = 1000;
+  const now = Math.floor(Date.now() / 1000);
   const walletId = getWalletId(XPUBKEY);
   const xpriv = walletUtils.getXPrivKeyFromSeed(TEST_SEED, {
     passphrase: '',
@@ -674,6 +674,7 @@ test('POST /wallet should fail with ApiError.WALLET_MAX_RETRIES when max retries
   let event = makeGatewayEvent({}, JSON.stringify(params));
   let result = await walletLoad(event, null, null) as APIGatewayProxyResult;
   let returnBody = JSON.parse(result.body as string);
+
   expect(result.statusCode).toBe(200);
   expect(returnBody.status.status).toStrictEqual(WalletStatus.ERROR);
   expect(returnBody.status.retryCount).toStrictEqual(1);
@@ -723,7 +724,7 @@ test('PUT /wallet/auth should change the auth_xpub only after validating both th
   const firstAddress = walletUtils.getAddressAtIndex(xpubChangeDerivation, 0, process.env.NETWORK);
 
   // we need signatures for both the account path and the purpose path:
-  const now = 1000;
+  const now = Math.floor(Date.now() / 1000);
   const walletId = getWalletId(XPUBKEY);
   const xpriv = walletUtils.getXPrivKeyFromSeed(TEST_SEED, {
     passphrase: '',
@@ -794,7 +795,7 @@ test('loadWallet should update wallet status to ERROR if an error occurs', async
   const firstAddress = walletUtils.getAddressAtIndex(xpubChangeDerivation, 0, process.env.NETWORK);
 
   // we need signatures for both the account path and the purpose path:
-  const now = 1000;
+  const now = Math.floor(Date.now() / 1000);
   const walletId = getWalletId(XPUBKEY);
   const xpriv = walletUtils.getXPrivKeyFromSeed(TEST_SEED, {
     passphrase: '',
