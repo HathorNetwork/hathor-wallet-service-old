@@ -22,7 +22,13 @@ import {
   updateWalletAuthXpub,
 } from '@src/db';
 import { WalletStatus } from '@src/types';
-import { closeDbConnection, getDbConnection, getWalletId, verifySignature } from '@src/utils';
+import {
+  closeDbConnection,
+  getDbConnection,
+  getWalletId,
+  verifySignature,
+  confirmFirstAddress,
+} from '@src/utils';
 import { closeDbAndGetError } from '@src/api/utils';
 import { walletIdProxyHandler } from '@src/commons';
 import Joi from 'joi';
@@ -54,8 +60,8 @@ export const get: APIGatewayProxyHandler = walletIdProxyHandler(async (walletId)
 
 // If the env requires to validate the first address
 // then we must set the firstAddress field as required
-const confirmFirstAddress = process.env.CONFIRM_FIRST_ADDRESS === 'true';
-const firstAddressJoi = confirmFirstAddress ? Joi.string().required() : Joi.string();
+const shouldConfirmFirstAddress = process.env.CONFIRM_FIRST_ADDRESS === 'true';
+const firstAddressJoi = shouldConfirmFirstAddress ? Joi.string().required() : Joi.string();
 
 const loadBodySchema = Joi.object({
   xpubkey: Joi.string()
@@ -179,14 +185,11 @@ export const changeAuthXpub: APIGatewayProxyHandler = async (event) => {
     return closeDbAndGetError(mysql, ApiError.WALLET_NOT_FOUND);
   }
 
-  if (process.env.CONFIRM_FIRST_ADDRESS === 'true') {
+  if (shouldConfirmFirstAddress) {
     const expectedFirstAddress = value.firstAddress;
+    const [firstAddressEqual, firstAddress] = confirmFirstAddress(expectedFirstAddress, xpubkeyStr);
 
-    // First derive xpub to change 0 path
-    const derivedXpub = walletUtils.xpubDeriveChild(xpubkeyStr, 0);
-    // Then get first address
-    const firstAddress = walletUtils.getAddressAtIndex(derivedXpub, 0, process.env.NETWORK);
-    if (firstAddress !== expectedFirstAddress) {
+    if (!firstAddressEqual) {
       return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, {
         message: `Expected first address to be ${expectedFirstAddress} but it is ${firstAddress}`,
       });
@@ -259,14 +262,11 @@ export const load: APIGatewayProxyHandler = async (event) => {
   // is wallet already loaded/loading?
   const walletId = getWalletId(xpubkeyStr);
 
-  if (process.env.CONFIRM_FIRST_ADDRESS === 'true') {
+  if (shouldConfirmFirstAddress) {
     const expectedFirstAddress = value.firstAddress;
+    const [firstAddressEqual, firstAddress] = confirmFirstAddress(expectedFirstAddress, xpubkeyStr);
 
-    // First derive xpub to change 0 path
-    const derivedXpub = walletUtils.xpubDeriveChild(xpubkeyStr, 0);
-    // Then get first address
-    const firstAddress = walletUtils.getAddressAtIndex(derivedXpub, 0, process.env.NETWORK);
-    if (firstAddress !== expectedFirstAddress) {
+    if (!firstAddressEqual) {
       return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, {
         message: `Expected first address to be ${expectedFirstAddress} but it is ${firstAddress}`,
       });

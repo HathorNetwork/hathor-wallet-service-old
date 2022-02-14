@@ -214,3 +214,24 @@ export const verifySignature = (
   const message = String(timestamp).concat(walletId).concat(address);
   return new bitcore.Message(message).verify(address, signature);
 };
+
+/**
+ * Verifies that the expected first address (received as a param) is the same as one
+ * derived from the xpubkey param on the change 0 path
+ *
+ * @param expectedFirstAddress - The expected first address
+ * @param xpubkey - The xpubkey to derive the change 0 path
+ *
+ * @returns A tuple with the first value being the result of the comparison and the second value the firstAddress derived
+ */
+export const confirmFirstAddress = (expectedFirstAddress: string, xpubkey: string): [boolean, string] => {
+  // First derive xpub to change 0 path
+  const derivedXpub = hathorLib.walletUtils.xpubDeriveChild(xpubkey, 0);
+  // Then get first address
+  const firstAddress = hathorLib.walletUtils.getAddressAtIndex(derivedXpub, 0, process.env.NETWORK);
+
+  return [
+    firstAddress === expectedFirstAddress,
+    firstAddress,
+  ];
+};
