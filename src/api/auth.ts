@@ -28,7 +28,7 @@ import {
   AUTH_MAX_TIMESTAMP_SHIFT_IN_SECONDS,
 } from '@src/utils';
 
-const EXPIRATION_TIME_IN_SECONDS = 61;
+const EXPIRATION_TIME_IN_SECONDS = 1800;
 
 hathorLib.network.setNetwork(process.env.NETWORK);
 
