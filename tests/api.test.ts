@@ -716,6 +716,133 @@ test('POST /wallet should fail with ApiError.WALLET_MAX_RETRIES when max retries
   expect(returnBody.status.retryCount).toStrictEqual(5);
 }, 30000); // This is huge for a test, but bitcore-lib takes too long
 
+test('POST /wallet/init should validate attributes properly', async () => {
+  expect.hasAssertions();
+
+  const params = {
+    xpubkey: XPUBKEY,
+    authXpubkey: AUTH_XPUBKEY,
+  };
+
+  const event = makeGatewayEvent({}, JSON.stringify(params));
+  const result = await walletLoad(event, null, null) as APIGatewayProxyResult;
+  const returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toStrictEqual(false);
+  expect(returnBody.details).toHaveLength(4);
+  expect(returnBody.details[0].message).toStrictEqual('"xpubkeySignature" is required');
+  expect(returnBody.details[1].message).toStrictEqual('"authXpubkeySignature" is required');
+  expect(returnBody.details[2].message).toStrictEqual('"timestamp" is required');
+  expect(returnBody.details[3].message).toStrictEqual('"firstAddress" is required');
+});
+
+test('PUT /wallet/auth should validate attributes properly', async () => {
+  expect.hasAssertions();
+
+  const params = {
+    xpubkey: XPUBKEY,
+    authXpubkey: AUTH_XPUBKEY,
+  };
+
+  const event = makeGatewayEvent({}, JSON.stringify(params));
+  const result = await changeAuthXpub(event, null, null) as APIGatewayProxyResult;
+  const returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toStrictEqual(false);
+  expect(returnBody.details).toHaveLength(4);
+  expect(returnBody.details[0].message).toStrictEqual('"xpubkeySignature" is required');
+  expect(returnBody.details[1].message).toStrictEqual('"authXpubkeySignature" is required');
+  expect(returnBody.details[2].message).toStrictEqual('"timestamp" is required');
+  expect(returnBody.details[3].message).toStrictEqual('"firstAddress" is required');
+});
+
+test('PUT /wallet/auth should fail if wallet is not yet started', async () => {
+  expect.hasAssertions();
+
+  const event = makeGatewayEvent({}, JSON.stringify({
+    xpubkey: XPUBKEY,
+    xpubkeySignature: 'xpubkey-signature',
+    authXpubkey: AUTH_XPUBKEY,
+    authXpubkeySignature: 'auth-xpubkey-signature',
+    firstAddress: ADDRESSES[0],
+    timestamp: Math.floor(Date.now() / 1000),
+  }));
+
+  const result = await changeAuthXpub(event, null, null) as APIGatewayProxyResult;
+  const returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(404);
+  expect(returnBody.success).toStrictEqual(false);
+  expect(returnBody.error).toStrictEqual(ApiError.WALLET_NOT_FOUND);
+});
+
+test('changeAuthXpub should fail if timestamp is shifted for more than 30s', async () => {
+  expect.hasAssertions();
+
+  const event = makeGatewayEvent({}, JSON.stringify({
+    xpubkey: XPUBKEY,
+    xpubkeySignature: 'xpubkey-signature',
+    authXpubkey: AUTH_XPUBKEY,
+    authXpubkeySignature: 'auth-xpubkey-signature',
+    firstAddress: ADDRESSES[0],
+    timestamp: Math.floor(Date.now() / 1000) - 40,
+  }));
+
+  const result = await changeAuthXpub(event, null, null) as APIGatewayProxyResult;
+  const returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+  expect(returnBody.details).toHaveLength(1);
+  expect(returnBody.details[0].message).toBe('The timestamp is shifted 40(s). Limit is 30(s).');
+});
+
+test('loadWallet should fail if signatures do not match', async () => {
+  expect.hasAssertions();
+
+  const event = makeGatewayEvent({}, JSON.stringify({
+    xpubkey: XPUBKEY,
+    xpubkeySignature: 'xpubkey-signature',
+    authXpubkey: AUTH_XPUBKEY,
+    authXpubkeySignature: 'auth-xpubkey-signature',
+    firstAddress: ADDRESSES[0],
+    timestamp: Math.floor(Date.now() / 1000),
+  }));
+
+  const result = await walletLoad(event, null, null) as APIGatewayProxyResult;
+  const returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(403);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.details[0].message).toBe('Signatures are not valid');
+});
+
+test('changeAuthXpub should fail if signatures do not match', async () => {
+  expect.hasAssertions();
+
+  const walletId = getWalletId(XPUBKEY);
+  await addToWalletTable(mysql, [[walletId, XPUBKEY, AUTH_XPUBKEY, 'creating', 5, 10000, null]]);
+
+  const event = makeGatewayEvent({}, JSON.stringify({
+    xpubkey: XPUBKEY,
+    xpubkeySignature: 'xpubkey-signature',
+    authXpubkey: AUTH_XPUBKEY,
+    authXpubkeySignature: 'auth-xpubkey-signature',
+    firstAddress: ADDRESSES[0],
+    timestamp: Math.floor(Date.now() / 1000),
+  }));
+
+  const result = await changeAuthXpub(event, null, null) as APIGatewayProxyResult;
+  const returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(403);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.details[0].message).toBe('Signatures are not valid');
+});
+
 test('PUT /wallet/auth should change the auth_xpub only after validating both the xpub and the auth_xpubkey', async () => {
   expect.hasAssertions();
 
@@ -849,6 +976,28 @@ test('loadWallet API should fail if a wrong signature is sent', async () => {
   expect(result.statusCode).toStrictEqual(403);
   expect(returnBody.success).toStrictEqual(false);
 }, 30000);
+
+test('loadWallet should fail if timestamp is shifted for more than 30s', async () => {
+  expect.hasAssertions();
+
+  const event = makeGatewayEvent({}, JSON.stringify({
+    xpubkey: XPUBKEY,
+    xpubkeySignature: 'xpubkey-signature',
+    authXpubkey: AUTH_XPUBKEY,
+    authXpubkeySignature: 'auth-xpubkey-signature',
+    firstAddress: ADDRESSES[0],
+    timestamp: Math.floor(Date.now() / 1000) - 40,
+  }));
+
+  const result = await walletLoad(event, null, null) as APIGatewayProxyResult;
+  const returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+  expect(returnBody.details).toHaveLength(1);
+  expect(returnBody.details[0].message).toBe('The timestamp is shifted 40(s). Limit is 30(s).');
+});
 
 test('loadWallet should update wallet status to ERROR if an error occurs', async () => {
   expect.hasAssertions();
