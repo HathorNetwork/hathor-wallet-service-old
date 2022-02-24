@@ -219,9 +219,13 @@ export const changeAuthXpub: APIGatewayProxyHandler = async (event) => {
   if (!signaturesValid) {
     await closeDbConnection(mysql);
 
+    const details = [{
+      message: 'Signatures are not valid',
+    }];
+
     return {
       statusCode: 403,
-      body: JSON.stringify({ success: false, status: wallet }),
+      body: JSON.stringify({ success: false, details }),
     };
   }
 
@@ -325,9 +329,13 @@ export const load: APIGatewayProxyHandler = async (event) => {
   if (!validateSignatures(walletId, timestamp, xpubkeyStr, xpubkeySignature, authXpubkeyStr, authXpubkeySignature)) {
     await closeDbConnection(mysql);
 
+    const details = [{
+      message: 'Signatures are not valid',
+    }];
+
     return {
       statusCode: 403,
-      body: JSON.stringify({ success: false }),
+      body: JSON.stringify({ success: false, details }),
     };
   }
 
