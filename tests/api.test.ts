@@ -547,7 +547,7 @@ test('POST /wallet', async () => {
   const xpubkeySignature = message.sign(derivedPrivKey.privateKey);
 
   // auth purpose path (m/280'/280')
-  const authDerivedPrivKey = HathorWalletServiceWallet.deriveAuthXpriv(xpriv);
+  const authDerivedPrivKey = HathorWalletServiceWallet.deriveAuthPrivateKey(xpriv);
   const authAddress = authDerivedPrivKey.publicKey.toAddress(network.getNetwork());
   const authMessage = new bitcore.Message(String(now).concat(walletId).concat(authAddress));
   const authXpubkeySignature = authMessage.sign(authDerivedPrivKey.privateKey);
@@ -652,7 +652,7 @@ test('POST /wallet should fail with ApiError.WALLET_MAX_RETRIES when max retries
   const xpubkeySignature = message.sign(derivedPrivKey.privateKey);
 
   // auth purpose path (m/280'/280')
-  const authDerivedPrivKey = HathorWalletServiceWallet.deriveAuthXpriv(xpriv);
+  const authDerivedPrivKey = HathorWalletServiceWallet.deriveAuthPrivateKey(xpriv);
   const authAddress = authDerivedPrivKey.publicKey.toAddress(network.getNetwork());
   const authMessage = new bitcore.Message(String(now).concat(walletId).concat(authAddress));
   const authXpubkeySignature = authMessage.sign(authDerivedPrivKey.privateKey);
@@ -740,7 +740,7 @@ test('PUT /wallet/auth should change the auth_xpub only after validating both th
   const xpubkeySignature = message.sign(derivedPrivKey.privateKey);
 
   // auth purpose path (m/280'/280')
-  const authDerivedPrivKey = HathorWalletServiceWallet.deriveAuthXpriv(xpriv);
+  const authDerivedPrivKey = HathorWalletServiceWallet.deriveAuthPrivateKey(xpriv);
   const authAddress = authDerivedPrivKey.publicKey.toAddress(network.getNetwork());
   const authMessage = new bitcore.Message(String(now).concat(walletId).concat(authAddress));
   const authXpubkeySignature = authMessage.sign(authDerivedPrivKey.privateKey);
@@ -812,7 +812,7 @@ test('loadWallet API should fail if a wrong signature is sent', async () => {
   const xpubkeySignature = message.sign(derivedPrivKey.privateKey);
 
   // auth purpose path (m/280'/280')
-  const authDerivedPrivKey = HathorWalletServiceWallet.deriveAuthXpriv(xpriv);
+  const authDerivedPrivKey = HathorWalletServiceWallet.deriveAuthPrivateKey(xpriv);
   const authAddress = authDerivedPrivKey.publicKey.toAddress(network.getNetwork());
   const authMessage = new bitcore.Message(String(now).concat(walletId).concat(authAddress));
   const authXpubkeySignature = authMessage.sign(authDerivedPrivKey.privateKey);
@@ -874,7 +874,7 @@ test('loadWallet should update wallet status to ERROR if an error occurs', async
   const xpubkeySignature = message.sign(derivedPrivKey.privateKey);
 
   // auth purpose path (m/280'/280')
-  const authDerivedPrivKey = HathorWalletServiceWallet.deriveAuthXpriv(xpriv);
+  const authDerivedPrivKey = HathorWalletServiceWallet.deriveAuthPrivateKey(xpriv);
   const authAddress = authDerivedPrivKey.publicKey.toAddress(network.getNetwork());
   const authMessage = new bitcore.Message(String(now).concat(walletId).concat(authAddress));
   const authXpubkeySignature = authMessage.sign(authDerivedPrivKey.privateKey);
