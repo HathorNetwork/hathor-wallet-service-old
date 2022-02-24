@@ -236,7 +236,6 @@ test('txProcessor should ignore NFT outputs', async () => {
 
   const txId1 = 'txId1';
   const txId2 = 'txId2';
-  const token = 'tokenId';
   const addr = 'address';
   const walletId = 'walletId';
   const timelock = 1000;

@@ -41,7 +41,6 @@ import {
   getUnixTimestamp,
   isAuthority,
   getAddressPath,
-  getWalletId,
 } from '@src/utils';
 import {
   getWalletFromDbEntry,

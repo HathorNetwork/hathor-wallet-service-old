@@ -35,7 +35,7 @@ import { closeDbAndGetError } from '@src/api/utils';
 import { walletIdProxyHandler } from '@src/commons';
 import Joi from 'joi';
 import bitcore from 'bitcore-lib';
-import { walletUtils, network } from '@hathor/wallet-lib';
+import { network } from '@hathor/wallet-lib';
 
 const mysql = getDbConnection();
 
