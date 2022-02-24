@@ -256,7 +256,7 @@ export const AUTH_MAX_TIMESTAMP_SHIFT_IN_SECONDS = 30;
  * @returns A tuple with the first value being the result of the comparison and the second value the firstAddress derived
  */
 export const validateAuthTimestamp = (timestamp: number, now: number): [boolean, number] => {
-  const timestampShiftInSeconds = Math.abs(now - timestamp);
+  const timestampShiftInSeconds = Math.floor(Math.abs(now - timestamp));
 
   return [timestampShiftInSeconds < AUTH_MAX_TIMESTAMP_SHIFT_IN_SECONDS, timestampShiftInSeconds];
 };
