@@ -626,7 +626,7 @@ test('POST /wallet', async () => {
   expect(returnBody.success).toBe(true);
   // XXX: invoking lambdas is not working on serverless-offline, so for now we are considering a call to the mocked lambda a success:
   expect(mockFn).toHaveBeenCalledWith(XPUBKEY, 10);
-}, 10000);
+}, 30000);
 
 test('POST /wallet should fail with ApiError.WALLET_MAX_RETRIES when max retries are reached', async () => {
   expect.hasAssertions();
@@ -714,7 +714,7 @@ test('POST /wallet should fail with ApiError.WALLET_MAX_RETRIES when max retries
   expect(returnBody.status.status).toStrictEqual(WalletStatus.ERROR);
   expect(returnBody.error).toStrictEqual(ApiError.WALLET_MAX_RETRIES);
   expect(returnBody.status.retryCount).toStrictEqual(5);
-}, 10000); // This is huge for a test, but bitcore-lib takes too long
+}, 30000); // This is huge for a test, but bitcore-lib takes too long
 
 test('PUT /wallet/auth should change the auth_xpub only after validating both the xpub and the auth_xpubkey', async () => {
   expect.hasAssertions();
@@ -785,7 +785,7 @@ test('PUT /wallet/auth should change the auth_xpub only after validating both th
 
   expect(result.statusCode).toBe(200);
   expect(returnBody.status.authXpubkey).toStrictEqual(newAuthXpubkey.toString());
-});
+}, 30000);
 
 test('loadWallet API should fail if a wrong signature is sent', async () => {
   expect.hasAssertions();
@@ -848,7 +848,7 @@ test('loadWallet API should fail if a wrong signature is sent', async () => {
 
   expect(result.statusCode).toStrictEqual(403);
   expect(returnBody.success).toStrictEqual(false);
-});
+}, 30000);
 
 test('loadWallet should update wallet status to ERROR if an error occurs', async () => {
   expect.hasAssertions();
@@ -925,4 +925,4 @@ test('loadWallet should update wallet status to ERROR if an error occurs', async
   const wallet = await Db.getWallet(mysql, walletId);
 
   expect(wallet.status).toStrictEqual(WalletStatus.ERROR);
-});
+}, 30000);
