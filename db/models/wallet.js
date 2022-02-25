@@ -23,6 +23,10 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING(120),
       allowNull: false,
     },
+    auth_xpubkey: {
+      type: DataTypes.STRING(120),
+      allowNull: false,
+    },
     status: {
       type: DataTypes.ENUM(['creating', 'ready', 'error']),
       allowNull: false,

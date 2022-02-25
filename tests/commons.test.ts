@@ -172,10 +172,10 @@ test('getWalletBalanceMap', () => {
     address5: mapAddress5,    // doesn't belong to any started wallet
   };
   const walletAddressMap = {
-    address1: { walletId: 'wallet1', xpubkey: 'xpubkey1', maxGap: 5 },
-    address2: { walletId: 'wallet1', xpubkey: 'xpubkey1', maxGap: 5 },
-    address4: { walletId: 'wallet1', xpubkey: 'xpubkey1', maxGap: 5 },
-    address3: { walletId: 'wallet2', xpubkey: 'xpubkey2', maxGap: 5 },
+    address1: { walletId: 'wallet1', xpubkey: 'xpubkey1', authXpubkey: 'authxpubkey1', maxGap: 5 },
+    address2: { walletId: 'wallet1', xpubkey: 'xpubkey1', authXpubkey: 'authxpubkey1', maxGap: 5 },
+    address4: { walletId: 'wallet1', xpubkey: 'xpubkey1', authXpubkey: 'authxpubkey1', maxGap: 5 },
+    address3: { walletId: 'wallet2', xpubkey: 'xpubkey2', authXpubkey: 'authxpubkey2', maxGap: 5 },
   };
   const mapWallet1 = new TokenBalanceMap();
   mapWallet1.set('token1', new Balance(0, 0));
@@ -219,7 +219,7 @@ test('unlockUtxos', async () => {
   ]);
 
   await addToWalletTable(mysql, [
-    [walletId, 'xpub', 'ready', 10, now, now + 1],
+    [walletId, 'xpub', 'auth_xpubkey', 'ready', 10, now, now + 1],
   ]);
 
   await addToAddressTable(mysql, [{
@@ -330,7 +330,7 @@ test('unlockTimelockedUtxos', async () => {
   ]);
 
   await addToWalletTable(mysql, [
-    [walletId, 'xpub', 'ready', 10, now, now + 1],
+    [walletId, 'xpub', 'auth_xpubkey', 'ready', 10, now, now + 1],
   ]);
 
   await addToAddressTable(mysql, [{

@@ -68,6 +68,7 @@ export enum WalletStatus {
 export interface Wallet {
   walletId: string;
   xpubkey: string;
+  authXpubkey: string,
   maxGap: number;
   status?: WalletStatus;
   retryCount?: number;

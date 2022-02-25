@@ -117,6 +117,13 @@ functions:
           path: wallet/init
           method: post
           cors: true
+  changeWalletAuthXpubApi:
+    handler: src/api/wallet.changeAuthXpub
+    events:
+      - http:
+          path: wallet/auth
+          method: put
+          cors: true
   getWalletStatusApi:
     handler: src/api/wallet.get
     events:
