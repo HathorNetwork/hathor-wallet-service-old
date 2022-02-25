@@ -4,15 +4,24 @@ import { get as addressesGet } from '@src/api/addresses';
 import { get as newAddressesGet } from '@src/api/newAddresses';
 import { get as balancesGet } from '@src/api/balances';
 import { get as txHistoryGet } from '@src/api/txhistory';
-import { get as walletGet, load as walletLoad, loadWallet } from '@src/api/wallet';
+import {
+  get as walletGet,
+  load as walletLoad,
+  loadWallet,
+  changeAuthXpub,
+} from '@src/api/wallet';
 import * as Wallet from '@src/api/wallet';
 import * as Db from '@src/db';
 import { ApiError } from '@src/api/errors';
-import { closeDbConnection, getDbConnection, getUnixTimestamp } from '@src/utils';
+import { closeDbConnection, getDbConnection, getUnixTimestamp, getWalletId } from '@src/utils';
 import { WalletStatus } from '@src/types';
+import { walletUtils, network, HathorWalletServiceWallet } from '@hathor/wallet-lib';
+import bitcore from 'bitcore-lib';
 import {
   ADDRESSES,
   XPUBKEY,
+  AUTH_XPUBKEY,
+  TEST_SEED,
   addToAddressTable,
   addToAddressBalanceTable,
   addToTokenTable,
@@ -61,7 +70,7 @@ const _testMissingWallet = async (fn: APIGatewayProxyHandler, walletId: string, 
 
 const _testWalletNotReady = async (fn: APIGatewayProxyHandler) => {
   const walletId = 'wallet-not-started';
-  await addToWalletTable(mysql, [[walletId, 'aaaa', 'creating', 5, 10000, null]]);
+  await addToWalletTable(mysql, [[walletId, 'aaaa', AUTH_XPUBKEY, 'creating', 5, 10000, null]]);
   const event = makeGatewayEventWithAuthorizer(walletId, {});
   const result = await fn(event, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(result.body as string);
@@ -73,7 +82,7 @@ const _testWalletNotReady = async (fn: APIGatewayProxyHandler) => {
 test('GET /addresses', async () => {
   expect.hasAssertions();
 
-  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'auth_xpubkey', 'ready', 5, 10000, 10001]]);
   await addToAddressTable(mysql, [
     { address: ADDRESSES[0], index: 0, walletId: 'my-wallet', transactions: 0 },
     { address: ADDRESSES[1], index: 1, walletId: 'my-wallet', transactions: 0 },
@@ -102,7 +111,7 @@ test('GET /addresses', async () => {
 test('GET /addresses/new', async () => {
   expect.hasAssertions();
 
-  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'auth_xpubkey', 'ready', 5, 10000, 10001]]);
   await addToAddressTable(mysql, [
     { address: ADDRESSES[0], index: 0, walletId: 'my-wallet', transactions: 0 },
     { address: ADDRESSES[1], index: 1, walletId: 'my-wallet', transactions: 0 },
@@ -139,7 +148,7 @@ test('GET /addresses/new', async () => {
 test('GET /addresses/new with no transactions', async () => {
   expect.hasAssertions();
 
-  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'auth_xpubkey', 'ready', 5, 10000, 10001]]);
   await addToAddressTable(mysql, [
     { address: ADDRESSES[0], index: 0, walletId: 'my-wallet', transactions: 0 },
     { address: ADDRESSES[1], index: 1, walletId: 'my-wallet', transactions: 0 },
@@ -177,7 +186,7 @@ test('GET /addresses/new with no transactions', async () => {
 test('GET /balances', async () => {
   expect.hasAssertions();
 
-  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'auth_xpubkey', 'ready', 5, 10000, 10001]]);
 
   // add tokens
   const token1 = { id: 'token1', name: 'MyToken1', symbol: 'MT1' };
@@ -359,7 +368,7 @@ test('GET /balances', async () => {
 test('GET /txhistory', async () => {
   expect.hasAssertions();
 
-  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'auth_xpubkey', 'ready', 5, 10000, 10001]]);
   await addToWalletTxHistoryTable(mysql, [
     ['my-wallet', 'tx1', '00', 5, 1000, false],
     ['my-wallet', 'tx1', 'token2', '7', 1000, false],
@@ -431,7 +440,7 @@ test('GET /txhistory', async () => {
 test('GET /wallet', async () => {
   expect.hasAssertions();
 
-  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToWalletTable(mysql, [['my-wallet', XPUBKEY, AUTH_XPUBKEY, 'ready', 5, 10000, 10001]]);
 
   // missing wallet
   await _testMissingWallet(walletGet, 'some-wallet');
@@ -443,8 +452,9 @@ test('GET /wallet', async () => {
   expect(result.statusCode).toBe(200);
   expect(returnBody.success).toBe(true);
   expect(returnBody.status).toStrictEqual({
-    walletId: 'my-wallet',
-    xpubkey: 'xpubkey',
+    walletId: getWalletId(XPUBKEY),
+    xpubkey: XPUBKEY,
+    authXpubkey: AUTH_XPUBKEY,
     status: 'ready',
     maxGap: 5,
     retryCount: 0,
@@ -473,25 +483,41 @@ test('POST /wallet', async () => {
   expect(returnBody.details).toHaveLength(1);
   expect(returnBody.details[0].message).toStrictEqual('"value" must be of type object');
 
-  // missing xpubkey
+  // missing xpubkey, auth_xpubkey, signatures and timestamp
   event = makeGatewayEvent({}, JSON.stringify({ param1: 'aaa', firstAddress: 'a' }));
   result = await walletLoad(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(400);
   expect(returnBody.success).toBe(false);
   expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
-  expect(returnBody.details).toHaveLength(2);
+  expect(returnBody.details).toHaveLength(6);
   expect(returnBody.details[0].message).toStrictEqual('"xpubkey" is required');
-  expect(returnBody.details[1].message).toStrictEqual('"param1" is not allowed');
+  expect(returnBody.details[1].message).toStrictEqual('"authXpubkey" is required');
+  expect(returnBody.details[2].message).toStrictEqual('"xpubkeySignature" is required');
+  expect(returnBody.details[3].message).toStrictEqual('"authXpubkeySignature" is required');
+  expect(returnBody.details[4].message).toStrictEqual('"timestamp" is required');
+  expect(returnBody.details[5].message).toStrictEqual('"param1" is not allowed');
+
+  // get the first address
+  const xpubChangeDerivation = walletUtils.xpubDeriveChild(XPUBKEY, 0);
+  const firstAddress = walletUtils.getAddressAtIndex(xpubChangeDerivation, 0, process.env.NETWORK);
 
   // Wrong first address
-  event = makeGatewayEvent({}, JSON.stringify({ xpubkey: XPUBKEY, firstAddress: 'a' }));
+  event = makeGatewayEvent({}, JSON.stringify({
+    xpubkey: XPUBKEY,
+    authXpubkey: AUTH_XPUBKEY,
+    xpubkeySignature: 'xpubkeySignature',
+    authXpubkeySignature: 'authXpubkeySignature',
+    timestamp: Math.floor(Date.now() / 1000),
+    firstAddress: 'a',
+  }));
   result = await walletLoad(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
+
   expect(result.statusCode).toBe(400);
   expect(returnBody.success).toBe(false);
   expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
-  expect(returnBody.message).toStrictEqual('Expected first address to be a but it is HNwiHGHKBNbeJPo9ToWvFWeNQkJrpicYci');
+  expect(returnBody.message).toStrictEqual(`Expected first address to be a but it is ${firstAddress}`);
 
   // Clean database so our pubkey is free to be used again:
 
@@ -504,13 +530,50 @@ test('POST /wallet', async () => {
 
   let mockFn = spy.mockImplementation(mockImplementationSuccess);
 
+  // we need signatures for both the account path and the purpose path:
+  const now = Math.floor(Date.now() / 1000);
+  const walletId = getWalletId(XPUBKEY);
+  const xpriv = walletUtils.getXPrivKeyFromSeed(TEST_SEED, {
+    passphrase: '',
+    networkName: process.env.NETWORK,
+  });
+
+  // account path
+  const accountDerivationIndex = '0\'';
+
+  const derivedPrivKey = walletUtils.deriveXpriv(xpriv, accountDerivationIndex);
+  const address = derivedPrivKey.publicKey.toAddress(network.getNetwork()).toString();
+  const message = new bitcore.Message(String(now).concat(walletId).concat(address));
+  const xpubkeySignature = message.sign(derivedPrivKey.privateKey);
+
+  // auth purpose path (m/280'/280')
+  const authDerivedPrivKey = HathorWalletServiceWallet.deriveAuthPrivateKey(xpriv);
+  const authAddress = authDerivedPrivKey.publicKey.toAddress(network.getNetwork());
+  const authMessage = new bitcore.Message(String(now).concat(walletId).concat(authAddress));
+  const authXpubkeySignature = authMessage.sign(authDerivedPrivKey.privateKey);
+
   // Load success
-  event = makeGatewayEvent({}, JSON.stringify({ xpubkey: XPUBKEY, firstAddress: 'HNwiHGHKBNbeJPo9ToWvFWeNQkJrpicYci' }));
+  event = makeGatewayEvent({}, JSON.stringify({
+    xpubkey: XPUBKEY,
+    xpubkeySignature,
+    authXpubkey: AUTH_XPUBKEY,
+    authXpubkeySignature,
+    firstAddress,
+    timestamp: now,
+  }));
+
   result = await walletLoad(event, null, null) as APIGatewayProxyResult;
   expect(result.statusCode).toBe(200);
 
   // already loaded
-  event = makeGatewayEvent({}, JSON.stringify({ xpubkey: XPUBKEY, firstAddress: 'HNwiHGHKBNbeJPo9ToWvFWeNQkJrpicYci' }));
+  event = makeGatewayEvent({}, JSON.stringify({
+    xpubkey: XPUBKEY,
+    xpubkeySignature,
+    authXpubkey: AUTH_XPUBKEY,
+    authXpubkeySignature,
+    firstAddress,
+    timestamp: now,
+  }));
   result = await walletLoad(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(400);
@@ -522,9 +585,17 @@ test('POST /wallet', async () => {
   mockFn = spy.mockImplementation(mockImplementationFailure);
 
   // fail load and then retry
-  event = makeGatewayEvent({}, JSON.stringify({ xpubkey: XPUBKEY, firstAddress: 'HNwiHGHKBNbeJPo9ToWvFWeNQkJrpicYci' }));
+  event = makeGatewayEvent({}, JSON.stringify({
+    xpubkey: XPUBKEY,
+    xpubkeySignature,
+    authXpubkey: AUTH_XPUBKEY,
+    authXpubkeySignature,
+    firstAddress,
+    timestamp: now,
+  }));
   result = await walletLoad(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
+
   expect(result.statusCode).toBe(200);
   expect(returnBody.success).toBe(true);
 
@@ -532,6 +603,7 @@ test('POST /wallet', async () => {
   event = makeGatewayEventWithAuthorizer(returnBody.status.walletId, null);
   result = await walletGet(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
+
   expect(result.statusCode).toBe(200);
   expect(returnBody.success).toBe(true);
   expect(returnBody.status.status).toStrictEqual('error');
@@ -539,83 +611,441 @@ test('POST /wallet', async () => {
   // retrying should succeed
   mockFn = spy.mockImplementation(mockImplementationSuccess);
 
-  event = makeGatewayEvent({}, JSON.stringify({ xpubkey: XPUBKEY, firstAddress: 'HNwiHGHKBNbeJPo9ToWvFWeNQkJrpicYci' }));
+  event = makeGatewayEvent({}, JSON.stringify({
+    xpubkey: XPUBKEY,
+    xpubkeySignature,
+    authXpubkey: AUTH_XPUBKEY,
+    authXpubkeySignature,
+    firstAddress,
+    timestamp: now,
+  }));
   result = await walletLoad(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
+
   expect(result.statusCode).toBe(200);
   expect(returnBody.success).toBe(true);
   // XXX: invoking lambdas is not working on serverless-offline, so for now we are considering a call to the mocked lambda a success:
   expect(mockFn).toHaveBeenCalledWith(XPUBKEY, 10);
-});
+}, 30000);
 
 test('POST /wallet should fail with ApiError.WALLET_MAX_RETRIES when max retries are reached', async () => {
   expect.hasAssertions();
+
+  // get the first address
+  const xpubChangeDerivation = walletUtils.xpubDeriveChild(XPUBKEY, 0);
+  const firstAddress = walletUtils.getAddressAtIndex(xpubChangeDerivation, 0, process.env.NETWORK);
+
+  // we need signatures for both the account path and the purpose path:
+  const now = Math.floor(Date.now() / 1000);
+  const walletId = getWalletId(XPUBKEY);
+  const xpriv = walletUtils.getXPrivKeyFromSeed(TEST_SEED, {
+    passphrase: '',
+    networkName: process.env.NETWORK,
+  });
+
+  // account path
+  const accountDerivationIndex = '0\'';
+
+  const derivedPrivKey = walletUtils.deriveXpriv(xpriv, accountDerivationIndex);
+  const address = derivedPrivKey.publicKey.toAddress(network.getNetwork()).toString();
+  const message = new bitcore.Message(String(now).concat(walletId).concat(address));
+  const xpubkeySignature = message.sign(derivedPrivKey.privateKey);
+
+  // auth purpose path (m/280'/280')
+  const authDerivedPrivKey = HathorWalletServiceWallet.deriveAuthPrivateKey(xpriv);
+  const authAddress = authDerivedPrivKey.publicKey.toAddress(network.getNetwork());
+  const authMessage = new bitcore.Message(String(now).concat(walletId).concat(authAddress));
+  const authXpubkeySignature = authMessage.sign(authDerivedPrivKey.privateKey);
 
   const spy = jest.spyOn(Wallet, 'invokeLoadWalletAsync');
   const mockImplementationFailure = jest.fn(() => Promise.reject(new Error('error!')));
   spy.mockImplementation(mockImplementationFailure);
 
+  const params = {
+    xpubkey: XPUBKEY,
+    xpubkeySignature,
+    authXpubkey: AUTH_XPUBKEY,
+    authXpubkeySignature,
+    firstAddress,
+    timestamp: now,
+  };
+
   // Load failure
-  let event = makeGatewayEvent({}, JSON.stringify({ xpubkey: XPUBKEY, firstAddress: 'HNwiHGHKBNbeJPo9ToWvFWeNQkJrpicYci' }));
+  let event = makeGatewayEvent({}, JSON.stringify(params));
   let result = await walletLoad(event, null, null) as APIGatewayProxyResult;
   let returnBody = JSON.parse(result.body as string);
+
   expect(result.statusCode).toBe(200);
   expect(returnBody.status.status).toStrictEqual(WalletStatus.ERROR);
   expect(returnBody.status.retryCount).toStrictEqual(1);
 
-  event = makeGatewayEvent({}, JSON.stringify({ xpubkey: XPUBKEY, firstAddress: 'HNwiHGHKBNbeJPo9ToWvFWeNQkJrpicYci' }));
+  event = makeGatewayEvent({}, JSON.stringify(params));
   result = await walletLoad(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(200);
   expect(returnBody.status.status).toStrictEqual(WalletStatus.ERROR);
   expect(returnBody.status.retryCount).toStrictEqual(2);
 
-  event = makeGatewayEvent({}, JSON.stringify({ xpubkey: XPUBKEY, firstAddress: 'HNwiHGHKBNbeJPo9ToWvFWeNQkJrpicYci' }));
+  event = makeGatewayEvent({}, JSON.stringify(params));
   result = await walletLoad(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(200);
   expect(returnBody.status.status).toStrictEqual(WalletStatus.ERROR);
   expect(returnBody.status.retryCount).toStrictEqual(3);
 
-  event = makeGatewayEvent({}, JSON.stringify({ xpubkey: XPUBKEY, firstAddress: 'HNwiHGHKBNbeJPo9ToWvFWeNQkJrpicYci' }));
+  event = makeGatewayEvent({}, JSON.stringify(params));
   result = await walletLoad(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(200);
   expect(returnBody.status.status).toStrictEqual(WalletStatus.ERROR);
   expect(returnBody.status.retryCount).toStrictEqual(4);
 
-  event = makeGatewayEvent({}, JSON.stringify({ xpubkey: XPUBKEY, firstAddress: 'HNwiHGHKBNbeJPo9ToWvFWeNQkJrpicYci' }));
+  event = makeGatewayEvent({}, JSON.stringify(params));
   result = await walletLoad(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(200);
   expect(returnBody.status.status).toStrictEqual(WalletStatus.ERROR);
   expect(returnBody.status.retryCount).toStrictEqual(5);
 
-  event = makeGatewayEvent({}, JSON.stringify({ xpubkey: XPUBKEY, firstAddress: 'HNwiHGHKBNbeJPo9ToWvFWeNQkJrpicYci' }));
+  event = makeGatewayEvent({}, JSON.stringify(params));
   result = await walletLoad(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(400);
   expect(returnBody.status.status).toStrictEqual(WalletStatus.ERROR);
   expect(returnBody.error).toStrictEqual(ApiError.WALLET_MAX_RETRIES);
   expect(returnBody.status.retryCount).toStrictEqual(5);
+}, 30000); // This is huge for a test, but bitcore-lib takes too long
+
+test('POST /wallet/init should validate attributes properly', async () => {
+  expect.hasAssertions();
+
+  const params = {
+    xpubkey: XPUBKEY,
+    authXpubkey: AUTH_XPUBKEY,
+  };
+
+  const event = makeGatewayEvent({}, JSON.stringify(params));
+  const result = await walletLoad(event, null, null) as APIGatewayProxyResult;
+  const returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toStrictEqual(false);
+  expect(returnBody.details).toHaveLength(4);
+  expect(returnBody.details[0].message).toStrictEqual('"xpubkeySignature" is required');
+  expect(returnBody.details[1].message).toStrictEqual('"authXpubkeySignature" is required');
+  expect(returnBody.details[2].message).toStrictEqual('"timestamp" is required');
+  expect(returnBody.details[3].message).toStrictEqual('"firstAddress" is required');
+});
+
+test('PUT /wallet/auth should validate attributes properly', async () => {
+  expect.hasAssertions();
+
+  const params = {
+    xpubkey: XPUBKEY,
+    authXpubkey: AUTH_XPUBKEY,
+  };
+
+  const event = makeGatewayEvent({}, JSON.stringify(params));
+  const result = await changeAuthXpub(event, null, null) as APIGatewayProxyResult;
+  const returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toStrictEqual(false);
+  expect(returnBody.details).toHaveLength(4);
+  expect(returnBody.details[0].message).toStrictEqual('"xpubkeySignature" is required');
+  expect(returnBody.details[1].message).toStrictEqual('"authXpubkeySignature" is required');
+  expect(returnBody.details[2].message).toStrictEqual('"timestamp" is required');
+  expect(returnBody.details[3].message).toStrictEqual('"firstAddress" is required');
+});
+
+test('PUT /wallet/auth should fail if wallet is not yet started', async () => {
+  expect.hasAssertions();
+
+  const event = makeGatewayEvent({}, JSON.stringify({
+    xpubkey: XPUBKEY,
+    xpubkeySignature: 'xpubkey-signature',
+    authXpubkey: AUTH_XPUBKEY,
+    authXpubkeySignature: 'auth-xpubkey-signature',
+    firstAddress: ADDRESSES[0],
+    timestamp: Math.floor(Date.now() / 1000),
+  }));
+
+  const result = await changeAuthXpub(event, null, null) as APIGatewayProxyResult;
+  const returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(404);
+  expect(returnBody.success).toStrictEqual(false);
+  expect(returnBody.error).toStrictEqual(ApiError.WALLET_NOT_FOUND);
+});
+
+test('changeAuthXpub should fail if timestamp is shifted for more than 30s', async () => {
+  expect.hasAssertions();
+
+  const event = makeGatewayEvent({}, JSON.stringify({
+    xpubkey: XPUBKEY,
+    xpubkeySignature: 'xpubkey-signature',
+    authXpubkey: AUTH_XPUBKEY,
+    authXpubkeySignature: 'auth-xpubkey-signature',
+    firstAddress: ADDRESSES[0],
+    timestamp: Math.floor(Date.now() / 1000) - 40,
+  }));
+
+  const result = await changeAuthXpub(event, null, null) as APIGatewayProxyResult;
+  const returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+  expect(returnBody.details).toHaveLength(1);
+  expect(returnBody.details[0].message).toBe('The timestamp is shifted 40(s). Limit is 30(s).');
+});
+
+test('loadWallet should fail if signatures do not match', async () => {
+  expect.hasAssertions();
+
+  const event = makeGatewayEvent({}, JSON.stringify({
+    xpubkey: XPUBKEY,
+    xpubkeySignature: 'xpubkey-signature',
+    authXpubkey: AUTH_XPUBKEY,
+    authXpubkeySignature: 'auth-xpubkey-signature',
+    firstAddress: ADDRESSES[0],
+    timestamp: Math.floor(Date.now() / 1000),
+  }));
+
+  const result = await walletLoad(event, null, null) as APIGatewayProxyResult;
+  const returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(403);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.details[0].message).toBe('Signatures are not valid');
+});
+
+test('changeAuthXpub should fail if signatures do not match', async () => {
+  expect.hasAssertions();
+
+  const walletId = getWalletId(XPUBKEY);
+  await addToWalletTable(mysql, [[walletId, XPUBKEY, AUTH_XPUBKEY, 'creating', 5, 10000, null]]);
+
+  const event = makeGatewayEvent({}, JSON.stringify({
+    xpubkey: XPUBKEY,
+    xpubkeySignature: 'xpubkey-signature',
+    authXpubkey: AUTH_XPUBKEY,
+    authXpubkeySignature: 'auth-xpubkey-signature',
+    firstAddress: ADDRESSES[0],
+    timestamp: Math.floor(Date.now() / 1000),
+  }));
+
+  const result = await changeAuthXpub(event, null, null) as APIGatewayProxyResult;
+  const returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(403);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.details[0].message).toBe('Signatures are not valid');
+});
+
+test('PUT /wallet/auth should change the auth_xpub only after validating both the xpub and the auth_xpubkey', async () => {
+  expect.hasAssertions();
+
+  // get the first address
+  const xpubChangeDerivation = walletUtils.xpubDeriveChild(XPUBKEY, 0);
+  const firstAddress = walletUtils.getAddressAtIndex(xpubChangeDerivation, 0, process.env.NETWORK);
+
+  // we need signatures for both the account path and the purpose path:
+  const now = Math.floor(Date.now() / 1000);
+  const walletId = getWalletId(XPUBKEY);
+  const xpriv = walletUtils.getXPrivKeyFromSeed(TEST_SEED, {
+    passphrase: '',
+    networkName: process.env.NETWORK,
+  });
+
+  // account path
+  const accountDerivationIndex = '0\'';
+
+  const derivedPrivKey = walletUtils.deriveXpriv(xpriv, accountDerivationIndex);
+  const address = derivedPrivKey.publicKey.toAddress(network.getNetwork()).toString();
+  const message = new bitcore.Message(String(now).concat(walletId).concat(address));
+  const xpubkeySignature = message.sign(derivedPrivKey.privateKey);
+
+  // auth purpose path (m/280'/280')
+  const authDerivedPrivKey = HathorWalletServiceWallet.deriveAuthPrivateKey(xpriv);
+  const authAddress = authDerivedPrivKey.publicKey.toAddress(network.getNetwork());
+  const authMessage = new bitcore.Message(String(now).concat(walletId).concat(authAddress));
+  const authXpubkeySignature = authMessage.sign(authDerivedPrivKey.privateKey);
+
+  const spy = jest.spyOn(Wallet, 'invokeLoadWalletAsync');
+  const mockImplementationSuccess = jest.fn(() => Promise.resolve());
+  spy.mockImplementation(mockImplementationSuccess);
+
+  const params = {
+    xpubkey: XPUBKEY,
+    xpubkeySignature,
+    authXpubkey: AUTH_XPUBKEY,
+    authXpubkeySignature,
+    firstAddress,
+    timestamp: now,
+  };
+  // Load wallet should create the wallet row
+  let event = makeGatewayEvent({}, JSON.stringify(params));
+  let result = await walletLoad(event, null, null) as APIGatewayProxyResult;
+  let returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.status.authXpubkey).toStrictEqual(AUTH_XPUBKEY);
+
+  // m/280'/280'/1
+  const newAuthPurposePath = xpriv.deriveNonCompliantChild('m/280\'/280\'/1');
+  const newAuthXpubkey = newAuthPurposePath.xpubkey;
+  const newAuthAddress = newAuthPurposePath.publicKey.toAddress(network.getNetwork());
+  const newAuthMessage = new bitcore.Message(String(now).concat(walletId).concat(newAuthAddress));
+  const newAuthSignature = newAuthMessage.sign(newAuthPurposePath.privateKey);
+
+  const changeAuthXpubParams = {
+    ...params,
+    authXpubkey: newAuthXpubkey,
+    authXpubkeySignature: newAuthSignature,
+  };
+
+  // Load success
+  event = makeGatewayEvent({}, JSON.stringify(changeAuthXpubParams));
+  result = await changeAuthXpub(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.status.authXpubkey).toStrictEqual(newAuthXpubkey.toString());
+}, 30000);
+
+test('loadWallet API should fail if a wrong signature is sent', async () => {
+  expect.hasAssertions();
+
+  const xpubChangeDerivation = walletUtils.xpubDeriveChild(XPUBKEY, 0);
+  const firstAddress = walletUtils.getAddressAtIndex(xpubChangeDerivation, 0, process.env.NETWORK);
+
+  const now = Math.floor(Date.now() / 1000);
+  const walletId = getWalletId(XPUBKEY);
+  const xpriv = walletUtils.getXPrivKeyFromSeed(TEST_SEED, {
+    passphrase: '',
+    networkName: process.env.NETWORK,
+  });
+
+  const invalidXpubkeySignature = 'WRONG_XPUBKEY_SIGNATURE';
+  const invalidAuthXpubkeySignature = 'WRONG_AUTH_XPUBKEY_SIGNATURE';
+
+  // account path
+  const accountDerivationIndex = '0\'';
+
+  const derivedPrivKey = walletUtils.deriveXpriv(xpriv, accountDerivationIndex);
+  const address = derivedPrivKey.publicKey.toAddress(network.getNetwork()).toString();
+  const message = new bitcore.Message(String(now).concat(walletId).concat(address));
+  const xpubkeySignature = message.sign(derivedPrivKey.privateKey);
+
+  // auth purpose path (m/280'/280')
+  const authDerivedPrivKey = HathorWalletServiceWallet.deriveAuthPrivateKey(xpriv);
+  const authAddress = authDerivedPrivKey.publicKey.toAddress(network.getNetwork());
+  const authMessage = new bitcore.Message(String(now).concat(walletId).concat(authAddress));
+  const authXpubkeySignature = authMessage.sign(authDerivedPrivKey.privateKey);
+
+  const loadWalletAsyncSpy = jest.spyOn(Wallet, 'invokeLoadWalletAsync');
+  const mockImplementationSuccess = jest.fn(() => Promise.resolve());
+  loadWalletAsyncSpy.mockImplementation(mockImplementationSuccess);
+
+  let event = makeGatewayEvent({}, JSON.stringify({
+    xpubkey: XPUBKEY,
+    xpubkeySignature: invalidXpubkeySignature,
+    authXpubkey: AUTH_XPUBKEY,
+    authXpubkeySignature,
+    firstAddress,
+    timestamp: now,
+  }));
+  let result = await walletLoad(event, null, null) as APIGatewayProxyResult;
+  let returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toStrictEqual(403);
+  expect(returnBody.success).toStrictEqual(false);
+
+  event = makeGatewayEvent({}, JSON.stringify({
+    xpubkey: XPUBKEY,
+    xpubkeySignature,
+    authXpubkey: AUTH_XPUBKEY,
+    authXpubkeySignature: invalidAuthXpubkeySignature,
+    firstAddress,
+    timestamp: now,
+  }));
+  result = await walletLoad(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toStrictEqual(403);
+  expect(returnBody.success).toStrictEqual(false);
+}, 30000);
+
+test('loadWallet should fail if timestamp is shifted for more than 30s', async () => {
+  expect.hasAssertions();
+
+  const event = makeGatewayEvent({}, JSON.stringify({
+    xpubkey: XPUBKEY,
+    xpubkeySignature: 'xpubkey-signature',
+    authXpubkey: AUTH_XPUBKEY,
+    authXpubkeySignature: 'auth-xpubkey-signature',
+    firstAddress: ADDRESSES[0],
+    timestamp: Math.floor(Date.now() / 1000) - 40,
+  }));
+
+  const result = await walletLoad(event, null, null) as APIGatewayProxyResult;
+  const returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+  expect(returnBody.details).toHaveLength(1);
+  expect(returnBody.details[0].message).toBe('The timestamp is shifted 40(s). Limit is 30(s).');
 });
 
 test('loadWallet should update wallet status to ERROR if an error occurs', async () => {
   expect.hasAssertions();
+
+  // get the first address
+  const xpubChangeDerivation = walletUtils.xpubDeriveChild(XPUBKEY, 0);
+  const firstAddress = walletUtils.getAddressAtIndex(xpubChangeDerivation, 0, process.env.NETWORK);
+
+  // we need signatures for both the account path and the purpose path:
+  const now = Math.floor(Date.now() / 1000);
+  const walletId = getWalletId(XPUBKEY);
+  const xpriv = walletUtils.getXPrivKeyFromSeed(TEST_SEED, {
+    passphrase: '',
+    networkName: process.env.NETWORK,
+  });
+
+  // account path
+  const accountDerivationIndex = '0\'';
+
+  const derivedPrivKey = walletUtils.deriveXpriv(xpriv, accountDerivationIndex);
+  const address = derivedPrivKey.publicKey.toAddress(network.getNetwork()).toString();
+  const message = new bitcore.Message(String(now).concat(walletId).concat(address));
+  const xpubkeySignature = message.sign(derivedPrivKey.privateKey);
+
+  // auth purpose path (m/280'/280')
+  const authDerivedPrivKey = HathorWalletServiceWallet.deriveAuthPrivateKey(xpriv);
+  const authAddress = authDerivedPrivKey.publicKey.toAddress(network.getNetwork());
+  const authMessage = new bitcore.Message(String(now).concat(walletId).concat(authAddress));
+  const authXpubkeySignature = authMessage.sign(authDerivedPrivKey.privateKey);
 
   const loadWalletAsyncSpy = jest.spyOn(Wallet, 'invokeLoadWalletAsync');
   const mockImplementationSuccess = jest.fn(() => Promise.resolve());
   loadWalletAsyncSpy.mockImplementation(mockImplementationSuccess);
 
   // wallet should be 'creating'
-  const event = makeGatewayEvent({}, JSON.stringify({ xpubkey: XPUBKEY, firstAddress: 'HNwiHGHKBNbeJPo9ToWvFWeNQkJrpicYci' }));
+  const event = makeGatewayEvent({}, JSON.stringify({
+    xpubkey: XPUBKEY,
+    xpubkeySignature,
+    authXpubkey: AUTH_XPUBKEY,
+    authXpubkeySignature,
+    firstAddress,
+    timestamp: now,
+  }));
   const result = await walletLoad(event, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(result.body as string);
 
   expect(result.statusCode).toBe(200);
   expect(returnBody.status.status).toStrictEqual(WalletStatus.CREATING);
-
-  const walletId = returnBody.status.walletId;
 
   const dbSpy = jest.spyOn(Db, 'addNewAddresses');
   const mockImplementationFailure = jest.fn(() => Promise.reject(new Error('error!')));
@@ -644,4 +1074,4 @@ test('loadWallet should update wallet status to ERROR if an error occurs', async
   const wallet = await Db.getWallet(mysql, walletId);
 
   expect(wallet.status).toStrictEqual(WalletStatus.ERROR);
-});
+}, 30000);

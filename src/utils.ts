@@ -9,6 +9,7 @@ import { createHash, HexBase64Latin1Encoding } from 'crypto';
 
 import serverlessMysql, { ServerlessMysql } from 'serverless-mysql';
 import hathorLib from '@hathor/wallet-lib';
+import bitcore from 'bitcore-lib';
 import fullnode from '@src/fullnode';
 
 /* TODO: We should remove this as soon as the wallet-lib is refactored
@@ -194,3 +195,68 @@ export const fetchBlockHeight = async (txId: string): Promise<[number, any]> => 
 export const getAddressPath = (index: number): string => (
   `m/44'/${hathorLib.constants.HATHOR_BIP44_CODE}'/0'/0/${index}`
 );
+
+/**
+ * Verify a signature for a given timestamp and xpubkey
+ *
+ * @param signature - The signature done by the xpriv of the wallet
+ * @param timestamp - Unix Timestamp of the signature
+ * @param address - The address of the xpubkey used to create the walletId
+ * @param walletId - The walletId, a sha512d of the xpubkey
+ * @returns true if the signature matches the other params
+ */
+export const verifySignature = (
+  signature: string,
+  timestamp: number,
+  address: bitcore.Address,
+  walletId: string,
+): boolean => {
+  try {
+    const message = String(timestamp).concat(walletId).concat(address);
+    return new bitcore.Message(message).verify(address, signature);
+  } catch (e) {
+    // Since this will try to verify the signature passing user input, the verify method might
+    // throw, we can just return false in this case.
+    return false;
+  }
+};
+
+/**
+ * Verifies that the expected first address (received as a param) is the same as one
+ * derived from the xpubkey param on the change 0 path
+ *
+ * @param expectedFirstAddress - The expected first address
+ * @param xpubkey - The xpubkey to derive the change 0 path
+ *
+ * @returns A tuple with the first value being the result of the comparison and the second value the firstAddress derived
+ */
+export const confirmFirstAddress = (expectedFirstAddress: string, xpubkey: string): [boolean, string] => {
+  // First derive xpub to change 0 path
+  const derivedXpub = hathorLib.walletUtils.xpubDeriveChild(xpubkey, 0);
+  // Then get first address
+  const firstAddress = hathorLib.walletUtils.getAddressAtIndex(derivedXpub, 0, process.env.NETWORK);
+
+  return [
+    firstAddress === expectedFirstAddress,
+    firstAddress,
+  ];
+};
+
+/**
+ * A constant for the max shift for the timestamp used in auth
+ */
+export const AUTH_MAX_TIMESTAMP_SHIFT_IN_SECONDS = 30;
+
+/**
+ * Verifies that the timestamp has not shifted for more than AUTH_MAX_TIMESTAMP_SHIFT_IN_SECONDS
+ *
+ * @param timestamp - The timestamp to check, in **seconds**
+ * @param now - The current timestamp
+ *
+ * @returns A tuple with the first value being the result of the comparison and the second value the firstAddress derived
+ */
+export const validateAuthTimestamp = (timestamp: number, now: number): [boolean, number] => {
+  const timestampShiftInSeconds = Math.floor(Math.abs(now - timestamp));
+
+  return [timestampShiftInSeconds < AUTH_MAX_TIMESTAMP_SHIFT_IN_SECONDS, timestampShiftInSeconds];
+};

@@ -80,7 +80,7 @@ test('POST /txproposals with null as param should fail with ApiError.INVALID_PAY
 test('POST /txproposals with utxos that are already used on another txproposal should fail with ApiError.INPUTS_ALREADY_USED', async () => {
   expect.hasAssertions();
 
-  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'auth_xpubkey', 'ready', 5, 10000, 10001]]);
   await addToAddressTable(mysql, [{
     address: ADDRESSES[0],
     index: 0,
@@ -126,9 +126,18 @@ test('POST /txproposals with utxos that are already used on another txproposal s
   }]);
 
   // only one output, spending the whole 300 utxo of token1
-  const outputs = [new hathorLib.Output(300, new hathorLib.Address(ADDRESSES[0], { network: new hathorLib.Network(process.env.NETWORK) }), {
-    tokenData: 1,
-  })];
+  const p2pkhAddress = new hathorLib.P2PKH(new hathorLib.Address(ADDRESSES[0], {
+    network: new hathorLib.Network(process.env.NETWORK),
+  })).createScript();
+
+  const outputs = [
+    new hathorLib.Output(
+      300,
+      p2pkhAddress, {
+        tokenData: 1,
+      },
+    ),
+  ];
   const inputs = [new hathorLib.Input(utxos[0][0], utxos[0][1])];
   const transaction = new hathorLib.Transaction(inputs, outputs, { tokens: [token1] });
 
@@ -171,7 +180,7 @@ test('POST /txproposals with too many outputs should fail with ApiError.TOO_MANY
     maxNumberOutputs: 2, // mocking to force a failure
   });
 
-  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'auth_xpubkey', 'ready', 5, 10000, 10001]]);
   await addToAddressTable(mysql, [{
     address: ADDRESSES[0],
     index: 0,
@@ -189,9 +198,9 @@ test('POST /txproposals with too many outputs should fail with ApiError.TOO_MANY
   ];
 
   const outputs = [...Array(10).keys()].map(() => (
-    new hathorLib.Output(300, new hathorLib.Address(ADDRESSES[0], {
+    new hathorLib.Output(300, new hathorLib.P2PKH(new hathorLib.Address(ADDRESSES[0], {
       network: new hathorLib.Network(process.env.NETWORK),
-    }), {
+    })).createScript(), {
       tokenData: 1,
     })
   ));
@@ -212,7 +221,7 @@ test('POST /txproposals with too many outputs should fail with ApiError.TOO_MANY
 test('POST /txproposals with a wallet that is not ready should fail with ApiError.WALLET_NOT_READY', async () => {
   expect.hasAssertions();
 
-  await addToWalletTable(mysql, [['not-ready-wallet', 'xpubkey', 'creating', 5, 10000, null]]);
+  await addToWalletTable(mysql, [['not-ready-wallet', 'xpubkey', 'auth_xpubkey', 'creating', 5, 10000, null]]);
   await addToAddressTable(mysql, [{
     address: ADDRESSES[0],
     index: 0,
@@ -264,7 +273,7 @@ test('POST /txproposals with a wallet that is not ready should fail with ApiErro
 test('PUT /txproposals/{proposalId} with an empty body should fail with ApiError.INVALID_PAYLOAD', async () => {
   expect.hasAssertions();
 
-  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'auth_xpubkey', 'ready', 5, 10000, 10001]]);
   await addToAddressTable(mysql, [{
     address: ADDRESSES[0],
     index: 0,
@@ -310,9 +319,16 @@ test('PUT /txproposals/{proposalId} with an empty body should fail with ApiError
   }]);
 
   // only one output, spending the whole 300 utxo of token1
-  const outputs = [new hathorLib.Output(300, new hathorLib.Address(ADDRESSES[0], { network: new hathorLib.Network(process.env.NETWORK) }), {
-    tokenData: 1,
-  })];
+  const outputs = [
+    new hathorLib.Output(
+      300,
+      new hathorLib.P2PKH(new hathorLib.Address(ADDRESSES[0], {
+        network: new hathorLib.Network(process.env.NETWORK),
+      })).createScript(), {
+        tokenData: 1,
+      },
+    ),
+  ];
   const inputs = [new hathorLib.Input(utxos[0][0], utxos[0][1])];
   const transaction = new hathorLib.Transaction(inputs, outputs, { tokens: [token1] });
 
@@ -361,7 +377,7 @@ test('PUT /txproposals/{proposalId} with a invalid proposalId should fail with A
 test('PUT /txproposals/{proposalId} on a proposal which status is not OPEN or SEND_ERROR should fail with ApiError.TX_PROPOSAL_NOT_OPEN', async () => {
   expect.hasAssertions();
 
-  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'auth_xpubkey', 'ready', 5, 10000, 10001]]);
   await addToAddressTable(mysql, [{
     address: ADDRESSES[0],
     index: 0,
@@ -407,9 +423,20 @@ test('PUT /txproposals/{proposalId} on a proposal which status is not OPEN or SE
   }]);
 
   // only one output, spending the whole 300 utxo of token1
-  const outputs = [new hathorLib.Output(300, new hathorLib.Address(ADDRESSES[0], { network: new hathorLib.Network(process.env.NETWORK) }), {
-    tokenData: 1,
-  })];
+  const outputs = [
+    new hathorLib.Output(
+      300,
+      new hathorLib.P2PKH(
+        new hathorLib.Address(
+          ADDRESSES[0], {
+            network: new hathorLib.Network(process.env.NETWORK),
+          },
+        ),
+      ).createScript(), {
+        tokenData: 1,
+      },
+    ),
+  ];
   const inputs = [new hathorLib.Input(utxos[0][0], utxos[0][1])];
   const transaction = new hathorLib.Transaction(inputs, outputs, { tokens: [token1] });
 
@@ -438,7 +465,7 @@ test('PUT /txproposals/{proposalId} on a proposal which status is not OPEN or SE
 test('PUT /txproposals/{proposalId} on a proposal which is not owned by the user\'s wallet should fail with ApiError.FORBIDDEN', async () => {
   expect.hasAssertions();
 
-  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'auth_xpubkey', 'ready', 5, 10000, 10001]]);
   await addToAddressTable(mysql, [{
     address: ADDRESSES[0],
     index: 0,
@@ -484,9 +511,18 @@ test('PUT /txproposals/{proposalId} on a proposal which is not owned by the user
   }]);
 
   // only one output, spending the whole 300 utxo of token1
-  const outputs = [new hathorLib.Output(300, new hathorLib.Address(ADDRESSES[0], { network: new hathorLib.Network(process.env.NETWORK) }), {
-    tokenData: 1,
-  })];
+  const outputs = [
+    new hathorLib.Output(
+      300,
+      new hathorLib.P2PKH(new hathorLib.Address(
+        ADDRESSES[0], {
+          network: new hathorLib.Network(process.env.NETWORK),
+        },
+      )).createScript(), {
+        tokenData: 1,
+      },
+    ),
+  ];
   const inputs = [new hathorLib.Input(utxos[0][0], utxos[0][1])];
   const transaction = new hathorLib.Transaction(inputs, outputs, { tokens: [token1] });
 
@@ -541,7 +577,7 @@ test('PUT /txproposals/{proposalId} with an invalid txHex should fail and update
     }),
   });
 
-  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'auth_xpubkey', 'ready', 5, 10000, 10001]]);
   await addToAddressTable(mysql, [{
     address: ADDRESSES[0],
     index: 0,
@@ -587,9 +623,18 @@ test('PUT /txproposals/{proposalId} with an invalid txHex should fail and update
   }]);
 
   // only one output, spending the whole 300 utxo of token1
-  const outputs = [new hathorLib.Output(300, new hathorLib.Address(ADDRESSES[0], { network: new hathorLib.Network(process.env.NETWORK) }), {
-    tokenData: 1,
-  })];
+  const outputs = [
+    new hathorLib.Output(
+      300,
+      new hathorLib.P2PKH(new hathorLib.Address(
+        ADDRESSES[0], {
+          network: new hathorLib.Network(process.env.NETWORK),
+        },
+      )).createScript(), {
+        tokenData: 1,
+      },
+    ),
+  ];
   const inputs = [new hathorLib.Input(utxos[0][0], utxos[0][1])];
   const transaction = new hathorLib.Transaction(inputs, outputs, { tokens: [token1] });
 
@@ -638,7 +683,7 @@ test('PUT /txproposals/{proposalId} should update tx_proposal to SEND_ERROR on f
     }),
   });
 
-  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'auth_xpubkey', 'ready', 5, 10000, 10001]]);
   await addToAddressTable(mysql, [{
     address: ADDRESSES[0],
     index: 0,
@@ -684,9 +729,18 @@ test('PUT /txproposals/{proposalId} should update tx_proposal to SEND_ERROR on f
   }]);
 
   // only one output, spending the whole 300 utxo of token1
-  const outputs = [new hathorLib.Output(300, new hathorLib.Address(ADDRESSES[0], { network: new hathorLib.Network(process.env.NETWORK) }), {
-    tokenData: 1,
-  })];
+  const outputs = [
+    new hathorLib.Output(
+      300,
+      new hathorLib.P2PKH(new hathorLib.Address(
+        ADDRESSES[0], {
+          network: new hathorLib.Network(process.env.NETWORK),
+        },
+      )).createScript(), {
+        tokenData: 1,
+      },
+    ),
+  ];
   const inputs = [new hathorLib.Input(utxos[0][0], utxos[0][1])];
   const transaction = new hathorLib.Transaction(inputs, outputs, { tokens: [token1] });
 
@@ -712,7 +766,7 @@ test('PUT /txproposals/{proposalId} should update tx_proposal to SEND_ERROR on f
 test('DELETE /txproposals/{proposalId} should delete a tx_proposal and remove the utxos associated to it', async () => {
   expect.hasAssertions();
 
-  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'auth_xpubkey', 'ready', 5, 10000, 10001]]);
   await addToAddressTable(mysql, [{
     address: ADDRESSES[0],
     index: 0,
@@ -758,9 +812,18 @@ test('DELETE /txproposals/{proposalId} should delete a tx_proposal and remove th
   }]);
 
   // only one output, spending the whole 300 utxo of token1
-  const outputs = [new hathorLib.Output(300, new hathorLib.Address(ADDRESSES[0], { network: new hathorLib.Network(process.env.NETWORK) }), {
-    tokenData: 1,
-  })];
+  const outputs = [
+    new hathorLib.Output(
+      300,
+      new hathorLib.P2PKH(new hathorLib.Address(
+        ADDRESSES[0], {
+          network: new hathorLib.Network(process.env.NETWORK),
+        },
+      )).createScript(), {
+        tokenData: 1,
+      },
+    ),
+  ];
   const inputs = [new hathorLib.Input(utxos[0][0], utxos[0][1])];
   const transaction = new hathorLib.Transaction(inputs, outputs, { tokens: [token1] });
 
@@ -836,214 +899,7 @@ test('DELETE /txproposals/{proposalId} should fail with ApiError.TX_PROPOSAL_NOT
 test('POST /txproposals one output and input on txHex', async () => {
   expect.hasAssertions();
 
-  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
-  await addToAddressTable(mysql, [{
-    address: ADDRESSES[0],
-    index: 0,
-    walletId: 'my-wallet',
-    transactions: 2,
-  }]);
-
-  const token1 = '004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50';
-  const token2 = '002f2bcc3261b4fb8510a458ed9df9f6ba2a413ee35901b3c5f81b0c085287e2';
-
-  const utxos = [
-    ['004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50', 0, token1, ADDRESSES[0], 300, 0, null, null, false],
-    ['0000001e39bc37fe8710c01cc1e8c0a937bf6f9337551fbbfddc222bfc28c197', 0, token1, ADDRESSES[0], 100, 0, null, null, false],
-    ['00000060a25077e48926bcd9473d77259296e123ec6af1c1a16c1c381093ab90', 0, token2, ADDRESSES[0], 300, 0, null, null, false],
-  ];
-
-  await addToUtxoTable(mysql, utxos);
-  await addToWalletBalanceTable(mysql, [{
-    walletId: 'my-wallet',
-    tokenId: 'token1',
-    unlockedBalance: 400,
-    lockedBalance: 0,
-    unlockedAuthorities: 0,
-    lockedAuthorities: 0,
-    timelockExpires: null,
-    transactions: 2,
-  }, {
-    walletId: 'my-wallet',
-    tokenId: 'token2',
-    unlockedBalance: 300,
-    lockedBalance: 0,
-    unlockedAuthorities: 0,
-    lockedAuthorities: 0,
-    timelockExpires: null,
-    transactions: 1,
-  }]);
-
-  await addToAddressTable(mysql, [{
-    address: ADDRESSES[1],
-    index: 1,
-    walletId: 'my-wallet',
-    transactions: 0,
-  }]);
-
-  // only one output, spending the whole 300 utxo of token1
-  const outputs = [new hathorLib.Output(300, new hathorLib.Address(ADDRESSES[0], { network: new hathorLib.Network(process.env.NETWORK) }), {
-    tokenData: 1,
-  })];
-  const inputs = [new hathorLib.Input(utxos[0][0], utxos[0][1])];
-  const transaction = new hathorLib.Transaction(inputs, outputs, { tokens: [token1] });
-
-  const txHex = transaction.toHex();
-  const event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({ txHex }));
-  const result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
-  const returnBody = JSON.parse(result.body as string);
-
-  expect(result.statusCode).toBe(201);
-  expect(returnBody.success).toBe(true);
-  expect(returnBody.txProposalId).toHaveLength(36);
-  expect(returnBody.inputs).toHaveLength(1);
-  expect(returnBody.inputs).toContainEqual({ txId: utxos[0][0], index: utxos[0][1], addressPath: `${defaultDerivationPath}0` });
-
-  await _checkTxProposalTables(returnBody.txProposalId, returnBody.inputs);
-});
-
-test('POST /txproposals with denied utxos', async () => {
-  expect.hasAssertions();
-
-  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
-  await addToWalletTable(mysql, [['other-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
-  await addToAddressTable(mysql, [{
-    address: ADDRESSES[0],
-    index: 0,
-    walletId: 'my-wallet',
-    transactions: 2,
-  }]);
-  await addToAddressTable(mysql, [{
-    address: ADDRESSES[1],
-    index: 0,
-    walletId: 'other-wallet',
-    transactions: 2,
-  }]);
-
-  const token1 = '004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50';
-  const token2 = '002f2bcc3261b4fb8510a458ed9df9f6ba2a413ee35901b3c5f81b0c085287e2';
-
-  const utxos = [
-    ['004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50', 0, token1, ADDRESSES[1], 300, 0, null, null, false],
-    ['0000001e39bc37fe8710c01cc1e8c0a937bf6f9337551fbbfddc222bfc28c197', 0, token1, ADDRESSES[1], 100, 0, null, null, false],
-    ['00000060a25077e48926bcd9473d77259296e123ec6af1c1a16c1c381093ab90', 0, token2, ADDRESSES[1], 300, 0, null, null, false],
-  ];
-
-  await addToUtxoTable(mysql, utxos);
-
-  const outputs = [new hathorLib.Output(300, new hathorLib.Address(ADDRESSES[0], { network: new hathorLib.Network(process.env.NETWORK) }), {
-    tokenData: 1,
-  })];
-  const inputs = [new hathorLib.Input(utxos[0][0], utxos[0][1])];
-  const transaction = new hathorLib.Transaction(inputs, outputs, { tokens: [token1] });
-
-  const txHex = transaction.toHex();
-  const event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({ txHex }));
-  const result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
-  const returnBody = JSON.parse(result.body as string);
-
-  expect(result.statusCode).toBe(400);
-  expect(returnBody.success).toBe(false);
-  expect(returnBody.error).toStrictEqual(ApiError.INPUTS_NOT_IN_WALLET);
-});
-
-test('POST /txproposals a tx create action on txHex', async () => {
-  expect.hasAssertions();
-
-  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
-  await addToAddressTable(mysql, [{
-    address: ADDRESSES[0],
-    index: 0,
-    walletId: 'my-wallet',
-    transactions: 2,
-  }]);
-
-  const utxos = [
-    ['004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50', 0, '00', ADDRESSES[0], 300, 0, null, null, false],
-  ];
-
-  await addToUtxoTable(mysql, utxos);
-  await addToAddressTable(mysql, [{
-    address: ADDRESSES[1],
-    index: 1,
-    walletId: 'my-wallet',
-    transactions: 0,
-  }]);
-
-  // hathor input for deposit
-  const inputs = [new hathorLib.Input(utxos[0][0], utxos[0][1])];
-  const outputs = [
-    // change output 100 htr deposited:
-    new hathorLib.Output(
-      200,
-      new hathorLib.Address(ADDRESSES[0], { network: new hathorLib.Network(process.env.NETWORK) }),
-      { tokenData: 0 },
-    ),
-    // MINT mask
-    new hathorLib.Output(
-      hathorLib.constants.TOKEN_MINT_MASK,
-      new hathorLib.Address(ADDRESSES[0], { network: new hathorLib.Network(process.env.NETWORK) }),
-      { tokenData: 1 | hathorLib.constants.TOKEN_AUTHORITY_MASK }, // eslint-disable-line no-bitwise
-    ),
-    // MELT mask
-    new hathorLib.Output(
-      hathorLib.constants.TOKEN_MELT_MASK,
-      new hathorLib.Address(ADDRESSES[0], { network: new hathorLib.Network(process.env.NETWORK) }),
-      { tokenData: 1 | hathorLib.constants.TOKEN_AUTHORITY_MASK }, // eslint-disable-line no-bitwise
-    ),
-    // New created tokens
-    new hathorLib.Output(
-      100 * 100,
-      new hathorLib.Address(ADDRESSES[0], { network: new hathorLib.Network(process.env.NETWORK) }),
-      { tokenData: 1 },
-    ),
-  ];
-
-  const name = 'Test token';
-  const symbol = 'TSTKN';
-  const transaction = new CreateTokenTransaction(name, symbol, inputs, outputs, {
-    version: hathorLib.constants.CREATE_TOKEN_TX_VERSION,
-  });
-
-  const txHex = transaction.toHex();
-  const event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({ txHex }));
-  const result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
-  const returnBody = JSON.parse(result.body as string);
-
-  expect(result.statusCode).toBe(201);
-  expect(returnBody.success).toBe(true);
-  expect(returnBody.txProposalId).toHaveLength(36);
-  expect(returnBody.inputs).toHaveLength(1);
-  expect(returnBody.inputs).toContainEqual({ txId: utxos[0][0], index: utxos[0][1], addressPath: `${defaultDerivationPath}0` });
-});
-
-test('PUT /txproposals/{proposalId} with txhex', async () => {
-  expect.hasAssertions();
-
-  // Create the spy to mock wallet-lib
-  const spy = jest.spyOn(hathorLib.axios, 'createRequestInstance');
-  spy.mockReturnValue({
-    post: () => Promise.resolve({
-      data: { success: true },
-    }),
-    get: () => Promise.resolve({
-      data: {
-        success: true,
-        version: '0.38.0',
-        network: 'mainnet',
-        min_weight: 14,
-        min_tx_weight: 14,
-        min_tx_weight_coefficient: 1.6,
-        min_tx_weight_k: 100,
-        token_deposit_percentage: 0.01,
-        reward_spend_min_blocks: 300,
-        max_number_inputs: 255,
-        max_number_outputs: 255,
-      },
-    }),
-  });
-
-  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'auth_xpubkey', 'ready', 5, 10000, 10001]]);
   await addToAddressTable(mysql, [{
     address: ADDRESSES[0],
     index: 0,
@@ -1092,7 +948,258 @@ test('PUT /txproposals/{proposalId} with txhex', async () => {
   const outputs = [
     new hathorLib.Output(
       300,
-      new hathorLib.Address(ADDRESSES[0], { network: new hathorLib.Network(process.env.NETWORK) }),
+      new hathorLib.P2PKH(new hathorLib.Address(
+        ADDRESSES[0], {
+          network: new hathorLib.Network(process.env.NETWORK),
+        },
+      )).createScript(), {
+        tokenData: 1,
+      },
+    ),
+  ];
+  const inputs = [new hathorLib.Input(utxos[0][0], utxos[0][1])];
+  const transaction = new hathorLib.Transaction(inputs, outputs, { tokens: [token1] });
+
+  const txHex = transaction.toHex();
+  const event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({ txHex }));
+  const result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  const returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(201);
+  expect(returnBody.success).toBe(true);
+  expect(returnBody.txProposalId).toHaveLength(36);
+  expect(returnBody.inputs).toHaveLength(1);
+  expect(returnBody.inputs).toContainEqual({ txId: utxos[0][0], index: utxos[0][1], addressPath: `${defaultDerivationPath}0` });
+
+  await _checkTxProposalTables(returnBody.txProposalId, returnBody.inputs);
+});
+
+test('POST /txproposals with denied utxos', async () => {
+  expect.hasAssertions();
+
+  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'auth_xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToWalletTable(mysql, [['other-wallet', 'xpubkey', 'auth_xpubkey2', 'ready', 5, 10000, 10001]]);
+  await addToAddressTable(mysql, [{
+    address: ADDRESSES[0],
+    index: 0,
+    walletId: 'my-wallet',
+    transactions: 2,
+  }]);
+  await addToAddressTable(mysql, [{
+    address: ADDRESSES[1],
+    index: 0,
+    walletId: 'other-wallet',
+    transactions: 2,
+  }]);
+
+  const token1 = '004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50';
+  const token2 = '002f2bcc3261b4fb8510a458ed9df9f6ba2a413ee35901b3c5f81b0c085287e2';
+
+  const utxos = [
+    ['004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50', 0, token1, ADDRESSES[1], 300, 0, null, null, false],
+    ['0000001e39bc37fe8710c01cc1e8c0a937bf6f9337551fbbfddc222bfc28c197', 0, token1, ADDRESSES[1], 100, 0, null, null, false],
+    ['00000060a25077e48926bcd9473d77259296e123ec6af1c1a16c1c381093ab90', 0, token2, ADDRESSES[1], 300, 0, null, null, false],
+  ];
+
+  await addToUtxoTable(mysql, utxos);
+
+  const outputs = [
+    new hathorLib.Output(
+      300,
+      new hathorLib.P2PKH(new hathorLib.Address(
+        ADDRESSES[0], {
+          network: new hathorLib.Network(process.env.NETWORK),
+        },
+      )).createScript(), {
+        tokenData: 1,
+      },
+    ),
+  ];
+  const inputs = [new hathorLib.Input(utxos[0][0], utxos[0][1])];
+  const transaction = new hathorLib.Transaction(inputs, outputs, { tokens: [token1] });
+
+  const txHex = transaction.toHex();
+  const event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({ txHex }));
+  const result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  const returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toStrictEqual(ApiError.INPUTS_NOT_IN_WALLET);
+});
+
+test('POST /txproposals a tx create action on txHex', async () => {
+  expect.hasAssertions();
+
+  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'auth_xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToAddressTable(mysql, [{
+    address: ADDRESSES[0],
+    index: 0,
+    walletId: 'my-wallet',
+    transactions: 2,
+  }]);
+
+  const utxos = [
+    ['004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50', 0, '00', ADDRESSES[0], 300, 0, null, null, false],
+  ];
+
+  await addToUtxoTable(mysql, utxos);
+  await addToAddressTable(mysql, [{
+    address: ADDRESSES[1],
+    index: 1,
+    walletId: 'my-wallet',
+    transactions: 0,
+  }]);
+
+  // hathor input for deposit
+  const inputs = [new hathorLib.Input(utxos[0][0], utxos[0][1])];
+  const outputs = [
+    // change output 100 htr deposited:
+    new hathorLib.Output(
+      200,
+      new hathorLib.P2PKH(
+        new hathorLib.Address(
+          ADDRESSES[0], {
+            network: new hathorLib.Network(process.env.NETWORK),
+          },
+        ),
+      ).createScript(),
+      { tokenData: 0 },
+    ),
+    // MINT mask
+    new hathorLib.Output(
+      hathorLib.constants.TOKEN_MINT_MASK,
+      new hathorLib.P2PKH(
+        new hathorLib.Address(
+          ADDRESSES[0], {
+            network: new hathorLib.Network(process.env.NETWORK),
+          },
+        ),
+      ).createScript(),
+      { tokenData: 1 | hathorLib.constants.TOKEN_AUTHORITY_MASK }, // eslint-disable-line no-bitwise
+    ),
+    // MELT mask
+    new hathorLib.Output(
+      hathorLib.constants.TOKEN_MELT_MASK,
+      new hathorLib.P2PKH(
+        new hathorLib.Address(
+          ADDRESSES[0], {
+            network: new hathorLib.Network(process.env.NETWORK),
+          },
+        ),
+      ).createScript(),
+      { tokenData: 1 | hathorLib.constants.TOKEN_AUTHORITY_MASK }, // eslint-disable-line no-bitwise
+    ),
+    // New created tokens
+    new hathorLib.Output(
+      100 * 100,
+      new hathorLib.P2PKH(
+        new hathorLib.Address(
+          ADDRESSES[0], {
+            network: new hathorLib.Network(process.env.NETWORK),
+          },
+        ),
+      ).createScript(),
+      { tokenData: 1 },
+    ),
+  ];
+
+  const name = 'Test token';
+  const symbol = 'TSTKN';
+  const transaction = new CreateTokenTransaction(name, symbol, inputs, outputs, {
+    version: hathorLib.constants.CREATE_TOKEN_TX_VERSION,
+  });
+
+  const txHex = transaction.toHex();
+  const event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({ txHex }));
+  const result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
+  const returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(201);
+  expect(returnBody.success).toBe(true);
+  expect(returnBody.txProposalId).toHaveLength(36);
+  expect(returnBody.inputs).toHaveLength(1);
+  expect(returnBody.inputs).toContainEqual({ txId: utxos[0][0], index: utxos[0][1], addressPath: `${defaultDerivationPath}0` });
+});
+
+test('PUT /txproposals/{proposalId} with txhex', async () => {
+  expect.hasAssertions();
+
+  // Create the spy to mock wallet-lib
+  const spy = jest.spyOn(hathorLib.axios, 'createRequestInstance');
+  spy.mockReturnValue({
+    post: () => Promise.resolve({
+      data: { success: true },
+    }),
+    get: () => Promise.resolve({
+      data: {
+        success: true,
+        version: '0.38.0',
+        network: 'mainnet',
+        min_weight: 14,
+        min_tx_weight: 14,
+        min_tx_weight_coefficient: 1.6,
+        min_tx_weight_k: 100,
+        token_deposit_percentage: 0.01,
+        reward_spend_min_blocks: 300,
+        max_number_inputs: 255,
+        max_number_outputs: 255,
+      },
+    }),
+  });
+
+  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'auth_xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToAddressTable(mysql, [{
+    address: ADDRESSES[0],
+    index: 0,
+    walletId: 'my-wallet',
+    transactions: 2,
+  }]);
+
+  const token1 = '004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50';
+  const token2 = '002f2bcc3261b4fb8510a458ed9df9f6ba2a413ee35901b3c5f81b0c085287e2';
+
+  const utxos = [
+    ['004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50', 0, token1, ADDRESSES[0], 300, 0, null, null, false],
+    ['0000001e39bc37fe8710c01cc1e8c0a937bf6f9337551fbbfddc222bfc28c197', 0, token1, ADDRESSES[0], 100, 0, null, null, false],
+    ['00000060a25077e48926bcd9473d77259296e123ec6af1c1a16c1c381093ab90', 0, token2, ADDRESSES[0], 300, 0, null, null, false],
+  ];
+
+  await addToUtxoTable(mysql, utxos);
+  await addToWalletBalanceTable(mysql, [{
+    walletId: 'my-wallet',
+    tokenId: 'token1',
+    unlockedBalance: 400,
+    lockedBalance: 0,
+    unlockedAuthorities: 0,
+    lockedAuthorities: 0,
+    timelockExpires: null,
+    transactions: 2,
+  }, {
+    walletId: 'my-wallet',
+    tokenId: 'token2',
+    unlockedBalance: 300,
+    lockedBalance: 0,
+    unlockedAuthorities: 0,
+    lockedAuthorities: 0,
+    timelockExpires: null,
+    transactions: 1,
+  }]);
+
+  await addToAddressTable(mysql, [{
+    address: ADDRESSES[1],
+    index: 1,
+    walletId: 'my-wallet',
+    transactions: 0,
+  }]);
+
+  // only one output, spending the whole 300 utxo of token1
+  const outputs = [
+    new hathorLib.Output(
+      300,
+      new hathorLib.P2PKH(
+        new hathorLib.Address(ADDRESSES[0], { network: new hathorLib.Network(process.env.NETWORK) }),
+      ).createScript(),
       { tokenData: 1 },
     ),
   ];
@@ -1144,7 +1251,7 @@ test('PUT /txproposals/{proposalId} with a different txhex than the one sent in 
     }),
   });
 
-  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'auth_xpubkey', 'ready', 5, 10000, 10001]]);
   await addToAddressTable(mysql, [{
     address: ADDRESSES[0],
     index: 0,
@@ -1193,7 +1300,9 @@ test('PUT /txproposals/{proposalId} with a different txhex than the one sent in 
   const outputs = [
     new hathorLib.Output(
       300,
-      new hathorLib.Address(ADDRESSES[0], { network: new hathorLib.Network(process.env.NETWORK) }),
+      new hathorLib.P2PKH(
+        new hathorLib.Address(ADDRESSES[0], { network: new hathorLib.Network(process.env.NETWORK) }),
+      ).createScript(),
       { tokenData: 1 },
     ),
   ];

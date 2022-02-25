@@ -6,6 +6,7 @@ import * as txProcessor from '@src/txProcessor';
 import { closeDbConnection, getDbConnection, isAuthority } from '@src/utils';
 import {
   XPUBKEY,
+  AUTH_XPUBKEY,
   addToAddressTable,
   addToAddressBalanceTable,
   addToUtxoTable,
@@ -58,7 +59,7 @@ test('spend "locked" utxo', async () => {
   const maxGap = parseInt(process.env.MAX_ADDRESS_GAP, 10);
 
   await addToWalletTable(mysql, [
-    [walletId, XPUBKEY, 'ready', 10, 1, 2],
+    [walletId, XPUBKEY, AUTH_XPUBKEY, 'ready', 10, 1, 2],
   ]);
 
   await addToUtxoTable(mysql, [
@@ -235,13 +236,12 @@ test('txProcessor should ignore NFT outputs', async () => {
 
   const txId1 = 'txId1';
   const txId2 = 'txId2';
-  const token = 'tokenId';
   const addr = 'address';
   const walletId = 'walletId';
   const timelock = 1000;
 
   await addToWalletTable(mysql, [
-    [walletId, XPUBKEY, 'ready', 10, 1, 2],
+    [walletId, XPUBKEY, AUTH_XPUBKEY, 'ready', 10, 1, 2],
   ]);
 
   await addToUtxoTable(mysql, [
@@ -278,7 +278,6 @@ test('txProcessor should ignore NFT outputs', async () => {
   tx.timestamp += timelock + 1;
   tx.inputs = [createInput(41, addr, txId1, 0, '00')];
   const invalidScriptOutput = createOutput(0, 1, addr, '00');
-  console.log('NFTOutput', invalidScriptOutput);
   tx.outputs = [
     {
       ...invalidScriptOutput,
@@ -343,7 +342,7 @@ test('onHandleVoidedTxRequest', async () => {
   const timelock = 1000;
 
   await addToWalletTable(mysql, [
-    [walletId, XPUBKEY, 'ready', 10, 1, 2],
+    [walletId, XPUBKEY, AUTH_XPUBKEY, 'ready', 10, 1, 2],
   ]);
 
   await addToUtxoTable(mysql, [

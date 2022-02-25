@@ -13,17 +13,22 @@ import {
   Statement,
 } from 'aws-lambda';
 import { v4 as uuid4 } from 'uuid';
-import {
-  getWalletId,
-} from '@src/utils';
 import Joi from 'joi';
 import jwt from 'jsonwebtoken';
 import bitcore from 'bitcore-lib';
 import { ApiError } from '@src/api/errors';
 import hathorLib from '@hathor/wallet-lib';
+import { Wallet } from '@src/types';
+import { getWallet } from '@src/db';
+import {
+  verifySignature,
+  closeDbConnection,
+  getDbConnection,
+  validateAuthTimestamp,
+  AUTH_MAX_TIMESTAMP_SHIFT_IN_SECONDS,
+} from '@src/utils';
 
-const EXPIRATION_TIME_IN_SECONDS = 30 * 60;
-const MAX_TIMESTAMP_SHIFT_IN_SECONDS = 30;
+const EXPIRATION_TIME_IN_SECONDS = 1800;
 
 hathorLib.network.setNetwork(process.env.NETWORK);
 
@@ -31,6 +36,7 @@ const bodySchema = Joi.object({
   ts: Joi.number().positive().required(),
   xpub: Joi.string().required(),
   sign: Joi.string().required(),
+  walletId: Joi.string().required(),
 });
 
 function parseBody(body) {
@@ -41,24 +47,7 @@ function parseBody(body) {
   }
 }
 
-/**
- * Verify a signature for a given timestamp and xpubkey
- *
- * @param signature - The signature done by the xpriv of the wallet
- * @param timestamp - Unix Timestamp of the signature
- * @param address - The address of the xpubkey used to create the walletId
- * @param walletId - The walletId, a sha512d of the xpubkey
- * @returns true if the signature matches the other params
- */
-export const verifySignature = (
-  signature: string,
-  timestamp: number,
-  address: bitcore.Address,
-  walletId: string,
-): boolean => {
-  const message = String(timestamp).concat(walletId).concat(address);
-  return new bitcore.Message(message).verify(address, signature);
-};
+const mysql = getDbConnection();
 
 export const tokenHandler: APIGatewayProxyHandler = async (event) => {
   const eventBody = parseBody(event.body);
@@ -69,6 +58,8 @@ export const tokenHandler: APIGatewayProxyHandler = async (event) => {
   });
 
   if (error) {
+    await closeDbConnection(mysql);
+
     const details = error.details.map((err) => ({
       message: err.message,
       path: err.path,
@@ -86,14 +77,14 @@ export const tokenHandler: APIGatewayProxyHandler = async (event) => {
 
   const signature = value.sign;
   const timestamp = value.ts;
-  const xpubkeyStr = value.xpub;
+  const authXpubStr = value.xpub;
+  const wallet: Wallet = await getWallet(mysql, value.walletId);
 
-  const timestampShiftInSeconds = Math.abs(
-    Math.floor(Date.now() / 1000) - timestamp,
-  );
-  if (timestampShiftInSeconds >= MAX_TIMESTAMP_SHIFT_IN_SECONDS) {
+  const [validTimestamp, timestampShift] = validateAuthTimestamp(timestamp, Date.now() / 1000);
+
+  if (!validTimestamp) {
     const details = [{
-      message: `The timestamp is shifted ${timestampShiftInSeconds}(s). Limit is ${MAX_TIMESTAMP_SHIFT_IN_SECONDS}(s).`,
+      message: `The timestamp is shifted ${timestampShift}(s). Limit is ${AUTH_MAX_TIMESTAMP_SHIFT_IN_SECONDS}(s).`,
     }];
 
     return {
@@ -106,13 +97,30 @@ export const tokenHandler: APIGatewayProxyHandler = async (event) => {
     };
   }
 
-  const xpubkey = bitcore.HDPublicKey(xpubkeyStr);
-  const address = xpubkey.publicKey.toAddress(hathorLib.network.getNetwork());
-  const walletId = getWalletId(xpubkeyStr);
+  if (wallet.authXpubkey !== authXpubStr) {
+    const details = [{
+      message: 'Provided auth_xpubkey does not match the stored auth_xpubkey',
+    }];
 
-  if (!verifySignature(signature, timestamp, address, walletId.toString())) {
+    return {
+      statusCode: 400,
+      body: JSON.stringify({
+        success: false,
+        error: ApiError.INVALID_PAYLOAD,
+        details,
+      }),
+    };
+  }
+
+  const xpubkey = bitcore.HDPublicKey(authXpubStr);
+  const address = xpubkey.publicKey.toAddress(hathorLib.network.getNetwork());
+  const walletId = wallet.walletId;
+
+  if (!verifySignature(signature, timestamp, address, walletId)) {
+    await closeDbConnection(mysql);
+
     const details = {
-      message: `The signature ${signature} does not match with the xpubkey ${xpubkeyStr} and the timestamp ${timestamp}`,
+      message: `The signature ${signature} does not match with the auth xpubkey ${authXpubStr} and the timestamp ${timestamp}`,
     };
 
     return {
@@ -187,6 +195,7 @@ export const bearerAuthorizer: APIGatewayTokenAuthorizerHandler = async (event) 
   }
   const sanitizedToken = authorizationToken.replace(/Bearer /gi, '');
   let data;
+
   try {
     data = jwt.verify(
       sanitizedToken,
@@ -206,6 +215,7 @@ export const bearerAuthorizer: APIGatewayTokenAuthorizerHandler = async (event) 
       throw e;
     }
   }
+
   // signature data
   const signature = data.sign;
   const timestamp = data.ts;
@@ -214,7 +224,6 @@ export const bearerAuthorizer: APIGatewayTokenAuthorizerHandler = async (event) 
 
   // header data
   const expirationTs = data.exp;
-
   const address = new bitcore.Address(addr, hathorLib.network.getNetwork());
   const verified = verifySignature(signature, timestamp, address, walletId);
 

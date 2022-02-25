@@ -1,6 +1,7 @@
 import { CustomStorage, arrayShuffle, sha256d, isTxVoided } from '@src/utils';
 import hathorLib from '@hathor/wallet-lib';
 import * as Fullnode from '@src/fullnode';
+import { TEST_SEED, XPUBKEY, AUTH_XPUBKEY, ADDRESSES } from '@tests/utils';
 
 test('CustomStorage', () => {
   expect.hasAssertions();
@@ -76,4 +77,18 @@ test('isTxVoided', async () => {
     true,
     { meta: { voided_by: ['0000000f1fbb4bd8a8e71735af832be210ac9a6c1e2081b21faeea3c0f5797f7'] } },
   ]);
+});
+
+test('XPUBKEY, AUTH_XPUBKEY and ADDRESSES should be derived from TEST_SEED', async () => {
+  expect.hasAssertions();
+  const xpubkey = hathorLib.walletUtils.getXPubKeyFromSeed(TEST_SEED);
+  expect(xpubkey).toStrictEqual(XPUBKEY);
+
+  const authXpubkey = hathorLib.HathorWalletServiceWallet.getAuthXPubKeyFromSeed(TEST_SEED);
+  expect(authXpubkey).toStrictEqual(AUTH_XPUBKEY);
+
+  // Generate addresses in change derivation path 0
+  const derivedXpub = hathorLib.walletUtils.xpubDeriveChild(xpubkey, 0);
+  const addresses = Object.keys(hathorLib.walletUtils.getAddresses(derivedXpub, 0, 17));
+  expect(addresses).toStrictEqual(ADDRESSES);
 });
