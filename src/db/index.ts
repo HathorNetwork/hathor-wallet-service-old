@@ -7,7 +7,7 @@
 
 import { strict as assert } from 'assert';
 import { ServerlessMysql } from 'serverless-mysql';
-import { constants, walletUtils } from '@hathor/wallet-lib';
+import { constants } from '@hathor/wallet-lib';
 import {
   AddressIndexMap,
   AddressInfo,
@@ -41,6 +41,8 @@ import {
   getUnixTimestamp,
   isAuthority,
   getAddressPath,
+  xpubDeriveChild,
+  getAddresses,
 } from '@src/utils';
 import {
   getWalletFromDbEntry,
@@ -74,10 +76,10 @@ export const generateAddresses = async (mysql: ServerlessMysql, xpubkey: string,
   // We currently generate only addresses in change derivation path 0
   // (more details in https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki#Change)
   // so we derive our xpub to this path and use it to get the addresses
-  const derivedXpub = walletUtils.xpubDeriveChild(xpubkey, 0);
+  const derivedXpub = xpubDeriveChild(xpubkey, 0);
 
   do {
-    const addrMap = walletUtils.getAddresses(derivedXpub, highestCheckedIndex + 1, maxGap, process.env.NETWORK);
+    const addrMap = getAddresses(derivedXpub, highestCheckedIndex + 1, maxGap);
     allAddresses.push(...Object.keys(addrMap));
 
     const results: DbSelectResult = await mysql.query(

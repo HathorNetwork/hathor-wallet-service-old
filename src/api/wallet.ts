@@ -35,7 +35,6 @@ import {
 import { closeDbAndGetError } from '@src/api/utils';
 import { walletIdProxyHandler } from '@src/commons';
 import Joi from 'joi';
-import bitcore from 'bitcore-lib';
 import { network } from '@hathor/wallet-lib';
 
 const mysql = getDbConnection();
@@ -130,7 +129,6 @@ export const validateSignatures = (
   authXpubkeySignature: string,
 ): boolean => {
   // verify that the user owns the xpubkey
-  // const xpubkey = bitcore.HDPublicKey(xpubkeyStr);
   const xpubAddress = getAddressFromXpub(xpubkeyStr); // xpubkey.publicKey.toAddress(network.getNetwork());
   const xpubValid = verifySignature(xpubkeySignature, timestamp, xpubAddress.toString(), walletId.toString());
 
