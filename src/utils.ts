@@ -9,7 +9,6 @@ import { createHash, HexBase64Latin1Encoding } from 'crypto';
 
 import serverlessMysql, { ServerlessMysql } from 'serverless-mysql';
 import hathorLib from '@hathor/wallet-lib';
-import bitcore from 'bitcore-lib';
 import fullnode from '@src/fullnode';
 import * as bitcoin from 'bitcoinjs-lib';
 import * as bitcoinMessage from 'bitcoinjs-message';
@@ -221,9 +220,9 @@ export const getAddressPath = (index: number): string => (
  */
 export const confirmFirstAddress = (expectedFirstAddress: string, xpubkey: string): [boolean, string] => {
   // First derive xpub to change 0 path
-  const derivedXpub = hathorLib.walletUtils.xpubDeriveChild(xpubkey, 0);
+  const derivedXpub = xpubDeriveChild(xpubkey, 0);
   // Then get first address
-  const firstAddress = hathorLib.walletUtils.getAddressAtIndex(derivedXpub, 0, process.env.NETWORK);
+  const firstAddress = getAddressAtIndex(derivedXpub, 0);
 
   return [
     firstAddress === expectedFirstAddress,
