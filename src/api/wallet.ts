@@ -27,6 +27,7 @@ import {
   getDbConnection,
   getWalletId,
   verifySignature,
+  getAddressFromXpub,
   confirmFirstAddress,
   validateAuthTimestamp,
   AUTH_MAX_TIMESTAMP_SHIFT_IN_SECONDS,
@@ -129,14 +130,12 @@ export const validateSignatures = (
   authXpubkeySignature: string,
 ): boolean => {
   // verify that the user owns the xpubkey
-  const xpubkey = bitcore.HDPublicKey(xpubkeyStr);
-  const xpubAddress = xpubkey.publicKey.toAddress(network.getNetwork());
-  const xpubValid = verifySignature(xpubkeySignature, timestamp, xpubAddress, walletId.toString());
+  // const xpubkey = bitcore.HDPublicKey(xpubkeyStr);
+  const xpubAddress = getAddressFromXpub(xpubkeyStr); // xpubkey.publicKey.toAddress(network.getNetwork());
+  const xpubValid = verifySignature(xpubkeySignature, timestamp, xpubAddress.toString(), walletId.toString());
 
   // verify that the user owns the auth_xpubkey
-  const authXpubkey = bitcore.HDPublicKey(authXpubkeyStr);
-  const authXpubAddress = authXpubkey.publicKey.toAddress(network.getNetwork());
-
+  const authXpubAddress = getAddressFromXpub(authXpubkeyStr);
   const authXpubValid = verifySignature(authXpubkeySignature, timestamp, authXpubAddress, walletId.toString());
 
   return xpubValid && authXpubValid;

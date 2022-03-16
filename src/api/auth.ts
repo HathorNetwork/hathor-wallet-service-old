@@ -22,6 +22,7 @@ import { Wallet } from '@src/types';
 import { getWallet } from '@src/db';
 import {
   verifySignature,
+  getAddressFromXpub,
   closeDbConnection,
   getDbConnection,
   validateAuthTimestamp,
@@ -112,8 +113,7 @@ export const tokenHandler: APIGatewayProxyHandler = async (event) => {
     };
   }
 
-  const xpubkey = bitcore.HDPublicKey(authXpubStr);
-  const address = xpubkey.publicKey.toAddress(hathorLib.network.getNetwork());
+  const address = getAddressFromXpub(authXpubStr);
   const walletId = wallet.walletId;
 
   if (!verifySignature(signature, timestamp, address, walletId)) {

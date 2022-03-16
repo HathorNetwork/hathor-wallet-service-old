@@ -11,6 +11,20 @@ import serverlessMysql, { ServerlessMysql } from 'serverless-mysql';
 import hathorLib from '@hathor/wallet-lib';
 import bitcore from 'bitcore-lib';
 import fullnode from '@src/fullnode';
+import * as bitcoin from 'bitcoinjs-lib';
+import * as bitcoinMessage from 'bitcoinjs-message';
+import * as ecc from 'tiny-secp256k1';
+import BIP32Factory from 'bip32';
+
+const bip32 = BIP32Factory(ecc);
+const hathorNetwork = {
+  messagePrefix: '\x18Hathor Signed Message:\n',
+  bech32: 'ht',
+  bip32: { public: 76067358, private: 55720709 },
+  pubKeyHash: 40,
+  scriptHash: 100,
+  wif: 128,
+};
 
 /* TODO: We should remove this as soon as the wallet-lib is refactored
 *  (https://github.com/HathorNetwork/hathor-wallet-lib/issues/122)
@@ -197,31 +211,6 @@ export const getAddressPath = (index: number): string => (
 );
 
 /**
- * Verify a signature for a given timestamp and xpubkey
- *
- * @param signature - The signature done by the xpriv of the wallet
- * @param timestamp - Unix Timestamp of the signature
- * @param address - The address of the xpubkey used to create the walletId
- * @param walletId - The walletId, a sha512d of the xpubkey
- * @returns true if the signature matches the other params
- */
-export const verifySignature = (
-  signature: string,
-  timestamp: number,
-  address: bitcore.Address,
-  walletId: string,
-): boolean => {
-  try {
-    const message = String(timestamp).concat(walletId).concat(address);
-    return new bitcore.Message(message).verify(address, signature);
-  } catch (e) {
-    // Since this will try to verify the signature passing user input, the verify method might
-    // throw, we can just return false in this case.
-    return false;
-  }
-};
-
-/**
  * Verifies that the expected first address (received as a param) is the same as one
  * derived from the xpubkey param on the change 0 path
  *
@@ -259,4 +248,63 @@ export const validateAuthTimestamp = (timestamp: number, now: number): [boolean,
   const timestampShiftInSeconds = Math.floor(Math.abs(now - timestamp));
 
   return [timestampShiftInSeconds < AUTH_MAX_TIMESTAMP_SHIFT_IN_SECONDS, timestampShiftInSeconds];
+};
+
+export const getAddressAtIndex = (pubkey: string, addressIndex: number): string => {
+  const node = bip32.fromBase58(pubkey).derive(addressIndex);
+  return bitcoin.payments.p2pkh({
+    pubkey: node.publicKey,
+    network: hathorNetwork,
+  }).address;
+};
+
+export const getAddresses = (pubkey: string, startIndex: number, quantity: number): {[key: string]: number} => {
+  const addrMap = {};
+
+  for (let index = startIndex; index < startIndex + quantity; index++) {
+    const address = getAddressAtIndex(pubkey, index);
+    addrMap[address] = index;
+  }
+
+  return addrMap;
+};
+
+export const xpubDeriveChild = (pubkey: string, index: number): string => (
+  bip32.fromBase58(pubkey).derive(index).toBase58()
+);
+
+/**
+ * Verify a signature for a given timestamp and xpubkey
+ *
+ * @param signature - The signature done by the xpriv of the wallet
+ * @param timestamp - Unix Timestamp of the signature
+ * @param address - The address of the xpubkey used to create the walletId
+ * @param walletId - The walletId, a sha512d of the xpubkey
+ *
+ * @returns true if the signature matches the other params
+ */
+export const verifySignature = (
+  signature: string,
+  timestamp: number,
+  address: string,
+  walletId: string,
+): boolean => {
+  try {
+    const message = String(timestamp).concat(walletId).concat(address);
+
+    return bitcoinMessage.verify(message, address, Buffer.from(signature, 'base64'));
+  } catch (e) {
+    // Since this will try to verify the signature passing user input, the verify method might
+    // throw, we can just return false in this case.
+    return false;
+  }
+};
+
+export const getAddressFromXpub = (pubkey: string): string => {
+  const node = bip32.fromBase58(pubkey);
+
+  return bitcoin.payments.p2pkh({
+    pubkey: node.publicKey,
+    network: hathorNetwork,
+  }).address;
 };
