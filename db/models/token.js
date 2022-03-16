@@ -27,11 +27,21 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING(5),
       allowNull: false,
     },
+    createdAt: {
+      type: 'TIMESTAMP',
+      allowNull: false,
+      defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
+    },
+    updatedAt: {
+      type: 'TIMESTAMP',
+      allowNull: false,
+      defaultValue: Sequelize.literal('CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'),
+    }
   }, {
     sequelize,
     modelName: 'Token',
     tableName: 'token',
-    timestamps: false,
+    underscored: true
   });
   return Token;
 };
