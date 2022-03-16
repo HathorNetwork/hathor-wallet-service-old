@@ -1121,7 +1121,7 @@ test('validateTokenTimestamps', async () => {
 
   expect(result[0].insertion_time).toStrictEqual(result[0].modification_time);
 
-  await new Promise((r) => setTimeout(r, 3000));
+  await new Promise((r) => setTimeout(r, 1100));
   await mysql.query('UPDATE `token` SET name = ? WHERE `id` = ?', ['newName', info.id]);
   result = await mysql.query('SELECT * FROM `token` WHERE `id` = ?', [info.id]);
 

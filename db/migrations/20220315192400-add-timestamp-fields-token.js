@@ -2,7 +2,6 @@
 
 module.exports = {
   up: async (queryInterface, Sequelize) => {
-
     await queryInterface.addColumn('token', 'insertion_time', {
       type: 'TIMESTAMP',
       allowNull: false,
