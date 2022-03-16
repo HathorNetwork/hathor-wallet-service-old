@@ -27,12 +27,12 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING(5),
       allowNull: false,
     },
-    insertion_time: {
+    createdAt: {
       type: 'TIMESTAMP',
       allowNull: false,
       defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
     },
-    modification_time: {
+    updatedAt: {
       type: 'TIMESTAMP',
       allowNull: false,
       defaultValue: Sequelize.literal('CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'),
@@ -41,7 +41,7 @@ module.exports = (sequelize, DataTypes) => {
     sequelize,
     modelName: 'Token',
     tableName: 'token',
-    timestamps: false,
+    underscored: true
   });
   return Token;
 };
