@@ -834,7 +834,7 @@ export const getLockedUtxoFromInputs = async (mysql: ServerlessMysql, inputs: Tx
     // get the rows before deleting
     const results: DbSelectResult = await mysql.query(
       `SELECT *
-         FROM \`tx_output\`
+         FROM \`tx_output\` USE INDEX (PRIMARY)
         WHERE (\`tx_id\` ,\`index\`)
            IN (?)
           AND \`locked\` = TRUE
