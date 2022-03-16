@@ -16,7 +16,7 @@ module.exports = {
   },
 
   down: async (queryInterface, Sequelize) => {
-    await queryInterface.removeColumn('token', 'insertion_time');
-    await queryInterface.removeColumn('token', 'modification_time');
+    await queryInterface.removeColumn('token', 'created_at');
+    await queryInterface.removeColumn('token', 'updated_at');
   }
 };
