@@ -1113,19 +1113,21 @@ test('storeTokenInformation and getTokenInformation', async () => {
 });
 
 test('validateTokenTimestamps', async () => {
+  expect.hasAssertions();
+
   const info = new TokenInfo('tokenId', 'tokenName', 'TKNS');
   storeTokenInformation(mysql, info.id, info.name, info.symbol);
   let result = await mysql.query('SELECT * FROM `token` WHERE `id` = ?', [info.id]);
 
-  expect(result[0].insertion_time).toStrictEqual(result[0].modification_time)
+  expect(result[0].insertion_time).toStrictEqual(result[0].modification_time);
 
-  await new Promise(r => setTimeout(r, 3000));
-  await mysql.query('UPDATE \`token\` SET name = ? WHERE \`id\` = ?', ["newName", info.id]);
+  await new Promise((r) => setTimeout(r, 3000));
+  await mysql.query('UPDATE `token` SET name = ? WHERE `id` = ?', ['newName', info.id]);
   result = await mysql.query('SELECT * FROM `token` WHERE `id` = ?', [info.id]);
 
   // After updating the entry, the insertion_time and modification_time must be different
-  expect(result[0].insertion_time).not.toEqual(result[0].modification_time);
-})
+  expect(result[0].insertion_time).not.toStrictEqual(result[0].modification_time);
+});
 
 test('getWalletSortedValueUtxos', async () => {
   expect.hasAssertions();
