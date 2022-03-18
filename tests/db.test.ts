@@ -1112,6 +1112,23 @@ test('storeTokenInformation and getTokenInformation', async () => {
   expect(info).toStrictEqual(await getTokenInformation(mysql, info.id));
 });
 
+test('validateTokenTimestamps', async () => {
+  expect.hasAssertions();
+
+  const info = new TokenInfo('tokenId', 'tokenName', 'TKNS');
+  storeTokenInformation(mysql, info.id, info.name, info.symbol);
+  let result = await mysql.query('SELECT * FROM `token` WHERE `id` = ?', [info.id]);
+
+  expect(result[0].created_at).toStrictEqual(result[0].updated_at);
+
+  await new Promise((r) => setTimeout(r, 1100));
+  await mysql.query('UPDATE `token` SET name = ? WHERE `id` = ?', ['newName', info.id]);
+  result = await mysql.query('SELECT * FROM `token` WHERE `id` = ?', [info.id]);
+
+  // After updating the entry, the created_at and updated_at must be different
+  expect(result[0].created_at).not.toStrictEqual(result[0].updated_at);
+});
+
 test('getWalletSortedValueUtxos', async () => {
   expect.hasAssertions();
 
