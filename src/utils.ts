@@ -17,12 +17,22 @@ import BIP32Factory from 'bip32';
 
 const bip32 = BIP32Factory(ecc);
 const hathorNetwork = {
-  messagePrefix: '\x18Hathor Signed Message:\n',
-  bech32: 'ht',
-  bip32: { public: 76067358, private: 55720709 },
-  pubKeyHash: 40,
-  scriptHash: 100,
-  wif: 128,
+  mainnet: {
+    messagePrefix: '\x18Hathor Signed Message:\n',
+    bech32: 'ht',
+    bip32: { public: 76067358, private: 55720709 },
+    pubKeyHash: 40,
+    scriptHash: 100,
+    wif: 128,
+  },
+  testnet: {
+    messagePrefix: '\x18Hathor Signed Message:\n',
+    bech32: 'tn',
+    bip32: { public: 76067358, private: 70568132 },
+    pubKeyHash: 40,
+    scriptHash: 100,
+    wif: 128,
+  },
 };
 
 /* TODO: We should remove this as soon as the wallet-lib is refactored
@@ -253,7 +263,7 @@ export const getAddressAtIndex = (pubkey: string, addressIndex: number): string 
   const node = bip32.fromBase58(pubkey).derive(addressIndex);
   return bitcoin.payments.p2pkh({
     pubkey: node.publicKey,
-    network: hathorNetwork,
+    network: hathorNetwork[process.env.NETWORK || 'mainnet'],
   }).address;
 };
 
@@ -304,6 +314,6 @@ export const getAddressFromXpub = (pubkey: string): string => {
 
   return bitcoin.payments.p2pkh({
     pubkey: node.publicKey,
-    network: hathorNetwork,
+    network: hathorNetwork[process.env.NETWORK || 'mainnet'],
   }).address;
 };
