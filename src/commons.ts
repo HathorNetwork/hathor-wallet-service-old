@@ -351,10 +351,13 @@ export const searchForLatestValidBlock = async (mysql: ServerlessMysql): Promise
  * by this iteration.
  */
 export const handleVoidedTxList = async (mysql: ServerlessMysql, txs: Tx[]): Promise<[Tx[], DbTxOutput[]]> => {
+  // eslint-disable-next-line
   console.log(`Setting ${txs.length} transactions as voided.`);
   await markTxsAsVoided(mysql, txs);
+  // eslint-disable-next-line
   console.log(`Setting WalletTxHistory as voided from ${txs.length} transactions.`);
   await markWalletTxHistoryAsVoided(mysql, txs);
+  // eslint-disable-next-line
   console.log(`Setting AddressTxHistory as voided from ${txs.length} transactions.`);
   await markAddressTxHistoryAsVoided(mysql, txs);
 
@@ -372,6 +375,7 @@ export const handleVoidedTxList = async (mysql: ServerlessMysql, txs: Tx[]): Pro
 
   // unspend them as the tx_outputs that spent them are now voided
   if (spentOutputs.length > 0) {
+    // eslint-disable-next-line
     console.log(`Unspending ${spentOutputs.length} tx_outputs.`);
     await unspendUtxos(mysql, [...spentOutputs]);
   }
@@ -379,6 +383,7 @@ export const handleVoidedTxList = async (mysql: ServerlessMysql, txs: Tx[]): Pro
   const affectedUtxoList = [...txOutputs, ...spentOutputs];
 
   // mark the tx_outputs from the received tx list as voided
+  // eslint-disable-next-line
   console.log(`Setting ${txOutputs.length} tx_outputs as voided.`);
   await markUtxosAsVoided(mysql, txOutputs);
 
@@ -417,14 +422,17 @@ export const handleVoided = async (mysql: ServerlessMysql, tx: Tx): Promise<void
   // fetch all addresses affected by the voided tx
   const affectedAddresses = affectedUtxoList.reduce((acc: Set<string>, utxo: DbTxOutput) => acc.add(utxo.address), new Set<string>());
 
+  // eslint-disable-next-line
   console.log(`Rebuilding balances for ${affectedAddresses.size} addresses.`);
   if (affectedAddresses.size > 0) {
     const addresses = [...affectedAddresses];
+    // eslint-disable-next-line
     console.log('Addresses:', addresses);
     await rebuildAddressBalancesFromUtxos(mysql, addresses);
     await validateAddressBalances(mysql, addresses);
   }
 
+  // eslint-disable-next-line
   console.log('Handle voided tx is done.');
 };
 
@@ -458,9 +466,11 @@ export const handleReorg = async (mysql: ServerlessMysql): Promise<number> => {
   const { height } = await searchForLatestValidBlock(mysql);
   const currentHeight = await getLatestHeight(mysql);
 
+  // eslint-disable-next-line
   console.log(`Handling reorg. Our latest valid block is ${height} and our highest block height is ${currentHeight}`);
 
   if ((currentHeight - height) > WARN_MAX_REORG_SIZE) {
+    // eslint-disable-next-line
     console.log(`[ALERT] A reorg with ${currentHeight - height} blocks has been detected`);
   }
 
@@ -495,12 +505,14 @@ export const handleReorg = async (mysql: ServerlessMysql): Promise<number> => {
   // get all remaining txs and set height = null (mempool)
   const remainingTxs: Tx[] = await getTxsAfterHeight(mysql, height);
   if (remainingTxs.length > 0) {
+    // eslint-disable-next-line
     console.log(`Setting ${remainingTxs.length} unconfirmed transactions to the mempool (height = NULL).`);
     await removeTxsHeight(mysql, remainingTxs);
   }
 
   // fetch all addresses affected by the reorg
   const affectedAddresses = affectedUtxoList.reduce((acc: Set<string>, utxo: DbTxOutput) => acc.add(utxo.address), new Set<string>());
+  // eslint-disable-next-line
   console.log(`Rebuilding balances for ${affectedAddresses.size} addresses.`);
 
   if (affectedAddresses.size > 0) {
@@ -509,6 +521,7 @@ export const handleReorg = async (mysql: ServerlessMysql): Promise<number> => {
     await validateAddressBalances(mysql, addresses);
   }
 
+  // eslint-disable-next-line
   console.log('Reorg is done.');
 
   return height;
