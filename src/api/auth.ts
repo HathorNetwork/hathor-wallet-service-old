@@ -180,6 +180,7 @@ const _generatePolicy = (principalId: string, effect: string, resource: string) 
   authResponse.context = context;
 
   // XXX: to get the resulting policy on the logs, since we can't check the cached policy
+  // eslint-disable-next-line
   console.info('Generated policy:', authResponse);
   return authResponse;
 };
@@ -207,6 +208,7 @@ export const bearerAuthorizer: APIGatewayTokenAuthorizerHandler = async (event) 
     } else if (e.name === 'TokenExpiredError') {
       throw new Error('Unauthorized');
     } else {
+      // eslint-disable-next-line
       console.log('Error on bearerAuthorizer: ', e);
       throw e;
     }
