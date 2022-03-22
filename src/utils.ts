@@ -259,6 +259,14 @@ export const validateAuthTimestamp = (timestamp: number, now: number): [boolean,
   return [timestampShiftInSeconds < AUTH_MAX_TIMESTAMP_SHIFT_IN_SECONDS, timestampShiftInSeconds];
 };
 
+/**
+ * Returns an address from a xpubkey on a specific index
+ *
+ * @param xpubkey - The xpubkey
+ * @param index - The address index to derive
+ *
+ * @returns The derived address
+ */
 export const getAddressAtIndex = (pubkey: string, addressIndex: number): string => {
   const node = bip32.fromBase58(pubkey).derive(addressIndex);
   return bitcoin.payments.p2pkh({
@@ -267,17 +275,46 @@ export const getAddressAtIndex = (pubkey: string, addressIndex: number): string 
   }).address;
 };
 
-export const getAddresses = (pubkey: string, startIndex: number, quantity: number): {[key: string]: number} => {
+/**
+ * Get Hathor addresses in bulk, passing the start index and quantity of addresses to be generated
+ *
+ * @example
+ * ```
+ * getAddresses('myxpub', 2, 3) => {
+ *   'address2': 2,
+ *   'address3': 3,
+ *   'address4': 4,
+ * }
+ * ```
+ *
+ * @param xpubkey The xpubkey
+ * @param startIndex Generate addresses starting from this index
+ * @param quantity Amount of addresses to generate
+ *
+ * @return An object with the generated addresses and corresponding index (string => number)
+ *
+ * @memberof Wallet
+ * @inner
+ */
+export const getAddresses = (xpubkey: string, startIndex: number, quantity: number): {[key: string]: number} => {
   const addrMap = {};
 
   for (let index = startIndex; index < startIndex + quantity; index++) {
-    const address = getAddressAtIndex(pubkey, index);
+    const address = getAddressAtIndex(xpubkey, index);
     addrMap[address] = index;
   }
 
   return addrMap;
 };
 
+/**
+ * Derives a xpubkey at a specific index
+ *
+ * @param xpubkey - The xpubkey
+ * @param index - The index to derive
+ *
+ * @returns The derived xpubkey
+ */
 export const xpubDeriveChild = (pubkey: string, index: number): string => (
   bip32.fromBase58(pubkey).derive(index).toBase58()
 );
@@ -309,8 +346,15 @@ export const verifySignature = (
   }
 };
 
-export const getAddressFromXpub = (pubkey: string): string => {
-  const node = bip32.fromBase58(pubkey);
+/**
+ * Returns an address (as a string) from a string xpubkey
+ *
+ * @param xpubkey - The xpubkey
+ *
+ * @returns the address derived from the xpubkey
+ */
+export const getAddressFromXpub = (xpubkey: string): string => {
+  const node = bip32.fromBase58(xpubkey);
 
   return bitcoin.payments.p2pkh({
     pubkey: node.publicKey,
