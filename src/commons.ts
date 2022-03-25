@@ -458,14 +458,11 @@ export const handleReorg = async (mysql: ServerlessMysql): Promise<number> => {
   const { height } = await searchForLatestValidBlock(mysql);
   const currentHeight = await getLatestHeight(mysql);
 
-  console.log(`Handling reorg. Our latest best block is ${height}`);
+  console.log(`Handling reorg. Our latest valid block is ${height} and our highest block height is ${currentHeight}`);
 
   if ((currentHeight - height) > WARN_MAX_REORG_SIZE) {
     console.log(`[ALERT] A reorg with ${currentHeight - height} blocks has been detected`);
   }
-
-  // remove blocks where height > latestValidBlock
-  await deleteBlocksAfterHeight(mysql, height);
 
   // fetch all block transactions where height > latestValidBlock
   const allTxsAfterHeight = await getTxsAfterHeight(mysql, height);
@@ -473,6 +470,11 @@ export const handleReorg = async (mysql: ServerlessMysql): Promise<number> => {
     hathorLib.constants.BLOCK_VERSION,
     hathorLib.constants.MERGED_MINED_BLOCK_VERSION,
   ].indexOf(tx.version) > -1);
+
+  // remove blocks where height > latestValidBlock as we already have them on memory
+  await deleteBlocksAfterHeight(mysql, height);
+
+  console.log('Removing transactions', txs.map((tx) => tx.txId));
 
   let affectedUtxoList: DbTxOutput[] = [];
 
