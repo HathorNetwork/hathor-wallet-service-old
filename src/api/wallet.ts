@@ -129,7 +129,7 @@ export const validateSignatures = (
 ): boolean => {
   // verify that the user owns the xpubkey
   const xpubAddress = getAddressFromXpub(xpubkeyStr);
-  const xpubValid = verifySignature(xpubkeySignature, timestamp, xpubAddress.toString(), walletId.toString());
+  const xpubValid = verifySignature(xpubkeySignature, timestamp, xpubAddress, walletId.toString());
 
   // verify that the user owns the auth_xpubkey
   const authXpubAddress = getAddressFromXpub(authXpubkeyStr);
