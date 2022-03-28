@@ -16,24 +16,6 @@ import * as ecc from 'tiny-secp256k1';
 import BIP32Factory from 'bip32';
 
 const bip32 = BIP32Factory(ecc);
-const hathorNetwork = {
-  mainnet: {
-    messagePrefix: '\x18Hathor Signed Message:\n',
-    bech32: 'ht',
-    bip32: { public: 76067358, private: 55720709 },
-    pubKeyHash: 40,
-    scriptHash: 100,
-    wif: 128,
-  },
-  testnet: {
-    messagePrefix: '\x18Hathor Signed Message:\n',
-    bech32: 'tn',
-    bip32: { public: 76067358, private: 70568132 },
-    pubKeyHash: 40,
-    scriptHash: 100,
-    wif: 128,
-  },
-};
 
 /* TODO: We should remove this as soon as the wallet-lib is refactored
 *  (https://github.com/HathorNetwork/hathor-wallet-lib/issues/122)
@@ -75,6 +57,19 @@ export class CustomStorage {
 
 hathorLib.network.setNetwork(process.env.NETWORK);
 hathorLib.storage.setStore(new CustomStorage());
+
+const libNetwork = hathorLib.network.getNetwork();
+const hathorNetwork = {
+  messagePrefix: '\x18Hathor Signed Message:\n',
+  bech32: hathorLib.network.bech32prefix,
+  bip32: {
+    public: libNetwork.xpubkey,
+    private: libNetwork.xprivkey,
+  },
+  pubKeyHash: libNetwork.pubkeyhash,
+  scriptHash: libNetwork.scripthash,
+  wif: libNetwork.privatekey,
+};
 
 /**
  * Calculate the double sha256 hash of the data.
@@ -271,7 +266,7 @@ export const getAddressAtIndex = (xpubkey: string, addressIndex: number): string
   const node = bip32.fromBase58(xpubkey).derive(addressIndex);
   return bitcoin.payments.p2pkh({
     pubkey: node.publicKey,
-    network: hathorNetwork[process.env.NETWORK || 'mainnet'],
+    network: hathorNetwork,
   }).address;
 };
 
@@ -358,6 +353,6 @@ export const getAddressFromXpub = (xpubkey: string): string => {
 
   return bitcoin.payments.p2pkh({
     pubkey: node.publicKey,
-    network: hathorNetwork[process.env.NETWORK || 'mainnet'],
+    network: hathorNetwork,
   }).address;
 };
