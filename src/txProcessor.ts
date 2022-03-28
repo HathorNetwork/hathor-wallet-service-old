@@ -122,6 +122,7 @@ export const onNewTxRequest: APIGatewayProxyHandler = async (event) => {
       body: JSON.stringify({ success: true }),
     };
   } catch (e) {
+    // eslint-disable-next-line
     console.log('Errored on onNewTxRequest: ', e);
 
     return {
@@ -150,6 +151,7 @@ export const onHandleReorgRequest: APIGatewayProxyHandler = async () => {
       body: JSON.stringify({ success: true }),
     };
   } catch (e) {
+    // eslint-disable-next-line
     console.log('Errored on onHandleReorgRequest: ', e);
     return {
       statusCode: 500,
