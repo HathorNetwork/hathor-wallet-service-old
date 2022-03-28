@@ -22,7 +22,7 @@
     "@types/redis": "^2.8.28",
     "aws-lambda": "^1.0.6",
     "aws-sdk": "^2.916.0",
-    "axios": "^0.21.1",
+    "axios": "^0.21.2",
     "bip32": "^3.0.1",
     "bitcoinjs-lib": "^6.0.1",
     "bitcoinjs-message": "^2.2.0",
