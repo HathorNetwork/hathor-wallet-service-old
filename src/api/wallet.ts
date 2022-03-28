@@ -27,6 +27,7 @@ import {
   getDbConnection,
   getWalletId,
   verifySignature,
+  getAddressFromXpub,
   confirmFirstAddress,
   validateAuthTimestamp,
   AUTH_MAX_TIMESTAMP_SHIFT_IN_SECONDS,
@@ -34,8 +35,6 @@ import {
 import { closeDbAndGetError } from '@src/api/utils';
 import { walletIdProxyHandler } from '@src/commons';
 import Joi from 'joi';
-import bitcore from 'bitcore-lib';
-import { network } from '@hathor/wallet-lib';
 
 const mysql = getDbConnection();
 
@@ -129,14 +128,11 @@ export const validateSignatures = (
   authXpubkeySignature: string,
 ): boolean => {
   // verify that the user owns the xpubkey
-  const xpubkey = bitcore.HDPublicKey(xpubkeyStr);
-  const xpubAddress = xpubkey.publicKey.toAddress(network.getNetwork());
+  const xpubAddress = getAddressFromXpub(xpubkeyStr);
   const xpubValid = verifySignature(xpubkeySignature, timestamp, xpubAddress, walletId.toString());
 
   // verify that the user owns the auth_xpubkey
-  const authXpubkey = bitcore.HDPublicKey(authXpubkeyStr);
-  const authXpubAddress = authXpubkey.publicKey.toAddress(network.getNetwork());
-
+  const authXpubAddress = getAddressFromXpub(authXpubkeyStr);
   const authXpubValid = verifySignature(authXpubkeySignature, timestamp, authXpubAddress, walletId.toString());
 
   return xpubValid && authXpubValid;
@@ -350,6 +346,7 @@ export const load: APIGatewayProxyHandler = async (event) => {
      */
     await invokeLoadWalletAsync(xpubkeyStr, maxGap);
   } catch (e) {
+    // eslint-disable-next-line
     console.error('Error on lambda wallet invoke', e);
 
     const newRetryCount = wallet.retryCount ? wallet.retryCount + 1 : 1;
@@ -416,6 +413,7 @@ export const loadWallet: Handler<LoadEvent, LoadResult> = async (event) => {
       xpubkey,
     };
   } catch (e) {
+    // eslint-disable-next-line
     console.error('Erroed on loadWalletAsync: ', e);
 
     const wallet = await getWallet(mysql, walletId);

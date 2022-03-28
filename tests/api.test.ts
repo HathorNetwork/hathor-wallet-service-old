@@ -487,6 +487,7 @@ test('POST /wallet', async () => {
   event = makeGatewayEvent({}, JSON.stringify({ param1: 'aaa', firstAddress: 'a' }));
   result = await walletLoad(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
+
   expect(result.statusCode).toBe(400);
   expect(returnBody.success).toBe(false);
   expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);

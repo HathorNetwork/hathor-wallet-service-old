@@ -15,13 +15,12 @@ import {
 import { v4 as uuid4 } from 'uuid';
 import Joi from 'joi';
 import jwt from 'jsonwebtoken';
-import bitcore from 'bitcore-lib';
 import { ApiError } from '@src/api/errors';
-import hathorLib from '@hathor/wallet-lib';
 import { Wallet } from '@src/types';
 import { getWallet } from '@src/db';
 import {
   verifySignature,
+  getAddressFromXpub,
   closeDbConnection,
   getDbConnection,
   validateAuthTimestamp,
@@ -29,8 +28,6 @@ import {
 } from '@src/utils';
 
 const EXPIRATION_TIME_IN_SECONDS = 1800;
-
-hathorLib.network.setNetwork(process.env.NETWORK);
 
 const bodySchema = Joi.object({
   ts: Joi.number().positive().required(),
@@ -112,8 +109,7 @@ export const tokenHandler: APIGatewayProxyHandler = async (event) => {
     };
   }
 
-  const xpubkey = bitcore.HDPublicKey(authXpubStr);
-  const address = xpubkey.publicKey.toAddress(hathorLib.network.getNetwork());
+  const address = getAddressFromXpub(authXpubStr);
   const walletId = wallet.walletId;
 
   if (!verifySignature(signature, timestamp, address, walletId)) {
@@ -184,6 +180,7 @@ const _generatePolicy = (principalId: string, effect: string, resource: string) 
   authResponse.context = context;
 
   // XXX: to get the resulting policy on the logs, since we can't check the cached policy
+  // eslint-disable-next-line
   console.info('Generated policy:', authResponse);
   return authResponse;
 };
@@ -211,6 +208,7 @@ export const bearerAuthorizer: APIGatewayTokenAuthorizerHandler = async (event) 
     } else if (e.name === 'TokenExpiredError') {
       throw new Error('Unauthorized');
     } else {
+      // eslint-disable-next-line
       console.log('Error on bearerAuthorizer: ', e);
       throw e;
     }
@@ -219,12 +217,11 @@ export const bearerAuthorizer: APIGatewayTokenAuthorizerHandler = async (event) 
   // signature data
   const signature = data.sign;
   const timestamp = data.ts;
-  const addr = data.addr;
+  const address = data.addr;
   const walletId = data.wid;
 
   // header data
   const expirationTs = data.exp;
-  const address = new bitcore.Address(addr, hathorLib.network.getNetwork());
   const verified = verifySignature(signature, timestamp, address, walletId);
 
   if (verified && Math.floor(Date.now() / 1000) <= expirationTs) {

@@ -37,6 +37,7 @@ export const onHandleOldVoidedTxs = async () => {
 
   // Fetch voided transactions that are older than 20m
   const voidedTransactions: Tx[] = await getMempoolTransactionsBeforeDate(mysql, date);
+  // eslint-disable-next-line
   console.log(`Found ${voidedTransactions.length} voided transactions older than ${process.env.VOIDED_TX_OFFSET}m`);
 
   /* This loop will check if all transactions are in fact voided on the fullnode and try to fix it (by updating the height) if
