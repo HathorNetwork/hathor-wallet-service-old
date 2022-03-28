@@ -267,8 +267,8 @@ export const validateAuthTimestamp = (timestamp: number, now: number): [boolean,
  *
  * @returns The derived address
  */
-export const getAddressAtIndex = (pubkey: string, addressIndex: number): string => {
-  const node = bip32.fromBase58(pubkey).derive(addressIndex);
+export const getAddressAtIndex = (xpubkey: string, addressIndex: number): string => {
+  const node = bip32.fromBase58(xpubkey).derive(addressIndex);
   return bitcoin.payments.p2pkh({
     pubkey: node.publicKey,
     network: hathorNetwork[process.env.NETWORK || 'mainnet'],
@@ -315,8 +315,8 @@ export const getAddresses = (xpubkey: string, startIndex: number, quantity: numb
  *
  * @returns The derived xpubkey
  */
-export const xpubDeriveChild = (pubkey: string, index: number): string => (
-  bip32.fromBase58(pubkey).derive(index).toBase58()
+export const xpubDeriveChild = (xpubkey: string, index: number): string => (
+  bip32.fromBase58(xpubkey).derive(index).toBase58()
 );
 
 /**
