@@ -26,7 +26,6 @@
     "bip32": "^3.0.1",
     "bitcoinjs-lib": "^6.0.1",
     "bitcoinjs-message": "^2.2.0",
-    "bitcore-lib": "^8.25.25",
     "joi": "^17.4.0",
     "jsonwebtoken": "^8.5.1",
     "mysql": "^2.18.1",
@@ -67,6 +66,7 @@
     "typescript": "^3.9.5",
     "typescript-eslint": "0.0.1-alpha.0",
     "webpack": "^4.29.0",
-    "webpack-node-externals": "^1.7.2"
+    "webpack-node-externals": "^1.7.2",
+    "bitcore-lib": "^8.25.25"
   }
 }
