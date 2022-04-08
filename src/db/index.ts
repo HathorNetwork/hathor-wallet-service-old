@@ -1271,22 +1271,30 @@ export const getWalletTxHistory = async (
   count: number,
 ): Promise<TxTokenBalance[]> => {
   const history: TxTokenBalance[] = [];
-  const results: DbSelectResult = await mysql.query(
-    `SELECT *
-       FROM \`wallet_tx_history\`
-      WHERE \`wallet_id\` = ?
-        AND \`token_id\` = ?
-   ORDER BY \`timestamp\`
-       DESC
-      LIMIT ?, ?`,
-    [walletId, tokenId, skip, count],
-  );
+  const results: DbSelectResult = await mysql.query(`
+    SELECT wallet_tx_history.balance AS balance, 
+           wallet_tx_history.timestamp AS timestamp, 
+           wallet_tx_history.token_id AS token_id, 
+           wallet_tx_history.tx_id AS tx_id, 
+           wallet_tx_history.voided AS voided, 
+           wallet_tx_history.wallet_id AS wallet_id, 
+           transaction.version AS version
+      FROM wallet_tx_history
+LEFT OUTER JOIN transaction ON transaction.tx_id = wallet_tx_history.tx_id
+     WHERE wallet_id = ?
+       AND token_id = ?
+  ORDER BY wallet_tx_history.timestamp
+      DESC
+     LIMIT ?, ?`,
+  [walletId, tokenId, skip, count]);
+
   for (const result of results) {
     const tx: TxTokenBalance = {
       txId: <string>result.tx_id,
       timestamp: <number>result.timestamp,
       voided: <boolean>result.voided,
       balance: <Balance>result.balance,
+      version: <number>result.version,
     };
     history.push(tx);
   }
