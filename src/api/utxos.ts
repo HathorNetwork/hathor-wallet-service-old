@@ -32,6 +32,7 @@ const bodySchema = Joi.object({
   biggerThan: Joi.number().integer().positive().default(-1),
   smallerThan: Joi.number().integer().positive().default(constants.MAX_OUTPUT_VALUE + 1),
   maxUtxos: Joi.number().integer().positive().default(constants.MAX_OUTPUTS),
+  skipSpent: Joi.boolean().optional().default(true),
   txId: Joi.string().optional(),
   index: Joi.number().optional().min(0),
 }).and('txId', 'index');
@@ -53,6 +54,7 @@ export const getFilteredUtxos = walletIdProxyHandler(async (walletId, event) => 
     ignoreLocked: queryString.ignoreLocked,
     biggerThan: queryString.biggerThan,
     smallerThan: queryString.smallerThan,
+    skipSpent: queryString.skipSpent,
     txId: queryString.txId,
     index: queryString.index,
   };

@@ -41,10 +41,10 @@ test('filter utxo api with invalid parameters', async () => {
   const token1 = '004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50';
 
   const utxos = [
-    [TX_IDS[0], 0, token1, ADDRESSES[0], 50, 0, null, null, false],
-    [TX_IDS[1], 0, token1, ADDRESSES[1], 100, 0, null, null, false],
-    [TX_IDS[2], 0, token1, ADDRESSES[2], 150, 0, null, null, false],
-    [TX_IDS[2], 1, token1, ADDRESSES[3], 200, 0, null, null, false],
+    [TX_IDS[0], 0, token1, ADDRESSES[0], 50, 0, null, null, false, null],
+    [TX_IDS[1], 0, token1, ADDRESSES[1], 100, 0, null, null, false, null],
+    [TX_IDS[2], 0, token1, ADDRESSES[2], 150, 0, null, null, false, null],
+    [TX_IDS[2], 1, token1, ADDRESSES[3], 200, 0, null, null, false, null],
   ];
 
   await addToUtxoTable(mysql, utxos);
@@ -121,10 +121,10 @@ test('get utxos with wallet id', async () => {
   const token1 = '004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50';
 
   const utxos = [
-    [TX_IDS[0], 0, token1, ADDRESSES[0], 50, 0, null, null, false],
-    [TX_IDS[1], 0, token1, ADDRESSES[0], 100, 0, null, null, false],
-    [TX_IDS[2], 0, token1, ADDRESSES[1], 150, 0, null, null, false],
-    [TX_IDS[2], 1, token1, ADDRESSES[0], 200, 0, null, null, false],
+    [TX_IDS[0], 0, token1, ADDRESSES[0], 50, 0, null, null, false, null],
+    [TX_IDS[1], 0, token1, ADDRESSES[0], 100, 0, null, null, false, null],
+    [TX_IDS[2], 0, token1, ADDRESSES[1], 150, 0, null, null, false, null],
+    [TX_IDS[2], 1, token1, ADDRESSES[0], 200, 0, null, null, false, null],
   ];
 
   await addToUtxoTable(mysql, utxos);
@@ -151,6 +151,7 @@ test('get utxos with wallet id', async () => {
     addressPath: `m/44'/280'/0'/0/${path}`,
     txProposalId: null,
     txProposalIndex: null,
+    spentBy: null,
   });
 
   expect(result.statusCode).toBe(200);
@@ -179,11 +180,11 @@ test('get authority utxos', async () => {
   const token1 = '004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50';
 
   const utxos = [
-    [TX_IDS[0], 0, token1, ADDRESSES[0], 0, 1, null, null, false],
-    [TX_IDS[1], 0, token1, ADDRESSES[0], 0, 2, null, null, false],
-    [TX_IDS[2], 0, token1, ADDRESSES[1], 0, 1, null, null, false],
-    [TX_IDS[2], 1, token1, ADDRESSES[0], 0, 1, null, null, false],
-    [TX_IDS[3], 0, token1, ADDRESSES[0], 150, 0, null, null, false],
+    [TX_IDS[0], 0, token1, ADDRESSES[0], 0, 1, null, null, false, null],
+    [TX_IDS[1], 0, token1, ADDRESSES[0], 0, 2, null, null, false, null],
+    [TX_IDS[2], 0, token1, ADDRESSES[1], 0, 1, null, null, false, null],
+    [TX_IDS[2], 1, token1, ADDRESSES[0], 0, 1, null, null, false, null],
+    [TX_IDS[3], 0, token1, ADDRESSES[0], 150, 0, null, null, false, null],
   ];
 
   await addToUtxoTable(mysql, utxos);
@@ -201,6 +202,7 @@ test('get authority utxos', async () => {
     addressPath: `m/44'/280'/0'/0/${path}`,
     txProposalId: null,
     txProposalIndex: null,
+    spentBy: null,
   });
 
   let event = makeGatewayEventWithAuthorizer('my-wallet', {
@@ -250,10 +252,10 @@ test('get a specific utxo', async () => {
   const token1 = '004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50';
 
   const utxos = [
-    [TX_IDS[0], 0, token1, ADDRESSES[0], 50, 0, null, null, false],
-    [TX_IDS[1], 0, token1, ADDRESSES[0], 100, 0, null, null, false],
-    [TX_IDS[2], 0, token1, ADDRESSES[1], 150, 0, null, null, false],
-    [TX_IDS[2], 1, token1, ADDRESSES[0], 200, 0, null, null, false],
+    [TX_IDS[0], 0, token1, ADDRESSES[0], 50, 0, null, null, false, null],
+    [TX_IDS[1], 0, token1, ADDRESSES[0], 100, 0, null, null, false, null],
+    [TX_IDS[2], 0, token1, ADDRESSES[1], 150, 0, null, null, false, null],
+    [TX_IDS[2], 1, token1, ADDRESSES[0], 200, 0, null, null, false, null],
   ];
 
   await addToUtxoTable(mysql, utxos);
@@ -279,6 +281,7 @@ test('get a specific utxo', async () => {
     txProposalId: null,
     txProposalIndex: null,
     addressPath: `m/44'/280'/0'/0/${path}`,
+    spentBy: null,
   });
 
   expect(result.statusCode).toBe(200);
@@ -306,10 +309,10 @@ test('get utxos from addresses that are not my own should fail with ApiError.ADD
   const token1 = '004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50';
 
   const utxos = [
-    [TX_IDS[0], 0, token1, ADDRESSES[0], 50, 0, null, null, false],
-    [TX_IDS[1], 0, token1, ADDRESSES[0], 100, 0, null, null, false],
-    [TX_IDS[2], 0, token1, ADDRESSES[1], 150, 0, null, null, false],
-    [TX_IDS[2], 1, token1, ADDRESSES[1], 200, 0, null, null, false],
+    [TX_IDS[0], 0, token1, ADDRESSES[0], 50, 0, null, null, false, null],
+    [TX_IDS[1], 0, token1, ADDRESSES[0], 100, 0, null, null, false, null],
+    [TX_IDS[2], 0, token1, ADDRESSES[1], 150, 0, null, null, false, null],
+    [TX_IDS[2], 1, token1, ADDRESSES[1], 200, 0, null, null, false, null],
   ];
 
   await addToUtxoTable(mysql, utxos);
@@ -324,4 +327,59 @@ test('get utxos from addresses that are not my own should fail with ApiError.ADD
   expect(result.statusCode).toBe(400);
   expect(returnBody.success).toBe(false);
   expect(returnBody.error).toStrictEqual(ApiError.ADDRESS_NOT_IN_WALLET);
+});
+
+test('get spent tx_output', async () => {
+  expect.hasAssertions();
+
+  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'auth_xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToAddressTable(mysql, [{
+    address: ADDRESSES[0],
+    index: 0,
+    walletId: 'my-wallet',
+    transactions: 4,
+  }, {
+    address: ADDRESSES[1],
+    index: 1,
+    walletId: 'my-wallet',
+    transactions: 4,
+  }]);
+
+  const token1 = '004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50';
+
+  const utxos = [
+    [TX_IDS[0], 0, token1, ADDRESSES[0], 50, 0, null, null, false, null],
+    [TX_IDS[1], 0, token1, ADDRESSES[0], 100, 0, null, null, false, '004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50'],
+  ];
+
+  await addToUtxoTable(mysql, utxos);
+
+  const event = makeGatewayEventWithAuthorizer('my-wallet', {
+    tokenId: token1,
+    skipSpent: 'false', // should include TX_IDS[1]
+  }, null);
+  const result = await getFilteredUtxos(event, null, null) as APIGatewayProxyResult;
+  const returnBody = JSON.parse(result.body as string);
+
+  const formatUtxo = (utxo, path) => ({
+    txId: utxo[0],
+    index: utxo[1],
+    tokenId: utxo[2],
+    address: utxo[3],
+    value: utxo[4],
+    authorities: utxo[5],
+    timelock: utxo[6],
+    heightlock: utxo[7],
+    locked: utxo[8],
+    txProposalId: null,
+    txProposalIndex: null,
+    addressPath: `m/44'/280'/0'/0/${path}`,
+    spentBy: utxo[9],
+  });
+
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(true);
+  expect(returnBody.utxos).toHaveLength(2);
+  expect(returnBody.utxos[0]).toStrictEqual(formatUtxo(utxos[1], 0));
+  expect(returnBody.utxos[1]).toStrictEqual(formatUtxo(utxos[0], 0));
 });

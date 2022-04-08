@@ -210,12 +210,12 @@ test('unlockUtxos', async () => {
   const now = 1000;
   await addToUtxoTable(mysql, [
     // blocks with heightlock
-    [txId1, 0, token, addr, reward, 0, null, 3, true],
-    [txId2, 0, token, addr, reward, 0, null, 4, true],
+    [txId1, 0, token, addr, reward, 0, null, 3, true, null],
+    [txId2, 0, token, addr, reward, 0, null, 4, true, null],
     // some transactions with timelock
-    [txId3, 0, token, addr, 2500, 0, now, null, true],
-    [txId4, 0, token, addr, 2500, 0, now * 2, null, true],
-    [txId5, 0, token, addr, 0, 0b10, now * 3, null, true],
+    [txId3, 0, token, addr, 2500, 0, now, null, true, null],
+    [txId4, 0, token, addr, 2500, 0, now * 2, null, true, null],
+    [txId5, 0, token, addr, 0, 0b10, now * 3, null, true, null],
   ]);
 
   await addToWalletTable(mysql, [
@@ -324,9 +324,9 @@ test('unlockTimelockedUtxos', async () => {
   const walletId = 'walletId';
   const now = 1000;
   await addToUtxoTable(mysql, [
-    [txId1, 0, token, addr, 2500, 0, now, null, true],
-    [txId2, 0, token, addr, 2500, 0, now * 2, null, true],
-    [txId3, 0, token, addr, 0, 0b10, now * 3, null, true],
+    [txId1, 0, token, addr, 2500, 0, now, null, true, null],
+    [txId2, 0, token, addr, 2500, 0, now * 2, null, true, null],
+    [txId3, 0, token, addr, 0, 0b10, now * 3, null, true, null],
   ]);
 
   await addToWalletTable(mysql, [

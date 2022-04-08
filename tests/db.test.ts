@@ -970,7 +970,7 @@ test('updateAddressLockedBalance', async () => {
   await expect(checkAddressBalanceTable(mysql, 3, addr1, otherToken, 5, 5, null, 1)).resolves.toBe(true);
 
   // now pretend there's another locked authority, so final balance of locked authorities should be updated accordingly
-  await addToUtxoTable(mysql, [['txId', 0, tokenId, addr1, 0, 0b01, 10000, null, true]]);
+  await addToUtxoTable(mysql, [['txId', 0, tokenId, addr1, 0, 0b01, 10000, null, true, null]]);
   const newMap = TokenBalanceMap.fromStringMap({ [tokenId]: { unlocked: 0, locked: 0, unlockedAuthorities: new Authorities(0b10) } });
   await updateAddressLockedBalance(mysql, { [addr1]: newMap });
   await expect(checkAddressBalanceTable(mysql, 3, addr1, tokenId, 60, 10, null, 3, 0b11, 0b01)).resolves.toBe(true);
@@ -1150,17 +1150,17 @@ test('getWalletSortedValueUtxos', async () => {
   }]);
   await addToUtxoTable(mysql, [
     // authority utxos should be ignored
-    [txId, 0, tokenId, addr1, 0, 0b01, null, null, false],
+    [txId, 0, tokenId, addr1, 0, 0b01, null, null, false, null],
     // locked utxos should be ignored
-    [txId, 1, tokenId, addr1, 10, 0, 10000, null, true],
+    [txId, 1, tokenId, addr1, 10, 0, 10000, null, true, null],
     // another wallet
-    [txId, 2, tokenId, 'otherAddr', 10, 0, null, null, false],
+    [txId, 2, tokenId, 'otherAddr', 10, 0, null, null, false, null],
     // another token
-    [txId, 3, 'tokenId2', addr1, 5, 0, null, null, false],
+    [txId, 3, 'tokenId2', addr1, 5, 0, null, null, false, null],
     // these sould be fetched
-    [txId, 4, tokenId, addr1, 4, 0, null, null, false],
-    [txId, 5, tokenId, addr2, 1, 0, null, null, false],
-    [txId, 6, tokenId, addr1, 7, 0, null, null, false],
+    [txId, 4, tokenId, addr1, 4, 0, null, null, false, null],
+    [txId, 5, tokenId, addr2, 1, 0, null, null, false, null],
+    [txId, 6, tokenId, addr1, 7, 0, null, null, false, null],
   ]);
 
   const utxos = await getWalletSortedValueUtxos(mysql, walletId, tokenId);
@@ -1218,6 +1218,7 @@ test('markUtxosWithProposalId and getTxProposalInputs', async () => {
     locked: false,
     txProposalId: null,
     txProposalIndex: null,
+    spentBy: null,
   }, {
     txId,
     index: 1,
@@ -1230,6 +1231,7 @@ test('markUtxosWithProposalId and getTxProposalInputs', async () => {
     locked: false,
     txProposalId: null,
     txProposalIndex: null,
+    spentBy: null,
   }, {
     txId,
     index: 2,
@@ -1242,6 +1244,7 @@ test('markUtxosWithProposalId and getTxProposalInputs', async () => {
     locked: false,
     txProposalId: null,
     txProposalIndex: null,
+    spentBy: null,
   }];
 
   // add to utxo table
@@ -1483,12 +1486,12 @@ test('rebuildAddressBalancesFromUtxos', async () => {
   const txId = 'tx1';
 
   const utxos = [
-    { value: 5, address: addr1, token: 'token1', locked: false },
-    { value: 15, address: addr1, token: 'token1', locked: false },
-    { value: 25, address: addr2, token: 'token2', timelock: 500, locked: true },
-    { value: 35, address: addr2, token: 'token1', locked: false },
+    { value: 5, address: addr1, token: 'token1', locked: false, spentBy: null },
+    { value: 15, address: addr1, token: 'token1', locked: false, spentBy: null },
+    { value: 25, address: addr2, token: 'token2', timelock: 500, locked: true, spentBy: null },
+    { value: 35, address: addr2, token: 'token1', locked: false, spentBy: null },
     // authority utxo
-    { value: 0b11, address: addr1, token: 'token1', locked: false, tokenData: 129 },
+    { value: 0b11, address: addr1, token: 'token1', locked: false, tokenData: 129, spentBy: null },
   ];
 
   const outputs = utxos.map((utxo, index) => createOutput(
@@ -1599,16 +1602,16 @@ test('filterUtxos', async () => {
   }]);
 
   await addToUtxoTable(mysql, [
-    [txId3, 0, '00', addr1, 6000, 0, null, null, false],
-    [txId, 0, tokenId, addr1, 100, 0, null, null, false],
-    [txId2, 0, tokenId, addr1, 500, 0, null, null, false],
-    [txId2, 1, tokenId, addr1, 1000, 0, null, null, false],
+    [txId3, 0, '00', addr1, 6000, 0, null, null, false, null],
+    [txId, 0, tokenId, addr1, 100, 0, null, null, false, null],
+    [txId2, 0, tokenId, addr1, 500, 0, null, null, false, null],
+    [txId2, 1, tokenId, addr1, 1000, 0, null, null, false, null],
     // locked utxo:
-    [txId2, 2, tokenId, addr2, 1500, 0, null, null, true],
+    [txId2, 2, tokenId, addr2, 1500, 0, null, null, true, null],
     // authority utxo:
-    [txId2, 3, tokenId, addr2, 0, 0b01, null, null, false],
+    [txId2, 3, tokenId, addr2, 0, 0b01, null, null, false, null],
     // another authority utxo:
-    [txId2, 4, tokenId, addr2, 0, 0b01, null, null, false],
+    [txId2, 4, tokenId, addr2, 0, 0b01, null, null, false, null],
   ]);
 
   // filter all hathor utxos from addr1 and addr2
@@ -1642,6 +1645,7 @@ test('filterUtxos', async () => {
     locked: false,
     txProposalId: null,
     txProposalIndex: null,
+    spentBy: null,
   });
   expect(utxos[1]).toStrictEqual({
     txId: txId2,
@@ -1655,6 +1659,7 @@ test('filterUtxos', async () => {
     locked: false,
     txProposalId: null,
     txProposalIndex: null,
+    spentBy: null,
   });
 
   // limit to 2 utxos, should return the largest 2 ordered by value
@@ -1672,6 +1677,7 @@ test('filterUtxos', async () => {
     locked: true,
     txProposalId: null,
     txProposalIndex: null,
+    spentBy: null,
   });
   expect(utxos[1]).toStrictEqual({
     txId: txId2,
@@ -1685,6 +1691,7 @@ test('filterUtxos', async () => {
     locked: false,
     txProposalId: null,
     txProposalIndex: null,
+    spentBy: null,
   });
 
   // authorities != 0 and maxUtxos == 1 should return only one authority utxo
@@ -1710,9 +1717,9 @@ test('beginTransaction, commitTransaction, rollbackTransaction', async () => {
   await beginTransaction(mysql);
 
   await addToUtxoTable(mysql, [
-    [txId, 0, tokenId, addr1, 0, 0b01, null, null, false],
-    [txId, 1, tokenId, addr1, 10, 0, 10000, null, true],
-    [txId, 2, tokenId, 'otherAddr', 10, 0, null, null, false],
+    [txId, 0, tokenId, addr1, 0, 0b01, null, null, false, null],
+    [txId, 1, tokenId, addr1, 10, 0, 10000, null, true, null],
+    [txId, 2, tokenId, 'otherAddr', 10, 0, null, null, false, null],
   ]);
 
   await commitTransaction(mysql);
@@ -1724,10 +1731,10 @@ test('beginTransaction, commitTransaction, rollbackTransaction', async () => {
   await beginTransaction(mysql);
 
   await addToUtxoTable(mysql, [
-    [txId, 3, 'tokenId2', addr1, 5, 0, null, null, false],
-    [txId, 4, tokenId, addr1, 4, 0, null, null, false],
-    [txId, 5, tokenId, addr2, 1, 0, null, null, false],
-    [txId, 6, tokenId, addr1, 7, 0, null, null, false],
+    [txId, 3, 'tokenId2', addr1, 5, 0, null, null, false, null],
+    [txId, 4, tokenId, addr1, 4, 0, null, null, false, null],
+    [txId, 5, tokenId, addr2, 1, 0, null, null, false, null],
+    [txId, 6, tokenId, addr1, 7, 0, null, null, false, null],
   ]);
 
   await rollbackTransaction(mysql);

@@ -2155,6 +2155,7 @@ export const filterUtxos = async (
     tokenId: '00',
     authority: 0,
     ignoreLocked: false,
+    skipSpent: true,
     biggerThan: -1,
     smallerThan: constants.MAX_OUTPUT_VALUE + 1,
     ...filters,
@@ -2188,9 +2189,9 @@ export const filterUtxos = async (
         ${finalFilters.ignoreLocked ? 'AND `locked` = FALSE' : ''}
         ${finalFilters.authority === 0 ? 'AND value < ?' : ''}
         ${finalFilters.authority === 0 ? 'AND value > ?' : ''}
+        ${finalFilters.skipSpent ? 'AND `spent_by` IS NULL' : ''}
         AND \`tx_proposal\` IS NULL
         AND \`voided\` = FALSE
-        AND \`spent_by\` IS NULL
    ORDER BY \`value\` DESC
         ${finalFilters.maxUtxos ? 'LIMIT ?' : ''}
        `,
@@ -2220,6 +2221,7 @@ export const mapDbResultToDbTxOutput = (result: any): DbTxOutput => ({
   locked: result.locked > 0,
   txProposalId: result.tx_proposal as string,
   txProposalIndex: result.tx_proposal_index as number,
+  spentBy: result.spent_by as string,
 });
 
 /**

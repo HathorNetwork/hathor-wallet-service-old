@@ -630,6 +630,7 @@ export interface IFilterUtxo {
   biggerThan?: number;
   smallerThan?: number;
   maxUtxos?: number;
+  skipSpent?: boolean;
   txId?: string;
   index?: number;
 }
