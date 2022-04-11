@@ -4,6 +4,7 @@ import { get as addressesGet } from '@src/api/addresses';
 import { get as newAddressesGet } from '@src/api/newAddresses';
 import { get as balancesGet } from '@src/api/balances';
 import { get as txHistoryGet } from '@src/api/txhistory';
+import { get as walletTokensGet } from '@src/api/tokens';
 import { getTokenDetails } from '@src/api/tokens';
 import {
   get as walletGet,
@@ -1068,10 +1069,38 @@ test('loadWallet should update wallet status to ERROR if an error occurs', async
   expect(wallet.status).toStrictEqual(WalletStatus.ERROR);
 }, 30000);
 
+test('GET /wallet/tokens', async () => {
+  expect.hasAssertions();
+
+  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'auth_xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToWalletTxHistoryTable(mysql, [
+    ['my-wallet', 'tx1', '00', 5, 1000, false],
+    ['my-wallet', 'tx1', 'token2', '7', 1000, false],
+    ['my-wallet', 'tx2', '00', 7, 1001, false],
+    ['my-wallet', 'tx2', 'token3', 7, 1001, true],
+  ]);
+
+  const event = makeGatewayEventWithAuthorizer('my-wallet', {});
+  const result = await walletTokensGet(event, null, null) as APIGatewayProxyResult;
+  const returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(true);
+  expect(returnBody.tokens).toStrictEqual(['00', 'token2', 'token3']);
+});
+
 test('GET /wallet/tokens/token_id/details', async () => {
   expect.hasAssertions();
 
   await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'auth_xpubkey', 'ready', 5, 10000, 10001]]);
+
+  let event = makeGatewayEventWithAuthorizer('my-wallet', {});
+  let result = await getTokenDetails(event, null, null) as APIGatewayProxyResult;
+  let returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.details[0]).toStrictEqual({ message: '"token_id" is required', path: ['token_id'] });
 
   // add tokens
   const token1 = { id: 'token1', name: 'MyToken1', symbol: 'MT1' };
@@ -1093,9 +1122,9 @@ test('GET /wallet/tokens/token_id/details', async () => {
     ['txId3', 1, token2.id, ADDRESSES[0], 0, 2, null, null, false, null],
   ]);
 
-  let event = makeGatewayEventWithAuthorizer('my-wallet', { token_id: token1.id });
-  let result = await getTokenDetails(event, null, null) as APIGatewayProxyResult;
-  let returnBody = JSON.parse(result.body as string);
+  event = makeGatewayEventWithAuthorizer('my-wallet', { token_id: token1.id });
+  result = await getTokenDetails(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
 
   expect(result.statusCode).toBe(200);
   expect(returnBody.success).toBe(true);
