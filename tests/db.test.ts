@@ -1924,4 +1924,21 @@ test('getAvailableAuthorities', async () => {
 
   expect(await getAvailableAuthorities(mysql, 'token1')).toHaveLength(1);
   expect(await getAvailableAuthorities(mysql, 'token2')).toHaveLength(1);
+
+  // Insert more than 100 authority utxos for a single token
+  await addToUtxoTable(mysql, Array(105).fill(1).map((_, index) => ([
+    'txId',
+    index + 4, // Last index for this txId was 3
+    tokenId,
+    addr1,
+    0,
+    0b11,
+    null,
+    null,
+    false,
+    null,
+  ])));
+
+  // Results should be truncated to 100 utxos
+  expect(await getAvailableAuthorities(mysql, 'token1')).toHaveLength(100);
 });
