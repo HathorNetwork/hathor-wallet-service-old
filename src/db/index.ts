@@ -2416,3 +2416,38 @@ export const getTotalTransactions = async (
 
   return results[0].count as number;
 };
+
+/**
+ * Get the available authority utxos for a given token
+ *
+ * @param mysql - Database connection
+ * @param tokenId - The token id to fetch authorities
+
+ * @returns A list of authority utxos
+ */
+export const getAvailableAuthorities = async (
+  mysql: ServerlessMysql,
+  tokenId: string,
+): Promise<DbTxOutput[]> => {
+  /* We should set the LIMIT to a reasonable value to prevent users from abusing
+   * this API by creating thousands of authority outputs and querying this
+   *
+   * Currently the only use for this query is on the wallet-desktop to display
+   * if the token is "mintable" and/or"meltable", we don't display a list of those
+   * utxos so it is safe to set this limit.
+   */
+  const results: DbSelectResult = await mysql.query(`
+  SELECT *
+    FROM tx_output
+   WHERE authorities > 0
+     AND token_id = ?
+     AND voided = FALSE
+     AND locked = FALSE
+     AND spent_by IS NULL
+   LIMIT 100
+  `, [tokenId]);
+
+  const utxos = results.map(mapDbResultToDbTxOutput);
+
+  return utxos;
+};
