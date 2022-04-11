@@ -180,6 +180,18 @@ functions:
           method: get
           cors: true
           authorizer: ${self:custom.authorizer.walletBearer}
+  getTokenDetails:
+    handler: src/api/tokens.getTokenDetails
+    events:
+      - http:
+          path: wallet/tokens/{token_id}/details
+          method: get
+          cors: true
+          authorizer: ${self:custom.authorizer.walletBearer}
+          request:
+            parameters:
+              paths:
+                token_id: true
   getTxHistoryApi:
     handler: src/api/txhistory.get
     events:
