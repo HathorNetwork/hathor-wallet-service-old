@@ -75,7 +75,7 @@ export const getTokenDetails = walletIdProxyHandler(async (walletId, event) => {
     statusCode: 200,
     body: JSON.stringify({
       success: true,
-      data: {
+      details: {
         totalSupply,
         totalTransactions,
         tokenInfo,
