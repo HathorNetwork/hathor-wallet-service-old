@@ -6,9 +6,11 @@ import {
   getTotalSupply,
   getTotalTransactions,
   getTokenInformation,
+  getAvailableAuthorities,
 } from '@src/db';
 import {
   TokenInfo,
+  DbTxOutput,
 } from '@src/types';
 import { getDbConnection } from '@src/utils';
 import { ApiError } from '@src/api/errors';
@@ -46,7 +48,7 @@ const getTokenDetailsParamsSchema = Joi.object({
  * This lambda is called by API Gateway on GET /wallet/tokens/:token_id/details
  */
 export const getTokenDetails = walletIdProxyHandler(async (walletId, event) => {
-  const params = event.queryStringParameters || {};
+  const params = event.pathParameters || {};
 
   const { value, error } = getTokenDetailsParamsSchema.validate(params, {
     abortEarly: false,
@@ -62,9 +64,12 @@ export const getTokenDetails = walletIdProxyHandler(async (walletId, event) => {
     return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, { details });
   }
 
-  const tokenInfo: TokenInfo = await getTokenInformation(mysql, value.tokenId);
-  const totalSupply: number = await getTotalSupply(mysql, value.tokenId);
-  const totalTransactions: number = await getTotalTransactions(mysql, value.tokenId);
+  const tokenId = value.token_id;
+
+  const tokenInfo: TokenInfo = await getTokenInformation(mysql, tokenId);
+  const totalSupply: number = await getTotalSupply(mysql, tokenId);
+  const totalTransactions: number = await getTotalTransactions(mysql, tokenId);
+  const availableAuthorities: DbTxOutput[] = await getAvailableAuthorities(mysql, tokenId);
 
   return {
     statusCode: 200,
@@ -74,6 +79,7 @@ export const getTokenDetails = walletIdProxyHandler(async (walletId, event) => {
         totalSupply,
         totalTransactions,
         tokenInfo,
+        availableAuthorities,
       },
     }),
   };
