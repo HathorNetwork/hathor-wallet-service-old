@@ -1099,10 +1099,10 @@ test('GET /wallet/tokens/token_id/details', async () => {
 
   expect(result.statusCode).toBe(200);
   expect(returnBody.success).toBe(true);
-  expect(returnBody.data.totalSupply).toStrictEqual(100);
-  expect(returnBody.data.totalTransactions).toStrictEqual(1);
-  expect(returnBody.data.availableAuthorities).toHaveLength(2);
-  expect(returnBody.data.tokenInfo).toStrictEqual(token1);
+  expect(returnBody.details.totalSupply).toStrictEqual(100);
+  expect(returnBody.details.totalTransactions).toStrictEqual(1);
+  expect(returnBody.details.availableAuthorities).toHaveLength(2);
+  expect(returnBody.details.tokenInfo).toStrictEqual(token1);
 
   event = makeGatewayEventWithAuthorizer('my-wallet', { token_id: token2.id });
   result = await getTokenDetails(event, null, null) as APIGatewayProxyResult;
@@ -1110,8 +1110,8 @@ test('GET /wallet/tokens/token_id/details', async () => {
 
   expect(result.statusCode).toBe(200);
   expect(returnBody.success).toBe(true);
-  expect(returnBody.data.totalSupply).toStrictEqual(250);
-  expect(returnBody.data.totalTransactions).toStrictEqual(2);
-  expect(returnBody.data.availableAuthorities).toHaveLength(2);
-  expect(returnBody.data.tokenInfo).toStrictEqual(token2);
+  expect(returnBody.details.totalSupply).toStrictEqual(250);
+  expect(returnBody.details.totalTransactions).toStrictEqual(2);
+  expect(returnBody.details.availableAuthorities).toHaveLength(2);
+  expect(returnBody.details.tokenInfo).toStrictEqual(token2);
 });
