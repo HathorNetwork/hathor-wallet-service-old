@@ -60,6 +60,7 @@ import {
   getTotalSupply,
   getExpiredTimelocksUtxos,
   getTotalTransactions,
+  getAvailableAuthorities,
 } from '@src/db';
 import {
   beginTransaction,
@@ -1942,4 +1943,23 @@ test('getTotalTransactions', async () => {
 
   expect(await getTotalTransactions(mysql, 'token1')).toStrictEqual(3);
   expect(await getTotalTransactions(mysql, 'token2')).toStrictEqual(2);
+});
+
+test('getAvailableAuthorities', async () => {
+  expect.hasAssertions();
+
+  const addr1 = 'addr1';
+  const addr2 = 'addr1';
+  const tokenId = 'token1';
+  const tokenId2 = 'token2';
+
+  await addToUtxoTable(mysql, [
+    ['txId', 0, tokenId, addr1, 0, 0b01, null, null, false, 'tx1'],
+    ['txId', 1, tokenId, addr1, 0, 0b11, 1000, null, true, null],
+    ['txId', 2, tokenId, addr1, 0, 0b10, null, null, false, null],
+    ['txId', 3, tokenId2, addr2, 0, 0b01, null, null, false, null],
+  ]);
+
+  expect(await getAvailableAuthorities(mysql, 'token1')).toHaveLength(1);
+  expect(await getAvailableAuthorities(mysql, 'token2')).toHaveLength(1);
 });
