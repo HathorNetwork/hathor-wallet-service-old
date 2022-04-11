@@ -4,6 +4,7 @@ import { get as addressesGet } from '@src/api/addresses';
 import { get as newAddressesGet } from '@src/api/newAddresses';
 import { get as balancesGet } from '@src/api/balances';
 import { get as txHistoryGet } from '@src/api/txhistory';
+import { getTokenDetails } from '@src/api/tokens';
 import {
   get as walletGet,
   load as walletLoad,
@@ -33,6 +34,7 @@ import {
   cleanDatabase,
   makeGatewayEvent,
   makeGatewayEventWithAuthorizer,
+  getAuthData,
 } from '@tests/utils';
 
 const mysql = getDbConnection();
@@ -1008,31 +1010,15 @@ test('loadWallet should fail if timestamp is shifted for more than 30s', async (
 test('loadWallet should update wallet status to ERROR if an error occurs', async () => {
   expect.hasAssertions();
 
-  // get the first address
-  const xpubChangeDerivation = walletUtils.xpubDeriveChild(XPUBKEY, 0);
-  const firstAddress = walletUtils.getAddressAtIndex(xpubChangeDerivation, 0, process.env.NETWORK);
-
-  // we need signatures for both the account path and the purpose path:
   const now = Math.floor(Date.now() / 1000);
-  const walletId = getWalletId(XPUBKEY);
-  const xpriv = walletUtils.getXPrivKeyFromSeed(TEST_SEED, {
-    passphrase: '',
-    networkName: process.env.NETWORK,
-  });
-
-  // account path
-  const accountDerivationIndex = '0\'';
-
-  const derivedPrivKey = walletUtils.deriveXpriv(xpriv, accountDerivationIndex);
-  const address = derivedPrivKey.publicKey.toAddress(network.getNetwork()).toString();
-  const message = new bitcore.Message(String(now).concat(walletId).concat(address));
-  const xpubkeySignature = message.sign(derivedPrivKey.privateKey);
-
-  // auth purpose path (m/280'/280')
-  const authDerivedPrivKey = HathorWalletServiceWallet.deriveAuthPrivateKey(xpriv);
-  const authAddress = authDerivedPrivKey.publicKey.toAddress(network.getNetwork());
-  const authMessage = new bitcore.Message(String(now).concat(walletId).concat(authAddress));
-  const authXpubkeySignature = authMessage.sign(authDerivedPrivKey.privateKey);
+  const {
+    walletId,
+    xpubkey,
+    xpubkeySignature,
+    authXpubkey,
+    authXpubkeySignature,
+    firstAddress,
+  } = getAuthData(now);
 
   const loadWalletAsyncSpy = jest.spyOn(Wallet, 'invokeLoadWalletAsync');
   const mockImplementationSuccess = jest.fn(() => Promise.resolve());
@@ -1040,9 +1026,9 @@ test('loadWallet should update wallet status to ERROR if an error occurs', async
 
   // wallet should be 'creating'
   const event = makeGatewayEvent({}, JSON.stringify({
-    xpubkey: XPUBKEY,
+    xpubkey,
     xpubkeySignature,
-    authXpubkey: AUTH_XPUBKEY,
+    authXpubkey,
     authXpubkeySignature,
     firstAddress,
     timestamp: now,
@@ -1081,3 +1067,51 @@ test('loadWallet should update wallet status to ERROR if an error occurs', async
 
   expect(wallet.status).toStrictEqual(WalletStatus.ERROR);
 }, 30000);
+
+test('GET /wallet/tokens/token_id/details', async () => {
+  expect.hasAssertions();
+
+  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'auth_xpubkey', 'ready', 5, 10000, 10001]]);
+
+  // add tokens
+  const token1 = { id: 'token1', name: 'MyToken1', symbol: 'MT1' };
+  const token2 = { id: 'token2', name: 'MyToken2', symbol: 'MT2' };
+
+  await addToTokenTable(mysql, [
+    { id: token1.id, name: token1.name, symbol: token1.symbol },
+    { id: token2.id, name: token2.name, symbol: token2.symbol },
+  ]);
+
+  await addToUtxoTable(mysql, [
+    ['txId', 0, token1.id, ADDRESSES[0], 100, 0, null, null, false, null], // total tokens created
+    ['txId', 1, token1.id, ADDRESSES[0], 0, 1, null, null, false, null], // mint
+    ['txId', 2, token1.id, ADDRESSES[0], 0, 2, null, null, false, null], // melt
+    ['txId2', 0, token2.id, ADDRESSES[0], 250, 0, null, null, true, null], // total tokens created
+    ['txId2', 1, token2.id, ADDRESSES[0], 0, 1, 1000, null, true, null], // locked utxo
+    ['txId2', 2, token2.id, ADDRESSES[0], 0, 1, 1000, null, true, 'txid2'], // spent utxo
+    ['txId3', 0, token2.id, ADDRESSES[0], 0, 1, null, null, false, null],
+    ['txId3', 1, token2.id, ADDRESSES[0], 0, 2, null, null, false, null],
+  ]);
+
+  let event = makeGatewayEventWithAuthorizer('my-wallet', { token_id: token1.id });
+  let result = await getTokenDetails(event, null, null) as APIGatewayProxyResult;
+  let returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(true);
+  expect(returnBody.data.totalSupply).toStrictEqual(100);
+  expect(returnBody.data.totalTransactions).toStrictEqual(1);
+  expect(returnBody.data.availableAuthorities).toHaveLength(2);
+  expect(returnBody.data.tokenInfo).toStrictEqual(token1);
+
+  event = makeGatewayEventWithAuthorizer('my-wallet', { token_id: token2.id });
+  result = await getTokenDetails(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(true);
+  expect(returnBody.data.totalSupply).toStrictEqual(250);
+  expect(returnBody.data.totalTransactions).toStrictEqual(2);
+  expect(returnBody.data.availableAuthorities).toHaveLength(2);
+  expect(returnBody.data.tokenInfo).toStrictEqual(token2);
+});
