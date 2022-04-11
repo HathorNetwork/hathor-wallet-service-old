@@ -2389,3 +2389,30 @@ export const getExpiredTimelocksUtxos = async (
 
   return lockedUtxos;
 };
+
+/**
+ * Get the total sum of transactions for a given tokenId
+ *
+ * @param mysql - Database connection
+ * @param tokenId - The token id to fetch transactions
+
+ * @returns The calculated total sum of transactions
+ */
+export const getTotalTransactions = async (
+  mysql: ServerlessMysql,
+  tokenId: string,
+): Promise<number> => {
+  const results: DbSelectResult = await mysql.query(`
+    SELECT COUNT(DISTINCT(tx_id)) AS count
+      FROM tx_output
+     WHERE token_id = ?
+       AND voided = FALSE
+  `, [tokenId]);
+
+  if (!results.length) {
+    // This should never happen.
+    throw new Error('[ALERT] Total transactions query returned no results');
+  }
+
+  return results[0].count as number;
+};
