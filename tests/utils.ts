@@ -68,7 +68,7 @@ export const cleanDatabase = async (mysql: ServerlessMysql): Promise<void> => {
   }
 };
 
-export const createOutput = (index: number, value: number, address: string, token = '00', timelock: number = null, locked = false, tokenData = 0): TxOutputWithIndex => (
+export const createOutput = (index: number, value: number, address: string, token = '00', timelock: number = null, locked = false, tokenData = 0, spentBy = null): TxOutputWithIndex => (
   {
     value,
     token,
@@ -81,7 +81,7 @@ export const createOutput = (index: number, value: number, address: string, toke
     },
     token_data: tokenData,
     script: 'dqkUH70YjKeoKdFwMX2TOYvGVbXOrKaIrA==',
-    spent_by: null,
+    spent_by: spentBy,
   }
 );
 
