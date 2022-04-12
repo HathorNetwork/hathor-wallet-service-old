@@ -123,6 +123,9 @@ export const getDbConnection = (): ServerlessMysql => (
       // TODO if not on local env, get IAM token
       // https://aws.amazon.com/blogs/database/iam-role-based-authentication-to-amazon-aurora-from-serverless-applications/
       password: process.env.DB_PASS,
+      // Default global timeout should be less than the serverless default timeout (6s) so we can get an error on the
+      // application level and know where it timed out
+      timeout: 5000,
     },
   })
 );

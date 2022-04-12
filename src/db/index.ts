@@ -82,15 +82,15 @@ export const generateAddresses = async (mysql: ServerlessMysql, xpubkey: string,
     const addrMap = getAddresses(derivedXpub, highestCheckedIndex + 1, maxGap);
     allAddresses.push(...Object.keys(addrMap));
 
-    const results: DbSelectResult = await mysql.query(
-      `SELECT \`address\`,
-              \`index\`,
-              \`transactions\`
-         FROM \`address\`
-        WHERE \`address\`
-           IN (?)`,
-      [Object.keys(addrMap)],
-    );
+    const results: DbSelectResult = await mysql.query({
+      sql: `SELECT \`address\`,
+                   \`index\`,
+                   \`transactions\`
+              FROM \`address\`
+             WHERE \`address\`
+                IN (?)`,
+      values: [Object.keys(addrMap)],
+    });
 
     for (const entry of results) {
       const address = entry.address as string;
@@ -140,19 +140,19 @@ export const generateAddresses = async (mysql: ServerlessMysql, xpubkey: string,
  */
 export const getAddressWalletInfo = async (mysql: ServerlessMysql, addresses: string[]): Promise<StringMap<Wallet>> => {
   const addressWalletMap: StringMap<Wallet> = {};
-  const results: DbSelectResult = await mysql.query(
-    `SELECT DISTINCT a.\`address\`,
-                     a.\`wallet_id\`,
-                     w.\`auth_xpubkey\`,
-                     w.\`xpubkey\`,
-                     w.\`max_gap\`
-       FROM \`address\` a
- INNER JOIN \`wallet\` w
-         ON a.wallet_id = w.id
-      WHERE a.\`address\`
-         IN (?)`,
-    [addresses],
-  );
+  const results: DbSelectResult = await mysql.query({
+    sql: `SELECT DISTINCT a.\`address\`,
+                 a.\`wallet_id\`,
+                 w.\`auth_xpubkey\`,
+                 w.\`xpubkey\`,
+                 w.\`max_gap\`
+            FROM \`address\` a
+      INNER JOIN \`wallet\` w
+              ON a.wallet_id = w.id
+           WHERE a.\`address\`
+              IN (?)`,
+    values: [addresses],
+  });
   for (const entry of results) {
     const walletInfo: Wallet = {
       walletId: entry.wallet_id as string,
@@ -173,7 +173,10 @@ export const getAddressWalletInfo = async (mysql: ServerlessMysql, addresses: st
  * @returns The wallet information or null if it was not found
  */
 export const getWallet = async (mysql: ServerlessMysql, walletId: string): Promise<Wallet> => {
-  const results: DbSelectResult = await mysql.query('SELECT * FROM `wallet` WHERE `id` = ?', walletId);
+  const results: DbSelectResult = await mysql.query({
+    sql: 'SELECT * FROM `wallet` WHERE `id` = ?',
+    values: [walletId],
+  });
   if (results.length) {
     const result = results[0];
     return getWalletFromDbEntry(result);
@@ -206,11 +209,12 @@ export const createWallet = async (
     created_at: ts,
     max_gap: maxGap,
   };
-  await mysql.query(
-    `INSERT INTO \`wallet\`
-        SET ?`,
-    [entry],
-  );
+  await mysql.query({
+    sql: `INSERT
+            INTO \`wallet\`
+             SET ?`,
+    values: [entry],
+  });
   return {
     walletId,
     xpubkey,
@@ -237,14 +241,14 @@ export const updateWalletStatus = async (
   retryCount = 0,
 ): Promise<void> => {
   const ts = getUnixTimestamp();
-  await mysql.query(
-    `UPDATE \`wallet\`
-        SET \`status\` = ?,
-            \`ready_at\` = ?,
-            \`retry_count\` = ?
-      WHERE \`id\` = ?`,
-    [status, ts, retryCount, walletId],
-  );
+  await mysql.query({
+    sql: `UPDATE \`wallet\`
+             SET \`status\` = ?,
+                 \`ready_at\` = ?,
+                 \`retry_count\` = ?
+           WHERE \`id\` = ?`,
+    values: [status, ts, retryCount, walletId],
+  });
 };
 
 /**
@@ -259,12 +263,12 @@ export const updateWalletAuthXpub = async (
   walletId: string,
   authXpubkey: string,
 ): Promise<void> => {
-  await mysql.query(
-    `UPDATE \`wallet\`
-        SET \`auth_xpubkey\` = ?
-      WHERE \`id\` = ?`,
-    [authXpubkey, walletId],
-  );
+  await mysql.query({
+    sql: `UPDATE \`wallet\`
+             SET \`auth_xpubkey\` = ?
+           WHERE \`id\` = ?`,
+    values: [authXpubkey, walletId],
+  });
 };
 
 /**
@@ -283,12 +287,13 @@ export const addNewAddresses = async (mysql: ServerlessMysql, walletId: string, 
   for (const [address, index] of Object.entries(addresses)) {
     entries.push([address, index, walletId, 0]);
   }
-  await mysql.query(
-    `INSERT INTO \`address\`(\`address\`, \`index\`,
+  await mysql.query({
+    sql: `INSERT
+            INTO \`address\`(\`address\`, \`index\`,
                              \`wallet_id\`, \`transactions\`)
-     VALUES ?`,
-    [entries],
-  );
+          VALUES ?`,
+    values: [entries],
+  });
 };
 
 /**
@@ -305,13 +310,13 @@ export const updateExistingAddresses = async (mysql: ServerlessMysql, walletId: 
   if (Object.keys(addresses).length === 0) return;
 
   for (const [address, index] of Object.entries(addresses)) {
-    await mysql.query(
-      `UPDATE \`address\`
-          SET \`wallet_id\` = ?,
-              \`index\` = ?
-        WHERE \`address\` = ?`,
-      [walletId, index, address],
-    );
+    await mysql.query({
+      sql: `UPDATE \`address\`
+               SET \`wallet_id\` = ?,
+                   \`index\` = ?
+             WHERE \`address\` = ?`,
+      values: [walletId, index, address],
+    });
   }
 };
 
@@ -324,12 +329,14 @@ export const updateExistingAddresses = async (mysql: ServerlessMysql, walletId: 
  * @returns The details of the address {address, index, transactions} or null if not found
  */
 export const getWalletAddressDetail = async (mysql: ServerlessMysql, walletId: string, address: string): Promise<AddressInfo | null> => {
-  const results: DbSelectResult = await mysql.query(`
+  const results: DbSelectResult = await mysql.query({
+    sql: `
     SELECT *
       FROM \`address\`
      WHERE \`wallet_id\` = ?
-         AND \`address\` = ?`,
-  [walletId, address]);
+       AND \`address\` = ?`,
+    values: [walletId, address],
+  });
 
   if (results.length > 0) {
     const data = results[0];
@@ -361,32 +368,32 @@ export const initWalletTxHistory = async (mysql: ServerlessMysql, walletId: stri
 
   if (addresses.length === 0) return;
 
-  const results: DbSelectResult = await mysql.query(
-    `SELECT \`tx_id\`,
-            \`token_id\`,
-            SUM(\`balance\`) AS balance,
-            \`timestamp\`
-       FROM \`address_tx_history\`
-      WHERE \`address\` IN (?)
-        AND \`voided\` = FALSE
-   GROUP BY \`tx_id\`,
-            \`token_id\`,
-            \`timestamp\``,
-    [addresses],
-  );
+  const results: DbSelectResult = await mysql.query({
+    sql: `SELECT \`tx_id\`,
+                 \`token_id\`,
+                 SUM(\`balance\`) AS balance,
+                 \`timestamp\`
+            FROM \`address_tx_history\`
+           WHERE \`address\` IN (?)
+             AND \`voided\` = FALSE
+        GROUP BY \`tx_id\`,
+                 \`token_id\`,
+                 \`timestamp\``,
+    values: [addresses],
+  });
   if (results.length === 0) return;
 
   const walletTxHistory = [];
   for (const row of results) {
     walletTxHistory.push([walletId, row.token_id, row.tx_id, row.balance, row.timestamp]);
   }
-  await mysql.query(
-    `INSERT INTO \`wallet_tx_history\`(\`wallet_id\`, \`token_id\`,
-                                       \`tx_id\`, \`balance\`,
-                                       \`timestamp\`)
-          VALUES ?`,
-    [walletTxHistory],
-  );
+  await mysql.query({
+    sql: `INSERT INTO \`wallet_tx_history\`(\`wallet_id\`, \`token_id\`,
+                                         \`tx_id\`, \`balance\`,
+                                         \`timestamp\`)
+               VALUES ?`,
+    values: [walletTxHistory],
+  });
 };
 
 /**
@@ -402,31 +409,31 @@ export const initWalletTxHistory = async (mysql: ServerlessMysql, walletId: stri
 export const initWalletBalance = async (mysql: ServerlessMysql, walletId: string, addresses: string[]): Promise<void> => {
   // XXX we could also do a join between address and address_balance tables so we don't
   // need to receive the addresses, but the caller probably has this info already
-  const results1: DbSelectResult = await mysql.query(
-    `SELECT \`token_id\`,
-            SUM(\`unlocked_balance\`) AS \`unlocked_balance\`,
-            SUM(\`locked_balance\`) AS \`locked_balance\`,
-            MIN(\`timelock_expires\`) AS \`timelock_expires\`
-       FROM \`address_balance\`
-      WHERE \`address\`
-         IN (?)
-   GROUP BY \`token_id\`
-   ORDER BY \`token_id\``,
-    [addresses],
-  );
+  const results1: DbSelectResult = await mysql.query({
+    sql: `SELECT \`token_id\`,
+                 SUM(\`unlocked_balance\`) AS \`unlocked_balance\`,
+                 SUM(\`locked_balance\`) AS \`locked_balance\`,
+                 MIN(\`timelock_expires\`) AS \`timelock_expires\`
+            FROM \`address_balance\`
+           WHERE \`address\`
+              IN (?)
+        GROUP BY \`token_id\`
+        ORDER BY \`token_id\``,
+    values: [addresses],
+  });
   // we need to use table address_tx_history for the transaction count. We can't simply
   // sum the transaction count for each address_balance, as they may share transactions
-  const results2: DbSelectResult = await mysql.query(
-    `SELECT \`token_id\`,
-            SUM(\`balance\`) AS \`balance\`,
-            COUNT(DISTINCT \`tx_id\`) AS \`transactions\`
-       FROM \`address_tx_history\`
-      WHERE \`address\` IN (?)
-        AND \`voided\` = FALSE
-   GROUP BY \`token_id\`
-   ORDER BY \`token_id\``,
-    [addresses],
-  );
+  const results2: DbSelectResult = await mysql.query({
+    sql: `SELECT \`token_id\`,
+                 SUM(\`balance\`) AS \`balance\`,
+                 COUNT(DISTINCT \`tx_id\`) AS \`transactions\`
+            FROM \`address_tx_history\`
+           WHERE \`address\` IN (?)
+             AND \`voided\` = FALSE
+        GROUP BY \`token_id\`
+        ORDER BY \`token_id\``,
+    values: [addresses],
+  });
 
   assert.strictEqual(results1.length, results2.length);
 
@@ -440,13 +447,14 @@ export const initWalletBalance = async (mysql: ServerlessMysql, walletId: string
     balanceEntries.push([walletId, row1.token_id, row1.unlocked_balance, row1.locked_balance, row1.timelock_expires, row2.transactions]);
   }
   if (balanceEntries.length > 0) {
-    await mysql.query(
-      `INSERT INTO \`wallet_balance\`(\`wallet_id\`, \`token_id\`,
-                                      \`unlocked_balance\`, \`locked_balance\`,
-                                      \`timelock_expires\`, \`transactions\`)
+    await mysql.query({
+      sql: `INSERT
+              INTO \`wallet_balance\`(\`wallet_id\`, \`token_id\`,
+                   \`unlocked_balance\`, \`locked_balance\`,
+                   \`timelock_expires\`, \`transactions\`)
             VALUES ?`,
-      [balanceEntries],
-    );
+      values: [balanceEntries],
+    });
   }
 };
 
@@ -487,21 +495,22 @@ export const updateWalletTablesWithTx = async (
       };
 
       // save the smaller value of timelock_expires, when not null
-      await mysql.query(
-        `INSERT INTO wallet_balance
-            SET ?
-             ON DUPLICATE KEY
-         UPDATE unlocked_balance = unlocked_balance + ?,
-                locked_balance = locked_balance + ?,
-                transactions = transactions + 1,
-                timelock_expires = CASE WHEN timelock_expires IS NULL THEN VALUES(timelock_expires)
-                                        WHEN VALUES(timelock_expires) IS NULL THEN timelock_expires
-                                        ELSE LEAST(timelock_expires, VALUES(timelock_expires))
-                                   END,
-                unlocked_authorities = (unlocked_authorities | VALUES(unlocked_authorities)),
-                locked_authorities = locked_authorities | VALUES(locked_authorities)`,
-        [entry, tokenBalance.unlockedAmount, tokenBalance.lockedAmount, walletId, token],
-      );
+      await mysql.query({
+        sql: `INSERT
+                INTO wallet_balance
+                 SET ?
+                  ON DUPLICATE KEY
+              UPDATE unlocked_balance = unlocked_balance + ?,
+                     locked_balance = locked_balance + ?,
+                     transactions = transactions + 1,
+                     timelock_expires = CASE WHEN timelock_expires IS NULL THEN VALUES(timelock_expires)
+                                             WHEN VALUES(timelock_expires) IS NULL THEN timelock_expires
+                                             ELSE LEAST(timelock_expires, VALUES(timelock_expires))
+                                        END,
+                     unlocked_authorities = (unlocked_authorities | VALUES(unlocked_authorities)),
+                     locked_authorities = locked_authorities | VALUES(locked_authorities)`,
+        values: [entry, tokenBalance.unlockedAmount, tokenBalance.lockedAmount, walletId, token],
+      });
 
       // same logic here as in the updateAddressTablesWithTx function
       if (tokenBalance.unlockedAuthorities.hasNegativeValue()) {
@@ -509,20 +518,20 @@ export const updateWalletTablesWithTx = async (
         // value.
         // To do that, we get all unlocked_authorities from all addresses (querying by wallet and token_id) and
         // bitwise OR them with each other.
-        await mysql.query(
-          `UPDATE \`wallet_balance\`
-              SET \`unlocked_authorities\` = (
-                SELECT BIT_OR(\`unlocked_authorities\`)
-                  FROM \`address_balance\`
-                 WHERE \`address\` IN (
-                   SELECT \`address\`
-                     FROM \`address\`
-                    WHERE \`wallet_id\` = ?)
-                   AND \`token_id\` = ?)
-            WHERE \`wallet_id\` = ?
-              AND \`token_id\` = ?`,
-          [walletId, token, walletId, token],
-        );
+        await mysql.query({
+          sql: `UPDATE \`wallet_balance\`
+                   SET \`unlocked_authorities\` = (
+                       SELECT BIT_OR(\`unlocked_authorities\`)
+                         FROM \`address_balance\`
+                        WHERE \`address\` IN (
+                          SELECT \`address\`
+                            FROM \`address\`
+                           WHERE \`wallet_id\` = ?)
+                             AND \`token_id\` = ?)
+                 WHERE \`wallet_id\` = ?
+                   AND \`token_id\` = ?`,
+          values: [walletId, token, walletId, token],
+        });
       }
 
       entries.push([walletId, token, txId, tokenBalance.total(), timestamp]);
@@ -530,13 +539,14 @@ export const updateWalletTablesWithTx = async (
   }
 
   if (entries.length > 0) {
-    await mysql.query(
-      `INSERT INTO \`wallet_tx_history\` (\`wallet_id\`, \`token_id\`,
+    await mysql.query({
+      sql: `INSERT
+              INTO \`wallet_tx_history\` (\`wallet_id\`, \`token_id\`,
                                           \`tx_id\`, \`balance\`,
                                           \`timestamp\`)
             VALUES ?`,
-      [entries],
-    );
+      values: [entries],
+    });
   }
 };
 
@@ -586,14 +596,15 @@ export const addUtxos = async (
   );
 
   // we are safe to ignore duplicates because our transaction might have already been in the mempool
-  await mysql.query(
-    `INSERT INTO \`tx_output\` (\`tx_id\`, \`index\`, \`token_id\`,
-                           \`value\`, \`authorities\`, \`address\`,
-                           \`timelock\`, \`heightlock\`, \`locked\`)
-     VALUES ?
-     ON DUPLICATE KEY UPDATE tx_id=tx_id`,
-    [entries],
-  );
+  await mysql.query({
+    sql: `INSERT
+            INTO \`tx_output\` (\`tx_id\`, \`index\`, \`token_id\`,
+                 \`value\`, \`authorities\`, \`address\`,
+                 \`timelock\`, \`heightlock\`, \`locked\`)
+          VALUES ?
+              ON DUPLICATE KEY UPDATE tx_id=tx_id`,
+    values: [entries],
+  });
 };
 
 /**
@@ -635,12 +646,13 @@ export const addOrUpdateTx = async (
 ): Promise<void> => {
   const entries = [[txId, height, timestamp, version]];
 
-  await mysql.query(
-    `INSERT INTO \`transaction\` (tx_id, height, timestamp, version)
-     VALUES ?
-         ON DUPLICATE KEY UPDATE height = ?`,
-    [entries, height],
-  );
+  await mysql.query({
+    sql: `INSERT
+            INTO \`transaction\` (tx_id, height, timestamp, version)
+          VALUES ?
+              ON DUPLICATE KEY UPDATE height = ?`,
+    values: [entries, height],
+  });
 };
 
 /**
@@ -672,13 +684,13 @@ export const updateTxOutputSpentBy = async (mysql: ServerlessMysql, inputs: TxIn
      * |  1 | UPDATE      | tx_output | NULL       | index | NULL          | PRIMARY | 259     | NULL | 1933979 |
      * +----+-------------+-----------+------------+-------+---------------+---------+---------+------+---------+
      */
-    await mysql.query(
-      `UPDATE \`tx_output\` USE INDEX (PRIMARY)
-          SET \`spent_by\` = ?
-        WHERE (\`tx_id\` ,\`index\`)
-           IN (?)`,
-      [txId, entries],
-    );
+    await mysql.query({
+      sql: `UPDATE \`tx_output\` USE INDEX (PRIMARY)
+               SET \`spent_by\` = ?
+             WHERE (\`tx_id\` ,\`index\`)
+                IN (?)`,
+      values: [txId, entries],
+    });
   }
 };
 
@@ -695,15 +707,15 @@ export const getUtxo = async (
   txId: string,
   index: number,
 ): Promise<DbTxOutput> => {
-  const results: DbSelectResult = await mysql.query(
-    `SELECT *
-       FROM \`tx_output\`
-      WHERE \`tx_id\` = ?
-        AND \`index\` = ?
-        AND \`spent_by\` IS NULL
-        AND \`voided\` = FALSE`,
-    [txId, index],
-  );
+  const results: DbSelectResult = await mysql.query({
+    sql: `SELECT *
+            FROM \`tx_output\`
+           WHERE \`tx_id\` = ?
+             AND \`index\` = ?
+             AND \`spent_by\` IS NULL
+             AND \`voided\` = FALSE`,
+    values: [txId, index],
+  });
 
   if (!results.length || results.length === 0) {
     return null;
@@ -728,15 +740,15 @@ export const getUtxos = async (
   utxosInfo: IWalletInput[],
 ): Promise<DbTxOutput[]> => {
   const entries = utxosInfo.map((utxo) => [utxo.txId, utxo.index]);
-  const results: DbSelectResult = await mysql.query(
-    `SELECT *
-       FROM \`tx_output\` USE INDEX (PRIMARY)
-      WHERE (\`tx_id\`, \`index\`)
-         IN (?)
-        AND \`spent_by\` IS NULL
-        AND \`voided\` = FALSE`,
-    [entries],
-  );
+  const results: DbSelectResult = await mysql.query({
+    sql: `SELECT *
+            FROM \`tx_output\` USE INDEX (PRIMARY)
+           WHERE (\`tx_id\`, \`index\`)
+              IN (?)
+             AND \`spent_by\` IS NULL
+             AND \`voided\` = FALSE`,
+    values: [entries],
+  });
 
   const utxos = results.map(mapDbResultToDbTxOutput);
 
@@ -760,25 +772,25 @@ export const getWalletSortedValueUtxos = async (
   tokenId: string,
 ): Promise<DbTxOutput[]> => {
   const utxos = [];
-  const results: DbSelectResult = await mysql.query(
-    `SELECT *
-       FROM \`tx_output\`
-      WHERE \`address\`
-         IN (
-           SELECT \`address\`
-             FROM \`address\`
-            WHERE \`wallet_id\` = ?
-         )
-        AND \`token_id\` = ?
-        AND \`authorities\` = 0
-        AND \`locked\` = FALSE
-        AND \`tx_proposal\` IS NULL
-        AND \`spent_by\` IS NULL
-        AND \`voided\` = FALSE
-   ORDER BY \`value\`
-       DESC`,
-    [walletId, tokenId],
-  );
+  const results: DbSelectResult = await mysql.query({
+    sql: `SELECT *
+            FROM \`tx_output\`
+           WHERE \`address\`
+              IN (
+                SELECT \`address\`
+                  FROM \`address\`
+                 WHERE \`wallet_id\` = ?
+              )
+             AND \`token_id\` = ?
+             AND \`authorities\` = 0
+             AND \`locked\` = FALSE
+             AND \`tx_proposal\` IS NULL
+             AND \`spent_by\` IS NULL
+             AND \`voided\` = FALSE
+        ORDER BY \`value\`
+            DESC`,
+    values: [walletId, tokenId],
+  });
   for (const result of results) {
     const utxo: DbTxOutput = {
       txId: result.tx_id as string,
@@ -805,13 +817,13 @@ export const getWalletSortedValueUtxos = async (
 export const unlockUtxos = async (mysql: ServerlessMysql, utxos: DbTxOutput[]): Promise<void> => {
   if (utxos.length === 0) return;
   const entries = utxos.map((utxo) => [utxo.txId, utxo.index]);
-  await mysql.query(
-    `UPDATE \`tx_output\`
-        SET \`locked\` = FALSE
-      WHERE (\`tx_id\` ,\`index\`)
-         IN (?)`,
-    [entries],
-  );
+  await mysql.query({
+    sql: `UPDATE \`tx_output\`
+             SET \`locked\` = FALSE
+           WHERE (\`tx_id\` ,\`index\`)
+              IN (?)`,
+    values: [entries],
+  });
 };
 
 /**
@@ -834,16 +846,16 @@ export const getLockedUtxoFromInputs = async (mysql: ServerlessMysql, inputs: Tx
   // entries might be empty if there are no inputs
   if (entries.length) {
     // get the rows before deleting
-    const results: DbSelectResult = await mysql.query(
-      `SELECT *
-         FROM \`tx_output\` USE INDEX (PRIMARY)
-        WHERE (\`tx_id\` ,\`index\`)
-           IN (?)
-          AND \`locked\` = TRUE
-          AND \`spent_by\` IS NULL
-          AND \`voided\` = FALSE`,
-      [entries],
-    );
+    const results: DbSelectResult = await mysql.query({
+      sql: `SELECT *
+              FROM \`tx_output\` USE INDEX (PRIMARY)
+             WHERE (\`tx_id\` ,\`index\`)
+                IN (?)
+               AND \`locked\` = TRUE
+               AND \`spent_by\` IS NULL
+               AND \`voided\` = FALSE`,
+      values: [entries],
+    });
 
     return results.map((utxo) => ({
       txId: utxo.tx_id as string,
@@ -888,12 +900,12 @@ export const updateAddressTablesWithTx = async (
    * If address is already present, just increment the transactions counter.
    */
   const addressEntries = Object.keys(addressBalanceMap).map((address) => [address, 1]);
-  await mysql.query(
-    `INSERT INTO \`address\`(\`address\`, \`transactions\`)
+  await mysql.query({
+    sql: `INSERT INTO \`address\`(\`address\`, \`transactions\`)
           VALUES ?
               ON DUPLICATE KEY UPDATE transactions = transactions + 1`,
-    [addressEntries],
-  );
+    values: [addressEntries],
+  });
 
   const entries = [];
   for (const [address, tokenMap] of Object.entries(addressBalanceMap)) {
@@ -912,8 +924,8 @@ export const updateAddressTablesWithTx = async (
         transactions: 1,
       };
       // save the smaller value of timelock_expires, when not null
-      await mysql.query(
-        `INSERT INTO address_balance
+      await mysql.query({
+        sql: `INSERT INTO address_balance
                  SET ?
                   ON DUPLICATE KEY
                             UPDATE unlocked_balance = unlocked_balance + ?,
@@ -926,29 +938,29 @@ export const updateAddressTablesWithTx = async (
                                                       END,
                                    unlocked_authorities = (unlocked_authorities | VALUES(unlocked_authorities)),
                                    locked_authorities = locked_authorities | VALUES(locked_authorities)`,
-        [entry, tokenBalance.unlockedAmount, tokenBalance.lockedAmount, address, token],
-      );
+        values: [entry, tokenBalance.unlockedAmount, tokenBalance.lockedAmount, address, token],
+      });
 
       // if we're removing any of the authorities, we need to refresh the authority columns. Unlike the values,
       // we cannot only sum/subtract, as authorities are binary: you have it or you don't. We might be spending
       // an authority output in this tx without creating a new one, but it doesn't mean this address does not
       // have this authority anymore, as it might have other authority outputs
       if (tokenBalance.unlockedAuthorities.hasNegativeValue()) {
-        await mysql.query(
-          `UPDATE \`address_balance\`
-              SET \`unlocked_authorities\` = (
-                SELECT BIT_OR(\`authorities\`)
-                  FROM \`tx_output\`
+        await mysql.query({
+          sql: `UPDATE \`address_balance\`
+                   SET \`unlocked_authorities\` = (
+                          SELECT BIT_OR(\`authorities\`)
+                            FROM \`tx_output\`
+                           WHERE \`address\` = ?
+                             AND \`token_id\` = ?
+                             AND \`locked\` = FALSE
+                             AND \`spent_by\` IS NULL
+                             AND \`voided\` = FALSE
+                       )
                  WHERE \`address\` = ?
-                   AND \`token_id\` = ?
-                   AND \`locked\` = FALSE
-                   AND \`spent_by\` IS NULL
-                   AND \`voided\` = FALSE
-              )
-            WHERE \`address\` = ?
-              AND \`token_id\` = ?`,
-          [address, token, address, token],
-        );
+                   AND \`token_id\` = ?`,
+          values: [address, token, address, token],
+        });
       }
       // for locked authorities, it doesn't make sense to perform the same operation. The authority needs to be
       // unlocked before it can be spent. In case we're just adding new locked authorities, this will be taken
@@ -959,13 +971,14 @@ export const updateAddressTablesWithTx = async (
     }
   }
 
-  await mysql.query(
-    `INSERT INTO \`address_tx_history\`(\`address\`, \`tx_id\`,
+  await mysql.query({
+    sql: `INSERT
+            INTO \`address_tx_history\`(\`address\`, \`tx_id\`,
                                         \`token_id\`, \`balance\`,
                                         \`timestamp\`)
-     VALUES ?`,
-    [entries],
-  );
+          VALUES ?`,
+    values: [entries],
+  });
 };
 
 /**
@@ -986,55 +999,59 @@ export const updateAddressLockedBalance = async (
 ): Promise<void> => {
   for (const [address, tokenBalanceMap] of Object.entries(addressBalanceMap)) {
     for (const [token, tokenBalance] of tokenBalanceMap.iterator()) {
-      await mysql.query(
-        `UPDATE \`address_balance\`
-            SET \`unlocked_balance\` = \`unlocked_balance\` + ?,
-                \`locked_balance\` = \`locked_balance\` - ?,
-                \`unlocked_authorities\` = (unlocked_authorities | ?)
-          WHERE \`address\` = ?
-            AND \`token_id\` = ?`, [
+      await mysql.query({
+        sql: `UPDATE \`address_balance\`
+                 SET \`unlocked_balance\` = \`unlocked_balance\` + ?,
+                     \`locked_balance\` = \`locked_balance\` - ?,
+                     \`unlocked_authorities\` = (unlocked_authorities | ?)
+               WHERE \`address\` = ?
+                 AND \`token_id\` = ?`,
+        values: [
           tokenBalance.unlockedAmount,
           tokenBalance.unlockedAmount,
           tokenBalance.unlockedAuthorities.toInteger(),
           address,
           token,
         ],
-      );
+      });
 
       // if any authority has been unlocked, we have to refresh the locked authorities
       if (tokenBalance.unlockedAuthorities.toInteger() > 0) {
-        await mysql.query(
-          `UPDATE \`address_balance\`
-              SET \`locked_authorities\` = (
-                SELECT BIT_OR(\`authorities\`)
-                  FROM \`tx_output\`
-                 WHERE \`address\` = ?
-                   AND \`token_id\` = ?
-                   AND \`locked\` = TRUE
-                   AND \`spent_by\` IS NULL
-                   AND \`voided\` = FALSE)
+        await mysql.query({
+          sql: `UPDATE \`address_balance\`
+                   SET \`locked_authorities\` = (
+                          SELECT BIT_OR(\`authorities\`)
+                            FROM \`tx_output\`
+                          WHERE \`address\` = ?
+                            AND \`token_id\` = ?
+                            AND \`locked\` = TRUE
+                            AND \`spent_by\` IS NULL
+                            AND \`voided\` = FALSE
+                       )
                  WHERE \`address\` = ?
                    AND \`token_id\` = ?`,
-          [address, token, address, token],
-        );
+          values: [address, token, address, token],
+        });
       }
 
       // if this is being unlocked due to a timelock, also update the timelock_expires column
       if (updateTimelocks) {
-        await mysql.query(`
+        await mysql.query({
+          sql: `
           UPDATE \`address_balance\`
              SET \`timelock_expires\` = (
-               SELECT MIN(\`timelock\`)
-                 FROM \`tx_output\`
-                WHERE \`address\` = ?
-                  AND \`token_id\` = ?
-                  AND \`locked\` = TRUE
-                  AND \`spent_by\` IS NULL
-                  AND \`voided\` = FALSE
-             )
+                    SELECT MIN(\`timelock\`)
+                      FROM \`tx_output\`
+                      WHERE \`address\` = ?
+                        AND \`token_id\` = ?
+                        AND \`locked\` = TRUE
+                        AND \`spent_by\` IS NULL
+                        AND \`voided\` = FALSE
+                 )
            WHERE \`address\` = ?
              AND \`token_id\` = ?`,
-        [address, token, address, token]);
+          values: [address, token, address, token],
+        });
       }
     }
   }
@@ -1058,51 +1075,56 @@ export const updateWalletLockedBalance = async (
 ): Promise<void> => {
   for (const [walletId, tokenBalanceMap] of Object.entries(walletBalanceMap)) {
     for (const [token, tokenBalance] of tokenBalanceMap.iterator()) {
-      await mysql.query(
-        `UPDATE \`wallet_balance\`
-            SET \`unlocked_balance\` = \`unlocked_balance\` + ?,
-                \`locked_balance\` = \`locked_balance\` - ?,
-                \`unlocked_authorities\` = (\`unlocked_authorities\` | ?)
-          WHERE \`wallet_id\` = ?
-            AND \`token_id\` = ?`,
-        [tokenBalance.unlockedAmount, tokenBalance.unlockedAmount,
+      await mysql.query({
+        sql: `UPDATE \`wallet_balance\`
+                 SET \`unlocked_balance\` = \`unlocked_balance\` + ?,
+                     \`locked_balance\` = \`locked_balance\` - ?,
+                     \`unlocked_authorities\` = (\`unlocked_authorities\` | ?)
+               WHERE \`wallet_id\` = ?
+                 AND \`token_id\` = ?`,
+        values: [tokenBalance.unlockedAmount, tokenBalance.unlockedAmount,
           tokenBalance.unlockedAuthorities.toInteger(), walletId, token],
-      );
+      });
 
       // if any authority has been unlocked, we have to refresh the locked authorities
       if (tokenBalance.unlockedAuthorities.toInteger() > 0) {
-        await mysql.query(
-          `UPDATE \`wallet_balance\`
-              SET \`locked_authorities\` = (
-                SELECT BIT_OR(\`locked_authorities\`)
-                  FROM \`address_balance\`
-                 WHERE \`address\` IN (
-                   SELECT \`address\`
-                     FROM \`address\`
-                    WHERE \`wallet_id\` = ?)
-                    AND \`token_id\` = ?)
-            WHERE \`wallet_id\` = ?
-              AND \`token_id\` = ?`,
-          [walletId, token, walletId, token],
-        );
+        await mysql.query({
+          sql: `UPDATE \`wallet_balance\`
+                   SET \`locked_authorities\` = (
+                        SELECT BIT_OR(\`locked_authorities\`)
+                          FROM \`address_balance\`
+                         WHERE \`address\` IN (
+                                  SELECT \`address\`
+                                    FROM \`address\`
+                                   WHERE \`wallet_id\` = ?
+                                )
+                            AND \`token_id\` = ?
+                       )
+                 WHERE \`wallet_id\` = ?
+                   AND \`token_id\` = ?`,
+          values: [walletId, token, walletId, token],
+        });
       }
 
       // if this is being unlocked due to a timelock, also update the timelock_expires column
       if (updateTimelocks) {
-        await mysql.query(
-          `UPDATE \`wallet_balance\`
-              SET \`timelock_expires\` = (
-                SELECT MIN(\`timelock_expires\`)
-                  FROM \`address_balance\`
-                 WHERE \`address\`
-                    IN (
-                      SELECT \`address\`
-                        FROM \`address\`
-                       WHERE \`wallet_id\` = ?)
-                   AND \`token_id\` = ?)
-            WHERE \`wallet_id\` = ? AND \`token_id\` = ?`,
-          [walletId, token, walletId, token],
-        );
+        await mysql.query({
+          sql: `UPDATE \`wallet_balance\`
+                   SET \`timelock_expires\` = (
+                          SELECT MIN(\`timelock_expires\`)
+                            FROM \`address_balance\`
+                            WHERE \`address\`
+                              IN (
+                                    SELECT \`address\`
+                                      FROM \`address\`
+                                      WHERE \`wallet_id\` = ?
+                                  )
+                              AND \`token_id\` = ?
+                       )
+                 WHERE \`wallet_id\` = ?
+                   AND \`token_id\` = ?`,
+          values: [walletId, token, walletId, token],
+        });
       }
     }
   }
@@ -1117,12 +1139,15 @@ export const updateWalletLockedBalance = async (
  */
 export const getWalletAddresses = async (mysql: ServerlessMysql, walletId: string): Promise<AddressInfo[]> => {
   const addresses: AddressInfo[] = [];
-  const results: DbSelectResult = await mysql.query(`
+  const results: DbSelectResult = await mysql.query({
+    sql: `
     SELECT *
       FROM \`address\`
      WHERE \`wallet_id\` = ?
   ORDER BY \`index\`
-       ASC`, walletId);
+       ASC`,
+    values: [walletId],
+  });
   for (const result of results) {
     const address = {
       address: result.address as string,
@@ -1147,25 +1172,28 @@ export const getNewAddresses = async (mysql: ServerlessMysql, walletId: string):
   if (resultsWallet.length) {
     const gapLimit = resultsWallet[0].max_gap as number;
     // Select all addresses that are empty and the index is bigger than the last used address index
-    const results: DbSelectResult = await mysql.query(`
-      SELECT *
-        FROM \`address\`
-       WHERE \`wallet_id\` = ?
-         AND \`transactions\` = 0
-         AND \`index\` > (
-           IFNULL(
-             (
-               SELECT MAX(\`index\`)
-                FROM \`address\`
-               WHERE \`wallet_id\` = ?
-                 AND \`transactions\` > 0
-             ),
-             -1
-           )
-         )
-    ORDER BY \`index\`
-         ASC
-    LIMIT ?`, [walletId, walletId, gapLimit]);
+    const results: DbSelectResult = await mysql.query({
+      sql: `
+        SELECT *
+          FROM \`address\`
+         WHERE \`wallet_id\` = ?
+           AND \`transactions\` = 0
+           AND \`index\` > (
+                IFNULL(
+                  (
+                    SELECT MAX(\`index\`)
+                      FROM \`address\`
+                    WHERE \`wallet_id\` = ?
+                      AND \`transactions\` > 0
+                  ),
+                  -1
+                )
+               )
+      ORDER BY \`index\`
+           ASC
+         LIMIT ?`,
+      values: [walletId, walletId, gapLimit],
+    });
 
     for (const result of results) {
       const index = result.index as number;
@@ -1203,7 +1231,7 @@ export const getWalletBalances = async (mysql: ServerlessMysql, walletId: string
   // use LEFT JOIN as HTR token ('00') won't be on the token table, so INNER JOIN would never match it
   const query = `SELECT * FROM (${subquery}) w LEFT JOIN token ON w.token_id = token.id;`;
 
-  const results: DbSelectResult = await mysql.query(query, params);
+  const results: DbSelectResult = await mysql.query({ sql: query, values: params });
   for (const result of results) {
     const unlockedBalance = result.unlocked_balance as number;
     const lockedBalance = result.locked_balance as number;
@@ -1232,12 +1260,12 @@ export const getWalletTokens = async (
   walletId: string,
 ): Promise<string[]> => {
   const tokenList: string[] = [];
-  const results: DbSelectResult = await mysql.query(
-    `SELECT DISTINCT(token_id)
-       FROM \`wallet_tx_history\`
-      WHERE \`wallet_id\` = ?`,
-    [walletId],
-  );
+  const results: DbSelectResult = await mysql.query({
+    sql: `SELECT DISTINCT(token_id)
+            FROM \`wallet_tx_history\`
+           WHERE \`wallet_id\` = ?`,
+    values: [walletId],
+  });
 
   for (const result of results) {
     tokenList.push(<string> result.token_id);
@@ -1271,16 +1299,17 @@ export const getWalletTxHistory = async (
   count: number,
 ): Promise<TxTokenBalance[]> => {
   const history: TxTokenBalance[] = [];
-  const results: DbSelectResult = await mysql.query(
-    `SELECT *
-       FROM \`wallet_tx_history\`
-      WHERE \`wallet_id\` = ?
-        AND \`token_id\` = ?
-   ORDER BY \`timestamp\`
-       DESC
-      LIMIT ?, ?`,
-    [walletId, tokenId, skip, count],
-  );
+  const results: DbSelectResult = await mysql.query({
+    sql: `SELECT *
+            FROM \`wallet_tx_history\`
+           WHERE \`wallet_id\` = ?
+             AND \`token_id\` = ?
+        ORDER BY \`timestamp\`
+            DESC
+           LIMIT ?, ?`,
+    values: [walletId, tokenId, skip, count],
+  });
+
   for (const result of results) {
     const tx: TxTokenBalance = {
       txId: <string>result.tx_id,
@@ -1313,17 +1342,17 @@ export const getUtxosLockedAtHeight = async (
 ): Promise<DbTxOutput[]> => {
   const utxos = [];
   if (height >= 0) {
-    const results: DbSelectResult = await mysql.query(
-      `SELECT *
-         FROM \`tx_output\`
-        WHERE \`heightlock\` = ?
-          AND \`spent_by\` IS NULL
-          AND \`voided\` = FALSE
-          AND (\`timelock\` <= ?
-               OR \`timelock\` is NULL)
-          AND \`locked\` = 1`,
-      [height, now],
-    );
+    const results: DbSelectResult = await mysql.query({
+      sql: `SELECT *
+              FROM \`tx_output\`
+             WHERE \`heightlock\` = ?
+               AND \`spent_by\` IS NULL
+               AND \`voided\` = FALSE
+               AND (\`timelock\` <= ?
+                OR \`timelock\` is NULL)
+               AND \`locked\` = 1`,
+      values: [height, now],
+    });
     for (const result of results) {
       const utxo: DbTxOutput = {
         txId: result.tx_id as string,
@@ -1362,22 +1391,23 @@ export const getWalletUnlockedUtxos = async (
   currentHeight: number,
 ): Promise<DbTxOutput[]> => {
   const utxos = [];
-  const results: DbSelectResult = await mysql.query(
-    `SELECT *
-       FROM \`tx_output\`
-      WHERE (\`heightlock\` <= ?
-             OR \`heightlock\` is NULL)
-        AND (\`timelock\` <= ?
-             OR \`timelock\` is NULL)
-        AND \`locked\` = 1
-        AND \`spent_by\` IS NULL
-        AND \`voided\` = FALSE
-        AND \`address\` IN (
-          SELECT \`address\`
-            FROM \`address\`
-           WHERE \`wallet_id\` = ?)`,
-    [currentHeight, now, walletId],
-  );
+  const results: DbSelectResult = await mysql.query({
+    sql: `SELECT *
+            FROM \`tx_output\`
+           WHERE (\`heightlock\` <= ?
+                  OR \`heightlock\` is NULL)
+             AND (\`timelock\` <= ?
+                  OR \`timelock\` is NULL)
+             AND \`locked\` = 1
+             AND \`spent_by\` IS NULL
+             AND \`voided\` = FALSE
+             AND \`address\` IN (
+                    SELECT \`address\`
+                      FROM \`address\`
+                    WHERE \`wallet_id\` = ?
+                 )`,
+    values: [currentHeight, now, walletId],
+  });
   for (const result of results) {
     const utxo: DbTxOutput = {
       txId: result.tx_id as string,
@@ -1417,10 +1447,10 @@ export const updateVersionData = async (mysql: ServerlessMysql, data: FullNodeVe
     max_number_outputs: data.maxNumberOutputs,
   };
 
-  await mysql.query(
-    'INSERT INTO `version_data` SET ? ON DUPLICATE KEY UPDATE ?',
-    [entry, entry],
-  );
+  await mysql.query({
+    sql: 'INSERT INTO `version_data` SET ? ON DUPLICATE KEY UPDATE ?',
+    values: [entry, entry],
+  });
 };
 
 /**
@@ -1430,7 +1460,9 @@ export const updateVersionData = async (mysql: ServerlessMysql, data: FullNodeVe
  * @returns
  */
 export const getVersionData = async (mysql: ServerlessMysql): Promise<FullNodeVersionData | null> => {
-  const results: DbSelectResult = await mysql.query('SELECT * FROM `version_data` WHERE id = 1 LIMIT 1;');
+  const results: DbSelectResult = await mysql.query({
+    sql: 'SELECT * FROM `version_data` WHERE id = 1 LIMIT 1;',
+  });
 
   if (results.length > 0) {
     const data = results[0];
@@ -1462,15 +1494,16 @@ export const getVersionData = async (mysql: ServerlessMysql): Promise<FullNodeVe
  * @returns The latest height
  */
 export const getLatestHeight = async (mysql: ServerlessMysql): Promise<number> => {
-  const results: DbSelectResult = await mysql.query(
-    `SELECT \`height\` AS value
-       FROM \`transaction\`
-      WHERE version
-         IN (?)
-      ORDER BY height
-       DESC
-      LIMIT 1`, [BLOCK_VERSION],
-  );
+  const results: DbSelectResult = await mysql.query({
+    sql: `SELECT \`height\` AS value
+            FROM \`transaction\`
+           WHERE version
+              IN (?)
+        ORDER BY height
+            DESC
+           LIMIT 1`,
+    values: [BLOCK_VERSION],
+  });
 
   if (results.length > 0 && results[0].value !== null) {
     return results[0].value as number;
@@ -1489,13 +1522,14 @@ export const getLatestHeight = async (mysql: ServerlessMysql): Promise<number> =
  * @returns The latest height
  */
 export const getBlockByHeight = async (mysql: ServerlessMysql, height: number): Promise<Block> => {
-  const results: DbSelectResult = await mysql.query(
-    `SELECT *
-       FROM \`transaction\`
-      WHERE \`height\` = ?
-        AND \`version\` IN (?)
-      LIMIT 1`, [height, BLOCK_VERSION],
-  );
+  const results: DbSelectResult = await mysql.query({
+    sql: `SELECT *
+            FROM \`transaction\`
+           WHERE \`height\` = ?
+             AND \`version\` IN (?)
+           LIMIT 1`,
+    values: [height, BLOCK_VERSION],
+  });
 
   if (results.length > 0) {
     return {
@@ -1522,10 +1556,10 @@ export const storeTokenInformation = async (
   tokenSymbol: string,
 ): Promise<void> => {
   const entry = { id: tokenId, name: tokenName, symbol: tokenSymbol };
-  await mysql.query(
-    'INSERT INTO `token` SET ?',
-    [entry],
-  );
+  await mysql.query({
+    sql: 'INSERT INTO `token` SET ?',
+    values: [entry],
+  });
 };
 
 /**
@@ -1539,10 +1573,10 @@ export const getTokenInformation = async (
   mysql: ServerlessMysql,
   tokenId: string,
 ): Promise<TokenInfo> => {
-  const results: DbSelectResult = await mysql.query(
-    'SELECT * FROM `token` WHERE `id` = ?',
-    [tokenId],
-  );
+  const results: DbSelectResult = await mysql.query({
+    sql: 'SELECT * FROM `token` WHERE `id` = ?',
+    values: [tokenId],
+  });
   if (results.length === 0) return null;
   return new TokenInfo(tokenId, results[0].name as string, results[0].symbol as string);
 };
@@ -1559,10 +1593,10 @@ export const getTokenInformation = async (
  */
 export const getUnusedAddresses = async (mysql: ServerlessMysql, walletId: string): Promise<string[]> => {
   const addresses = [];
-  const results: DbSelectResult = await mysql.query(
-    'SELECT `address` FROM `address` WHERE `wallet_id` = ? AND `transactions` = 0 ORDER BY `index` ASC',
-    [walletId],
-  );
+  const results: DbSelectResult = await mysql.query({
+    sql: 'SELECT `address` FROM `address` WHERE `wallet_id` = ? AND `transactions` = 0 ORDER BY `index` ASC',
+    values: [walletId],
+  });
 
   for (const entry of results) {
     const address = entry.address as string;
@@ -1580,14 +1614,14 @@ export const getUnusedAddresses = async (mysql: ServerlessMysql, walletId: strin
  */
 export const markUtxosWithProposalId = async (mysql: ServerlessMysql, txProposalId: string, utxos: DbTxOutput[]): Promise<void> => {
   const entries = utxos.map((utxo, index) => ([utxo.txId, utxo.index, '', '', 0, 0, null, null, false, txProposalId, index, null, 0]));
-  await mysql.query(
-    `INSERT INTO \`tx_output\`
+  await mysql.query({
+    sql: `INSERT INTO \`tx_output\`
           VALUES ?
               ON DUPLICATE KEY\
           UPDATE \`tx_proposal\` = VALUES(\`tx_proposal\`),
                  \`tx_proposal_index\` = VALUES(\`tx_proposal_index\`)`,
-    [entries],
-  );
+    values: [entries],
+  });
 };
 
 /**
@@ -1605,10 +1639,10 @@ export const createTxProposal = async (
   now: number,
 ): Promise<void> => {
   const entry = { id: txProposalId, wallet_id: walletId, status: TxProposalStatus.OPEN, created_at: now };
-  await mysql.query(
-    'INSERT INTO `tx_proposal` SET ?',
-    [entry],
-  );
+  await mysql.query({
+    sql: 'INSERT INTO `tx_proposal` SET ?',
+    values: [entry],
+  });
 };
 
 /**
@@ -1625,10 +1659,10 @@ export const updateTxProposal = async (
   now: number,
   status: TxProposalStatus,
 ): Promise<void> => {
-  await mysql.query(
-    'UPDATE `tx_proposal` SET `updated_at` = ?, `status` = ? WHERE `id` = ?',
-    [now, status, txProposalId],
-  );
+  await mysql.query({
+    sql: 'UPDATE `tx_proposal` SET `updated_at` = ?, `status` = ? WHERE `id` = ?',
+    values: [now, status, txProposalId],
+  });
 };
 
 /**
@@ -1642,10 +1676,10 @@ export const getTxProposal = async (
   mysql: ServerlessMysql,
   txProposalId: string,
 ): Promise<TxProposal> => {
-  const results: DbSelectResult = await mysql.query(
-    'SELECT * FROM `tx_proposal` WHERE `id` = ?',
-    [txProposalId],
-  );
+  const results: DbSelectResult = await mysql.query({
+    sql: 'SELECT * FROM `tx_proposal` WHERE `id` = ?',
+    values: [txProposalId],
+  });
   if (results.length === 0) return null;
   return {
     id: txProposalId,
@@ -1666,10 +1700,10 @@ export const releaseTxProposalUtxos = async (
   mysql: ServerlessMysql,
   txProposalId: string,
 ): Promise<void> => {
-  await mysql.query(
-    'UPDATE `tx_output` SET `tx_proposal` = NULL, `tx_proposal_index` = NULL WHERE `tx_proposal` = ?',
-    [txProposalId],
-  );
+  await mysql.query({
+    sql: 'UPDATE `tx_output` SET `tx_proposal` = NULL, `tx_proposal_index` = NULL WHERE `tx_proposal` = ?',
+    values: [txProposalId],
+  });
 };
 
 /**
@@ -1684,13 +1718,13 @@ export const getTxsAfterHeight = async (
   mysql: ServerlessMysql,
   height: number,
 ): Promise<Tx[]> => {
-  const results: DbSelectResult = await mysql.query(
-    `SELECT *
-       FROM \`transaction\`
-      WHERE \`height\` > ?
-        AND \`voided\` = FALSE`,
-    [height],
-  );
+  const results: DbSelectResult = await mysql.query({
+    sql: `SELECT *
+            FROM \`transaction\`
+           WHERE \`height\` > ?
+             AND \`voided\` = FALSE`,
+    values: [height],
+  });
   const transactions = [];
 
   for (const result of results) {
@@ -1721,12 +1755,12 @@ export const getTxOutputs = async (
   transactions: Tx[],
 ): Promise<DbTxOutput[]> => {
   const txIds = transactions.map((tx) => tx.txId);
-  const results: DbSelectResult = await mysql.query(
-    `SELECT *
-       FROM \`tx_output\`
-      WHERE \`tx_id\` IN (?)`,
-    [txIds],
-  );
+  const results: DbSelectResult = await mysql.query({
+    sql: `SELECT *
+            FROM \`tx_output\`
+           WHERE \`tx_id\` IN (?)`,
+    values: [txIds],
+  });
 
   const utxos = [];
   for (const result of results) {
@@ -1766,13 +1800,13 @@ export const getTransactionsById = async (
     return [];
   }
 
-  const results: DbSelectResult = await mysql.query(
-    `SELECT *
-       FROM \`transaction\`
-      WHERE \`tx_id\` IN (?)
-        AND \`voided\` = FALSE`,
-    [txIds],
-  );
+  const results: DbSelectResult = await mysql.query({
+    sql: `SELECT *
+            FROM \`transaction\`
+           WHERE \`tx_id\` IN (?)
+             AND \`voided\` = FALSE`,
+    values: [txIds],
+  });
   const transactions = [];
 
   for (const result of results) {
@@ -1802,12 +1836,12 @@ export const getTxOutputsBySpent = async (
   mysql: ServerlessMysql,
   txIds: string[],
 ): Promise<DbTxOutput[]> => {
-  const results: DbSelectResult = await mysql.query(
-    `SELECT *
-       FROM \`tx_output\`
-      WHERE \`spent_by\` IN (?)`,
-    [txIds],
-  );
+  const results: DbSelectResult = await mysql.query({
+    sql: `SELECT *
+            FROM \`tx_output\`
+           WHERE \`spent_by\` IN (?)`,
+    values: [txIds],
+  });
 
   const utxos = [];
   for (const result of results) {
@@ -1901,12 +1935,12 @@ export const deleteBlocksAfterHeight = async (
   mysql: ServerlessMysql,
   height: number,
 ): Promise<void> => {
-  await mysql.query(
-    `DELETE FROM \`transaction\`
-      WHERE height > ?
-        AND version IN (?)`,
-    [height, BLOCK_VERSION],
-  );
+  await mysql.query({
+    sql: `DELETE FROM \`transaction\`
+           WHERE height > ?
+             AND version IN (?)`,
+    values: [height, BLOCK_VERSION],
+  });
 };
 
 /**
@@ -1921,12 +1955,12 @@ export const markTxsAsVoided = async (
 ): Promise<void> => {
   const txIds = transactions.map((tx) => tx.txId);
 
-  await mysql.query(
-    `UPDATE \`transaction\`
-        SET \`voided\` = TRUE
-      WHERE \`tx_id\` IN (?)`,
-    [txIds],
-  );
+  await mysql.query({
+    sql: `UPDATE \`transaction\`
+             SET \`voided\` = TRUE
+           WHERE \`tx_id\` IN (?)`,
+    values: [txIds],
+  });
 };
 
 /**
@@ -1941,12 +1975,12 @@ export const markAddressTxHistoryAsVoided = async (
 ): Promise<void> => {
   const txIds = transactions.map((tx) => tx.txId);
 
-  await mysql.query(
-    `UPDATE \`address_tx_history\`
-        SET \`voided\` = TRUE
-      WHERE \`tx_id\` IN (?)`,
-    [txIds],
-  );
+  await mysql.query({
+    sql: `UPDATE \`address_tx_history\`
+             SET \`voided\` = TRUE
+           WHERE \`tx_id\` IN (?)`,
+    values: [txIds],
+  });
 };
 
 /**
@@ -1961,12 +1995,12 @@ export const markWalletTxHistoryAsVoided = async (
 ): Promise<void> => {
   const txIds = transactions.map((tx) => tx.txId);
 
-  await mysql.query(
-    `UPDATE \`wallet_tx_history\`
-        SET \`voided\` = TRUE
-      WHERE \`tx_id\` IN (?)`,
-    [txIds],
-  );
+  await mysql.query({
+    sql: `UPDATE \`wallet_tx_history\`
+             SET \`voided\` = TRUE
+           WHERE \`tx_id\` IN (?)`,
+    values: [txIds],
+  });
 };
 
 /**
@@ -1981,73 +2015,80 @@ export const rebuildAddressBalancesFromUtxos = async (
   addresses: string[],
 ): Promise<void> => {
   // delete affected address_balances
-  await mysql.query(
-    `DELETE
-       FROM \`address_balance\`
-      WHERE \`address\` IN (?)`,
-    [addresses],
-  );
+  await mysql.query({
+    sql: `DELETE
+            FROM \`address_balance\`
+           WHERE \`address\` IN (?)`,
+    values: [addresses],
+  });
 
   // update address balances with unlocked utxos
-  await mysql.query(`
-    INSERT INTO address_balance (
-      \`address\`,
-      \`token_id\`,
-      \`unlocked_balance\`,
-      \`locked_balance\`,
-      \`unlocked_authorities\`,
-      \`locked_authorities\`,
-      \`timelock_expires\`,
-      \`transactions\`
-    )
-     SELECT address,
-            token_id,
-            SUM(\`value\`), -- unlocked_balance
-            0,
-            BIT_OR(\`authorities\`), -- unlocked_authorities
-            0, -- locked_authorities
-            0, -- timelock_expires
-            COUNT(DISTINCT \`tx_id\`) -- transactions
-       FROM \`tx_output\`
-      WHERE heightlock IS NULL
-        AND timelock IS NULL
-        AND spent_by IS NULL
-        AND voided = FALSE
-        AND address IN (?)
-   GROUP BY address, token_id
-  `, [addresses]);
+  await mysql.query({
+    sql: `
+      INSERT
+        INTO address_balance (
+                  \`address\`,
+                  \`token_id\`,
+                  \`unlocked_balance\`,
+                  \`locked_balance\`,
+                  \`unlocked_authorities\`,
+                  \`locked_authorities\`,
+                  \`timelock_expires\`,
+                  \`transactions\`
+                )
+      SELECT address,
+              token_id,
+              SUM(\`value\`), -- unlocked_balance
+              0,
+              BIT_OR(\`authorities\`), -- unlocked_authorities
+              0, -- locked_authorities
+              0, -- timelock_expires
+              COUNT(DISTINCT \`tx_id\`) -- transactions
+        FROM \`tx_output\`
+       WHERE heightlock IS NULL
+         AND timelock IS NULL
+         AND spent_by IS NULL
+         AND voided = FALSE
+         AND address IN (?)
+    GROUP BY address, token_id
+    `,
+    values: [addresses],
+  });
 
   // update address balances with locked utxos
-  await mysql.query(`
+  await mysql.query({
+    sql: `
     INSERT INTO \`address_balance\` (
-      \`address\`,
-      \`token_id\`,
-      \`unlocked_balance\`,
-      \`locked_balance\`,
-      \`locked_authorities\`,
-      \`timelock_expires\`,
-      \`transactions\`
-    )
-       SELECT address,
-              token_id,
-              0 AS unlocked_balance,
-              SUM(\`value\`) AS locked_balance,
-              BIT_OR(\`authorities\`) AS locked_authorities,
-              MIN(\`timelock\`) AS timelock_expires,
-              COUNT(DISTINCT \`tx_id\`) -- transactions
-         FROM \`tx_output\`
-        WHERE (\`heightlock\` IS NOT NULL
-           OR \`timelock\` IS NOT NULL)
-          AND spent_by IS NULL
-          AND voided = FALSE
-          AND address IN (?)
-     GROUP BY \`address\`, \`token_id\`
-   ON DUPLICATE KEY UPDATE
-    locked_balance = VALUES(locked_balance),
-    locked_authorities = VALUES(locked_authorities),
-    timelock_expires = VALUES(timelock_expires),
-    transactions = transactions + VALUES(\`transactions\`)
-   `, [addresses]);
+                \`address\`,
+                \`token_id\`,
+                \`unlocked_balance\`,
+                \`locked_balance\`,
+                \`locked_authorities\`,
+                \`timelock_expires\`,
+                \`transactions\`
+                )
+         SELECT address,
+                token_id,
+                0 AS unlocked_balance,
+                SUM(\`value\`) AS locked_balance,
+                BIT_OR(\`authorities\`) AS locked_authorities,
+                MIN(\`timelock\`) AS timelock_expires,
+                COUNT(DISTINCT \`tx_id\`) -- transactions
+           FROM \`tx_output\`
+          WHERE (\`heightlock\` IS NOT NULL
+                 OR \`timelock\` IS NOT NULL)
+            AND spent_by IS NULL
+            AND voided = FALSE
+            AND address IN (?)
+       GROUP BY \`address\`, \`token_id\`
+             ON DUPLICATE KEY UPDATE
+                locked_balance = VALUES(locked_balance),
+                locked_authorities = VALUES(locked_authorities),
+                timelock_expires = VALUES(timelock_expires),
+                transactions = transactions + VALUES(\`transactions\`)
+    `,
+    values: [addresses],
+  });
 };
 
 /**
@@ -2060,13 +2101,13 @@ export const fetchTx = async (
   mysql: ServerlessMysql,
   txId: string,
 ): Promise<Tx> => {
-  const results: DbSelectResult = await mysql.query(
-    `SELECT *
-       FROM \`transaction\`
-      WHERE \`tx_id\` = ?
-        AND \`voided\` = FALSE`,
-    [txId],
-  );
+  const results: DbSelectResult = await mysql.query({
+    sql: `SELECT *
+            FROM \`transaction\`
+           WHERE \`tx_id\` = ?
+             AND \`voided\` = FALSE`,
+    values: [txId],
+  });
 
   if (results.length === 0) {
     return null;
@@ -2095,13 +2136,13 @@ export const fetchAddressBalance = async (
   mysql: ServerlessMysql,
   addresses: string[],
 ): Promise<AddressBalance[]> => {
-  const results: DbSelectResult = await mysql.query(
-    `SELECT *
-       FROM \`address_balance\`
-      WHERE \`address\` IN (?)
-   ORDER BY \`address\`, \`token_id\``,
-    [addresses],
-  );
+  const results: DbSelectResult = await mysql.query({
+    sql: `SELECT *
+            FROM \`address_balance\`
+           WHERE \`address\` IN (?)
+        ORDER BY \`address\`, \`token_id\``,
+    values: [addresses],
+  });
 
   return results.map((result): AddressBalance => ({
     address: result.address as string,
@@ -2125,18 +2166,18 @@ export const fetchAddressTxHistorySum = async (
   mysql: ServerlessMysql,
   addresses: string[],
 ): Promise<AddressTotalBalance[]> => {
-  const results: DbSelectResult = await mysql.query(
-    `SELECT address,
-            token_id,
-            SUM(\`balance\`) AS balance,
-            COUNT(\`tx_id\`) AS transactions
-       FROM \`address_tx_history\`
-      WHERE \`address\` IN (?)
-        AND \`voided\` = FALSE
-   GROUP BY address, token_id
-   ORDER BY address, token_id`,
-    [addresses],
-  );
+  const results: DbSelectResult = await mysql.query({
+    sql: `SELECT address,
+                 token_id,
+                 SUM(\`balance\`) AS balance,
+                 COUNT(\`tx_id\`) AS transactions
+            FROM \`address_tx_history\`
+           WHERE \`address\` IN (?)
+             AND \`voided\` = FALSE
+        GROUP BY address, token_id
+        ORDER BY address, token_id`,
+    values: [addresses],
+  });
 
   return results.map((result): AddressTotalBalance => ({
     address: result.address as string,
@@ -2179,24 +2220,24 @@ export const filterUtxos = async (
 
   queryParams.push(finalFilters.maxUtxos);
 
-  const results: DbSelectResult = await mysql.query(
-    `SELECT *
-       FROM \`tx_output\`
-      WHERE \`address\`
-         IN (?)
-        AND \`token_id\` = ?
-        ${finalFilters.authority !== 0 ? 'AND `authorities` & ? > 0' : 'AND `authorities` = 0'}
-        ${finalFilters.ignoreLocked ? 'AND `locked` = FALSE' : ''}
-        ${finalFilters.authority === 0 ? 'AND value < ?' : ''}
-        ${finalFilters.authority === 0 ? 'AND value > ?' : ''}
-        ${finalFilters.skipSpent ? 'AND `spent_by` IS NULL' : ''}
-        AND \`tx_proposal\` IS NULL
-        AND \`voided\` = FALSE
-   ORDER BY \`value\` DESC
+  const results: DbSelectResult = await mysql.query({
+    sql: `SELECT *
+            FROM \`tx_output\`
+           WHERE \`address\`
+              IN (?)
+             AND \`token_id\` = ?
+                 ${finalFilters.authority !== 0 ? 'AND `authorities` & ? > 0' : 'AND `authorities` = 0'}
+                 ${finalFilters.ignoreLocked ? 'AND `locked` = FALSE' : ''}
+                 ${finalFilters.authority === 0 ? 'AND value < ?' : ''}
+                 ${finalFilters.authority === 0 ? 'AND value > ?' : ''}
+                 ${finalFilters.skipSpent ? 'AND `spent_by` IS NULL' : ''}
+             AND \`tx_proposal\` IS NULL
+             AND \`voided\` = FALSE
+        ORDER BY \`value\` DESC
         ${finalFilters.maxUtxos ? 'LIMIT ?' : ''}
        `,
-    queryParams,
-  );
+    values: queryParams,
+  });
 
   const utxos: DbTxOutput[] = results.map(mapDbResultToDbTxOutput);
 
@@ -2239,10 +2280,10 @@ export const getTxProposalInputs = async (
   txProposalId: string,
 ): Promise<IWalletInput[]> => {
   const inputs = [];
-  const results: DbSelectResult = await mysql.query(
-    'SELECT * FROM `tx_output` WHERE `tx_proposal` = ? ORDER BY `tx_proposal_index` ASC',
-    [txProposalId],
-  );
+  const results: DbSelectResult = await mysql.query({
+    sql: 'SELECT * FROM `tx_output` WHERE `tx_proposal` = ? ORDER BY `tx_proposal_index` ASC',
+    values: [txProposalId],
+  });
   for (const result of results) {
     const input: IWalletInput = {
       txId: result.tx_id as string,
@@ -2265,14 +2306,14 @@ export const getMempoolTransactionsBeforeDate = async (
   mysql: ServerlessMysql,
   date: number,
 ): Promise<Tx[]> => {
-  const results: DbSelectResult = await mysql.query(
-    `SELECT *
-       FROM \`transaction\`
-      WHERE \`timestamp\` < ?
-        AND \`voided\` = FALSE
-        AND \`height\` IS NULL`,
-    [date],
-  );
+  const results: DbSelectResult = await mysql.query({
+    sql: `SELECT *
+            FROM \`transaction\`
+           WHERE \`timestamp\` < ?
+             AND \`voided\` = FALSE
+             AND \`height\` IS NULL`,
+    values: [date],
+  });
   const transactions = [];
 
   for (const result of results) {
@@ -2300,12 +2341,13 @@ export const addMiner = async (
   address: string,
   txId: string,
 ): Promise<void> => {
-  await mysql.query(
-    `INSERT INTO \`miner\` (address, first_block, last_block, count)
-     VALUES (?, ?, ?, 1)
-         ON DUPLICATE KEY UPDATE last_block = ?, count = count + 1`,
-    [address, txId, txId, txId],
-  );
+  await mysql.query({
+    sql: `INSERT
+            INTO \`miner\` (address, first_block, last_block, count)
+          VALUES (?, ?, ?, 1)
+              ON DUPLICATE KEY UPDATE last_block = ?, count = count + 1`,
+    values: [address, txId, txId, txId],
+  });
 };
 
 /**
@@ -2318,10 +2360,11 @@ export const addMiner = async (
 export const getMinersList = async (
   mysql: ServerlessMysql,
 ): Promise<Miner[]> => {
-  const results: DbSelectResult = await mysql.query(`
-    SELECT address, first_block, last_block, count
-      FROM miner;
-  `);
+  const results: DbSelectResult = await mysql.query({
+    sql: `
+      SELECT address, first_block, last_block, count
+        FROM miner; `,
+  });
 
   const minerList: Miner[] = [];
 
@@ -2348,14 +2391,17 @@ export const getTotalSupply = async (
   mysql: ServerlessMysql,
   tokenId: string,
 ): Promise<number> => {
-  const results: DbSelectResult = await mysql.query(`
-    SELECT SUM(value) as value
-      FROM tx_output
-     WHERE spent_by IS NULL
-       AND token_id = ?
-       AND voided = FALSE
-       AND address != '${BURN_ADDRESS}'
-  `, [tokenId]);
+  const results: DbSelectResult = await mysql.query({
+    sql: `
+      SELECT SUM(value) as value
+        FROM tx_output
+       WHERE spent_by IS NULL
+         AND token_id = ?
+         AND voided = FALSE
+         AND address != '${BURN_ADDRESS}'
+    `,
+    values: [tokenId],
+  });
 
   if (!results.length) {
     // This should never happen.
@@ -2377,13 +2423,16 @@ export const getExpiredTimelocksUtxos = async (
   mysql: ServerlessMysql,
   now: number,
 ): Promise<DbTxOutput[]> => {
-  const results: DbSelectResult = await mysql.query(`
-    SELECT *
-      FROM tx_output
-     WHERE locked = TRUE 
-       AND timelock IS NOT NULL
-       AND timelock < ?
-  `, [now]);
+  const results: DbSelectResult = await mysql.query({
+    sql: `
+      SELECT *
+        FROM tx_output
+      WHERE locked = TRUE 
+        AND timelock IS NOT NULL
+        AND timelock < ?
+    `,
+    values: [now],
+  });
 
   const lockedUtxos: DbTxOutput[] = results.map(mapDbResultToDbTxOutput);
 
@@ -2402,12 +2451,15 @@ export const getTotalTransactions = async (
   mysql: ServerlessMysql,
   tokenId: string,
 ): Promise<number> => {
-  const results: DbSelectResult = await mysql.query(`
-    SELECT COUNT(DISTINCT(tx_id)) AS count
-      FROM tx_output
-     WHERE token_id = ?
-       AND voided = FALSE
-  `, [tokenId]);
+  const results: DbSelectResult = await mysql.query({
+    sql: `
+      SELECT COUNT(DISTINCT(tx_id)) AS count
+        FROM tx_output
+      WHERE token_id = ?
+        AND voided = FALSE
+    `,
+    values: [tokenId],
+  });
 
   if (!results.length) {
     // This should never happen.
@@ -2436,16 +2488,19 @@ export const getAvailableAuthorities = async (
    * if the token is "mintable" and/or"meltable", we don't display a list of those
    * utxos so it is safe to set this limit.
    */
-  const results: DbSelectResult = await mysql.query(`
-  SELECT *
-    FROM tx_output
-   WHERE authorities > 0
-     AND token_id = ?
-     AND voided = FALSE
-     AND locked = FALSE
-     AND spent_by IS NULL
-   LIMIT 100
-  `, [tokenId]);
+  const results: DbSelectResult = await mysql.query({
+    sql: `
+      SELECT *
+        FROM tx_output
+      WHERE authorities > 0
+        AND token_id = ?
+        AND voided = FALSE
+        AND locked = FALSE
+        AND spent_by IS NULL
+      LIMIT 100
+      `,
+    values: [tokenId],
+  });
 
   const utxos = results.map(mapDbResultToDbTxOutput);
 
