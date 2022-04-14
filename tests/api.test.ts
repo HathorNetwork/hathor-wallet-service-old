@@ -17,7 +17,7 @@ import * as Db from '@src/db';
 import { ApiError } from '@src/api/errors';
 import { closeDbConnection, getDbConnection, getUnixTimestamp, getWalletId } from '@src/utils';
 import { WalletStatus } from '@src/types';
-import { walletUtils, network, HathorWalletServiceWallet } from '@hathor/wallet-lib';
+import { walletUtils, constants, network, HathorWalletServiceWallet } from '@hathor/wallet-lib';
 import bitcore from 'bitcore-lib';
 import {
   ADDRESSES,
@@ -1121,13 +1121,13 @@ test('GET /wallet/tokens/token_id/details', async () => {
 
   await addToUtxoTable(mysql, [
     ['txId', 0, token1.id, ADDRESSES[0], 100, 0, null, null, false, null], // total tokens created
-    ['txId', 1, token1.id, ADDRESSES[0], 0, 1, null, null, false, null], // mint
-    ['txId', 2, token1.id, ADDRESSES[0], 0, 2, null, null, false, null], // melt
+    ['txId', 1, token1.id, ADDRESSES[0], 0, constants.TOKEN_MINT_MASK, null, null, false, null], // mint
+    ['txId', 2, token1.id, ADDRESSES[0], 0, constants.TOKEN_MINT_MASK, null, null, false, null], // melt
     ['txId2', 0, token2.id, ADDRESSES[0], 250, 0, null, null, true, null], // total tokens created
-    ['txId2', 1, token2.id, ADDRESSES[0], 0, 1, 1000, null, true, null], // locked utxo
-    ['txId2', 2, token2.id, ADDRESSES[0], 0, 1, 1000, null, true, 'txid2'], // spent utxo
-    ['txId3', 0, token2.id, ADDRESSES[0], 0, 1, null, null, false, null],
-    ['txId3', 1, token2.id, ADDRESSES[0], 0, 2, null, null, false, null],
+    ['txId2', 1, token2.id, ADDRESSES[0], 0, constants.TOKEN_MINT_MASK, 1000, null, true, null], // locked utxo
+    ['txId2', 2, token2.id, ADDRESSES[0], 0, constants.TOKEN_MINT_MASK, 1000, null, true, 'txid2'], // spent utxo
+    ['txId3', 0, token2.id, ADDRESSES[0], 0, constants.TOKEN_MINT_MASK, null, null, false, null],
+    ['txId3', 1, token2.id, ADDRESSES[0], 0, constants.TOKEN_MELT_MASK, null, null, false, null],
   ]);
 
   event = makeGatewayEventWithAuthorizer('my-wallet', { token_id: token1.id });
@@ -1138,7 +1138,8 @@ test('GET /wallet/tokens/token_id/details', async () => {
   expect(returnBody.success).toBe(true);
   expect(returnBody.details.totalSupply).toStrictEqual(100);
   expect(returnBody.details.totalTransactions).toStrictEqual(1);
-  expect(returnBody.details.availableAuthorities).toHaveLength(2);
+  expect(returnBody.details.authorities.mint).toStrictEqual(true);
+  expect(returnBody.details.authorities.melt).toStrictEqual(false);
   expect(returnBody.details.tokenInfo).toStrictEqual(token1);
 
   event = makeGatewayEventWithAuthorizer('my-wallet', { token_id: token2.id });
@@ -1149,6 +1150,7 @@ test('GET /wallet/tokens/token_id/details', async () => {
   expect(returnBody.success).toBe(true);
   expect(returnBody.details.totalSupply).toStrictEqual(250);
   expect(returnBody.details.totalTransactions).toStrictEqual(2);
-  expect(returnBody.details.availableAuthorities).toHaveLength(2);
+  expect(returnBody.details.authorities.mint).toStrictEqual(true);
+  expect(returnBody.details.authorities.melt).toStrictEqual(true);
   expect(returnBody.details.tokenInfo).toStrictEqual(token2);
 });

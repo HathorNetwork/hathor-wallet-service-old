@@ -14,6 +14,8 @@ import {
   getTxProposal,
   getUnusedAddresses,
   getUtxos,
+  getUtxo,
+  getAuthorityUtxo,
   getUtxosLockedAtHeight,
   getWallet,
   getWalletAddressDetail,
@@ -108,6 +110,8 @@ import {
   createInput,
   countTxOutputTable,
 } from '@tests/utils';
+
+import { constants } from '@hathor/wallet-lib';
 
 const mysql = getDbConnection();
 
@@ -1962,21 +1966,62 @@ test('getAvailableAuthorities', async () => {
 
   expect(await getAvailableAuthorities(mysql, 'token1')).toHaveLength(1);
   expect(await getAvailableAuthorities(mysql, 'token2')).toHaveLength(1);
+});
 
-  // Insert more than 100 authority utxos for a single token
-  await addToUtxoTable(mysql, Array(105).fill(1).map((_, index) => ([
-    'txId',
-    index + 4, // Last index for this txId was 3
+test('getUtxo, getAuthorityUtxo', async () => {
+  expect.hasAssertions();
+
+  const tokenId = 'tokenId';
+  const addr1 = 'addr1';
+
+  await addToUtxoTable(mysql, [['txId', 0, tokenId, addr1, 0, constants.TOKEN_MINT_MASK, 10000, null, true, null]]);
+  await addToUtxoTable(mysql, [['txId', 1, tokenId, addr1, 0, constants.TOKEN_MELT_MASK, 10000, null, true, null]]);
+
+  const utxo = await getUtxo(mysql, 'txId', 0);
+  expect(utxo).toStrictEqual({
+    txId: 'txId',
+    index: 0,
     tokenId,
-    addr1,
-    0,
-    0b11,
-    null,
-    null,
-    false,
-    null,
-  ])));
+    address: addr1,
+    value: 0,
+    authorities: constants.TOKEN_MINT_MASK,
+    timelock: 10000,
+    heightlock: null,
+    locked: true,
+    txProposalId: null,
+    txProposalIndex: null,
+    spentBy: null,
+  });
 
-  // Results should be truncated to 100 utxos
-  expect(await getAvailableAuthorities(mysql, 'token1')).toHaveLength(100);
+  const mintUtxo = await getAuthorityUtxo(mysql, tokenId, constants.TOKEN_MINT_MASK);
+  const meltUtxo = await getAuthorityUtxo(mysql, tokenId, constants.TOKEN_MELT_MASK);
+
+  expect(mintUtxo).toStrictEqual({
+    txId: 'txId',
+    index: 0,
+    tokenId,
+    address: addr1,
+    value: 0,
+    authorities: constants.TOKEN_MINT_MASK,
+    timelock: 10000,
+    heightlock: null,
+    locked: true,
+    txProposalId: null,
+    txProposalIndex: null,
+    spentBy: null,
+  });
+  expect(meltUtxo).toStrictEqual({
+    txId: 'txId',
+    index: 1,
+    tokenId,
+    address: addr1,
+    value: 0,
+    authorities: constants.TOKEN_MELT_MASK,
+    timelock: 10000,
+    heightlock: null,
+    locked: true,
+    txProposalId: null,
+    txProposalIndex: null,
+    spentBy: null,
+  });
 });
