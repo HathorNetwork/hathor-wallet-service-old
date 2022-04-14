@@ -1094,9 +1094,17 @@ test('GET /wallet/tokens/token_id/details', async () => {
 
   await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'auth_xpubkey', 'ready', 5, 10000, 10001]]);
 
-  let event = makeGatewayEventWithAuthorizer('my-wallet', {});
+  let event = makeGatewayEventWithAuthorizer('my-wallet', { token_id: 'unknown' });
   let result = await getTokenDetails(event, null, null) as APIGatewayProxyResult;
   let returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(404);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.details[0]).toStrictEqual({ message: 'Token not found' });
+
+  event = makeGatewayEventWithAuthorizer('my-wallet', {});
+  result = await getTokenDetails(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
 
   expect(result.statusCode).toBe(400);
   expect(returnBody.success).toBe(false);
