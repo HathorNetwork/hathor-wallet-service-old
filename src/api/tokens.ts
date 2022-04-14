@@ -65,20 +65,34 @@ export const getTokenDetails = walletIdProxyHandler(async (walletId, event) => {
   }
 
   const tokenId = value.token_id;
-
   const tokenInfo: TokenInfo = await getTokenInformation(mysql, tokenId);
-  const totalSupply: number = await getTotalSupply(mysql, tokenId);
-  const totalTransactions: number = await getTotalTransactions(mysql, tokenId);
-  const availableAuthorities: DbTxOutput[] = await getAvailableAuthorities(mysql, tokenId);
+
+  if (!tokenInfo) {
+    const details = [{
+      message: 'Token not found',
+    }];
+
+    return closeDbAndGetError(mysql, ApiError.TOKEN_NOT_FOUND, { details });
+  }
+
+  const [
+    totalSupply,
+    totalTransactions,
+    availableAuthorities,
+  ] = await Promise.all([
+    getTotalSupply(mysql, tokenId),
+    getTotalTransactions(mysql, tokenId),
+    getAvailableAuthorities(mysql, tokenId),
+  ]);
 
   return {
     statusCode: 200,
     body: JSON.stringify({
       success: true,
       details: {
+        tokenInfo,
         totalSupply,
         totalTransactions,
-        tokenInfo,
         availableAuthorities,
       },
     }),
