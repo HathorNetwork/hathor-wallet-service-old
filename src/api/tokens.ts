@@ -10,7 +10,6 @@ import {
 } from '@src/db';
 import {
   TokenInfo,
-  DbTxOutput,
 } from '@src/types';
 import { getDbConnection } from '@src/utils';
 import { ApiError } from '@src/api/errors';
