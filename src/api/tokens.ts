@@ -6,7 +6,7 @@ import {
   getTotalSupply,
   getTotalTransactions,
   getTokenInformation,
-  getAvailableAuthorities,
+  getAuthorityUtxo,
 } from '@src/db';
 import {
   TokenInfo,
@@ -16,6 +16,7 @@ import { getDbConnection } from '@src/utils';
 import { ApiError } from '@src/api/errors';
 import { closeDbAndGetError } from '@src/api/utils';
 import Joi from 'joi';
+import { constants } from '@hathor/wallet-lib';
 
 const mysql = getDbConnection();
 
@@ -78,11 +79,13 @@ export const getTokenDetails = walletIdProxyHandler(async (walletId, event) => {
   const [
     totalSupply,
     totalTransactions,
-    availableAuthorities,
+    meltAuthority,
+    mintAuthority,
   ] = await Promise.all([
     getTotalSupply(mysql, tokenId),
     getTotalTransactions(mysql, tokenId),
-    getAvailableAuthorities(mysql, tokenId),
+    getAuthorityUtxo(mysql, tokenId, constants.TOKEN_MELT_MASK),
+    getAuthorityUtxo(mysql, tokenId, constants.TOKEN_MINT_MASK),
   ]);
 
   return {
@@ -93,7 +96,10 @@ export const getTokenDetails = walletIdProxyHandler(async (walletId, event) => {
         tokenInfo,
         totalSupply,
         totalTransactions,
-        availableAuthorities,
+        authorities: {
+          mint: mintAuthority !== null,
+          melt: meltAuthority !== null,
+        },
       },
     }),
   };
