@@ -719,6 +719,39 @@ export const getTxOutput = async (
 };
 
 /**
+ * Get a single authority UTXO
+ *
+ * @param mysql - Database connection
+ * @param authority - The authority to search for, can be one of (TOKEN_MINT_MASK, TOKEN_MELT_MASK)
+ * @returns The requested UTXO
+ */
+export const getAuthorityUtxo = async (
+  mysql: ServerlessMysql,
+  tokenId: string,
+  authority: number,
+): Promise<DbTxOutput> => {
+  const results: DbSelectResult = await mysql.query(
+    `SELECT *
+       FROM \`tx_output\`
+      WHERE \`authorities\` = ?
+        AND \`spent_by\` IS NULL
+        AND \`voided\` = FALSE
+        AND \`token_id\` = ?
+      LIMIT 1`,
+    [authority, tokenId],
+  );
+
+  if (!results.length || results.length === 0) {
+    return null;
+  }
+
+  const result = results[0];
+  const utxo: DbTxOutput = mapDbResultToDbTxOutput(result);
+
+  return utxo;
+};
+
+/**
  * Get the requested UTXOs.
  *
  * @param mysql - Database connection
@@ -2460,7 +2493,6 @@ export const getAvailableAuthorities = async (
      AND voided = FALSE
      AND locked = FALSE
      AND spent_by IS NULL
-   LIMIT 100
   `, [tokenId]);
 
   const utxos = results.map(mapDbResultToDbTxOutput);
