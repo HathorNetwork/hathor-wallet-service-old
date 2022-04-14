@@ -1896,54 +1896,13 @@ test('getExpiredTimelocksUtxos', async () => {
 test('getTotalTransactions', async () => {
   expect.hasAssertions();
 
-  const txId1 = 'txId';
-  const txId2 = 'txId2';
-  const txId3 = 'txId3';
-
-  const utxosTx1 = [
-    { value: 5, address: 'address1', tokenId: 'token1', locked: false },
-    { value: 15, address: 'address1', tokenId: 'token2', locked: false },
-  ];
-  const utxosTx2 = [
-    { value: 25, address: 'address2', tokenId: 'token2', locked: false },
-    { value: 35, address: 'address2', tokenId: 'token1', locked: false },
-  ];
-  const utxosTx3 = [
-    { value: 25, address: 'address2', tokenId: 'token1', locked: false },
-  ];
-
-  // add to utxo table
-  const outputsTx1 = utxosTx1.map((utxo, index) => createOutput(
-    index,
-    utxo.value,
-    utxo.address,
-    utxo.tokenId,
-    null,
-    utxo.locked,
-    0,
-  ));
-  const outputsTx2 = utxosTx2.map((utxo, index) => createOutput(
-    index,
-    utxo.value,
-    utxo.address,
-    utxo.tokenId,
-    null,
-    utxo.locked,
-    0,
-  ));
-  const outputsTx3 = utxosTx3.map((utxo, index) => createOutput(
-    index,
-    utxo.value,
-    utxo.address,
-    utxo.tokenId,
-    null,
-    utxo.locked,
-    0,
-  ));
-
-  await addUtxos(mysql, txId1, outputsTx1);
-  await addUtxos(mysql, txId2, outputsTx2);
-  await addUtxos(mysql, txId3, outputsTx3);
+  await addToAddressTxHistoryTable(mysql, [
+    ['address1', 'txId1', 'token1', -5, 1000],
+    ['address1', 'txId2', 'token1', 5, 1000],
+    ['address1', 'txId3', 'token1', 10, 1000],
+    ['address2', 'txId4', 'token2', -5, 1000],
+    ['address2', 'txId5', 'token2', 50, 1000],
+  ]);
 
   expect(await getTotalTransactions(mysql, 'token1')).toStrictEqual(3);
   expect(await getTotalTransactions(mysql, 'token2')).toStrictEqual(2);

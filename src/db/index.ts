@@ -2455,7 +2455,7 @@ export const getTotalTransactions = async (
 ): Promise<number> => {
   const results: DbSelectResult = await mysql.query(`
     SELECT COUNT(DISTINCT(tx_id)) AS count
-      FROM tx_output
+      FROM address_tx_history
      WHERE token_id = ?
        AND voided = FALSE
   `, [tokenId]);
