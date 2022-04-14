@@ -719,10 +719,12 @@ export const getTxOutput = async (
 };
 
 /**
- * Get a single authority UTXO
+ * Get a random valid authority UTXO for a given token
  *
  * @param mysql - Database connection
+ * @param tokenId - The token id to search authorities for
  * @param authority - The authority to search for, can be one of (TOKEN_MINT_MASK, TOKEN_MELT_MASK)
+ *
  * @returns The requested UTXO
  */
 export const getAuthorityUtxo = async (
