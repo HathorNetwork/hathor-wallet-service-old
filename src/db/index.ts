@@ -34,7 +34,7 @@ import {
   Tx,
   AddressBalance,
   AddressTotalBalance,
-  IFilterUtxo,
+  IFilterTxOutput,
   Miner,
 } from '@src/types';
 import {
@@ -2146,9 +2146,15 @@ export const fetchAddressTxHistorySum = async (
   }));
 };
 
-export const filterUtxos = async (
+/**
+ * Retrieves a filtered list of tx_outputs
+ *
+ * @param mysql - Database connection
+ * @param filters - Filters to apply on the tx_output query
+ */
+export const filterTxOutputs = async (
   mysql: ServerlessMysql,
-  filters: IFilterUtxo = { addresses: [] },
+  filters: IFilterTxOutput = { addresses: [] },
 ): Promise<DbTxOutput[]> => {
   const finalFilters = {
     addresses: [],
@@ -2177,7 +2183,7 @@ export const filterUtxos = async (
     queryParams.push(finalFilters.authority);
   }
 
-  queryParams.push(finalFilters.maxUtxos);
+  queryParams.push(finalFilters.maxOutputs);
 
   const results: DbSelectResult = await mysql.query(
     `SELECT *
@@ -2193,7 +2199,7 @@ export const filterUtxos = async (
         AND \`tx_proposal\` IS NULL
         AND \`voided\` = FALSE
    ORDER BY \`value\` DESC
-        ${finalFilters.maxUtxos ? 'LIMIT ?' : ''}
+        ${finalFilters.maxOutputs ? 'LIMIT ?' : ''}
        `,
     queryParams,
   );

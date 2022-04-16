@@ -4,14 +4,14 @@ import Joi from 'joi';
 import { walletIdProxyHandler } from '@src/commons';
 import { ApiError } from '@src/api/errors';
 import {
-  filterUtxos,
+  filterTxOutputs,
   getWalletAddresses,
   getUtxo,
 } from '@src/db';
 import {
   DbTxOutput,
   DbTxOutputWithPath,
-  IFilterUtxo,
+  IFilterTxOutput,
   AddressInfo,
 } from '@src/types';
 import { closeDbAndGetError } from '@src/api/utils';
@@ -31,7 +31,7 @@ const bodySchema = Joi.object({
   ignoreLocked: Joi.boolean().optional(),
   biggerThan: Joi.number().integer().positive().default(-1),
   smallerThan: Joi.number().integer().positive().default(constants.MAX_OUTPUT_VALUE + 1),
-  maxUtxos: Joi.number().integer().positive().default(constants.MAX_OUTPUTS),
+  maxOutputs: Joi.number().integer().positive().default(constants.MAX_OUTPUTS),
   skipSpent: Joi.boolean().optional().default(true),
   txId: Joi.string().optional(),
   index: Joi.number().optional().min(0),
@@ -40,9 +40,60 @@ const bodySchema = Joi.object({
 /*
  * Filter utxos
  *
- * This lambda is called by API Gateway on GET /wallet/utxos
+ * This lambda is called by API Gateway on GET /wallet/tx_outputs
  */
 export const getFilteredUtxos = walletIdProxyHandler(async (walletId, event) => {
+  const multiQueryString = event.multiValueQueryStringParameters || {};
+  const queryString = event.queryStringParameters || {};
+
+  const eventBody = {
+    id: queryString.id,
+    addresses: multiQueryString.addresses,
+    tokenId: queryString.tokenId,
+    authority: queryString.authority,
+    ignoreLocked: queryString.ignoreLocked,
+    biggerThan: queryString.biggerThan,
+    smallerThan: queryString.smallerThan,
+    skipSpent: true, // utxo is always unspent
+    txId: queryString.txId,
+    index: queryString.index,
+  };
+
+  const { value, error } = bodySchema.validate(eventBody, {
+    abortEarly: false, // We want it to return all the errors not only the first
+    convert: true, // We need to convert as parameters are sent on the QueryString
+  });
+
+  if (error) {
+    const details = error.details.map((err) => ({
+      message: err.message,
+      path: err.path,
+    }));
+
+    return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, { details });
+  }
+
+  const response = await _getFilteredTxOutputs(walletId, value);
+
+  // The /wallet/utxos API expects `utxos` on the response body, we should transform the
+  // response accordingly
+  if (response.statusCode === 200) {
+    const body = JSON.parse(response.body);
+    body.utxos = body.txOutputs;
+    delete body.txOutputs;
+
+    response.body = JSON.stringify(body);
+  }
+
+  return response;
+});
+
+/*
+ * Filter tx_outputs
+ *
+ * This lambda is called by API Gateway on GET /wallet/tx_outputs
+ */
+export const getFilteredTxOutputs = walletIdProxyHandler(async (walletId, event) => {
   const multiQueryString = event.multiValueQueryStringParameters || {};
   const queryString = event.queryStringParameters || {};
 
@@ -73,73 +124,80 @@ export const getFilteredUtxos = walletIdProxyHandler(async (walletId, event) => 
     return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, { details });
   }
 
+  return _getFilteredTxOutputs(walletId, value);
+});
+
+const _getFilteredTxOutputs = async (walletId: string, filters: IFilterTxOutput) => {
   const walletAddresses = await getWalletAddresses(mysql, walletId);
 
-  // txId will only be on the body when the user is searching for specific utxos
-  if (value.txId !== undefined) {
-    const utxo: DbTxOutput = await getUtxo(mysql, value.txId, value.index);
+  // txId will only be on the body when the user is searching for specific tx outputs
+  if (filters.txId !== undefined) {
+    const txOutput: DbTxOutput = await getUtxo(mysql, filters.txId, filters.index);
 
-    if (!utxo) {
-      return closeDbAndGetError(mysql, ApiError.UTXO_NOT_FOUND);
+    if (!txOutput) {
+      return closeDbAndGetError(mysql, ApiError.TX_OUTPUT_NOT_FOUND);
     }
 
     // check if the utxo is a member of the user's wallet
-    const denied = validateAddresses(walletAddresses, [utxo.address]);
+    const denied = validateAddresses(walletAddresses, [txOutput.address]);
 
     if (denied.length > 0) {
       // the requested utxo does not belong to the user's wallet.
-      return closeDbAndGetError(mysql, ApiError.UTXO_NOT_IN_WALLET);
+      return closeDbAndGetError(mysql, ApiError.TX_OUTPUT_NOT_IN_WALLET);
     }
 
-    const utxoList: DbTxOutputWithPath[] = mapUtxosWithPath(walletAddresses, [utxo]);
+    const txOutputList: DbTxOutputWithPath[] = mapTxOutputsWithPath(walletAddresses, [txOutput]);
 
     return {
       statusCode: 200,
       body: JSON.stringify({
         success: true,
-        utxos: utxoList,
+        txOutputs: txOutputList,
       }),
     };
   }
 
-  if (value.addresses) {
-    const denied = validateAddresses(walletAddresses, value.addresses);
+  const newFilters = {
+    ...filters,
+  };
+
+  if (newFilters.addresses) {
+    const denied = validateAddresses(walletAddresses, newFilters.addresses);
 
     if (denied.length > 0) {
       return closeDbAndGetError(mysql, ApiError.ADDRESS_NOT_IN_WALLET, { missing: denied });
     }
   } else {
-    value.addresses = walletAddresses.map((addressInfo) => addressInfo.address);
+    newFilters.addresses = walletAddresses.map((addressInfo) => addressInfo.address);
   }
 
-  const body: IFilterUtxo = value;
-  const utxos: DbTxOutput[] = await filterUtxos(mysql, body);
-  const utxosWithPath: DbTxOutputWithPath[] = mapUtxosWithPath(walletAddresses, utxos);
+  const txOutputs: DbTxOutput[] = await filterTxOutputs(mysql, newFilters);
+  const txOutputsWithPath: DbTxOutputWithPath[] = mapTxOutputsWithPath(walletAddresses, txOutputs);
 
   return {
     statusCode: 200,
     body: JSON.stringify({
       success: true,
-      utxos: utxosWithPath,
+      txOutputs: txOutputsWithPath,
     }),
   };
-});
+};
 
 /**
- * Returns a new list of utxos with the addressPaths for each utxo
+ * Returns a new list of utxos with the addressPaths for each tx_output
  *
  * @param walletAddress - A list of addresses for the user's wallet
- * @param utxos - A list of utxos to map
- * @returns A list with the mapped utxos
+ * @param txOutputs - A list of txOutputs to map
+ * @returns A list with the mapped tx_outputs
  */
-export const mapUtxosWithPath = (walletAddresses: AddressInfo[], utxos: DbTxOutput[]): DbTxOutputWithPath[] => utxos.map((utxo) => {
-  const addressDetail: AddressInfo = walletAddresses.find((address) => address.address === utxo.address);
+export const mapTxOutputsWithPath = (walletAddresses: AddressInfo[], txOutputs: DbTxOutput[]): DbTxOutputWithPath[] => txOutputs.map((txOutput) => {
+  const addressDetail: AddressInfo = walletAddresses.find((address) => address.address === txOutput.address);
   if (!addressDetail) {
     // this should never happen, so we will throw here
-    throw new Error('Utxo address not in user\'s wallet');
+    throw new Error('Tx output address not in user\'s wallet');
   }
   const addressPath = `m/44'/${constants.HATHOR_BIP44_CODE}'/0'/0/${addressDetail.index}`;
-  return { ...utxo, addressPath };
+  return { ...txOutput, addressPath };
 });
 
 /**

@@ -52,7 +52,7 @@ import {
   deleteBlocksAfterHeight,
   markUtxosAsVoided,
   unspendUtxos,
-  filterUtxos,
+  filterTxOutputs,
   getTxProposalInputs,
   addMiner,
   getMinersList,
@@ -1578,7 +1578,7 @@ test('markAddressTxHistoryAsVoided', async () => {
   expect(history2).toHaveLength(0);
 });
 
-test('filterUtxos', async () => {
+test('filterTxOutputs', async () => {
   expect.hasAssertions();
 
   const addr1 = 'addr1';
@@ -1615,23 +1615,23 @@ test('filterUtxos', async () => {
   ]);
 
   // filter all hathor utxos from addr1 and addr2
-  let utxos = await filterUtxos(mysql, { addresses: [addr1, addr2] });
+  let utxos = await filterTxOutputs(mysql, { addresses: [addr1, addr2] });
   expect(utxos).toHaveLength(1);
 
   // filter all 'tokenId' utxos from addr1 and addr2
-  utxos = await filterUtxos(mysql, { addresses: [addr1, addr2], tokenId });
+  utxos = await filterTxOutputs(mysql, { addresses: [addr1, addr2], tokenId });
   expect(utxos).toHaveLength(4);
 
   // filter all 'tokenId' utxos from addr1 and addr2 that are not locked
-  utxos = await filterUtxos(mysql, { addresses: [addr1, addr2], tokenId, ignoreLocked: true });
+  utxos = await filterTxOutputs(mysql, { addresses: [addr1, addr2], tokenId, ignoreLocked: true });
   expect(utxos).toHaveLength(3);
 
   // filter all authority utxos from addr1 and addr2
-  utxos = await filterUtxos(mysql, { addresses: [addr1, addr2], tokenId, authority: 0b01 });
+  utxos = await filterTxOutputs(mysql, { addresses: [addr1, addr2], tokenId, authority: 0b01 });
   expect(utxos).toHaveLength(2);
 
   // filter all utxos between 100 and 1500
-  utxos = await filterUtxos(mysql, { addresses: [addr1, addr2], tokenId, biggerThan: 100, smallerThan: 1500 });
+  utxos = await filterTxOutputs(mysql, { addresses: [addr1, addr2], tokenId, biggerThan: 100, smallerThan: 1500 });
   expect(utxos).toHaveLength(2);
   expect(utxos[0]).toStrictEqual({
     txId: txId2,
@@ -1663,7 +1663,7 @@ test('filterUtxos', async () => {
   });
 
   // limit to 2 utxos, should return the largest 2 ordered by value
-  utxos = await filterUtxos(mysql, { addresses: [addr1, addr2], tokenId, maxUtxos: 2 });
+  utxos = await filterTxOutputs(mysql, { addresses: [addr1, addr2], tokenId, maxOutputs: 2 });
   expect(utxos).toHaveLength(2);
   expect(utxos[0]).toStrictEqual({
     txId: txId2,
@@ -1694,16 +1694,16 @@ test('filterUtxos', async () => {
     spentBy: null,
   });
 
-  // authorities != 0 and maxUtxos == 1 should return only one authority utxo
-  utxos = await filterUtxos(mysql, { addresses: [addr1, addr2], biggerThan: 0, smallerThan: 3, authority: 1, tokenId, maxUtxos: 1 });
+  // authorities != 0 and maxOutputs == 1 should return only one authority utxo
+  utxos = await filterTxOutputs(mysql, { addresses: [addr1, addr2], biggerThan: 0, smallerThan: 3, authority: 1, tokenId, maxOutputs: 1 });
 
   expect(utxos).toHaveLength(1);
 });
 
-test('filterUtxos should throw if addresses are empty', async () => {
+test('filterTxOutputs should throw if addresses are empty', async () => {
   expect.hasAssertions();
 
-  await expect(filterUtxos(mysql, { addresses: [] })).rejects.toThrow('Addresses can\'t be empty.');
+  await expect(filterTxOutputs(mysql, { addresses: [] })).rejects.toThrow('Addresses can\'t be empty.');
 });
 
 test('beginTransaction, commitTransaction, rollbackTransaction', async () => {

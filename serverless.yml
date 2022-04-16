@@ -149,10 +149,18 @@ functions:
           cors: true
           authorizer: ${self:custom.authorizer.walletBearer}
   getUtxos:
-    handler: src/api/utxos.getFilteredUtxos
+    handler: src/api/txOutputs.getFilteredUtxos
     events:
       - http:
           path: wallet/utxos
+          method: get
+          cors: true
+          authorizer: ${self:custom.authorizer.walletBearer}
+  getTxOutputs:
+    handler: src/api/txOutputs.getFilteredTxOutputs
+    events:
+      - http:
+          path: wallet/tx_outputs
           method: get
           cors: true
           authorizer: ${self:custom.authorizer.walletBearer}
