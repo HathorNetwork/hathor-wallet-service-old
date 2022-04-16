@@ -2196,7 +2196,7 @@ export const filterTxOutputs = async (
         ${finalFilters.authority === 0 ? 'AND value < ?' : ''}
         ${finalFilters.authority === 0 ? 'AND value > ?' : ''}
         ${finalFilters.skipSpent ? 'AND `spent_by` IS NULL' : ''}
-        AND \`tx_proposal\` IS NULL
+        ${finalFilters.skipSpent ? 'AND `tx_proposal` IS NULL' : ''}
         AND \`voided\` = FALSE
    ORDER BY \`value\` DESC
         ${finalFilters.maxOutputs ? 'LIMIT ?' : ''}
