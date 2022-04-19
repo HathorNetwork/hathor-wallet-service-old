@@ -1123,12 +1123,12 @@ test('GET /wallet/tokens/token_id/details', async () => {
   await addToUtxoTable(mysql, [
     ['txId', 0, token1.id, ADDRESSES[0], 100, 0, null, null, false, null], // total tokens created
     ['txId', 1, token1.id, ADDRESSES[0], 0, constants.TOKEN_MINT_MASK, null, null, false, null], // mint
-    ['txId', 2, token1.id, ADDRESSES[0], 0, constants.TOKEN_MINT_MASK, null, null, false, null], // melt
+    ['txId', 2, token1.id, ADDRESSES[0], 0, constants.TOKEN_MINT_MASK, null, null, false, null], // another mint
     ['txId2', 0, token2.id, ADDRESSES[0], 250, 0, null, null, true, null], // total tokens created
     ['txId2', 1, token2.id, ADDRESSES[0], 0, constants.TOKEN_MINT_MASK, 1000, null, true, null], // locked utxo
     ['txId2', 2, token2.id, ADDRESSES[0], 0, constants.TOKEN_MINT_MASK, 1000, null, true, 'txid2'], // spent utxo
     ['txId3', 0, token2.id, ADDRESSES[0], 0, constants.TOKEN_MINT_MASK, null, null, false, null],
-    ['txId3', 1, token2.id, ADDRESSES[0], 0, constants.TOKEN_MELT_MASK, null, null, false, null],
+    ['txId3', 1, token2.id, ADDRESSES[0], 0, constants.TOKEN_MELT_MASK, null, null, false, null], // melt utxo
   ]);
 
   await addToAddressTxHistoryTable(mysql, [

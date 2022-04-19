@@ -731,7 +731,7 @@ export const getAuthorityUtxo = async (
   mysql: ServerlessMysql,
   tokenId: string,
   authority: number,
-): Promise<DbTxOutput> => {
+): Promise<DbTxOutput | null> => {
   const results: DbSelectResult = await mysql.query(
     `SELECT *
        FROM \`tx_output\`
