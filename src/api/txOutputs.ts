@@ -40,7 +40,11 @@ const bodySchema = Joi.object({
 /*
  * Filter utxos
  *
- * This lambda is called by API Gateway on GET /wallet/tx_outputs
+ * This lambda is called by API Gateway on GET /wallet/utxos
+ *
+ * NOTICE: This method will be deprecated in the future, we are only keeping it because our deployed mobile wallet
+ * uses it. As soon as it is updated and we are sure that no users are using that old version, we should remove this
+ * API
  */
 export const getFilteredUtxos = walletIdProxyHandler(async (walletId, event) => {
   const multiQueryString = event.multiValueQueryStringParameters || {};
