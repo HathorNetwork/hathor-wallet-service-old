@@ -14,7 +14,6 @@ import {
   getTxProposal,
   getUnusedAddresses,
   getUtxos,
-  getUtxo,
   getAuthorityUtxo,
   getUtxosLockedAtHeight,
   getWallet,
@@ -1936,7 +1935,7 @@ test('getUtxo, getAuthorityUtxo', async () => {
   await addToUtxoTable(mysql, [['txId', 0, tokenId, addr1, 0, constants.TOKEN_MINT_MASK, 10000, null, true, null]]);
   await addToUtxoTable(mysql, [['txId', 1, tokenId, addr1, 0, constants.TOKEN_MELT_MASK, 10000, null, true, null]]);
 
-  const utxo = await getUtxo(mysql, 'txId', 0);
+  const utxo = await getTxOutput(mysql, 'txId', 0, true);
   expect(utxo).toStrictEqual({
     txId: 'txId',
     index: 0,

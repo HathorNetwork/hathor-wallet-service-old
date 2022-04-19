@@ -26,6 +26,7 @@ import {
   TEST_SEED,
   addToAddressTable,
   addToAddressBalanceTable,
+  addToAddressTxHistoryTable,
   addToTokenTable,
   addToUtxoTable,
   addToWalletBalanceTable,
@@ -1128,6 +1129,12 @@ test('GET /wallet/tokens/token_id/details', async () => {
     ['txId2', 2, token2.id, ADDRESSES[0], 0, constants.TOKEN_MINT_MASK, 1000, null, true, 'txid2'], // spent utxo
     ['txId3', 0, token2.id, ADDRESSES[0], 0, constants.TOKEN_MINT_MASK, null, null, false, null],
     ['txId3', 1, token2.id, ADDRESSES[0], 0, constants.TOKEN_MELT_MASK, null, null, false, null],
+  ]);
+
+  await addToAddressTxHistoryTable(mysql, [
+    [ADDRESSES[0], 'txId', token1.id, 100, 0],
+    [ADDRESSES[0], 'txId2', token2.id, 250, 0],
+    [ADDRESSES[0], 'txId3', token2.id, 0, 0],
   ]);
 
   event = makeGatewayEventWithAuthorizer('my-wallet', { token_id: token1.id });
