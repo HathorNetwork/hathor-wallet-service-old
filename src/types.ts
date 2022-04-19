@@ -351,6 +351,7 @@ export interface TxTokenBalance {
   timestamp: number;
   voided: boolean;
   balance: Balance;
+  version: number;
 }
 
 export class TokenBalanceMap {
