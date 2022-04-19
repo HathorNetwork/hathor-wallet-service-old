@@ -6,7 +6,7 @@ import { ApiError } from '@src/api/errors';
 import {
   filterTxOutputs,
   getWalletAddresses,
-  getUtxo,
+  getTxOutput,
 } from '@src/db';
 import {
   DbTxOutput,
@@ -132,7 +132,7 @@ const _getFilteredTxOutputs = async (walletId: string, filters: IFilterTxOutput)
 
   // txId will only be on the body when the user is searching for specific tx outputs
   if (filters.txId !== undefined) {
-    const txOutput: DbTxOutput = await getUtxo(mysql, filters.txId, filters.index);
+    const txOutput: DbTxOutput = await getTxOutput(mysql, filters.txId, filters.index, filters.skipSpent);
 
     if (!txOutput) {
       return closeDbAndGetError(mysql, ApiError.TX_OUTPUT_NOT_FOUND);

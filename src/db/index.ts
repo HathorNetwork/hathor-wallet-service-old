@@ -683,24 +683,26 @@ export const updateTxOutputSpentBy = async (mysql: ServerlessMysql, inputs: TxIn
 };
 
 /**
- * Get the requested UTXO.
+ * Get the requested tx output.
  *
  * @param mysql - Database connection
  * @param txId - The tx id to search
  * @param index - The index to search
- * @returns The requested UTXO
+ * @param skipSpent - Skip spent tx_output (if we want only utxos)
+ * @returns The requested tx_output or null if it is not found
  */
-export const getUtxo = async (
+export const getTxOutput = async (
   mysql: ServerlessMysql,
   txId: string,
   index: number,
-): Promise<DbTxOutput> => {
+  skipSpent: boolean,
+): Promise<DbTxOutput | null> => {
   const results: DbSelectResult = await mysql.query(
     `SELECT *
        FROM \`tx_output\`
       WHERE \`tx_id\` = ?
         AND \`index\` = ?
-        AND \`spent_by\` IS NULL
+        ${skipSpent ? 'AND `spent_by` IS NULL' : ''}
         AND \`voided\` = FALSE`,
     [txId, index],
   );
@@ -711,9 +713,9 @@ export const getUtxo = async (
 
   const result = results[0];
 
-  const utxo: DbTxOutput = mapDbResultToDbTxOutput(result);
+  const txOutput: DbTxOutput = mapDbResultToDbTxOutput(result);
 
-  return utxo;
+  return txOutput;
 };
 
 /**

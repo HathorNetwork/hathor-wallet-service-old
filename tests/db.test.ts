@@ -23,6 +23,7 @@ import {
   getWalletSortedValueUtxos,
   getVersionData,
   getTxOutputsBySpent,
+  getTxOutput,
   getTransactionsById,
   getTxsAfterHeight,
   initWalletBalance,
@@ -511,7 +512,7 @@ test('updateWalletTablesWithTx', async () => {
   await expect(checkWalletTxHistoryTable(mysql, 5, walletId2, token2, tx3, 10, ts3)).resolves.toBe(true);
 });
 
-test('addUtxos, getUtxos, unlockUtxos, updateTxOutputSpentBy, unspendUtxos, getTxOutputsBySpent and markUtxosAsVoided', async () => {
+test('addUtxos, getUtxos, unlockUtxos, updateTxOutputSpentBy, unspendUtxos, getTxOutput, getTxOutputsBySpent and markUtxosAsVoided', async () => {
   expect.hasAssertions();
 
   const txId = 'txId';
@@ -559,12 +560,49 @@ test('addUtxos, getUtxos, unlockUtxos, updateTxOutputSpentBy, unspendUtxos, getT
   results = await getUtxos(mysql, [{ txId, index: 0 }, { txId, index: 1 }]);
   expect(results).toHaveLength(2);
 
+  // get an unspent tx output
+  expect(await getTxOutput(mysql, txId, 0, true)).toStrictEqual({
+    txId: 'txId',
+    index: 0,
+    tokenId: utxos[0].tokenId,
+    address: utxos[0].address,
+    value: utxos[0].value,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+    txProposalId: null,
+    txProposalIndex: null,
+  });
+
   // empty list should be fine
   await unlockUtxos(mysql, []);
 
-  // remove from utxo table
   const inputs = utxos.map((utxo, index) => createInput(utxo.value, utxo.address, txId, index, utxo.tokenId, utxo.timelock));
+
+  // set tx_outputs as spent
   await updateTxOutputSpentBy(mysql, inputs, txId);
+
+  // get a spent tx output
+  expect(await getTxOutput(mysql, txId, 0, false)).toStrictEqual({
+    txId: 'txId',
+    index: 0,
+    tokenId: utxos[0].tokenId,
+    address: utxos[0].address,
+    value: utxos[0].value,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: txId,
+    txProposalId: null,
+    txProposalIndex: null,
+  });
+
+  // if the tx output is not found, it should return null
+  expect(await getTxOutput(mysql, 'unknown-tx-id', 0, false)).toBeNull();
+
   await expect(checkUtxoTable(mysql, 0)).resolves.toBe(true);
 
   const spentTxOutputs = await getTxOutputsBySpent(mysql, [txId]);
