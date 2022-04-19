@@ -39,7 +39,7 @@ Activates for users with a `userId` defined in the `userIds` list. We are curren
 
 1. [Gradual rollout](https://docs.getunleash.io/user_guide/activation_strategy#gradual-rollout)
 
-This is a `pergentage` based strategy, it will answer the feature toggles depending on the percentage of users that already received a positive or negative answer. 
+This is a `percentage` based strategy, it will answer the feature toggles depending on the percentage of users that already received a positive or negative answer. 
 
 For [stickness](https://docs.getunleash.io/advanced/stickiness), we are currently using `userId` on all the feature toggles, so if an user receives a positive response to the feature toggle request, it will continue receiving a positive response on consecutive requests
 
@@ -91,8 +91,10 @@ We have the `gradual rollout strategy` on all of our wallet-service feature togg
 
 2. On the feature toggle details screen, find the `Gradual rollout strategy` and click on the `pen` icon to edit
 
-![Gradual Rollout Strategy](images/feature-toggle-img6.jpg)
+![Gradual Rollout Strategy](images/feature-toggle-img7.jpg)
 
 3. Change the rollout percentage to the target percentage and save
+
+![Gradual Rollout Strategy](images/feature-toggle-img6.jpg)
 
 **Notice**: This will not trigger a refresh on the user's apps, they will have to close and open their apps again to load their wallets on the wallet-service facade.
