@@ -136,21 +136,20 @@ const _getFilteredTxOutputs = async (walletId: string, filters: IFilterTxOutput)
 
   // txId will only be on the body when the user is searching for specific tx outputs
   if (filters.txId !== undefined) {
+    let txOutputList: DbTxOutputWithPath[] = [];
     const txOutput: DbTxOutput = await getTxOutput(mysql, filters.txId, filters.index, filters.skipSpent);
 
-    if (!txOutput) {
-      return closeDbAndGetError(mysql, ApiError.TX_OUTPUT_NOT_FOUND);
+    if (txOutput) {
+      // check if the utxo is a member of the user's wallet
+      const denied = validateAddresses(walletAddresses, [txOutput.address]);
+
+      if (denied.length > 0) {
+        // the requested utxo does not belong to the user's wallet.
+        return closeDbAndGetError(mysql, ApiError.TX_OUTPUT_NOT_IN_WALLET);
+      }
+
+      txOutputList = mapTxOutputsWithPath(walletAddresses, [txOutput]);
     }
-
-    // check if the utxo is a member of the user's wallet
-    const denied = validateAddresses(walletAddresses, [txOutput.address]);
-
-    if (denied.length > 0) {
-      // the requested utxo does not belong to the user's wallet.
-      return closeDbAndGetError(mysql, ApiError.TX_OUTPUT_NOT_IN_WALLET);
-    }
-
-    const txOutputList: DbTxOutputWithPath[] = mapTxOutputsWithPath(walletAddresses, [txOutput]);
 
     return {
       statusCode: 200,

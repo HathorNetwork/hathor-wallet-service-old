@@ -30,7 +30,6 @@ export enum ApiError {
   WALLET_ALREADY_LOADED = 'wallet-already-loaded',
   WALLET_MAX_RETRIES = 'wallet-max-retries',
   ADDRESS_NOT_IN_WALLET = 'address-not-in-wallet',
-  TX_OUTPUT_NOT_FOUND = 'tx-output-not-found',
   TX_OUTPUT_NOT_IN_WALLET = 'tx-output-not-in-wallet',
   FORBIDDEN = 'forbidden',
   UNAUTHORIZED = 'unauthorized',

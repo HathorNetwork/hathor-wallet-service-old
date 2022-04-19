@@ -78,6 +78,8 @@ test('filter utxos api with invalid parameters', async () => {
   expect(returnBody.success).toStrictEqual(false);
   expect(returnBody.details[0].message).toStrictEqual('"value" contains [txId] without its required peers [index]');
 
+  // tx_output not found should return an empty list
+
   event = makeGatewayEventWithAuthorizer('my-wallet', {
     txId: TX_IDS[3],
     index: '0', // queryparams expects a string
@@ -86,9 +88,9 @@ test('filter utxos api with invalid parameters', async () => {
   result = await getFilteredUtxos(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
 
-  expect(result.statusCode).toStrictEqual(400);
-  expect(returnBody.success).toStrictEqual(false);
-  expect(returnBody.error).toStrictEqual(ApiError.TX_OUTPUT_NOT_FOUND);
+  expect(result.statusCode).toStrictEqual(200);
+  expect(returnBody.success).toStrictEqual(true);
+  expect(returnBody.utxos).toStrictEqual([]);
 
   // Utxo not from user's wallet
 
@@ -163,12 +165,14 @@ test('filter tx_output api with invalid parameters', async () => {
     index: '0', // queryparams expects a string
   }, null);
 
+  // tx_output not found should return an empty list
+
   result = await getFilteredTxOutputs(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
 
-  expect(result.statusCode).toStrictEqual(400);
-  expect(returnBody.success).toStrictEqual(false);
-  expect(returnBody.error).toStrictEqual(ApiError.TX_OUTPUT_NOT_FOUND);
+  expect(result.statusCode).toStrictEqual(200);
+  expect(returnBody.success).toStrictEqual(true);
+  expect(returnBody.txOutputs).toStrictEqual([]);
 
   // Utxo not from user's wallet
 
