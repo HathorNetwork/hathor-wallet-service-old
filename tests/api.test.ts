@@ -294,7 +294,7 @@ test('GET /balances', async () => {
     timelockExpires: lockExpires2,
     transactions: 2,
   }]);
-  await addToUtxoTable(mysql, [['txId', 0, 'token3', ADDRESSES[0], 1, 0, lockExpires2, null, true]]);
+  await addToUtxoTable(mysql, [['txId', 0, 'token3', ADDRESSES[0], 1, 0, lockExpires2, null, true, null]]);
   event = makeGatewayEventWithAuthorizer('my-wallet', { token_id: 'token3' });
   result = await balancesGet(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
@@ -322,8 +322,8 @@ test('GET /balances', async () => {
     transactions: 3,
   }]);
   await addToUtxoTable(mysql, [
-    ['txId2', 0, 'token4', ADDRESSES[0], 3, 0, lockExpires2, null, true],
-    ['txId3', 0, 'token4', ADDRESSES[0], 2, 0, lockExpires, null, true],
+    ['txId2', 0, 'token4', ADDRESSES[0], 3, 0, lockExpires2, null, true, null],
+    ['txId3', 0, 'token4', ADDRESSES[0], 2, 0, lockExpires, null, true, null],
   ]);
   event = makeGatewayEventWithAuthorizer('my-wallet', { token_id: 'token4' });
   result = await balancesGet(event, null, null) as APIGatewayProxyResult;

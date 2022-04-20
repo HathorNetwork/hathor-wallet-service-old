@@ -34,7 +34,7 @@ import {
   Tx,
   AddressBalance,
   AddressTotalBalance,
-  IFilterUtxo,
+  IFilterTxOutput,
   Miner,
 } from '@src/types';
 import {
@@ -683,24 +683,26 @@ export const updateTxOutputSpentBy = async (mysql: ServerlessMysql, inputs: TxIn
 };
 
 /**
- * Get the requested UTXO.
+ * Get the requested tx output.
  *
  * @param mysql - Database connection
  * @param txId - The tx id to search
  * @param index - The index to search
- * @returns The requested UTXO
+ * @param skipSpent - Skip spent tx_output (if we want only utxos)
+ * @returns The requested tx_output or null if it is not found
  */
-export const getUtxo = async (
+export const getTxOutput = async (
   mysql: ServerlessMysql,
   txId: string,
   index: number,
-): Promise<DbTxOutput> => {
+  skipSpent: boolean,
+): Promise<DbTxOutput | null> => {
   const results: DbSelectResult = await mysql.query(
     `SELECT *
        FROM \`tx_output\`
       WHERE \`tx_id\` = ?
         AND \`index\` = ?
-        AND \`spent_by\` IS NULL
+        ${skipSpent ? 'AND `spent_by` IS NULL' : ''}
         AND \`voided\` = FALSE`,
     [txId, index],
   );
@@ -711,9 +713,9 @@ export const getUtxo = async (
 
   const result = results[0];
 
-  const utxo: DbTxOutput = mapDbResultToDbTxOutput(result);
+  const txOutput: DbTxOutput = mapDbResultToDbTxOutput(result);
 
-  return utxo;
+  return txOutput;
 };
 
 /**
@@ -2154,15 +2156,22 @@ export const fetchAddressTxHistorySum = async (
   }));
 };
 
-export const filterUtxos = async (
+/**
+ * Retrieves a filtered list of tx_outputs
+ *
+ * @param mysql - Database connection
+ * @param filters - Filters to apply on the tx_output query
+ */
+export const filterTxOutputs = async (
   mysql: ServerlessMysql,
-  filters: IFilterUtxo = { addresses: [] },
+  filters: IFilterTxOutput = { addresses: [] },
 ): Promise<DbTxOutput[]> => {
   const finalFilters = {
     addresses: [],
     tokenId: '00',
     authority: 0,
     ignoreLocked: false,
+    skipSpent: true,
     biggerThan: -1,
     smallerThan: constants.MAX_OUTPUT_VALUE + 1,
     ...filters,
@@ -2184,7 +2193,7 @@ export const filterUtxos = async (
     queryParams.push(finalFilters.authority);
   }
 
-  queryParams.push(finalFilters.maxUtxos);
+  queryParams.push(finalFilters.maxOutputs);
 
   const results: DbSelectResult = await mysql.query(
     `SELECT *
@@ -2196,11 +2205,11 @@ export const filterUtxos = async (
         ${finalFilters.ignoreLocked ? 'AND `locked` = FALSE' : ''}
         ${finalFilters.authority === 0 ? 'AND value < ?' : ''}
         ${finalFilters.authority === 0 ? 'AND value > ?' : ''}
-        AND \`tx_proposal\` IS NULL
+        ${finalFilters.skipSpent ? 'AND `spent_by` IS NULL' : ''}
+        ${finalFilters.skipSpent ? 'AND `tx_proposal` IS NULL' : ''}
         AND \`voided\` = FALSE
-        AND \`spent_by\` IS NULL
    ORDER BY \`value\` DESC
-        ${finalFilters.maxUtxos ? 'LIMIT ?' : ''}
+        ${finalFilters.maxOutputs ? 'LIMIT ?' : ''}
        `,
     queryParams,
   );
@@ -2228,6 +2237,7 @@ export const mapDbResultToDbTxOutput = (result: any): DbTxOutput => ({
   locked: result.locked > 0,
   txProposalId: result.tx_proposal as string,
   txProposalIndex: result.tx_proposal_index as number,
+  spentBy: result.spent_by as string,
 });
 
 /**

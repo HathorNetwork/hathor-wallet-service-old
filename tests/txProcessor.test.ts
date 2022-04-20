@@ -64,7 +64,7 @@ test('spend "locked" utxo', async () => {
 
   await addToUtxoTable(mysql, [
     // we received a tx that has timelock
-    [txId1, 0, token, addr, 2500, 0, timelock, null, true],
+    [txId1, 0, token, addr, 2500, 0, timelock, null, true, null],
   ]);
 
   await addToAddressTable(mysql, [
@@ -245,7 +245,7 @@ test('txProcessor should ignore NFT outputs', async () => {
   ]);
 
   await addToUtxoTable(mysql, [
-    [txId1, 0, '00', addr, 41, 0, null, null, false],
+    [txId1, 0, '00', addr, 41, 0, null, null, false, null],
   ]);
 
   await addToAddressTable(mysql, [
@@ -296,8 +296,18 @@ test('receive token creation tx', async () => {
 
   // we must already have a tx to be used for deposit
   await addToUtxoTable(mysql, [
-    [tokenCreationTx.inputs[0].tx_id, tokenCreationTx.inputs[0].index, tokenCreationTx.inputs[0].token,
-      tokenCreationTx.inputs[0].decoded.address, tokenCreationTx.inputs[0].value, 0, null, null, false],
+    [
+      tokenCreationTx.inputs[0].tx_id,
+      tokenCreationTx.inputs[0].index,
+      tokenCreationTx.inputs[0].token,
+      tokenCreationTx.inputs[0].decoded.address,
+      tokenCreationTx.inputs[0].value,
+      0,
+      null,
+      null,
+      false,
+      null,
+    ],
   ]);
   await addToAddressBalanceTable(mysql, [[tokenCreationTx.inputs[0].decoded.address,
     tokenCreationTx.inputs[0].token, tokenCreationTx.inputs[0].value, 0, null, 1, 0, 0]]);
@@ -346,7 +356,7 @@ test('onHandleVoidedTxRequest', async () => {
   ]);
 
   await addToUtxoTable(mysql, [
-    [txId1, 0, token, addr, 2500, 0, null, null, false],
+    [txId1, 0, token, addr, 2500, 0, null, null, false, null],
   ]);
 
   await addToAddressTable(mysql, [

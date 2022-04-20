@@ -33,10 +33,10 @@ test('onHandleOldVoidedTxs', async () => {
   ];
 
   const utxos = [
-    [TX_IDS[0], 0, '00', ADDRESSES[0], 50, 0, null, null, false],
-    [TX_IDS[1], 0, '00', ADDRESSES[1], 100, 0, null, null, false],
-    [TX_IDS[2], 0, '00', ADDRESSES[2], 150, 0, null, null, false],
-    [TX_IDS[2], 1, '00', ADDRESSES[3], 200, 0, null, null, false],
+    [TX_IDS[0], 0, '00', ADDRESSES[0], 50, 0, null, null, false, null],
+    [TX_IDS[1], 0, '00', ADDRESSES[1], 100, 0, null, null, false, null],
+    [TX_IDS[2], 0, '00', ADDRESSES[2], 150, 0, null, null, false, null],
+    [TX_IDS[2], 1, '00', ADDRESSES[3], 200, 0, null, null, false, null],
   ];
 
   await addToTransactionTable(mysql, transactions);
@@ -65,7 +65,7 @@ test('onHandleOldVoidedTxs should try to confirm the block by fetching the first
   ];
 
   const utxos = [
-    [TX_IDS[0], 0, '00', ADDRESSES[0], 50, 0, null, null, false],
+    [TX_IDS[0], 0, '00', ADDRESSES[0], 50, 0, null, null, false, null],
   ];
 
   await addToTransactionTable(mysql, transactions);

@@ -623,14 +623,15 @@ export type WalletProxyHandler = (
   callback?: Callback<APIGatewayProxyResult>
 ) => Promise<APIGatewayProxyResult>;
 
-export interface IFilterUtxo {
+export interface IFilterTxOutput {
   addresses: string[];
   tokenId?: string;
   authority?: number;
   ignoreLocked?: boolean;
   biggerThan?: number;
   smallerThan?: number;
-  maxUtxos?: number;
+  maxOutputs?: number;
+  skipSpent?: boolean;
   txId?: string;
   index?: number;
 }

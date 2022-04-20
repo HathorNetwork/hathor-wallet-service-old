@@ -92,9 +92,9 @@ test('POST /txproposals with utxos that are already used on another txproposal s
   const token2 = '002f2bcc3261b4fb8510a458ed9df9f6ba2a413ee35901b3c5f81b0c085287e2';
 
   const utxos = [
-    ['004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50', 0, token1, ADDRESSES[0], 300, 0, null, null, false],
-    ['0000001e39bc37fe8710c01cc1e8c0a937bf6f9337551fbbfddc222bfc28c197', 0, token1, ADDRESSES[0], 100, 0, null, null, false],
-    ['00000060a25077e48926bcd9473d77259296e123ec6af1c1a16c1c381093ab90', 0, token2, ADDRESSES[0], 300, 0, null, null, false],
+    ['004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50', 0, token1, ADDRESSES[0], 300, 0, null, null, false, null],
+    ['0000001e39bc37fe8710c01cc1e8c0a937bf6f9337551fbbfddc222bfc28c197', 0, token1, ADDRESSES[0], 100, 0, null, null, false, null],
+    ['00000060a25077e48926bcd9473d77259296e123ec6af1c1a16c1c381093ab90', 0, token2, ADDRESSES[0], 300, 0, null, null, false, null],
   ];
 
   await addToUtxoTable(mysql, utxos);
@@ -230,9 +230,9 @@ test('POST /txproposals with a wallet that is not ready should fail with ApiErro
   }]);
 
   const utxos = [
-    ['txSuccess0', 0, 'token1', ADDRESSES[0], 300, 0, null, null, false],
-    ['txSuccess1', 0, 'token1', ADDRESSES[0], 100, 0, null, null, false],
-    ['txSuccess2', 0, 'token2', ADDRESSES[0], 300, 0, null, null, false],
+    ['txSuccess0', 0, 'token1', ADDRESSES[0], 300, 0, null, null, false, null],
+    ['txSuccess1', 0, 'token1', ADDRESSES[0], 100, 0, null, null, false, null],
+    ['txSuccess2', 0, 'token2', ADDRESSES[0], 300, 0, null, null, false, null],
   ];
   await addToUtxoTable(mysql, utxos);
   await addToWalletBalanceTable(mysql, [{
@@ -285,9 +285,9 @@ test('PUT /txproposals/{proposalId} with an empty body should fail with ApiError
   const token2 = '002f2bcc3261b4fb8510a458ed9df9f6ba2a413ee35901b3c5f81b0c085287e2';
 
   const utxos = [
-    ['004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50', 0, token1, ADDRESSES[0], 300, 0, null, null, false],
-    ['0000001e39bc37fe8710c01cc1e8c0a937bf6f9337551fbbfddc222bfc28c197', 0, token1, ADDRESSES[0], 100, 0, null, null, false],
-    ['00000060a25077e48926bcd9473d77259296e123ec6af1c1a16c1c381093ab90', 0, token2, ADDRESSES[0], 300, 0, null, null, false],
+    ['004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50', 0, token1, ADDRESSES[0], 300, 0, null, null, false, null],
+    ['0000001e39bc37fe8710c01cc1e8c0a937bf6f9337551fbbfddc222bfc28c197', 0, token1, ADDRESSES[0], 100, 0, null, null, false, null],
+    ['00000060a25077e48926bcd9473d77259296e123ec6af1c1a16c1c381093ab90', 0, token2, ADDRESSES[0], 300, 0, null, null, false, null],
   ];
 
   await addToUtxoTable(mysql, utxos);
@@ -389,9 +389,9 @@ test('PUT /txproposals/{proposalId} on a proposal which status is not OPEN or SE
   const token2 = '002f2bcc3261b4fb8510a458ed9df9f6ba2a413ee35901b3c5f81b0c085287e2';
 
   const utxos = [
-    ['004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50', 0, token1, ADDRESSES[0], 300, 0, null, null, false],
-    ['0000001e39bc37fe8710c01cc1e8c0a937bf6f9337551fbbfddc222bfc28c197', 0, token1, ADDRESSES[0], 100, 0, null, null, false],
-    ['00000060a25077e48926bcd9473d77259296e123ec6af1c1a16c1c381093ab90', 0, token2, ADDRESSES[0], 300, 0, null, null, false],
+    ['004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50', 0, token1, ADDRESSES[0], 300, 0, null, null, false, null],
+    ['0000001e39bc37fe8710c01cc1e8c0a937bf6f9337551fbbfddc222bfc28c197', 0, token1, ADDRESSES[0], 100, 0, null, null, false, null],
+    ['00000060a25077e48926bcd9473d77259296e123ec6af1c1a16c1c381093ab90', 0, token2, ADDRESSES[0], 300, 0, null, null, false, null],
   ];
 
   await addToUtxoTable(mysql, utxos);
@@ -477,9 +477,9 @@ test('PUT /txproposals/{proposalId} on a proposal which is not owned by the user
   const token2 = '002f2bcc3261b4fb8510a458ed9df9f6ba2a413ee35901b3c5f81b0c085287e2';
 
   const utxos = [
-    ['004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50', 0, token1, ADDRESSES[0], 300, 0, null, null, false],
-    ['0000001e39bc37fe8710c01cc1e8c0a937bf6f9337551fbbfddc222bfc28c197', 0, token1, ADDRESSES[0], 100, 0, null, null, false],
-    ['00000060a25077e48926bcd9473d77259296e123ec6af1c1a16c1c381093ab90', 0, token2, ADDRESSES[0], 300, 0, null, null, false],
+    ['004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50', 0, token1, ADDRESSES[0], 300, 0, null, null, false, null],
+    ['0000001e39bc37fe8710c01cc1e8c0a937bf6f9337551fbbfddc222bfc28c197', 0, token1, ADDRESSES[0], 100, 0, null, null, false, null],
+    ['00000060a25077e48926bcd9473d77259296e123ec6af1c1a16c1c381093ab90', 0, token2, ADDRESSES[0], 300, 0, null, null, false, null],
   ];
 
   await addToUtxoTable(mysql, utxos);
@@ -589,9 +589,9 @@ test('PUT /txproposals/{proposalId} with an invalid txHex should fail and update
   const token2 = '002f2bcc3261b4fb8510a458ed9df9f6ba2a413ee35901b3c5f81b0c085287e2';
 
   const utxos = [
-    ['004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50', 0, token1, ADDRESSES[0], 300, 0, null, null, false],
-    ['0000001e39bc37fe8710c01cc1e8c0a937bf6f9337551fbbfddc222bfc28c197', 0, token1, ADDRESSES[0], 100, 0, null, null, false],
-    ['00000060a25077e48926bcd9473d77259296e123ec6af1c1a16c1c381093ab90', 0, token2, ADDRESSES[0], 300, 0, null, null, false],
+    ['004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50', 0, token1, ADDRESSES[0], 300, 0, null, null, false, null],
+    ['0000001e39bc37fe8710c01cc1e8c0a937bf6f9337551fbbfddc222bfc28c197', 0, token1, ADDRESSES[0], 100, 0, null, null, false, null],
+    ['00000060a25077e48926bcd9473d77259296e123ec6af1c1a16c1c381093ab90', 0, token2, ADDRESSES[0], 300, 0, null, null, false, null],
   ];
 
   await addToUtxoTable(mysql, utxos);
@@ -695,9 +695,9 @@ test('PUT /txproposals/{proposalId} should update tx_proposal to SEND_ERROR on f
   const token2 = '002f2bcc3261b4fb8510a458ed9df9f6ba2a413ee35901b3c5f81b0c085287e2';
 
   const utxos = [
-    ['004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50', 0, token1, ADDRESSES[0], 300, 0, null, null, false],
-    ['0000001e39bc37fe8710c01cc1e8c0a937bf6f9337551fbbfddc222bfc28c197', 0, token1, ADDRESSES[0], 100, 0, null, null, false],
-    ['00000060a25077e48926bcd9473d77259296e123ec6af1c1a16c1c381093ab90', 0, token2, ADDRESSES[0], 300, 0, null, null, false],
+    ['004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50', 0, token1, ADDRESSES[0], 300, 0, null, null, false, null],
+    ['0000001e39bc37fe8710c01cc1e8c0a937bf6f9337551fbbfddc222bfc28c197', 0, token1, ADDRESSES[0], 100, 0, null, null, false, null],
+    ['00000060a25077e48926bcd9473d77259296e123ec6af1c1a16c1c381093ab90', 0, token2, ADDRESSES[0], 300, 0, null, null, false, null],
   ];
 
   await addToUtxoTable(mysql, utxos);
@@ -778,9 +778,9 @@ test('DELETE /txproposals/{proposalId} should delete a tx_proposal and remove th
   const token2 = '002f2bcc3261b4fb8510a458ed9df9f6ba2a413ee35901b3c5f81b0c085287e2';
 
   const utxos = [
-    ['00000000000000001650cd208a2bcff09dce8af88d1b07097ef0efdba4aacbaa', 0, token1, ADDRESSES[0], 300, 0, null, null, false],
-    ['000000000000000042fb8ae48accbc48561729e2359838751e11f837ca9a5746', 0, token1, ADDRESSES[0], 100, 0, null, null, false],
-    ['0000000000000000cfd3dea4c689aa4c863bf6e6aea4518abcfe7d5ff6769aef', 0, token2, ADDRESSES[0], 300, 0, null, null, false],
+    ['00000000000000001650cd208a2bcff09dce8af88d1b07097ef0efdba4aacbaa', 0, token1, ADDRESSES[0], 300, 0, null, null, false, null],
+    ['000000000000000042fb8ae48accbc48561729e2359838751e11f837ca9a5746', 0, token1, ADDRESSES[0], 100, 0, null, null, false, null],
+    ['0000000000000000cfd3dea4c689aa4c863bf6e6aea4518abcfe7d5ff6769aef', 0, token2, ADDRESSES[0], 300, 0, null, null, false, null],
   ];
 
   await addToUtxoTable(mysql, utxos);
@@ -911,9 +911,9 @@ test('POST /txproposals one output and input on txHex', async () => {
   const token2 = '002f2bcc3261b4fb8510a458ed9df9f6ba2a413ee35901b3c5f81b0c085287e2';
 
   const utxos = [
-    ['004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50', 0, token1, ADDRESSES[0], 300, 0, null, null, false],
-    ['0000001e39bc37fe8710c01cc1e8c0a937bf6f9337551fbbfddc222bfc28c197', 0, token1, ADDRESSES[0], 100, 0, null, null, false],
-    ['00000060a25077e48926bcd9473d77259296e123ec6af1c1a16c1c381093ab90', 0, token2, ADDRESSES[0], 300, 0, null, null, false],
+    ['004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50', 0, token1, ADDRESSES[0], 300, 0, null, null, false, null],
+    ['0000001e39bc37fe8710c01cc1e8c0a937bf6f9337551fbbfddc222bfc28c197', 0, token1, ADDRESSES[0], 100, 0, null, null, false, null],
+    ['00000060a25077e48926bcd9473d77259296e123ec6af1c1a16c1c381093ab90', 0, token2, ADDRESSES[0], 300, 0, null, null, false, null],
   ];
 
   await addToUtxoTable(mysql, utxos);
@@ -996,9 +996,9 @@ test('POST /txproposals with denied utxos', async () => {
   const token2 = '002f2bcc3261b4fb8510a458ed9df9f6ba2a413ee35901b3c5f81b0c085287e2';
 
   const utxos = [
-    ['004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50', 0, token1, ADDRESSES[1], 300, 0, null, null, false],
-    ['0000001e39bc37fe8710c01cc1e8c0a937bf6f9337551fbbfddc222bfc28c197', 0, token1, ADDRESSES[1], 100, 0, null, null, false],
-    ['00000060a25077e48926bcd9473d77259296e123ec6af1c1a16c1c381093ab90', 0, token2, ADDRESSES[1], 300, 0, null, null, false],
+    ['004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50', 0, token1, ADDRESSES[1], 300, 0, null, null, false, null],
+    ['0000001e39bc37fe8710c01cc1e8c0a937bf6f9337551fbbfddc222bfc28c197', 0, token1, ADDRESSES[1], 100, 0, null, null, false, null],
+    ['00000060a25077e48926bcd9473d77259296e123ec6af1c1a16c1c381093ab90', 0, token2, ADDRESSES[1], 300, 0, null, null, false, null],
   ];
 
   await addToUtxoTable(mysql, utxos);
@@ -1040,7 +1040,7 @@ test('POST /txproposals a tx create action on txHex', async () => {
   }]);
 
   const utxos = [
-    ['004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50', 0, '00', ADDRESSES[0], 300, 0, null, null, false],
+    ['004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50', 0, '00', ADDRESSES[0], 300, 0, null, null, false, null],
   ];
 
   await addToUtxoTable(mysql, utxos);
@@ -1160,9 +1160,9 @@ test('PUT /txproposals/{proposalId} with txhex', async () => {
   const token2 = '002f2bcc3261b4fb8510a458ed9df9f6ba2a413ee35901b3c5f81b0c085287e2';
 
   const utxos = [
-    ['004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50', 0, token1, ADDRESSES[0], 300, 0, null, null, false],
-    ['0000001e39bc37fe8710c01cc1e8c0a937bf6f9337551fbbfddc222bfc28c197', 0, token1, ADDRESSES[0], 100, 0, null, null, false],
-    ['00000060a25077e48926bcd9473d77259296e123ec6af1c1a16c1c381093ab90', 0, token2, ADDRESSES[0], 300, 0, null, null, false],
+    ['004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50', 0, token1, ADDRESSES[0], 300, 0, null, null, false, null],
+    ['0000001e39bc37fe8710c01cc1e8c0a937bf6f9337551fbbfddc222bfc28c197', 0, token1, ADDRESSES[0], 100, 0, null, null, false, null],
+    ['00000060a25077e48926bcd9473d77259296e123ec6af1c1a16c1c381093ab90', 0, token2, ADDRESSES[0], 300, 0, null, null, false, null],
   ];
 
   await addToUtxoTable(mysql, utxos);
@@ -1263,9 +1263,9 @@ test('PUT /txproposals/{proposalId} with a different txhex than the one sent in 
   const token2 = '002f2bcc3261b4fb8510a458ed9df9f6ba2a413ee35901b3c5f81b0c085287e2';
 
   const utxos = [
-    ['004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50', 0, token1, ADDRESSES[0], 300, 0, null, null, false],
-    ['0000001e39bc37fe8710c01cc1e8c0a937bf6f9337551fbbfddc222bfc28c197', 0, token1, ADDRESSES[0], 100, 0, null, null, false],
-    ['00000060a25077e48926bcd9473d77259296e123ec6af1c1a16c1c381093ab90', 0, token2, ADDRESSES[0], 300, 0, null, null, false],
+    ['004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50', 0, token1, ADDRESSES[0], 300, 0, null, null, false, null],
+    ['0000001e39bc37fe8710c01cc1e8c0a937bf6f9337551fbbfddc222bfc28c197', 0, token1, ADDRESSES[0], 100, 0, null, null, false, null],
+    ['00000060a25077e48926bcd9473d77259296e123ec6af1c1a16c1c381093ab90', 0, token2, ADDRESSES[0], 300, 0, null, null, false, null],
   ];
 
   await addToUtxoTable(mysql, utxos);
