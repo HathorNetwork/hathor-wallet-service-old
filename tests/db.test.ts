@@ -14,6 +14,7 @@ import {
   getTxProposal,
   getUnusedAddresses,
   getUtxos,
+  getAuthorityUtxo,
   getUtxosLockedAtHeight,
   getWallet,
   getWalletAddressDetail,
@@ -59,6 +60,8 @@ import {
   getMinersList,
   getTotalSupply,
   getExpiredTimelocksUtxos,
+  getTotalTransactions,
+  getAvailableAuthorities,
 } from '@src/db';
 import {
   beginTransaction,
@@ -106,6 +109,8 @@ import {
   createInput,
   countTxOutputTable,
 } from '@tests/utils';
+
+import { constants } from '@hathor/wallet-lib';
 
 const mysql = getDbConnection();
 
@@ -1885,4 +1890,96 @@ test('getExpiredTimelocksUtxos', async () => {
   expect(unlockedUtxos3).toHaveLength(3);
   // last one is an authority utxo
   expect(unlockedUtxos3[2].authorities).toStrictEqual(outputs[4].value);
+});
+
+test('getTotalTransactions', async () => {
+  expect.hasAssertions();
+
+  await addToAddressTxHistoryTable(mysql, [
+    ['address1', 'txId1', 'token1', -5, 1000],
+    ['address1', 'txId2', 'token1', 5, 1000],
+    ['address1', 'txId3', 'token1', 10, 1000],
+    ['address2', 'txId4', 'token2', -5, 1000],
+    ['address2', 'txId5', 'token2', 50, 1000],
+  ]);
+
+  expect(await getTotalTransactions(mysql, 'token1')).toStrictEqual(3);
+  expect(await getTotalTransactions(mysql, 'token2')).toStrictEqual(2);
+});
+
+test('getAvailableAuthorities', async () => {
+  expect.hasAssertions();
+
+  const addr1 = 'addr1';
+  const addr2 = 'addr1';
+  const tokenId = 'token1';
+  const tokenId2 = 'token2';
+
+  await addToUtxoTable(mysql, [
+    ['txId', 0, tokenId, addr1, 0, 0b01, null, null, false, 'tx1'],
+    ['txId', 1, tokenId, addr1, 0, 0b11, 1000, null, true, null],
+    ['txId', 2, tokenId, addr1, 0, 0b10, null, null, false, null],
+    ['txId', 3, tokenId2, addr2, 0, 0b01, null, null, false, null],
+  ]);
+
+  expect(await getAvailableAuthorities(mysql, 'token1')).toHaveLength(1);
+  expect(await getAvailableAuthorities(mysql, 'token2')).toHaveLength(1);
+});
+
+test('getUtxo, getAuthorityUtxo', async () => {
+  expect.hasAssertions();
+
+  const tokenId = 'tokenId';
+  const addr1 = 'addr1';
+
+  await addToUtxoTable(mysql, [['txId', 0, tokenId, addr1, 0, constants.TOKEN_MINT_MASK, 10000, null, true, null]]);
+  await addToUtxoTable(mysql, [['txId', 1, tokenId, addr1, 0, constants.TOKEN_MELT_MASK, 10000, null, true, null]]);
+
+  const utxo = await getTxOutput(mysql, 'txId', 0, true);
+  expect(utxo).toStrictEqual({
+    txId: 'txId',
+    index: 0,
+    tokenId,
+    address: addr1,
+    value: 0,
+    authorities: constants.TOKEN_MINT_MASK,
+    timelock: 10000,
+    heightlock: null,
+    locked: true,
+    txProposalId: null,
+    txProposalIndex: null,
+    spentBy: null,
+  });
+
+  const mintUtxo = await getAuthorityUtxo(mysql, tokenId, constants.TOKEN_MINT_MASK);
+  const meltUtxo = await getAuthorityUtxo(mysql, tokenId, constants.TOKEN_MELT_MASK);
+
+  expect(mintUtxo).toStrictEqual({
+    txId: 'txId',
+    index: 0,
+    tokenId,
+    address: addr1,
+    value: 0,
+    authorities: constants.TOKEN_MINT_MASK,
+    timelock: 10000,
+    heightlock: null,
+    locked: true,
+    txProposalId: null,
+    txProposalIndex: null,
+    spentBy: null,
+  });
+  expect(meltUtxo).toStrictEqual({
+    txId: 'txId',
+    index: 1,
+    tokenId,
+    address: addr1,
+    value: 0,
+    authorities: constants.TOKEN_MELT_MASK,
+    timelock: 10000,
+    heightlock: null,
+    locked: true,
+    txProposalId: null,
+    txProposalIndex: null,
+    spentBy: null,
+  });
 });

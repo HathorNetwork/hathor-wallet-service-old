@@ -50,6 +50,9 @@ module.exports = (sequelize, DataTypes) => {
     indexes: [{
       name: 'address_tx_history_txid_idx',
       fields: ['tx_id'],
+    }, {
+      name: 'address_tx_history_tokenid_idx',
+      fields: ['token_id'],
     }],
   });
   return AddressTxHistory;

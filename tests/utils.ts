@@ -1,16 +1,16 @@
 import { APIGatewayProxyEvent } from 'aws-lambda';
 import { ServerlessMysql } from 'serverless-mysql';
-
 import {
   DbSelectResult,
   TxInput,
   TxOutputWithIndex,
   FullNodeVersionData,
 } from '@src/types';
-
+import { getWalletId } from '@src/utils';
+import { walletUtils, network, HathorWalletServiceWallet } from '@hathor/wallet-lib';
 import { WalletBalanceEntry, AddressTableEntry, TokenTableEntry } from '@tests/types';
-
 import { RedisClient } from 'redis';
+import bitcore from 'bitcore-lib';
 
 export const TEST_SEED = 'neither image nasty party brass oyster treat twelve olive menu invest title fan only rack draw call impact use curtain winner horn juice unlock';
 // we'll use this xpubkey and corresponding addresses in some tests
@@ -68,7 +68,7 @@ export const cleanDatabase = async (mysql: ServerlessMysql): Promise<void> => {
   }
 };
 
-export const createOutput = (index: number, value: number, address: string, token = '00', timelock: number = null, locked = false, tokenData = 0): TxOutputWithIndex => (
+export const createOutput = (index: number, value: number, address: string, token = '00', timelock: number = null, locked = false, tokenData = 0, spentBy = null): TxOutputWithIndex => (
   {
     value,
     token,
@@ -81,7 +81,7 @@ export const createOutput = (index: number, value: number, address: string, toke
     },
     token_data: tokenData,
     script: 'dqkUH70YjKeoKdFwMX2TOYvGVbXOrKaIrA==',
-    spent_by: null,
+    spent_by: spentBy,
   }
 );
 
@@ -766,4 +766,41 @@ export const redisCleanup = (
   client: RedisClient,
 ): void => {
   client.flushdb();
+};
+
+export const getAuthData = (now: number): any => {
+  // get the first address
+  const xpubChangeDerivation = walletUtils.xpubDeriveChild(XPUBKEY, 0);
+  const firstAddress = walletUtils.getAddressAtIndex(xpubChangeDerivation, 0, process.env.NETWORK);
+
+  // we need signatures for both the account path and the purpose path:
+  const walletId = getWalletId(XPUBKEY);
+  const xpriv = walletUtils.getXPrivKeyFromSeed(TEST_SEED, {
+    passphrase: '',
+    networkName: process.env.NETWORK,
+  });
+
+  // account path
+  const accountDerivationIndex = '0\'';
+
+  const derivedPrivKey = walletUtils.deriveXpriv(xpriv, accountDerivationIndex);
+  const address = derivedPrivKey.publicKey.toAddress(network.getNetwork()).toString();
+  const message = new bitcore.Message(String(now).concat(walletId).concat(address));
+  const xpubkeySignature = message.sign(derivedPrivKey.privateKey);
+
+  // auth purpose path (m/280'/280')
+  const authDerivedPrivKey = HathorWalletServiceWallet.deriveAuthPrivateKey(xpriv);
+  const authAddress = authDerivedPrivKey.publicKey.toAddress(network.getNetwork());
+  const authMessage = new bitcore.Message(String(now).concat(walletId).concat(authAddress));
+  const authXpubkeySignature = authMessage.sign(authDerivedPrivKey.privateKey);
+
+  return {
+    walletId,
+    xpubkey: XPUBKEY,
+    xpubkeySignature,
+    authXpubkey: AUTH_XPUBKEY,
+    authXpubkeySignature,
+    firstAddress,
+    timestamp: now,
+  };
 };

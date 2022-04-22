@@ -504,6 +504,7 @@ test('get spent tx_output', async () => {
     tokenId: token1,
     skipSpent: 'false', // should include TX_IDS[1]
   }, null);
+
   const result = await getFilteredTxOutputs(event, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(result.body as string);
 

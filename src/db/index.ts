@@ -719,6 +719,41 @@ export const getTxOutput = async (
 };
 
 /**
+ * Get a random valid authority UTXO for a given token
+ *
+ * @param mysql - Database connection
+ * @param tokenId - The token id to search authorities for
+ * @param authority - The authority to search for, can be one of (TOKEN_MINT_MASK, TOKEN_MELT_MASK)
+ *
+ * @returns The requested UTXO
+ */
+export const getAuthorityUtxo = async (
+  mysql: ServerlessMysql,
+  tokenId: string,
+  authority: number,
+): Promise<DbTxOutput | null> => {
+  const results: DbSelectResult = await mysql.query(
+    `SELECT *
+       FROM \`tx_output\`
+      WHERE \`authorities\` = ?
+        AND \`spent_by\` IS NULL
+        AND \`voided\` = FALSE
+        AND \`token_id\` = ?
+      LIMIT 1`,
+    [authority, tokenId],
+  );
+
+  if (!results.length || results.length === 0) {
+    return null;
+  }
+
+  const result = results[0];
+  const utxo: DbTxOutput = mapDbResultToDbTxOutput(result);
+
+  return utxo;
+};
+
+/**
  * Get the requested UTXOs.
  *
  * @param mysql - Database connection
@@ -2404,4 +2439,65 @@ export const getExpiredTimelocksUtxos = async (
   const lockedUtxos: DbTxOutput[] = results.map(mapDbResultToDbTxOutput);
 
   return lockedUtxos;
+};
+
+/**
+ * Get the total sum of transactions for a given tokenId
+ *
+ * @param mysql - Database connection
+ * @param tokenId - The token id to fetch transactions
+
+ * @returns The calculated total sum of transactions
+ */
+export const getTotalTransactions = async (
+  mysql: ServerlessMysql,
+  tokenId: string,
+): Promise<number> => {
+  const results: DbSelectResult = await mysql.query(`
+    SELECT COUNT(DISTINCT(tx_id)) AS count
+      FROM address_tx_history
+     WHERE token_id = ?
+       AND voided = FALSE
+  `, [tokenId]);
+
+  if (!results.length) {
+    // This should never happen.
+    throw new Error('[ALERT] Total transactions query returned no results');
+  }
+
+  return results[0].count as number;
+};
+
+/**
+ * Get the available authority utxos for a given token
+ *
+ * @param mysql - Database connection
+ * @param tokenId - The token id to fetch authorities
+
+ * @returns A list of authority utxos
+ */
+export const getAvailableAuthorities = async (
+  mysql: ServerlessMysql,
+  tokenId: string,
+): Promise<DbTxOutput[]> => {
+  /* We should set the LIMIT to a reasonable value to prevent users from abusing
+   * this API by creating thousands of authority outputs and querying this
+   *
+   * Currently the only use for this query is on the wallet-desktop to display
+   * if the token is "mintable" and/or"meltable", we don't display a list of those
+   * utxos so it is safe to set this limit.
+   */
+  const results: DbSelectResult = await mysql.query(`
+  SELECT *
+    FROM tx_output
+   WHERE authorities > 0
+     AND token_id = ?
+     AND voided = FALSE
+     AND locked = FALSE
+     AND spent_by IS NULL
+  `, [tokenId]);
+
+  const utxos = results.map(mapDbResultToDbTxOutput);
+
+  return utxos;
 };
