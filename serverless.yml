@@ -81,6 +81,7 @@ provider:
     VOIDED_TX_OFFSET: ${env:VOIDED_TX_OFFSET}
     DEFAULT_SERVER: ${env:DEFAULT_SERVER}
     WS_DOMAIN: ${env:WS_DOMAIN}
+    TX_HISTORY_MAX_COUNT: ${env:TX_HISTORY_MAX_COUNT}
   iamRoleStatements:
     - Effect: Allow
       Action:
