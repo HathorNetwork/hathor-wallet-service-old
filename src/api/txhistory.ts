@@ -18,8 +18,7 @@ import { closeDbConnection, getDbConnection } from '@src/utils';
 import { walletIdProxyHandler } from '@src/commons';
 import Joi from 'joi';
 
-// XXX add to .env or serverless.yml?
-const MAX_COUNT = 15;
+const MAX_COUNT = parseInt(process.env.TX_HISTORY_MAX_COUNT || '50', 10);
 const htrToken = hathorLib.constants.HATHOR_TOKEN_CONFIG.uid;
 
 const paramsSchema = Joi.object({
