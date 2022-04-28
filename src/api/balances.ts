@@ -19,6 +19,8 @@ import {
   getDbConnection,
   getUnixTimestamp,
 } from '@src/utils';
+import middy from '@middy/core';
+import cors from '@middy/http-cors';
 import Joi from 'joi';
 
 const mysql = getDbConnection();
@@ -38,7 +40,7 @@ const paramsSchema = Joi.object({
  * Maybe we should limit the amount of tokens to query the balance to prevent an user
  * with a lot of different tokens in his wallet from doing an expensive query
  */
-export const get: APIGatewayProxyHandler = walletIdProxyHandler(async (walletId, event) => {
+export const get: APIGatewayProxyHandler = middy(walletIdProxyHandler(async (walletId, event) => {
   const params = event.queryStringParameters || {};
 
   const { value, error } = paramsSchema.validate(params, {
@@ -78,4 +80,4 @@ export const get: APIGatewayProxyHandler = walletIdProxyHandler(async (walletId,
     statusCode: 200,
     body: JSON.stringify({ success: true, balances }),
   };
-});
+})).use(cors());

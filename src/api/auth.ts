@@ -26,6 +26,8 @@ import {
   validateAuthTimestamp,
   AUTH_MAX_TIMESTAMP_SHIFT_IN_SECONDS,
 } from '@src/utils';
+import middy from '@middy/core';
+import cors from '@middy/http-cors';
 
 const EXPIRATION_TIME_IN_SECONDS = 1800;
 
@@ -46,7 +48,7 @@ function parseBody(body) {
 
 const mysql = getDbConnection();
 
-export const tokenHandler: APIGatewayProxyHandler = async (event) => {
+export const tokenHandler: APIGatewayProxyHandler = middy(async (event) => {
   const eventBody = parseBody(event.body);
 
   const { value, error } = bodySchema.validate(eventBody, {
@@ -148,7 +150,7 @@ export const tokenHandler: APIGatewayProxyHandler = async (event) => {
     statusCode: 200,
     body: JSON.stringify({ success: true, token }),
   };
-};
+}).use(cors());
 
 /**
  * Generates a aws policy document to allow/deny access to the resource
@@ -185,7 +187,7 @@ const _generatePolicy = (principalId: string, effect: string, resource: string) 
   return authResponse;
 };
 
-export const bearerAuthorizer: APIGatewayTokenAuthorizerHandler = async (event) => {
+export const bearerAuthorizer: APIGatewayTokenAuthorizerHandler = middy(async (event) => {
   const { authorizationToken } = event;
   if (!authorizationToken) {
     throw new Error('Unauthorized'); // returns a 401
@@ -229,4 +231,4 @@ export const bearerAuthorizer: APIGatewayTokenAuthorizerHandler = async (event) 
   }
 
   return _generatePolicy(walletId, 'Deny', event.methodArn);
-};
+}).use(cors());
