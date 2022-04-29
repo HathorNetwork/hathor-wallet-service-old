@@ -5,6 +5,10 @@ import { get as newAddressesGet } from '@src/api/newAddresses';
 import { get as balancesGet } from '@src/api/balances';
 import { get as txHistoryGet } from '@src/api/txhistory';
 import { get as walletTokensGet } from '@src/api/tokens';
+import { create as txProposalCreate } from '@src/api/txProposalCreate';
+import { send as txProposalSend } from '@src/api/txProposalSend';
+import { destroy as txProposalDestroy } from '@src/api/txProposalDestroy';
+import { getFilteredUtxos, getFilteredTxOutputs } from '@src/api/txOutputs';
 import { getTokenDetails } from '@src/api/tokens';
 import {
   get as walletGet,
@@ -116,6 +120,8 @@ test('GET /addresses', async () => {
   // wallet not ready
   await _testWalletNotReady(addressesGet);
 
+  await _testCORSHeaders(addressesGet, 'my-wallet', {});
+
   // success case
   const event = makeGatewayEventWithAuthorizer('my-wallet', {});
   const result = await addressesGet(event, null, null) as APIGatewayProxyResult;
@@ -150,6 +156,8 @@ test('GET /addresses/new', async () => {
 
   // wallet not ready
   await _testWalletNotReady(newAddressesGet);
+
+  await _testCORSHeaders(newAddressesGet, 'some-wallet', {});
 
   // success case
   const event = makeGatewayEventWithAuthorizer('my-wallet', {});
@@ -224,6 +232,9 @@ test('GET /balances', async () => {
 
   // wallet not ready
   await _testWalletNotReady(balancesGet);
+
+  // check CORS headers
+  await _testCORSHeaders(balancesGet, 'my-wallet', {});
 
   // success but no balances
   let event = makeGatewayEventWithAuthorizer('my-wallet', {});
@@ -770,6 +781,13 @@ test('POST /wallet/init should validate attributes properly', async () => {
   expect(returnBody.details[3].message).toStrictEqual('"firstAddress" is required');
 });
 
+test('PUT /wallet/auth', async () => {
+  expect.hasAssertions();
+
+  // check CORS headers
+  await _testCORSHeaders(changeAuthXpub, null, null);
+});
+
 test('PUT /wallet/auth should validate attributes properly', async () => {
   expect.hasAssertions();
 
@@ -1189,4 +1207,34 @@ test('GET /wallet/tokens/token_id/details', async () => {
   expect(returnBody.details.authorities.mint).toStrictEqual(true);
   expect(returnBody.details.authorities.melt).toStrictEqual(true);
   expect(returnBody.details.tokenInfo).toStrictEqual(token2);
+});
+
+test('GET /wallet/utxos', async () => {
+  expect.hasAssertions();
+
+  await _testCORSHeaders(getFilteredUtxos, null, null);
+});
+
+test('GET /wallet/tx_outputs', async () => {
+  expect.hasAssertions();
+
+  await _testCORSHeaders(getFilteredTxOutputs, null, null);
+});
+
+test('POST /tx/proposal', async () => {
+  expect.hasAssertions();
+
+  await _testCORSHeaders(txProposalCreate, null, null);
+});
+
+test('PUT /tx/proposal/{txProposalId}', async () => {
+  expect.hasAssertions();
+
+  await _testCORSHeaders(txProposalSend, null, null);
+});
+
+test('DELETE /tx/proposal/{txProposalId}', async () => {
+  expect.hasAssertions();
+
+  await _testCORSHeaders(txProposalDestroy, null, null);
 });
