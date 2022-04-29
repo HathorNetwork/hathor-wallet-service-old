@@ -646,7 +646,9 @@ export const makeGatewayEventWithAuthorizer = (
   body,
   queryStringParameters: params,
   pathParameters: params,
-  headers: {},
+  headers: {
+    origin: 'https://hathor.com/', // We add this origin to get the access-control-allow-origin header from middy
+  },
   multiValueHeaders: {},
   httpMethod: '',
   isBase64Encoded: false,

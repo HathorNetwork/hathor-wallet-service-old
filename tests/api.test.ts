@@ -49,6 +49,20 @@ afterAll(async () => {
   await closeDbConnection(mysql);
 });
 
+const _testCORSHeaders = async (fn: APIGatewayProxyHandler, walletId: string, params = {}) => {
+  const event = makeGatewayEventWithAuthorizer(walletId, params);
+  // This is a hack to force middy to include the CORS headers, we can't know what http method our request
+  // uses as it is only defined on serverless.yml
+  event.httpMethod = 'XXX';
+  const result = await fn(event, null, null) as APIGatewayProxyResult;
+
+  expect(result.headers).toStrictEqual(
+    expect.objectContaining({
+      'Access-Control-Allow-Origin': '*', // This is the default origin makeGatewayEventWithAuthorizer returns on headers
+    }),
+  );
+};
+
 const _testInvalidPayload = async (fn: APIGatewayProxyHandler, errorMessages: string[] = [], walletId: string, params = {}) => {
   const event = makeGatewayEventWithAuthorizer(walletId, params);
   const result = await fn(event, null, null) as APIGatewayProxyResult;
@@ -385,6 +399,9 @@ test('GET /txhistory', async () => {
     ['tx2', 100, 3, false, null],
   ]);
 
+  // check CORS headers
+  await _testCORSHeaders(txHistoryGet, 'my-wallet', {});
+
   // missing wallet
   await _testMissingWallet(txHistoryGet, 'some-wallet');
 
@@ -451,6 +468,9 @@ test('GET /wallet', async () => {
 
   await addToWalletTable(mysql, [['my-wallet', XPUBKEY, AUTH_XPUBKEY, 'ready', 5, 10000, 10001]]);
 
+  // check CORS headers
+  await _testCORSHeaders(walletGet, 'some-wallet', {});
+
   // missing wallet
   await _testMissingWallet(walletGet, 'some-wallet');
 
@@ -474,6 +494,9 @@ test('GET /wallet', async () => {
 
 test('POST /wallet', async () => {
   expect.hasAssertions();
+
+  // check CORS headers
+  await _testCORSHeaders(walletLoad, null, {});
 
   // invalid body
   let event = makeGatewayEvent({});
@@ -1081,6 +1104,9 @@ test('GET /wallet/tokens', async () => {
     ['my-wallet', 'tx2', 'token3', 7, 1001, true],
   ]);
 
+  // check CORS headers
+  await _testCORSHeaders(walletTokensGet, null, null);
+
   const event = makeGatewayEventWithAuthorizer('my-wallet', {});
   const result = await walletTokensGet(event, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(result.body as string);
@@ -1092,6 +1118,9 @@ test('GET /wallet/tokens', async () => {
 
 test('GET /wallet/tokens/token_id/details', async () => {
   expect.hasAssertions();
+
+  // check CORS headers
+  await _testCORSHeaders(getTokenDetails, null, null);
 
   await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'auth_xpubkey', 'ready', 5, 10000, 10001]]);
 
