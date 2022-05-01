@@ -205,6 +205,14 @@ functions:
             parameters:
               paths:
                 token_id: true
+  getVersionData:
+    handler: src/api/version.get
+    events:
+      - http:
+          path: version
+          method: get
+          cors: true
+          authorizer: ${self:custom.authorizer.walletBearer}
   getTxHistoryApi:
     handler: src/api/txhistory.get
     events:
