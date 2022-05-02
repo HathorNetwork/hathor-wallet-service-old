@@ -212,7 +212,6 @@ functions:
           path: version
           method: get
           cors: true
-          authorizer: ${self:custom.authorizer.walletBearer}
   getTxHistoryApi:
     handler: src/api/txhistory.get
     events:
