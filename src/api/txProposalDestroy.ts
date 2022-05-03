@@ -12,6 +12,8 @@ import { walletIdProxyHandler } from '@src/commons';
 import { TxProposalStatus } from '@src/types';
 import { closeDbConnection, getDbConnection, getUnixTimestamp } from '@src/utils';
 import { closeDbAndGetError } from '@src/api/utils';
+import middy from '@middy/core';
+import cors from '@middy/http-cors';
 
 const mysql = getDbConnection();
 
@@ -20,7 +22,7 @@ const mysql = getDbConnection();
  *
  * This lambda is called by API Gateway on DELETE /txproposals/{proposalId}
  */
-export const destroy: APIGatewayProxyHandler = walletIdProxyHandler(async (walletId, event) => {
+export const destroy: APIGatewayProxyHandler = middy(walletIdProxyHandler(async (walletId, event) => {
   const params = event.pathParameters;
   let txProposalId: string;
 
@@ -65,4 +67,4 @@ export const destroy: APIGatewayProxyHandler = walletIdProxyHandler(async (walle
       txProposalId,
     }),
   };
-});
+})).use(cors());

@@ -16,6 +16,8 @@ import { ApiError } from '@src/api/errors';
 import { closeDbAndGetError } from '@src/api/utils';
 import Joi from 'joi';
 import { constants } from '@hathor/wallet-lib';
+import middy from '@middy/core';
+import cors from '@middy/http-cors';
 
 const mysql = getDbConnection();
 
@@ -24,7 +26,7 @@ const mysql = getDbConnection();
  *
  * This lambda is called by API Gateway on GET /wallet/tokens
  */
-export const get = walletIdProxyHandler(async (walletId) => {
+export const get = middy(walletIdProxyHandler(async (walletId) => {
   const walletTokens: string[] = await getWalletTokens(mysql, walletId);
 
   return {
@@ -34,7 +36,7 @@ export const get = walletIdProxyHandler(async (walletId) => {
       tokens: walletTokens,
     }),
   };
-});
+})).use(cors());
 
 const getTokenDetailsParamsSchema = Joi.object({
   token_id: Joi.string()
@@ -47,7 +49,7 @@ const getTokenDetailsParamsSchema = Joi.object({
  *
  * This lambda is called by API Gateway on GET /wallet/tokens/:token_id/details
  */
-export const getTokenDetails = walletIdProxyHandler(async (walletId, event) => {
+export const getTokenDetails = middy(walletIdProxyHandler(async (walletId, event) => {
   const params = event.pathParameters || {};
 
   const { value, error } = getTokenDetailsParamsSchema.validate(params, {
@@ -102,4 +104,4 @@ export const getTokenDetails = walletIdProxyHandler(async (walletId, event) => {
       },
     }),
   };
-});
+})).use(cors());

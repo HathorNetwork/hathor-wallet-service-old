@@ -17,6 +17,8 @@ import {
 import { closeDbAndGetError } from '@src/api/utils';
 import { getDbConnection } from '@src/utils';
 import { constants } from '@hathor/wallet-lib';
+import middy from '@middy/core';
+import cors from '@middy/http-cors';
 
 const mysql = getDbConnection();
 
@@ -46,7 +48,7 @@ const bodySchema = Joi.object({
  * uses it. As soon as it is updated and we are sure that no users are using that old version, we should remove this
  * API
  */
-export const getFilteredUtxos = walletIdProxyHandler(async (walletId, event) => {
+export const getFilteredUtxos = middy(walletIdProxyHandler(async (walletId, event) => {
   const multiQueryString = event.multiValueQueryStringParameters || {};
   const queryString = event.queryStringParameters || {};
 
@@ -90,14 +92,14 @@ export const getFilteredUtxos = walletIdProxyHandler(async (walletId, event) => 
   }
 
   return response;
-});
+})).use(cors());
 
 /*
  * Filter tx_outputs
  *
  * This lambda is called by API Gateway on GET /wallet/tx_outputs
  */
-export const getFilteredTxOutputs = walletIdProxyHandler(async (walletId, event) => {
+export const getFilteredTxOutputs = middy(walletIdProxyHandler(async (walletId, event) => {
   const multiQueryString = event.multiValueQueryStringParameters || {};
   const queryString = event.queryStringParameters || {};
 
@@ -129,7 +131,7 @@ export const getFilteredTxOutputs = walletIdProxyHandler(async (walletId, event)
   }
 
   return _getFilteredTxOutputs(walletId, value);
-});
+})).use(cors());
 
 const _getFilteredTxOutputs = async (walletId: string, filters: IFilterTxOutput) => {
   const walletAddresses = await getWalletAddresses(mysql, walletId);

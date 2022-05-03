@@ -26,6 +26,8 @@ import {
 } from '@src/types';
 import { closeDbAndGetError } from '@src/api/utils';
 import { closeDbConnection, getDbConnection, getUnixTimestamp } from '@src/utils';
+import middy from '@middy/core';
+import cors from '@middy/http-cors';
 import hathorLib from '@hathor/wallet-lib';
 
 const mysql = getDbConnection();
@@ -39,7 +41,7 @@ const bodySchema = Joi.object({
  *
  * This lambda is called by API Gateway on POST /txproposals
  */
-export const create = walletIdProxyHandler(async (walletId, event) => {
+export const create = middy(walletIdProxyHandler(async (walletId, event) => {
   await maybeRefreshWalletConstants(mysql);
 
   const eventBody = (function parseBody(body) {
@@ -139,7 +141,7 @@ export const create = walletIdProxyHandler(async (walletId, event) => {
       inputs: retInputs,
     }),
   };
-});
+})).use(cors());
 
 /**
  * Confirm that all inputs requested by the user have been fetched.

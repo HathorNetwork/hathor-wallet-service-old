@@ -30,6 +30,18 @@ plugins:
 
 resources:
   Resources:
+    # This is needed to add CORS headers when the authorizer rejects an authorization request
+    # as we don't have control over the response.
+    # Taken from: https://www.serverless.com/blog/cors-api-gateway-survival-guide/
+    GatewayResponseDefault4XX:
+      Type: 'AWS::ApiGateway::GatewayResponse'
+      Properties:
+        ResponseParameters:
+          gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+          gatewayresponse.header.Access-Control-Allow-Headers: "'*'"
+        ResponseType: DEFAULT_4XX
+        RestApiId:
+          Ref: 'ApiGatewayRestApi'
     WalletServiceNewTxQueue:
       Type: "AWS::SQS::Queue"
       Properties:

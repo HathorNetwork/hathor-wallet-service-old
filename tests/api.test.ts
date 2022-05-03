@@ -5,6 +5,10 @@ import { get as newAddressesGet } from '@src/api/newAddresses';
 import { get as balancesGet } from '@src/api/balances';
 import { get as txHistoryGet } from '@src/api/txhistory';
 import { get as walletTokensGet } from '@src/api/tokens';
+import { create as txProposalCreate } from '@src/api/txProposalCreate';
+import { send as txProposalSend } from '@src/api/txProposalSend';
+import { destroy as txProposalDestroy } from '@src/api/txProposalDestroy';
+import { getFilteredUtxos, getFilteredTxOutputs } from '@src/api/txOutputs';
 import { getTokenDetails } from '@src/api/tokens';
 import {
   get as walletGet,
@@ -48,6 +52,20 @@ beforeEach(async () => {
 afterAll(async () => {
   await closeDbConnection(mysql);
 });
+
+const _testCORSHeaders = async (fn: APIGatewayProxyHandler, walletId: string, params = {}) => {
+  const event = makeGatewayEventWithAuthorizer(walletId, params);
+  // This is a hack to force middy to include the CORS headers, we can't know what http method our request
+  // uses as it is only defined on serverless.yml
+  event.httpMethod = 'XXX';
+  const result = await fn(event, null, null) as APIGatewayProxyResult;
+
+  expect(result.headers).toStrictEqual(
+    expect.objectContaining({
+      'Access-Control-Allow-Origin': '*', // This is the default origin makeGatewayEventWithAuthorizer returns on headers
+    }),
+  );
+};
 
 const _testInvalidPayload = async (fn: APIGatewayProxyHandler, errorMessages: string[] = [], walletId: string, params = {}) => {
   const event = makeGatewayEventWithAuthorizer(walletId, params);
@@ -102,6 +120,8 @@ test('GET /addresses', async () => {
   // wallet not ready
   await _testWalletNotReady(addressesGet);
 
+  await _testCORSHeaders(addressesGet, 'my-wallet', {});
+
   // success case
   const event = makeGatewayEventWithAuthorizer('my-wallet', {});
   const result = await addressesGet(event, null, null) as APIGatewayProxyResult;
@@ -136,6 +156,8 @@ test('GET /addresses/new', async () => {
 
   // wallet not ready
   await _testWalletNotReady(newAddressesGet);
+
+  await _testCORSHeaders(newAddressesGet, 'some-wallet', {});
 
   // success case
   const event = makeGatewayEventWithAuthorizer('my-wallet', {});
@@ -210,6 +232,9 @@ test('GET /balances', async () => {
 
   // wallet not ready
   await _testWalletNotReady(balancesGet);
+
+  // check CORS headers
+  await _testCORSHeaders(balancesGet, 'my-wallet', {});
 
   // success but no balances
   let event = makeGatewayEventWithAuthorizer('my-wallet', {});
@@ -385,6 +410,9 @@ test('GET /txhistory', async () => {
     ['tx2', 100, 3, false, null],
   ]);
 
+  // check CORS headers
+  await _testCORSHeaders(txHistoryGet, 'my-wallet', {});
+
   // missing wallet
   await _testMissingWallet(txHistoryGet, 'some-wallet');
 
@@ -451,6 +479,9 @@ test('GET /wallet', async () => {
 
   await addToWalletTable(mysql, [['my-wallet', XPUBKEY, AUTH_XPUBKEY, 'ready', 5, 10000, 10001]]);
 
+  // check CORS headers
+  await _testCORSHeaders(walletGet, 'some-wallet', {});
+
   // missing wallet
   await _testMissingWallet(walletGet, 'some-wallet');
 
@@ -474,6 +505,9 @@ test('GET /wallet', async () => {
 
 test('POST /wallet', async () => {
   expect.hasAssertions();
+
+  // check CORS headers
+  await _testCORSHeaders(walletLoad, null, {});
 
   // invalid body
   let event = makeGatewayEvent({});
@@ -745,6 +779,13 @@ test('POST /wallet/init should validate attributes properly', async () => {
   expect(returnBody.details[1].message).toStrictEqual('"authXpubkeySignature" is required');
   expect(returnBody.details[2].message).toStrictEqual('"timestamp" is required');
   expect(returnBody.details[3].message).toStrictEqual('"firstAddress" is required');
+});
+
+test('PUT /wallet/auth', async () => {
+  expect.hasAssertions();
+
+  // check CORS headers
+  await _testCORSHeaders(changeAuthXpub, null, null);
 });
 
 test('PUT /wallet/auth should validate attributes properly', async () => {
@@ -1081,6 +1122,9 @@ test('GET /wallet/tokens', async () => {
     ['my-wallet', 'tx2', 'token3', 7, 1001, true],
   ]);
 
+  // check CORS headers
+  await _testCORSHeaders(walletTokensGet, null, null);
+
   const event = makeGatewayEventWithAuthorizer('my-wallet', {});
   const result = await walletTokensGet(event, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(result.body as string);
@@ -1092,6 +1136,9 @@ test('GET /wallet/tokens', async () => {
 
 test('GET /wallet/tokens/token_id/details', async () => {
   expect.hasAssertions();
+
+  // check CORS headers
+  await _testCORSHeaders(getTokenDetails, null, null);
 
   await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'auth_xpubkey', 'ready', 5, 10000, 10001]]);
 
@@ -1160,4 +1207,34 @@ test('GET /wallet/tokens/token_id/details', async () => {
   expect(returnBody.details.authorities.mint).toStrictEqual(true);
   expect(returnBody.details.authorities.melt).toStrictEqual(true);
   expect(returnBody.details.tokenInfo).toStrictEqual(token2);
+});
+
+test('GET /wallet/utxos', async () => {
+  expect.hasAssertions();
+
+  await _testCORSHeaders(getFilteredUtxos, null, null);
+});
+
+test('GET /wallet/tx_outputs', async () => {
+  expect.hasAssertions();
+
+  await _testCORSHeaders(getFilteredTxOutputs, null, null);
+});
+
+test('POST /tx/proposal', async () => {
+  expect.hasAssertions();
+
+  await _testCORSHeaders(txProposalCreate, null, null);
+});
+
+test('PUT /tx/proposal/{txProposalId}', async () => {
+  expect.hasAssertions();
+
+  await _testCORSHeaders(txProposalSend, null, null);
+});
+
+test('DELETE /tx/proposal/{txProposalId}', async () => {
+  expect.hasAssertions();
+
+  await _testCORSHeaders(txProposalDestroy, null, null);
 });

@@ -26,6 +26,8 @@ import {
 } from '@src/commons';
 
 import { closeDbAndGetError } from '@src/api/utils';
+import middy from '@middy/core';
+import cors from '@middy/http-cors';
 
 const mysql = getDbConnection();
 
@@ -49,7 +51,8 @@ const bodySchema = Joi.object({
  *
  * This lambda is called by API Gateway on PUT /txproposals/{proposalId}
  */
-export const send: APIGatewayProxyHandler = walletIdProxyHandler(async (walletId, event) => {
+export const send: APIGatewayProxyHandler = middy(walletIdProxyHandler(async (walletId, event) => {
+  console.log('Event: ', event);
   if (!event.pathParameters) {
     return closeDbAndGetError(mysql, ApiError.MISSING_PARAMETER, { parameter: 'txProposalId' });
   }
@@ -142,4 +145,4 @@ export const send: APIGatewayProxyHandler = walletIdProxyHandler(async (walletId
       txHex,
     });
   }
-});
+})).use(cors());

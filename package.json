@@ -19,6 +19,8 @@
   },
   "dependencies": {
     "@hathor/wallet-lib": "^0.31.0",
+    "@middy/core": "^2.5.7",
+    "@middy/http-cors": "^2.5.7",
     "@types/redis": "^2.8.28",
     "aws-lambda": "^1.0.6",
     "aws-sdk": "^2.916.0",
@@ -39,11 +41,12 @@
     "uuid": "^8.3.0"
   },
   "devDependencies": {
-    "@types/aws-lambda": "^8.10.76",
+    "@types/aws-lambda": "^8.10.95",
     "@types/jest": "^26.0.24",
     "@types/node": "^10.12.18",
     "@typescript-eslint/eslint-plugin": "^3.3.0",
     "@typescript-eslint/parser": "^3.3.0",
+    "bitcore-lib": "^8.25.25",
     "dotenv": "^10.0.0",
     "eslint": "^7.27.0",
     "eslint-config-airbnb-base": "^14.2.1",
@@ -66,7 +69,6 @@
     "typescript": "^3.9.5",
     "typescript-eslint": "0.0.1-alpha.0",
     "webpack": "^4.29.0",
-    "webpack-node-externals": "^1.7.2",
-    "bitcore-lib": "^8.25.25"
+    "webpack-node-externals": "^1.7.2"
   }
 }

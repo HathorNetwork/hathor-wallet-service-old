@@ -15,8 +15,9 @@ import {
   getWalletAddresses,
 } from '@src/db';
 import { closeDbConnection, getDbConnection } from '@src/utils';
-
 import { walletIdProxyHandler } from '@src/commons';
+import middy from '@middy/core';
+import cors from '@middy/http-cors';
 
 const mysql = getDbConnection();
 
@@ -25,7 +26,7 @@ const mysql = getDbConnection();
  *
  * This lambda is called by API Gateway on GET /addresses
  */
-export const get: APIGatewayProxyHandler = walletIdProxyHandler(async (walletId) => {
+export const get: APIGatewayProxyHandler = middy(walletIdProxyHandler(async (walletId) => {
   const status = await getWallet(mysql, walletId);
 
   if (!status) {
@@ -43,4 +44,4 @@ export const get: APIGatewayProxyHandler = walletIdProxyHandler(async (walletId)
     statusCode: 200,
     body: JSON.stringify({ success: true, addresses }),
   };
-});
+})).use(cors());
