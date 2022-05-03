@@ -4,6 +4,12 @@ import { get as addressesGet } from '@src/api/addresses';
 import { get as newAddressesGet } from '@src/api/newAddresses';
 import { get as balancesGet } from '@src/api/balances';
 import { get as txHistoryGet } from '@src/api/txhistory';
+import { get as walletTokensGet } from '@src/api/tokens';
+import { create as txProposalCreate } from '@src/api/txProposalCreate';
+import { send as txProposalSend } from '@src/api/txProposalSend';
+import { destroy as txProposalDestroy } from '@src/api/txProposalDestroy';
+import { getFilteredUtxos, getFilteredTxOutputs } from '@src/api/txOutputs';
+import { getTokenDetails } from '@src/api/tokens';
 import {
   get as walletGet,
   load as walletLoad,
@@ -15,7 +21,7 @@ import * as Db from '@src/db';
 import { ApiError } from '@src/api/errors';
 import { closeDbConnection, getDbConnection, getUnixTimestamp, getWalletId } from '@src/utils';
 import { WalletStatus } from '@src/types';
-import { walletUtils, network, HathorWalletServiceWallet } from '@hathor/wallet-lib';
+import { walletUtils, constants, network, HathorWalletServiceWallet } from '@hathor/wallet-lib';
 import bitcore from 'bitcore-lib';
 import {
   ADDRESSES,
@@ -24,14 +30,17 @@ import {
   TEST_SEED,
   addToAddressTable,
   addToAddressBalanceTable,
+  addToAddressTxHistoryTable,
   addToTokenTable,
   addToUtxoTable,
   addToWalletBalanceTable,
   addToWalletTable,
   addToWalletTxHistoryTable,
+  addToTransactionTable,
   cleanDatabase,
   makeGatewayEvent,
   makeGatewayEventWithAuthorizer,
+  getAuthData,
 } from '@tests/utils';
 
 const mysql = getDbConnection();
@@ -43,6 +52,20 @@ beforeEach(async () => {
 afterAll(async () => {
   await closeDbConnection(mysql);
 });
+
+const _testCORSHeaders = async (fn: APIGatewayProxyHandler, walletId: string, params = {}) => {
+  const event = makeGatewayEventWithAuthorizer(walletId, params);
+  // This is a hack to force middy to include the CORS headers, we can't know what http method our request
+  // uses as it is only defined on serverless.yml
+  event.httpMethod = 'XXX';
+  const result = await fn(event, null, null) as APIGatewayProxyResult;
+
+  expect(result.headers).toStrictEqual(
+    expect.objectContaining({
+      'Access-Control-Allow-Origin': '*', // This is the default origin makeGatewayEventWithAuthorizer returns on headers
+    }),
+  );
+};
 
 const _testInvalidPayload = async (fn: APIGatewayProxyHandler, errorMessages: string[] = [], walletId: string, params = {}) => {
   const event = makeGatewayEventWithAuthorizer(walletId, params);
@@ -97,6 +120,8 @@ test('GET /addresses', async () => {
   // wallet not ready
   await _testWalletNotReady(addressesGet);
 
+  await _testCORSHeaders(addressesGet, 'my-wallet', {});
+
   // success case
   const event = makeGatewayEventWithAuthorizer('my-wallet', {});
   const result = await addressesGet(event, null, null) as APIGatewayProxyResult;
@@ -131,6 +156,8 @@ test('GET /addresses/new', async () => {
 
   // wallet not ready
   await _testWalletNotReady(newAddressesGet);
+
+  await _testCORSHeaders(newAddressesGet, 'some-wallet', {});
 
   // success case
   const event = makeGatewayEventWithAuthorizer('my-wallet', {});
@@ -205,6 +232,9 @@ test('GET /balances', async () => {
 
   // wallet not ready
   await _testWalletNotReady(balancesGet);
+
+  // check CORS headers
+  await _testCORSHeaders(balancesGet, 'my-wallet', {});
 
   // success but no balances
   let event = makeGatewayEventWithAuthorizer('my-wallet', {});
@@ -293,7 +323,7 @@ test('GET /balances', async () => {
     timelockExpires: lockExpires2,
     transactions: 2,
   }]);
-  await addToUtxoTable(mysql, [['txId', 0, 'token3', ADDRESSES[0], 1, 0, lockExpires2, null, true]]);
+  await addToUtxoTable(mysql, [['txId', 0, 'token3', ADDRESSES[0], 1, 0, lockExpires2, null, true, null]]);
   event = makeGatewayEventWithAuthorizer('my-wallet', { token_id: 'token3' });
   result = await balancesGet(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
@@ -321,8 +351,8 @@ test('GET /balances', async () => {
     transactions: 3,
   }]);
   await addToUtxoTable(mysql, [
-    ['txId2', 0, 'token4', ADDRESSES[0], 3, 0, lockExpires2, null, true],
-    ['txId3', 0, 'token4', ADDRESSES[0], 2, 0, lockExpires, null, true],
+    ['txId2', 0, 'token4', ADDRESSES[0], 3, 0, lockExpires2, null, true, null],
+    ['txId3', 0, 'token4', ADDRESSES[0], 2, 0, lockExpires, null, true, null],
   ]);
   event = makeGatewayEventWithAuthorizer('my-wallet', { token_id: 'token4' });
   result = await balancesGet(event, null, null) as APIGatewayProxyResult;
@@ -375,6 +405,13 @@ test('GET /txhistory', async () => {
     ['my-wallet', 'tx2', '00', 7, 1001, false],
     ['my-wallet', 'tx2', 'token3', 7, 1001, true],
   ]);
+  await addToTransactionTable(mysql, [
+    ['tx1', 100, 2, false, null],
+    ['tx2', 100, 3, false, null],
+  ]);
+
+  // check CORS headers
+  await _testCORSHeaders(txHistoryGet, 'my-wallet', {});
 
   // missing wallet
   await _testMissingWallet(txHistoryGet, 'some-wallet');
@@ -395,8 +432,8 @@ test('GET /txhistory', async () => {
   expect(result.statusCode).toBe(200);
   expect(returnBody.success).toBe(true);
   expect(returnBody.history).toHaveLength(2);
-  expect(returnBody.history).toContainEqual({ txId: 'tx1', timestamp: 1000, balance: 5, voided: 0 });
-  expect(returnBody.history).toContainEqual({ txId: 'tx2', timestamp: 1001, balance: 7, voided: 0 });
+  expect(returnBody.history).toContainEqual({ txId: 'tx1', timestamp: 1000, balance: 5, voided: 0, version: 2 });
+  expect(returnBody.history).toContainEqual({ txId: 'tx2', timestamp: 1001, balance: 7, voided: 0, version: 3 });
 
   // with count just 1, return only the most recent tx
   event = makeGatewayEventWithAuthorizer('my-wallet', { count: '1' });
@@ -406,7 +443,7 @@ test('GET /txhistory', async () => {
   expect(returnBody.success).toBe(true);
   expect(returnBody.count).toBe(1);
   expect(returnBody.history).toHaveLength(1);
-  expect(returnBody.history).toContainEqual({ txId: 'tx2', timestamp: 1001, balance: 7, voided: 0 });
+  expect(returnBody.history).toContainEqual({ txId: 'tx2', timestamp: 1001, balance: 7, voided: 0, version: 3 });
 
   // skip first item
   event = makeGatewayEventWithAuthorizer('my-wallet', { skip: '1' });
@@ -416,7 +453,7 @@ test('GET /txhistory', async () => {
   expect(returnBody.success).toBe(true);
   expect(returnBody.skip).toBe(1);
   expect(returnBody.history).toHaveLength(1);
-  expect(returnBody.history).toContainEqual({ txId: 'tx1', timestamp: 1000, balance: 5, voided: 0 });
+  expect(returnBody.history).toContainEqual({ txId: 'tx1', timestamp: 1000, balance: 5, voided: 0, version: 2 });
 
   // use other token id
   event = makeGatewayEventWithAuthorizer('my-wallet', { token_id: 'token2' });
@@ -425,7 +462,7 @@ test('GET /txhistory', async () => {
   expect(result.statusCode).toBe(200);
   expect(returnBody.success).toBe(true);
   expect(returnBody.history).toHaveLength(1);
-  expect(returnBody.history).toContainEqual({ txId: 'tx1', timestamp: 1000, balance: 7, voided: 0 });
+  expect(returnBody.history).toContainEqual({ txId: 'tx1', timestamp: 1000, balance: 7, voided: 0, version: 2 });
 
   // it should also return voided transactions
   event = makeGatewayEventWithAuthorizer('my-wallet', { token_id: 'token3' });
@@ -434,13 +471,16 @@ test('GET /txhistory', async () => {
   expect(result.statusCode).toBe(200);
   expect(returnBody.success).toBe(true);
   expect(returnBody.history).toHaveLength(1);
-  expect(returnBody.history).toContainEqual({ txId: 'tx2', timestamp: 1001, balance: 7, voided: 1 });
+  expect(returnBody.history).toContainEqual({ txId: 'tx2', timestamp: 1001, balance: 7, voided: 1, version: 3 });
 });
 
 test('GET /wallet', async () => {
   expect.hasAssertions();
 
   await addToWalletTable(mysql, [['my-wallet', XPUBKEY, AUTH_XPUBKEY, 'ready', 5, 10000, 10001]]);
+
+  // check CORS headers
+  await _testCORSHeaders(walletGet, 'some-wallet', {});
 
   // missing wallet
   await _testMissingWallet(walletGet, 'some-wallet');
@@ -465,6 +505,9 @@ test('GET /wallet', async () => {
 
 test('POST /wallet', async () => {
   expect.hasAssertions();
+
+  // check CORS headers
+  await _testCORSHeaders(walletLoad, null, {});
 
   // invalid body
   let event = makeGatewayEvent({});
@@ -738,6 +781,13 @@ test('POST /wallet/init should validate attributes properly', async () => {
   expect(returnBody.details[3].message).toStrictEqual('"firstAddress" is required');
 });
 
+test('PUT /wallet/auth', async () => {
+  expect.hasAssertions();
+
+  // check CORS headers
+  await _testCORSHeaders(changeAuthXpub, null, null);
+});
+
 test('PUT /wallet/auth should validate attributes properly', async () => {
   expect.hasAssertions();
 
@@ -1003,31 +1053,15 @@ test('loadWallet should fail if timestamp is shifted for more than 30s', async (
 test('loadWallet should update wallet status to ERROR if an error occurs', async () => {
   expect.hasAssertions();
 
-  // get the first address
-  const xpubChangeDerivation = walletUtils.xpubDeriveChild(XPUBKEY, 0);
-  const firstAddress = walletUtils.getAddressAtIndex(xpubChangeDerivation, 0, process.env.NETWORK);
-
-  // we need signatures for both the account path and the purpose path:
   const now = Math.floor(Date.now() / 1000);
-  const walletId = getWalletId(XPUBKEY);
-  const xpriv = walletUtils.getXPrivKeyFromSeed(TEST_SEED, {
-    passphrase: '',
-    networkName: process.env.NETWORK,
-  });
-
-  // account path
-  const accountDerivationIndex = '0\'';
-
-  const derivedPrivKey = walletUtils.deriveXpriv(xpriv, accountDerivationIndex);
-  const address = derivedPrivKey.publicKey.toAddress(network.getNetwork()).toString();
-  const message = new bitcore.Message(String(now).concat(walletId).concat(address));
-  const xpubkeySignature = message.sign(derivedPrivKey.privateKey);
-
-  // auth purpose path (m/280'/280')
-  const authDerivedPrivKey = HathorWalletServiceWallet.deriveAuthPrivateKey(xpriv);
-  const authAddress = authDerivedPrivKey.publicKey.toAddress(network.getNetwork());
-  const authMessage = new bitcore.Message(String(now).concat(walletId).concat(authAddress));
-  const authXpubkeySignature = authMessage.sign(authDerivedPrivKey.privateKey);
+  const {
+    walletId,
+    xpubkey,
+    xpubkeySignature,
+    authXpubkey,
+    authXpubkeySignature,
+    firstAddress,
+  } = getAuthData(now);
 
   const loadWalletAsyncSpy = jest.spyOn(Wallet, 'invokeLoadWalletAsync');
   const mockImplementationSuccess = jest.fn(() => Promise.resolve());
@@ -1035,9 +1069,9 @@ test('loadWallet should update wallet status to ERROR if an error occurs', async
 
   // wallet should be 'creating'
   const event = makeGatewayEvent({}, JSON.stringify({
-    xpubkey: XPUBKEY,
+    xpubkey,
     xpubkeySignature,
-    authXpubkey: AUTH_XPUBKEY,
+    authXpubkey,
     authXpubkeySignature,
     firstAddress,
     timestamp: now,
@@ -1076,3 +1110,131 @@ test('loadWallet should update wallet status to ERROR if an error occurs', async
 
   expect(wallet.status).toStrictEqual(WalletStatus.ERROR);
 }, 30000);
+
+test('GET /wallet/tokens', async () => {
+  expect.hasAssertions();
+
+  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'auth_xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToWalletTxHistoryTable(mysql, [
+    ['my-wallet', 'tx1', '00', 5, 1000, false],
+    ['my-wallet', 'tx1', 'token2', '7', 1000, false],
+    ['my-wallet', 'tx2', '00', 7, 1001, false],
+    ['my-wallet', 'tx2', 'token3', 7, 1001, true],
+  ]);
+
+  // check CORS headers
+  await _testCORSHeaders(walletTokensGet, null, null);
+
+  const event = makeGatewayEventWithAuthorizer('my-wallet', {});
+  const result = await walletTokensGet(event, null, null) as APIGatewayProxyResult;
+  const returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(true);
+  expect(returnBody.tokens).toStrictEqual(['00', 'token2', 'token3']);
+});
+
+test('GET /wallet/tokens/token_id/details', async () => {
+  expect.hasAssertions();
+
+  // check CORS headers
+  await _testCORSHeaders(getTokenDetails, null, null);
+
+  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'auth_xpubkey', 'ready', 5, 10000, 10001]]);
+
+  let event = makeGatewayEventWithAuthorizer('my-wallet', { token_id: 'unknown' });
+  let result = await getTokenDetails(event, null, null) as APIGatewayProxyResult;
+  let returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(404);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.details[0]).toStrictEqual({ message: 'Token not found' });
+
+  event = makeGatewayEventWithAuthorizer('my-wallet', {});
+  result = await getTokenDetails(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.details[0]).toStrictEqual({ message: '"token_id" is required', path: ['token_id'] });
+
+  // add tokens
+  const token1 = { id: 'token1', name: 'MyToken1', symbol: 'MT1' };
+  const token2 = { id: 'token2', name: 'MyToken2', symbol: 'MT2' };
+
+  await addToTokenTable(mysql, [
+    { id: token1.id, name: token1.name, symbol: token1.symbol },
+    { id: token2.id, name: token2.name, symbol: token2.symbol },
+  ]);
+
+  await addToUtxoTable(mysql, [
+    ['txId', 0, token1.id, ADDRESSES[0], 100, 0, null, null, false, null], // total tokens created
+    ['txId', 1, token1.id, ADDRESSES[0], 0, constants.TOKEN_MINT_MASK, null, null, false, null], // mint
+    ['txId', 2, token1.id, ADDRESSES[0], 0, constants.TOKEN_MINT_MASK, null, null, false, null], // another mint
+    ['txId2', 0, token2.id, ADDRESSES[0], 250, 0, null, null, true, null], // total tokens created
+    ['txId2', 1, token2.id, ADDRESSES[0], 0, constants.TOKEN_MINT_MASK, 1000, null, true, null], // locked utxo
+    ['txId2', 2, token2.id, ADDRESSES[0], 0, constants.TOKEN_MINT_MASK, 1000, null, true, 'txid2'], // spent utxo
+    ['txId3', 0, token2.id, ADDRESSES[0], 0, constants.TOKEN_MINT_MASK, null, null, false, null],
+    ['txId3', 1, token2.id, ADDRESSES[0], 0, constants.TOKEN_MELT_MASK, null, null, false, null], // melt utxo
+  ]);
+
+  await addToAddressTxHistoryTable(mysql, [
+    [ADDRESSES[0], 'txId', token1.id, 100, 0],
+    [ADDRESSES[0], 'txId2', token2.id, 250, 0],
+    [ADDRESSES[0], 'txId3', token2.id, 0, 0],
+  ]);
+
+  event = makeGatewayEventWithAuthorizer('my-wallet', { token_id: token1.id });
+  result = await getTokenDetails(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(true);
+  expect(returnBody.details.totalSupply).toStrictEqual(100);
+  expect(returnBody.details.totalTransactions).toStrictEqual(1);
+  expect(returnBody.details.authorities.mint).toStrictEqual(true);
+  expect(returnBody.details.authorities.melt).toStrictEqual(false);
+  expect(returnBody.details.tokenInfo).toStrictEqual(token1);
+
+  event = makeGatewayEventWithAuthorizer('my-wallet', { token_id: token2.id });
+  result = await getTokenDetails(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(true);
+  expect(returnBody.details.totalSupply).toStrictEqual(250);
+  expect(returnBody.details.totalTransactions).toStrictEqual(2);
+  expect(returnBody.details.authorities.mint).toStrictEqual(true);
+  expect(returnBody.details.authorities.melt).toStrictEqual(true);
+  expect(returnBody.details.tokenInfo).toStrictEqual(token2);
+});
+
+test('GET /wallet/utxos', async () => {
+  expect.hasAssertions();
+
+  await _testCORSHeaders(getFilteredUtxos, null, null);
+});
+
+test('GET /wallet/tx_outputs', async () => {
+  expect.hasAssertions();
+
+  await _testCORSHeaders(getFilteredTxOutputs, null, null);
+});
+
+test('POST /tx/proposal', async () => {
+  expect.hasAssertions();
+
+  await _testCORSHeaders(txProposalCreate, null, null);
+});
+
+test('PUT /tx/proposal/{txProposalId}', async () => {
+  expect.hasAssertions();
+
+  await _testCORSHeaders(txProposalSend, null, null);
+});
+
+test('DELETE /tx/proposal/{txProposalId}', async () => {
+  expect.hasAssertions();
+
+  await _testCORSHeaders(txProposalDestroy, null, null);
+});

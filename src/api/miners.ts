@@ -13,6 +13,8 @@ import {
 } from '@src/db';
 import { closeDbConnection, getDbConnection } from '@src/utils';
 import { Miner } from '@src/types';
+import middy from '@middy/core';
+import cors from '@middy/http-cors';
 
 const mysql = getDbConnection();
 
@@ -23,7 +25,7 @@ const mysql = getDbConnection();
  * @remarks
  * This is a lambda function that should be invoked using the aws-sdk.
  */
-export const onMinersListRequest: APIGatewayProxyHandler = async () => {
+export const onMinersListRequest: APIGatewayProxyHandler = middy(async () => {
   const minersList: Miner[] = await getMinersList(mysql);
 
   await closeDbConnection(mysql);
@@ -35,4 +37,4 @@ export const onMinersListRequest: APIGatewayProxyHandler = async () => {
       miners: minersList,
     }),
   };
-};
+}).use(cors());

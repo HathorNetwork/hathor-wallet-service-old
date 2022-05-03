@@ -34,6 +34,8 @@ import {
 } from '@src/utils';
 import { closeDbAndGetError } from '@src/api/utils';
 import { walletIdProxyHandler } from '@src/commons';
+import middy from '@middy/core';
+import cors from '@middy/http-cors';
 import Joi from 'joi';
 
 const mysql = getDbConnection();
@@ -45,7 +47,7 @@ const MAX_LOAD_WALLET_RETRIES: number = parseInt(process.env.MAX_LOAD_WALLET_RET
  *
  * This lambda is called by API Gateway on GET /wallet
  */
-export const get: APIGatewayProxyHandler = walletIdProxyHandler(async (walletId) => {
+export const get: APIGatewayProxyHandler = middy(walletIdProxyHandler(async (walletId) => {
   const status = await getWallet(mysql, walletId);
   if (!status) {
     return closeDbAndGetError(mysql, ApiError.WALLET_NOT_FOUND);
@@ -57,7 +59,7 @@ export const get: APIGatewayProxyHandler = walletIdProxyHandler(async (walletId)
     statusCode: 200,
     body: JSON.stringify({ success: true, status }),
   };
-});
+})).use(cors());
 
 // If the env requires to validate the first address
 // then we must set the firstAddress field as required
@@ -143,7 +145,7 @@ export const validateSignatures = (
  *
  * This lambda is called by API Gateway on PUT /wallet/auth
  */
-export const changeAuthXpub: APIGatewayProxyHandler = async (event) => {
+export const changeAuthXpub: APIGatewayProxyHandler = middy(async (event) => {
   const eventBody = (function parseBody(body) {
     try {
       return JSON.parse(body);
@@ -238,7 +240,7 @@ export const changeAuthXpub: APIGatewayProxyHandler = async (event) => {
       status: updatedWallet,
     }),
   };
-};
+}).use(cors());
 
 /*
  * Load a wallet. First checks if the wallet doesn't exist already and then call another
@@ -246,7 +248,7 @@ export const changeAuthXpub: APIGatewayProxyHandler = async (event) => {
  *
  * This lambda is called by API Gateway on POST /wallet
  */
-export const load: APIGatewayProxyHandler = async (event) => {
+export const load: APIGatewayProxyHandler = middy(async (event) => {
   const eventBody = (function parseBody(body) {
     try {
       return JSON.parse(body);
@@ -363,7 +365,7 @@ export const load: APIGatewayProxyHandler = async (event) => {
     statusCode: 200,
     body: JSON.stringify({ success: true, status: wallet }),
   };
-};
+}).use(cors());
 
 interface LoadEvent {
   xpubkey: string;

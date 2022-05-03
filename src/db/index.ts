@@ -34,7 +34,7 @@ import {
   Tx,
   AddressBalance,
   AddressTotalBalance,
-  IFilterUtxo,
+  IFilterTxOutput,
   Miner,
 } from '@src/types';
 import {
@@ -683,24 +683,26 @@ export const updateTxOutputSpentBy = async (mysql: ServerlessMysql, inputs: TxIn
 };
 
 /**
- * Get the requested UTXO.
+ * Get the requested tx output.
  *
  * @param mysql - Database connection
  * @param txId - The tx id to search
  * @param index - The index to search
- * @returns The requested UTXO
+ * @param skipSpent - Skip spent tx_output (if we want only utxos)
+ * @returns The requested tx_output or null if it is not found
  */
-export const getUtxo = async (
+export const getTxOutput = async (
   mysql: ServerlessMysql,
   txId: string,
   index: number,
-): Promise<DbTxOutput> => {
+  skipSpent: boolean,
+): Promise<DbTxOutput | null> => {
   const results: DbSelectResult = await mysql.query(
     `SELECT *
        FROM \`tx_output\`
       WHERE \`tx_id\` = ?
         AND \`index\` = ?
-        AND \`spent_by\` IS NULL
+        ${skipSpent ? 'AND `spent_by` IS NULL' : ''}
         AND \`voided\` = FALSE`,
     [txId, index],
   );
@@ -711,6 +713,41 @@ export const getUtxo = async (
 
   const result = results[0];
 
+  const txOutput: DbTxOutput = mapDbResultToDbTxOutput(result);
+
+  return txOutput;
+};
+
+/**
+ * Get a random valid authority UTXO for a given token
+ *
+ * @param mysql - Database connection
+ * @param tokenId - The token id to search authorities for
+ * @param authority - The authority to search for, can be one of (TOKEN_MINT_MASK, TOKEN_MELT_MASK)
+ *
+ * @returns The requested UTXO
+ */
+export const getAuthorityUtxo = async (
+  mysql: ServerlessMysql,
+  tokenId: string,
+  authority: number,
+): Promise<DbTxOutput | null> => {
+  const results: DbSelectResult = await mysql.query(
+    `SELECT *
+       FROM \`tx_output\`
+      WHERE \`authorities\` = ?
+        AND \`spent_by\` IS NULL
+        AND \`voided\` = FALSE
+        AND \`token_id\` = ?
+      LIMIT 1`,
+    [authority, tokenId],
+  );
+
+  if (!results.length || results.length === 0) {
+    return null;
+  }
+
+  const result = results[0];
   const utxo: DbTxOutput = mapDbResultToDbTxOutput(result);
 
   return utxo;
@@ -1271,22 +1308,30 @@ export const getWalletTxHistory = async (
   count: number,
 ): Promise<TxTokenBalance[]> => {
   const history: TxTokenBalance[] = [];
-  const results: DbSelectResult = await mysql.query(
-    `SELECT *
-       FROM \`wallet_tx_history\`
-      WHERE \`wallet_id\` = ?
-        AND \`token_id\` = ?
-   ORDER BY \`timestamp\`
-       DESC
-      LIMIT ?, ?`,
-    [walletId, tokenId, skip, count],
-  );
+  const results: DbSelectResult = await mysql.query(`
+    SELECT wallet_tx_history.balance AS balance, 
+           wallet_tx_history.timestamp AS timestamp, 
+           wallet_tx_history.token_id AS token_id, 
+           wallet_tx_history.tx_id AS tx_id, 
+           wallet_tx_history.voided AS voided, 
+           wallet_tx_history.wallet_id AS wallet_id, 
+           transaction.version AS version
+      FROM wallet_tx_history
+LEFT OUTER JOIN transaction ON transaction.tx_id = wallet_tx_history.tx_id
+     WHERE wallet_id = ?
+       AND token_id = ?
+  ORDER BY wallet_tx_history.timestamp
+      DESC
+     LIMIT ?, ?`,
+  [walletId, tokenId, skip, count]);
+
   for (const result of results) {
     const tx: TxTokenBalance = {
       txId: <string>result.tx_id,
       timestamp: <number>result.timestamp,
       voided: <boolean>result.voided,
       balance: <Balance>result.balance,
+      version: <number>result.version,
     };
     history.push(tx);
   }
@@ -2146,15 +2191,22 @@ export const fetchAddressTxHistorySum = async (
   }));
 };
 
-export const filterUtxos = async (
+/**
+ * Retrieves a filtered list of tx_outputs
+ *
+ * @param mysql - Database connection
+ * @param filters - Filters to apply on the tx_output query
+ */
+export const filterTxOutputs = async (
   mysql: ServerlessMysql,
-  filters: IFilterUtxo = { addresses: [] },
+  filters: IFilterTxOutput = { addresses: [] },
 ): Promise<DbTxOutput[]> => {
   const finalFilters = {
     addresses: [],
     tokenId: '00',
     authority: 0,
     ignoreLocked: false,
+    skipSpent: true,
     biggerThan: -1,
     smallerThan: constants.MAX_OUTPUT_VALUE + 1,
     ...filters,
@@ -2176,7 +2228,7 @@ export const filterUtxos = async (
     queryParams.push(finalFilters.authority);
   }
 
-  queryParams.push(finalFilters.maxUtxos);
+  queryParams.push(finalFilters.maxOutputs);
 
   const results: DbSelectResult = await mysql.query(
     `SELECT *
@@ -2188,11 +2240,11 @@ export const filterUtxos = async (
         ${finalFilters.ignoreLocked ? 'AND `locked` = FALSE' : ''}
         ${finalFilters.authority === 0 ? 'AND value < ?' : ''}
         ${finalFilters.authority === 0 ? 'AND value > ?' : ''}
-        AND \`tx_proposal\` IS NULL
+        ${finalFilters.skipSpent ? 'AND `spent_by` IS NULL' : ''}
+        ${finalFilters.skipSpent ? 'AND `tx_proposal` IS NULL' : ''}
         AND \`voided\` = FALSE
-        AND \`spent_by\` IS NULL
    ORDER BY \`value\` DESC
-        ${finalFilters.maxUtxos ? 'LIMIT ?' : ''}
+        ${finalFilters.maxOutputs ? 'LIMIT ?' : ''}
        `,
     queryParams,
   );
@@ -2220,6 +2272,7 @@ export const mapDbResultToDbTxOutput = (result: any): DbTxOutput => ({
   locked: result.locked > 0,
   txProposalId: result.tx_proposal as string,
   txProposalIndex: result.tx_proposal_index as number,
+  spentBy: result.spent_by as string,
 });
 
 /**
@@ -2386,4 +2439,65 @@ export const getExpiredTimelocksUtxos = async (
   const lockedUtxos: DbTxOutput[] = results.map(mapDbResultToDbTxOutput);
 
   return lockedUtxos;
+};
+
+/**
+ * Get the total sum of transactions for a given tokenId
+ *
+ * @param mysql - Database connection
+ * @param tokenId - The token id to fetch transactions
+
+ * @returns The calculated total sum of transactions
+ */
+export const getTotalTransactions = async (
+  mysql: ServerlessMysql,
+  tokenId: string,
+): Promise<number> => {
+  const results: DbSelectResult = await mysql.query(`
+    SELECT COUNT(DISTINCT(tx_id)) AS count
+      FROM address_tx_history
+     WHERE token_id = ?
+       AND voided = FALSE
+  `, [tokenId]);
+
+  if (!results.length) {
+    // This should never happen.
+    throw new Error('[ALERT] Total transactions query returned no results');
+  }
+
+  return results[0].count as number;
+};
+
+/**
+ * Get the available authority utxos for a given token
+ *
+ * @param mysql - Database connection
+ * @param tokenId - The token id to fetch authorities
+
+ * @returns A list of authority utxos
+ */
+export const getAvailableAuthorities = async (
+  mysql: ServerlessMysql,
+  tokenId: string,
+): Promise<DbTxOutput[]> => {
+  /* We should set the LIMIT to a reasonable value to prevent users from abusing
+   * this API by creating thousands of authority outputs and querying this
+   *
+   * Currently the only use for this query is on the wallet-desktop to display
+   * if the token is "mintable" and/or"meltable", we don't display a list of those
+   * utxos so it is safe to set this limit.
+   */
+  const results: DbSelectResult = await mysql.query(`
+  SELECT *
+    FROM tx_output
+   WHERE authorities > 0
+     AND token_id = ?
+     AND voided = FALSE
+     AND locked = FALSE
+     AND spent_by IS NULL
+  `, [tokenId]);
+
+  const utxos = results.map(mapDbResultToDbTxOutput);
+
+  return utxos;
 };

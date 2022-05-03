@@ -16,10 +16,11 @@ import {
 } from '@src/db';
 import { closeDbConnection, getDbConnection } from '@src/utils';
 import { walletIdProxyHandler } from '@src/commons';
+import middy from '@middy/core';
+import cors from '@middy/http-cors';
 import Joi from 'joi';
 
-// XXX add to .env or serverless.yml?
-const MAX_COUNT = 15;
+const MAX_COUNT = parseInt(process.env.TX_HISTORY_MAX_COUNT || '50', 10);
 const htrToken = hathorLib.constants.HATHOR_TOKEN_CONFIG.uid;
 
 const paramsSchema = Joi.object({
@@ -47,7 +48,7 @@ const mysql = getDbConnection();
  *
  * This lambda is called by API Gateway on GET /txhistory
  */
-export const get = walletIdProxyHandler(async (walletId, event) => {
+export const get = middy(walletIdProxyHandler(async (walletId, event) => {
   const params = event.queryStringParameters || {};
 
   const { value, error } = paramsSchema.validate(params, {
@@ -84,4 +85,4 @@ export const get = walletIdProxyHandler(async (walletId, event) => {
     statusCode: 200,
     body: JSON.stringify({ success: true, history, skip, count }),
   };
-});
+})).use(cors());

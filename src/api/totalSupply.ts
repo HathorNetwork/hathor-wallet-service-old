@@ -14,6 +14,8 @@ import {
 } from '@src/db';
 import { closeDbAndGetError } from '@src/api/utils';
 import { closeDbConnection, getDbConnection } from '@src/utils';
+import middy from '@middy/core';
+import cors from '@middy/http-cors';
 import hathorLib from '@hathor/wallet-lib';
 import Joi from 'joi';
 
@@ -32,7 +34,7 @@ const paramsSchema = Joi.object({
  * @remarks
  * This is a lambda function that should be invoked using the aws-sdk.
  */
-export const onTotalSupplyRequest: APIGatewayProxyHandler = async (event) => {
+export const onTotalSupplyRequest: APIGatewayProxyHandler = middy(async (event) => {
   const { value, error } = paramsSchema.validate(event.body, {
     abortEarly: false,
     convert: true,
@@ -59,4 +61,4 @@ export const onTotalSupplyRequest: APIGatewayProxyHandler = async (event) => {
       totalSupply,
     }),
   };
-};
+}).use(cors());

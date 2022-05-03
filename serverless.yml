@@ -30,6 +30,18 @@ plugins:
 
 resources:
   Resources:
+    # This is needed to add CORS headers when the authorizer rejects an authorization request
+    # as we don't have control over the response.
+    # Taken from: https://www.serverless.com/blog/cors-api-gateway-survival-guide/
+    GatewayResponseDefault4XX:
+      Type: 'AWS::ApiGateway::GatewayResponse'
+      Properties:
+        ResponseParameters:
+          gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+          gatewayresponse.header.Access-Control-Allow-Headers: "'*'"
+        ResponseType: DEFAULT_4XX
+        RestApiId:
+          Ref: 'ApiGatewayRestApi'
     WalletServiceNewTxQueue:
       Type: "AWS::SQS::Queue"
       Properties:
@@ -81,6 +93,7 @@ provider:
     VOIDED_TX_OFFSET: ${env:VOIDED_TX_OFFSET}
     DEFAULT_SERVER: ${env:DEFAULT_SERVER}
     WS_DOMAIN: ${env:WS_DOMAIN}
+    TX_HISTORY_MAX_COUNT: ${env:TX_HISTORY_MAX_COUNT}
   iamRoleStatements:
     - Effect: Allow
       Action:
@@ -149,10 +162,18 @@ functions:
           cors: true
           authorizer: ${self:custom.authorizer.walletBearer}
   getUtxos:
-    handler: src/api/utxos.getFilteredUtxos
+    handler: src/api/txOutputs.getFilteredUtxos
     events:
       - http:
           path: wallet/utxos
+          method: get
+          cors: true
+          authorizer: ${self:custom.authorizer.walletBearer}
+  getTxOutputs:
+    handler: src/api/txOutputs.getFilteredTxOutputs
+    events:
+      - http:
+          path: wallet/tx_outputs
           method: get
           cors: true
           authorizer: ${self:custom.authorizer.walletBearer}
@@ -172,6 +193,18 @@ functions:
           method: get
           cors: true
           authorizer: ${self:custom.authorizer.walletBearer}
+  getTokenDetails:
+    handler: src/api/tokens.getTokenDetails
+    events:
+      - http:
+          path: wallet/tokens/{token_id}/details
+          method: get
+          cors: true
+          authorizer: ${self:custom.authorizer.walletBearer}
+          request:
+            parameters:
+              paths:
+                token_id: true
   getTxHistoryApi:
     handler: src/api/txhistory.get
     events:

@@ -2,6 +2,9 @@
 const {
   Model
 } = require('sequelize');
+
+// XXX: Be aware that changes to this table could impact the data extraction performed by the query in https://github.com/HathorNetwork/ops-tools/tree/master/kubernetes/apps/logstash-pipeline/base/logstash-config/logstash-jdbc.conf
+
 module.exports = (sequelize, DataTypes) => {
   class Transaction extends Model {
     /**
