@@ -19,6 +19,8 @@ import {
   getDbConnection,
 } from '@src/utils';
 import { maybeRefreshWalletConstants } from '@src/commons';
+import middy from '@middy/core';
+import cors from '@middy/http-cors';
 
 const mysql = getDbConnection();
 
@@ -27,7 +29,7 @@ const mysql = getDbConnection();
  *
  * This lambda is called by API Gateway on GET /version
  */
-export const get: APIGatewayProxyHandler = async () => {
+export const get: APIGatewayProxyHandler = middy(async () => {
   await maybeRefreshWalletConstants(mysql);
 
   const versionData: FullNodeVersionData = await getVersionData(mysql);
@@ -41,4 +43,4 @@ export const get: APIGatewayProxyHandler = async () => {
       data: versionData,
     }),
   };
-};
+}).use(cors());
