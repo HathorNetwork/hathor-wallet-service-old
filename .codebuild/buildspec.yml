@@ -13,10 +13,10 @@ env:
     BLOCK_REWARD_LOCK: 300
     CONFIRM_FIRST_ADDRESS: true
     VOIDED_TX_OFFSET: 20
-    dev_DEFAULT_SERVER: "https://dev.wallet-service.private-nodes.hathor.network/v1a/"
+    dev_DEFAULT_SERVER: "https://wallet-service.private-nodes.testnet.hathor.network/v1a/"
     dev_WS_DOMAIN: "ws.dev.wallet-service.testnet.hathor.network"
     dev_NETWORK: "testnet"
-    testnet_DEFAULT_SERVER: "https://testnet.wallet-service.private-nodes.hathor.network/v1a/"
+    testnet_DEFAULT_SERVER: "https://wallet-service.private-nodes.testnet.hathor.network/v1a/"
     testnet_WS_DOMAIN: "ws.testnet.wallet-service.hathor.network"
     testnet_NETWORK: "testnet"
     mainnet_DEFAULT_SERVER: "https://wallet-service.private-nodes.hathor.network/v1a/"
