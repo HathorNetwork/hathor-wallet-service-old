@@ -5,6 +5,7 @@ import { get as newAddressesGet } from '@src/api/newAddresses';
 import { get as balancesGet } from '@src/api/balances';
 import { get as txHistoryGet } from '@src/api/txhistory';
 import { get as walletTokensGet } from '@src/api/tokens';
+import { get as getVersionDataGet } from '@src/api/version';
 import { create as txProposalCreate } from '@src/api/txProposalCreate';
 import { send as txProposalSend } from '@src/api/txProposalSend';
 import { destroy as txProposalDestroy } from '@src/api/txProposalDestroy';
@@ -16,11 +17,14 @@ import {
   loadWallet,
   changeAuthXpub,
 } from '@src/api/wallet';
+import {
+  updateVersionData,
+} from '@src/db';
 import * as Wallet from '@src/api/wallet';
 import * as Db from '@src/db';
 import { ApiError } from '@src/api/errors';
 import { closeDbConnection, getDbConnection, getUnixTimestamp, getWalletId } from '@src/utils';
-import { WalletStatus } from '@src/types';
+import { WalletStatus, FullNodeVersionData } from '@src/types';
 import { walletUtils, constants, network, HathorWalletServiceWallet } from '@hathor/wallet-lib';
 import bitcore from 'bitcore-lib';
 import {
@@ -1237,4 +1241,32 @@ test('DELETE /tx/proposal/{txProposalId}', async () => {
   expect.hasAssertions();
 
   await _testCORSHeaders(txProposalDestroy, null, null);
+});
+
+test('GET /version', async () => {
+  expect.hasAssertions();
+
+  const mockData: FullNodeVersionData = {
+    timestamp: 1614875031449,
+    version: '0.38.0',
+    network: 'mainnet',
+    minWeight: 14,
+    minTxWeight: 14,
+    minTxWeightCoefficient: 1.6,
+    minTxWeightK: 100,
+    tokenDepositPercentage: 0.01,
+    rewardSpendMinBlocks: 300,
+    maxNumberInputs: 255,
+    maxNumberOutputs: 255,
+  };
+
+  await updateVersionData(mysql, mockData);
+
+  const event = makeGatewayEvent({});
+  const result = await getVersionDataGet(event, null, null) as APIGatewayProxyResult;
+  const returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(true);
+  expect(returnBody.data).toStrictEqual(mockData);
 });
