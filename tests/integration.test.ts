@@ -18,6 +18,7 @@ import {
   checkWalletTxHistoryTable,
   createOutput,
   createInput,
+  addToUtxoTable,
 } from '@tests/utils';
 
 const mysql = getDbConnection();
@@ -98,11 +99,27 @@ tx2.version = 1;
 const txId4 = 'txId4';
 tx2.tx_id = txId4;
 tx2.timestamp += 20;
-tx2.inputs = [createInput(5000, ADDRESSES[2], txId2, 1)];
+tx2.inputs = [
+  createInput(5000, ADDRESSES[2], txId2, 1),
+];
 tx2.outputs = [
   createOutput(0, 1000, ADDRESSES[6], '00', timelock),   // belongs to this wallet
   createOutput(1, 4000, 'HCuWC2qgNP47BtWtsTM48PokKitVdR6pch'),   // other wallet
 ];
+
+// tx2Inputs on the format addToUtxoTable expects
+const tx2Inputs = tx2.inputs.map((input) => [
+  input.tx_id,
+  input.index,
+  input.token,
+  input.decoded.address,
+  input.value,
+  null, // authorities,
+  null, // timelock
+  null, // heightlock
+  false, // locked
+  null, // spentBy
+]);
 
 beforeEach(async () => {
   await cleanDatabase(mysql);
@@ -140,6 +157,9 @@ test('receive blocks and txs and then start wallet', async () => {
    */
   await txProcessor.onNewTxEvent(txEvent);
   await checkAfterReceivingTx1(false);
+
+  // txEvent2 uses utxos that are not from the received blocks, so we must add them to the database
+  await addToUtxoTable(mysql, tx2Inputs);
 
   /*
    * add transaction that sends block reward to 2 different addresses, one of which is not in this wallet
@@ -182,6 +202,9 @@ test('start wallet and then receive blocks and txs', async () => {
   await txProcessor.onNewTxEvent(txEvent);
   await checkAfterReceivingTx1(true);
 
+  // txEvent2 uses utxos that are not from the received blocks, so we must add them to the database
+  await addToUtxoTable(mysql, tx2Inputs);
+
   /*
    * add transaction that sends block reward to 2 different addresses, one of which is not in this wallet
    */
@@ -215,6 +238,9 @@ test('receive blocks, start wallet and then receive transactions', async () => {
   await txProcessor.onNewTxEvent(txEvent);
   await checkAfterReceivingTx1(true);
 
+  // txEvent2 uses utxos that are not from the received blocks, so we must add them to the database
+  await addToUtxoTable(mysql, tx2Inputs);
+
   /*
    * add transaction that sends block reward to 2 different addresses, one of which is not in this wallet
    */
@@ -247,6 +273,9 @@ test('receive blocks and tx1, start wallet and then receive tx2', async () => {
    */
   await createWallet(mysql, walletId, XPUBKEY, AUTH_XPUBKEY, maxGap);
   await loadWallet({ xpubkey: XPUBKEY, maxGap }, null, null);
+
+  // txEvent2 uses utxos that are not from the received blocks, so we must add them to the database
+  await addToUtxoTable(mysql, tx2Inputs);
 
   /*
    * add transaction that sends block reward to 2 different addresses, one of which is not in this wallet

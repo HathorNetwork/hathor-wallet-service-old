@@ -7,6 +7,7 @@
 
 import { strict as assert } from 'assert';
 import { ServerlessMysql } from 'serverless-mysql';
+import { OkPacket } from 'mysql';
 import { constants } from '@hathor/wallet-lib';
 import {
   AddressIndexMap,
@@ -672,13 +673,15 @@ export const updateTxOutputSpentBy = async (mysql: ServerlessMysql, inputs: TxIn
      * |  1 | UPDATE      | tx_output | NULL       | index | NULL          | PRIMARY | 259     | NULL | 1933979 |
      * +----+-------------+-----------+------------+-------+---------------+---------+---------+------+---------+
      */
-    await mysql.query(
+    const result: OkPacket = await mysql.query(
       `UPDATE \`tx_output\` USE INDEX (PRIMARY)
           SET \`spent_by\` = ?
         WHERE (\`tx_id\` ,\`index\`)
            IN (?)`,
       [txId, entries],
     );
+
+    assert.strictEqual(result.affectedRows, inputs.length);
   }
 };
 
