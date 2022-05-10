@@ -161,7 +161,7 @@ export const onHandleReorgRequest: APIGatewayProxyHandler = async (_event, conte
   try {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
-    await handleReorg(mysql);
+    await handleReorg(mysql, logger);
     return {
       statusCode: 200,
       body: JSON.stringify({ success: true }),
@@ -199,12 +199,16 @@ export const onSearchForLatestValidBlockRequest: APIGatewayProxyHandler = async 
 export const handleVoidedTx = async (tx: Transaction): Promise<void> => {
   const txId = tx.tx_id;
   const transaction: Tx = await fetchTx(mysql, txId);
+  const logger = createDefaultLogger();
+  logger.defaultMeta = {
+    txId,
+  };
 
   if (!transaction) {
     throw new Error(`Transaction ${txId} not found.`);
   }
 
-  await handleVoided(mysql, transaction);
+  await handleVoided(mysql, logger, transaction);
 };
 
 /**
