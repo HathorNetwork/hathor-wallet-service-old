@@ -52,7 +52,6 @@ const bodySchema = Joi.object({
  * This lambda is called by API Gateway on PUT /txproposals/{proposalId}
  */
 export const send: APIGatewayProxyHandler = middy(walletIdProxyHandler(async (walletId, event) => {
-  console.log('Event: ', event);
   if (!event.pathParameters) {
     return closeDbAndGetError(mysql, ApiError.MISSING_PARAMETER, { parameter: 'txProposalId' });
   }

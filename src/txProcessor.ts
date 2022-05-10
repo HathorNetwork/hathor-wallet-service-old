@@ -20,6 +20,7 @@ import {
   handleVoided,
   prepareOutputs,
 } from '@src/commons';
+import { Logger } from 'winston';
 import {
   addNewAddresses,
   addUtxos,
@@ -52,6 +53,7 @@ import {
   getDbConnection,
   getUnixTimestamp,
 } from '@src/utils';
+import createDefaultLogger from '@src/logger';
 
 const mysql = getDbConnection();
 
@@ -79,13 +81,15 @@ export const IGNORE_TXS = {
  * @param event - The SQS event
  */
 export const onNewTxEvent = async (event: SQSEvent): Promise<APIGatewayProxyResult> => {
+  const logger: Logger = createDefaultLogger();
+
   // TODO not sure if it should be 'now' or max(now, tx.timestamp), as we allow some flexibility for timestamps
   const now = getUnixTimestamp();
   const blockRewardLock = parseInt(process.env.BLOCK_REWARD_LOCK, 10);
   for (const evt of event.Records) {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
-    await addNewTx(evt.body, now, blockRewardLock);
+    await addNewTx(logger, evt.body, now, blockRewardLock);
   }
 
   await closeDbConnection(mysql);
@@ -108,14 +112,21 @@ export const onNewTxEvent = async (event: SQSEvent): Promise<APIGatewayProxyResu
  * @remarks
  * This is a lambda function that should be invoked using the aws-sdk.
  */
-export const onNewTxRequest: APIGatewayProxyHandler = async (event) => {
+export const onNewTxRequest: APIGatewayProxyHandler = async (event, context) => {
+  const logger = createDefaultLogger();
+
+  // Logs the request id on every line so we can see all logs from a request
+  logger.defaultMeta = {
+    requestId: context.awsRequestId,
+  };
+
   const now = getUnixTimestamp();
   const blockRewardLock = parseInt(process.env.BLOCK_REWARD_LOCK, 10);
 
   try {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
-    await addNewTx(event.body, now, blockRewardLock);
+    await addNewTx(logger, event.body, now, blockRewardLock);
 
     return {
       statusCode: 200,
@@ -123,7 +134,7 @@ export const onNewTxRequest: APIGatewayProxyHandler = async (event) => {
     };
   } catch (e) {
     // eslint-disable-next-line
-    console.log('Errored on onNewTxRequest: ', e);
+    logger.error('Errored on onNewTxRequest: ', e);
 
     return {
       statusCode: 500,
@@ -141,7 +152,12 @@ export const onNewTxRequest: APIGatewayProxyHandler = async (event) => {
  * @remarks
  * This is a lambda function that should be invoked using the aws-sdk.
  */
-export const onHandleReorgRequest: APIGatewayProxyHandler = async () => {
+export const onHandleReorgRequest: APIGatewayProxyHandler = async (_event, context) => {
+  const logger = createDefaultLogger();
+  logger.defaultMeta = {
+    requestId: context.awsRequestId,
+  };
+
   try {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
@@ -152,7 +168,7 @@ export const onHandleReorgRequest: APIGatewayProxyHandler = async () => {
     };
   } catch (e) {
     // eslint-disable-next-line
-    console.log('Errored on onHandleReorgRequest: ', e);
+    logger.error('Errored on onHandleReorgRequest: ', e);
     return {
       statusCode: 500,
       body: JSON.stringify({
@@ -198,11 +214,16 @@ export const handleVoidedTx = async (tx: Transaction): Promise<void> => {
  * @param now - Current timestamp
  * @param blockRewardLock - The block reward lock
  */
-const _unsafeAddNewTx = async (tx: Transaction, now: number, blockRewardLock: number): Promise<void> => {
-  // TODO mysql error treatment
-
+const _unsafeAddNewTx = async (_logger: Logger, tx: Transaction, now: number, blockRewardLock: number): Promise<void> => {
   const txId = tx.tx_id;
   const network = process.env.NETWORK;
+
+  // add the tx id to all logs from this method, so we can search by txId on CloudWatch
+  const logger = _logger;
+  logger.defaultMeta = {
+    ...logger.defaultMeta,
+    txId,
+  };
 
   // we should ignore genesis transactions as they have no parents, inputs and outputs and we expect the service
   // to already have the pre-mine utxos on its database.
@@ -218,6 +239,9 @@ const _unsafeAddNewTx = async (tx: Transaction, now: number, blockRewardLock: nu
   if (dbTx) {
     // ignore tx if we already have it confirmed on our database
     if (dbTx.height) {
+      logger.debug(`Ignoring ${txId} as it already has height on the database`, {
+        txId,
+      });
       return;
     }
 
@@ -234,6 +258,7 @@ const _unsafeAddNewTx = async (tx: Transaction, now: number, blockRewardLock: nu
     || tx.version === hathorLib.constants.MERGED_MINED_BLOCK_VERSION) {
     // unlock older blocks
     const utxos = await getUtxosLockedAtHeight(mysql, now, tx.height);
+    logger.debug(`Block transaction, unlocking ${utxos.length} locked utxos at height ${tx.height}`);
     await unlockUtxos(mysql, utxos, false);
 
     // set heightlock
@@ -270,14 +295,26 @@ const _unsafeAddNewTx = async (tx: Transaction, now: number, blockRewardLock: nu
 
   // add transaction outputs to the tx_outputs table
   markLockedOutputs(outputs, now, heightlock !== null);
+  logger.debug(`Adding ${txId} to database`, {
+    ...tx,
+    inputs: tx.inputs.length,
+    outputs: tx.outputs.length,
+  });
   await addOrUpdateTx(mysql, txId, tx.height, tx.timestamp, tx.version);
+  logger.debug(`Adding ${outputs.length} utxos to database`);
   await addUtxos(mysql, txId, outputs, heightlock);
 
   // mark the tx_outputs used in the transaction (tx.inputs) as spent by txId
+  logger.debug(`Marking ${tx.inputs.length} tx_outputs as spent`, {
+    inputs: tx.inputs,
+  });
   await updateTxOutputSpentBy(mysql, tx.inputs, txId);
 
   // get balance of each token for each address
   const addressBalanceMap: StringMap<TokenBalanceMap> = getAddressBalanceMap(tx.inputs, outputs);
+  logger.debug('Updating address_balance and address_tx_history tables', {
+    addressBalanceMap,
+  });
 
   // update address tables (address, address_balance, address_tx_history)
   await updateAddressTablesWithTx(mysql, txId, tx.timestamp, addressBalanceMap);
@@ -300,6 +337,9 @@ const _unsafeAddNewTx = async (tx: Transaction, now: number, blockRewardLock: nu
   }
   // update wallet_balance and wallet_tx_history tables
   const walletBalanceMap: StringMap<TokenBalanceMap> = getWalletBalanceMap(addressWalletMap, addressBalanceMap);
+  logger.debug('Updating wallet_balance and wallet_tx_history tables', {
+    walletBalanceMap,
+  });
   await updateWalletTablesWithTx(mysql, txId, tx.timestamp, walletBalanceMap);
 
   const queueUrl = process.env.NEW_TX_SQS;
@@ -325,9 +365,9 @@ const _unsafeAddNewTx = async (tx: Transaction, now: number, blockRewardLock: nu
  * @param now - Current timestamp
  * @param blockRewardLock - The block reward lock
  */
-export const addNewTx = async (tx: Transaction, now: number, blockRewardLock: number) => {
+export const addNewTx = async (logger: Logger, tx: Transaction, now: number, blockRewardLock: number) => {
   /* eslint-disable-next-line  @typescript-eslint/ban-types */
   const wrappedAddNewTx = await transactionDecorator(mysql, _unsafeAddNewTx);
 
-  return wrappedAddNewTx(tx, now, blockRewardLock);
+  return wrappedAddNewTx(logger, tx, now, blockRewardLock);
 };
