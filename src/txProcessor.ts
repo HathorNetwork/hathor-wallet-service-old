@@ -161,7 +161,11 @@ export const onHandleReorgRequest: APIGatewayProxyHandler = async (_event, conte
   try {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
-    await handleReorg(mysql, logger);
+    /* eslint-disable-next-line  @typescript-eslint/ban-types */
+    const wrappedHandleReorg = await transactionDecorator(mysql, handleReorg);
+
+    await wrappedHandleReorg(mysql, logger);
+
     return {
       statusCode: 200,
       body: JSON.stringify({ success: true }),
