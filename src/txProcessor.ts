@@ -270,7 +270,9 @@ const _unsafeAddNewTx = async (_logger: Logger, tx: Transaction, now: number, bl
     || tx.version === hathorLib.constants.MERGED_MINED_BLOCK_VERSION) {
     // unlock older blocks
     const utxos = await getUtxosLockedAtHeight(mysql, now, tx.height);
-    logger.debug(`Block transaction, unlocking ${utxos.length} locked utxos at height ${tx.height}`);
+    logger.debug(`Block transaction, unlocking ${utxos.length} locked utxos at height ${tx.height}`, {
+      unlockedUtxos: utxos,
+    });
     await unlockUtxos(mysql, utxos, false);
 
     // set heightlock
