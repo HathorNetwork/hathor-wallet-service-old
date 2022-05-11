@@ -309,7 +309,7 @@ const _unsafeAddNewTx = async (_logger: Logger, tx: Transaction, now: number, bl
 
   // add transaction outputs to the tx_outputs table
   markLockedOutputs(outputs, now, heightlock !== null);
-  logger.debug(`Adding ${txId} to database`, tx);
+  logger.debug(`Adding ${txId} to database`);
   await addOrUpdateTx(mysql, txId, tx.height, tx.timestamp, tx.version);
   logger.debug(`Adding ${outputs.length} utxos to database`);
   await addUtxos(mysql, txId, outputs, heightlock);
