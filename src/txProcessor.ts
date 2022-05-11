@@ -233,6 +233,10 @@ const _unsafeAddNewTx = async (_logger: Logger, tx: Transaction, now: number, bl
     txId,
   };
 
+  logger.debug(`Transaction ${txId} received`, {
+    tx,
+  });
+
   // we should ignore genesis transactions as they have no parents, inputs and outputs and we expect the service
   // to already have the pre-mine utxos on its database.
   if (network in IGNORE_TXS) {
