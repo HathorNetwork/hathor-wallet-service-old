@@ -7,7 +7,7 @@ custom:
   logLevelMap:  
     mainnet: info
     testnet: info
-    dev: info
+    dev-testnet: info
   logLevel: ${self:custom.logLevelMap.${opt:stage}, 'debug'}
   webpack:
     webpackConfig: ./webpack.config.js
