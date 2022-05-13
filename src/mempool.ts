@@ -19,6 +19,7 @@ import {
   getDbConnection,
   getUnixTimestamp,
 } from '@src/utils';
+import createDefaultLogger from '@src/logger';
 
 const mysql = getDbConnection();
 
@@ -30,21 +31,25 @@ const mysql = getDbConnection();
  * 20 minutes (configurable on serverless.yml) and will query for transactions older than 20 minutes that are not
  * confirmed by a block and are not voided.
  */
-export const onHandleOldVoidedTxs = async () => {
+export const onHandleOldVoidedTxs = async (): Promise<void> => {
+  const logger = createDefaultLogger();
+
   const VOIDED_TX_OFFSET: number = parseInt(process.env.VOIDED_TX_OFFSET, 10) * 60; // env is in minutes
   const now: number = getUnixTimestamp();
   const date: number = now - VOIDED_TX_OFFSET;
 
   // Fetch voided transactions that are older than 20m
   const voidedTransactions: Tx[] = await getMempoolTransactionsBeforeDate(mysql, date);
-  // eslint-disable-next-line
-  console.log(`Found ${voidedTransactions.length} voided transactions older than ${process.env.VOIDED_TX_OFFSET}m`);
+  logger.debug(`Found ${voidedTransactions.length} voided transactions older than ${process.env.VOIDED_TX_OFFSET}m`, {
+    voidedTransactions,
+  });
 
   /* This loop will check if all transactions are in fact voided on the fullnode and try to fix it (by updating the height) if
    * they are not.
    */
   for (const tx of voidedTransactions) {
     const [isVoided, transaction] = await isTxVoided(tx.txId);
+    logger.debug(`Is transaction ${tx.txId} voided? ${isVoided}`);
 
     /* This will alarm (using the ALERT string) if the transaction is not yet confirmed on our database and is not voided since
      * this indicates an issue with our sync mechanism.
@@ -52,7 +57,7 @@ export const onHandleOldVoidedTxs = async () => {
      * It will also try to correct it by fetching the height that confirms it and updating the transaction on our database.
      */
     if (!isVoided) {
-      console.error(`[ALERT] Transaction ${tx.txId} is not yet confirmed on our database but it is not voided on the fullnode.`);
+      logger.debug(`[ALERT] Transaction ${tx.txId} is not yet confirmed on our database but it is not voided on the fullnode.`);
       // Check if it is confirmed by a block
       if (transaction.meta.first_block) {
         /* Here we are sure that we really did lose the confirmation. We should fetch the height that confirmed it and update
@@ -68,12 +73,12 @@ export const onHandleOldVoidedTxs = async () => {
           // Balances have already been calculated as this transaction was on the mempool, we are safe to just update the height
           await updateTx(mysql, tx.txId, height, tx.timestamp, tx.version);
         } catch (e) {
-          console.error(`Error confirming transaction ${tx.txId} height`);
-          console.error(e);
+          logger.error(`Error confirming transaction ${tx.txId} height`);
+          logger.error(e);
         }
       }
     } else {
-      await handleVoided(mysql, tx);
+      await handleVoided(mysql, logger, tx);
     }
   }
 
