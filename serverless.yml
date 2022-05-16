@@ -3,7 +3,12 @@ frameworkVersion: '2'
 
 useDotenv: true
 
-custom:
+custom: 
+  logLevelMap:  
+    mainnet: info
+    testnet: info
+    dev-testnet: info
+  logLevel: ${self:custom.logLevelMap.${opt:stage}, 'debug'}
   webpack:
     webpackConfig: ./webpack.config.js
     includeModules: true
@@ -94,6 +99,7 @@ provider:
     DEFAULT_SERVER: ${env:DEFAULT_SERVER}
     WS_DOMAIN: ${env:WS_DOMAIN}
     TX_HISTORY_MAX_COUNT: ${env:TX_HISTORY_MAX_COUNT}
+    LOG_LEVEL: ${self:custom.logLevel}
   iamRoleStatements:
     - Effect: Allow
       Action:
