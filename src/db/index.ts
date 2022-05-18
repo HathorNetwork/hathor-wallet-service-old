@@ -614,7 +614,8 @@ export const updateTx = async (
   height: number,
   timestamp: number,
   version: number,
-): Promise<void> => addOrUpdateTx(mysql, txId, height, timestamp, version);
+  weight: number
+): Promise<void> => addOrUpdateTx(mysql, txId, height, timestamp, version, weight);
 
 /**
  * Add a tx to the transaction table.
@@ -633,11 +634,12 @@ export const addOrUpdateTx = async (
   height: number,
   timestamp: number,
   version: number,
+  weight: number
 ): Promise<void> => {
-  const entries = [[txId, height, timestamp, version]];
+  const entries = [[txId, height, timestamp, version, weight]];
 
   await mysql.query(
-    `INSERT INTO \`transaction\` (tx_id, height, timestamp, version)
+    `INSERT INTO \`transaction\` (tx_id, height, timestamp, version, weight)
      VALUES ?
          ON DUPLICATE KEY UPDATE height = ?`,
     [entries, height],
@@ -1748,6 +1750,7 @@ export const getTxsAfterHeight = async (
       version: result.version as number,
       voided: result.voided as boolean,
       height: result.height as number,
+      weight: result.weight as number
     };
 
     transactions.push(tx);
@@ -1830,6 +1833,7 @@ export const getTransactionsById = async (
       version: result.version as number,
       voided: result.voided as boolean,
       height: result.height as number,
+      weight: result.weight as number
     };
 
     transactions.push(tx);
@@ -2128,6 +2132,7 @@ export const fetchTx = async (
     version: result.version as number,
     voided: result.voided === 1,
     height: result.height as number,
+    weight: result.weight as number
   };
 
   return tx;
@@ -2336,6 +2341,7 @@ export const getMempoolTransactionsBeforeDate = async (
       version: result.version as number,
       voided: result.voided as boolean,
       height: result.height as number,
+      weight: result.weight as number
     };
 
     transactions.push(tx);

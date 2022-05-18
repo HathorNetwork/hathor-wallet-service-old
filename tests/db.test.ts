@@ -1078,37 +1078,38 @@ test('updateWalletLockedBalance', async () => {
   await expect(checkWalletBalanceTable(mysql, 3, wallet1, tokenId, 25, 5, now, 5, 0b11, 0b01)).resolves.toBe(true);
 });
 
-test('updateTx should add height to a tx', async () => {
+test('updateTx should add height and weight to a tx', async () => {
   expect.hasAssertions();
 
-  await addOrUpdateTx(mysql, 'txId1', null, 1, 1);
-  await updateTx(mysql, 'txId1', 5, 1, 1);
+  await addOrUpdateTx(mysql, 'txId1', null, 1, 1, null);
+  await updateTx(mysql, 'txId1', 5, 1, 1, 60);
 
   const txs = await getTransactionsById(mysql, ['txId1']);
   const tx = txs[0];
 
   expect(tx.txId).toStrictEqual('txId1');
   expect(tx.height).toStrictEqual(5);
+  expect(tx.weight).toStrictEqual(60);
 });
 
 test('getLatestHeight, getTxsAfterHeight, deleteBlocksAfterHeight and removeTxsHeight', async () => {
   expect.hasAssertions();
 
-  await addOrUpdateTx(mysql, 'txId0', 0, 1, 0);
+  await addOrUpdateTx(mysql, 'txId0', 0, 1, 0, 60);
 
   expect(await getLatestHeight(mysql)).toBe(0);
 
-  await addOrUpdateTx(mysql, 'txId5', 5, 2, 0);
+  await addOrUpdateTx(mysql, 'txId5', 5, 2, 0, 60);
 
   expect(await getLatestHeight(mysql)).toBe(5);
 
-  await addOrUpdateTx(mysql, 'txId7', 7, 3, 0);
+  await addOrUpdateTx(mysql, 'txId7', 7, 3, 0, 60);
 
   expect(await getLatestHeight(mysql)).toBe(7);
 
-  await addOrUpdateTx(mysql, 'txId8', 8, 4, 0);
-  await addOrUpdateTx(mysql, 'txId9', 9, 5, 0);
-  await addOrUpdateTx(mysql, 'txId10', 10, 6, 0);
+  await addOrUpdateTx(mysql, 'txId8', 8, 4, 0, 60);
+  await addOrUpdateTx(mysql, 'txId9', 9, 5, 0, 60);
+  await addOrUpdateTx(mysql, 'txId10', 10, 6, 0, 60);
 
   const txsAfterHeight = await getTxsAfterHeight(mysql, 6);
 
@@ -1121,9 +1122,9 @@ test('getLatestHeight, getTxsAfterHeight, deleteBlocksAfterHeight and removeTxsH
   expect(await getLatestHeight(mysql)).toBe(7);
 
   // add the transactions again
-  await addOrUpdateTx(mysql, 'txId8', 8, 4, 0);
-  await addOrUpdateTx(mysql, 'txId9', 9, 5, 0);
-  await addOrUpdateTx(mysql, 'txId10', 10, 6, 0);
+  await addOrUpdateTx(mysql, 'txId8', 8, 4, 0, 60);
+  await addOrUpdateTx(mysql, 'txId9', 9, 5, 0, 60);
+  await addOrUpdateTx(mysql, 'txId10', 10, 6, 0, 60);
 
   // remove their height
   const transactions = await getTransactionsById(mysql, ['txId8', 'txId9', 'txId10']);
@@ -1490,23 +1491,24 @@ test('addTx, fetchTx, getTransactionsById and markTxsAsVoided', async () => {
     timestamp,
     version: 0,
     voided: false,
+    weight: 60
   };
 
-  await addOrUpdateTx(mysql, tx1.txId, tx1.height, tx1.timestamp, tx1.version);
+  await addOrUpdateTx(mysql, tx1.txId, tx1.height, tx1.timestamp, tx1.version, tx1.weight);
 
   expect(await fetchTx(mysql, txId1)).toStrictEqual(tx1);
 
   const tx2 = { ...tx1, txId: txId2 };
-  await addOrUpdateTx(mysql, tx2.txId, tx2.height, tx2.timestamp, tx2.version);
+  await addOrUpdateTx(mysql, tx2.txId, tx2.height, tx2.timestamp, tx2.version, tx2.weight);
 
   const tx3 = { ...tx1, txId: txId3 };
-  await addOrUpdateTx(mysql, tx3.txId, tx3.height, tx3.timestamp, tx3.version);
+  await addOrUpdateTx(mysql, tx3.txId, tx3.height, tx3.timestamp, tx3.version, tx3.weight);
 
   const tx4 = { ...tx1, txId: txId4 };
-  await addOrUpdateTx(mysql, tx4.txId, tx4.height, tx4.timestamp, tx4.version);
+  await addOrUpdateTx(mysql, tx4.txId, tx4.height, tx4.timestamp, tx4.version, tx4.weight);
 
   const tx5 = { ...tx1, txId: txId5 };
-  await addOrUpdateTx(mysql, tx5.txId, tx5.height, tx5.timestamp, tx5.version);
+  await addOrUpdateTx(mysql, tx5.txId, tx5.height, tx5.timestamp, tx5.version, tx5.weight);
 
   const transactions = await getTransactionsById(mysql, [txId1, txId2, txId3, txId4, txId5]);
 
@@ -1604,16 +1606,19 @@ test('markAddressTxHistoryAsVoided', async () => {
     timestamp: timestamp1,
     version: 0,
     voided: false,
+    weight: 60
   }, {
     txId: txId2,
     timestamp: timestamp1,
     version: 0,
     voided: false,
+    weight: 60
   }, {
     txId: txId3,
     timestamp: timestamp1,
     version: 0,
     voided: false,
+    weight: 60
   }]);
 
   const history2 = await fetchAddressTxHistorySum(mysql, [addr1, addr2]);

@@ -575,6 +575,7 @@ export interface Tx {
   version: number;
   voided: boolean;
   height?: number | null;
+  weight: number;
 }
 
 export interface AddressBalance {
