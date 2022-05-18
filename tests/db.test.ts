@@ -1491,7 +1491,7 @@ test('addTx, fetchTx, getTransactionsById and markTxsAsVoided', async () => {
     timestamp,
     version: 0,
     voided: false,
-    weight: 60
+    weight: 60,
   };
 
   await addOrUpdateTx(mysql, tx1.txId, tx1.height, tx1.timestamp, tx1.version, tx1.weight);
@@ -1606,19 +1606,19 @@ test('markAddressTxHistoryAsVoided', async () => {
     timestamp: timestamp1,
     version: 0,
     voided: false,
-    weight: 60
+    weight: 60,
   }, {
     txId: txId2,
     timestamp: timestamp1,
     version: 0,
     voided: false,
-    weight: 60
+    weight: 60,
   }, {
     txId: txId3,
     timestamp: timestamp1,
     version: 0,
     voided: false,
-    weight: 60
+    weight: 60,
   }]);
 
   const history2 = await fetchAddressTxHistorySum(mysql, [addr1, addr2]);
