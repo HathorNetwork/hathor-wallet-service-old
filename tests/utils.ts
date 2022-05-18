@@ -475,7 +475,7 @@ export const addToTransactionTable = async (
   await mysql.query(
     `INSERT INTO \`transaction\`(\`tx_id\`, \`timestamp\`,
                           \`version\`, \`voided\`,
-                          \`height\`)
+                          \`height\`, \`weight\`)
      VALUES ?`,
     [entries],
   );
