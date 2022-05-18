@@ -1081,15 +1081,15 @@ test('updateWalletLockedBalance', async () => {
 test('updateTx should add height and weight to a tx', async () => {
   expect.hasAssertions();
 
-  await addOrUpdateTx(mysql, 'txId1', null, 1, 1, null);
-  await updateTx(mysql, 'txId1', 5, 1, 1, 60);
+  await addOrUpdateTx(mysql, 'txId1', null, 1, 1, 60);
+  await updateTx(mysql, 'txId1', 5, 1, 1, 70);
 
   const txs = await getTransactionsById(mysql, ['txId1']);
   const tx = txs[0];
 
   expect(tx.txId).toStrictEqual('txId1');
   expect(tx.height).toStrictEqual(5);
-  expect(tx.weight).toStrictEqual(60);
+  expect(tx.weight).toStrictEqual(70);
 });
 
 test('getLatestHeight, getTxsAfterHeight, deleteBlocksAfterHeight and removeTxsHeight', async () => {

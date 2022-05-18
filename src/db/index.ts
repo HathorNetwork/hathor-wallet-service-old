@@ -641,8 +641,8 @@ export const addOrUpdateTx = async (
   await mysql.query(
     `INSERT INTO \`transaction\` (tx_id, height, timestamp, version, weight)
      VALUES ?
-         ON DUPLICATE KEY UPDATE height = ?`,
-    [entries, height],
+         ON DUPLICATE KEY UPDATE height = ?, weight = ?`,
+    [entries, height, weight],
   );
 };
 
