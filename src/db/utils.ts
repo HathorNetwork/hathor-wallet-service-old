@@ -7,7 +7,7 @@
 
 import { ServerlessMysql } from 'serverless-mysql';
 import { getWalletId } from '@src/utils';
-import { WalletStatus, Wallet } from '@src/types';
+import { WalletStatus, Wallet, Tx, DbSelectResult } from '@src/types';
 
 /**
  * Begins a transaction on the current connection
@@ -73,3 +73,23 @@ export const getWalletFromDbEntry = (entry: Record<string, unknown>): Wallet => 
   createdAt: entry.created_at as number,
   readyAt: entry.ready_at as number,
 });
+
+
+export const getTxsFromDBResult = (results: DbSelectResult): Tx[] => {
+  const transactions = [];
+
+  for (const result of results) {
+    const tx: Tx = {
+      txId: result.tx_id as string,
+      timestamp: result.timestamp as number,
+      version: result.version as number,
+      voided: result.voided === 1,
+      height: result.height as number,
+      weight: result.weight as number,
+    };
+
+    transactions.push(tx);
+  }
+
+  return transactions;
+}; 

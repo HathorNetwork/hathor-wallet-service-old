@@ -41,8 +41,10 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true,
       defaultValue: null,
     },
+    // We will support null only for the first data migration. The current entries do not have this value and manual insertion will be needed.
+    // Once we backfill the old data, we must stop accepting null for weight
     weight: {
-      type: DataTypes.INTEGER.UNSIGNED,
+      type: DataTypes.FLOAT.UNSIGNED,
       allowNull: true,
       defaultValue: null,
     },

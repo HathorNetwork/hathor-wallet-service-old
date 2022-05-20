@@ -7,6 +7,7 @@
 
 import { strict as assert } from 'assert';
 import { ServerlessMysql } from 'serverless-mysql';
+import { get } from 'lodash';
 import { OkPacket } from 'mysql';
 import { constants } from '@hathor/wallet-lib';
 import {
@@ -47,6 +48,7 @@ import {
 } from '@src/utils';
 import {
   getWalletFromDbEntry,
+  getTxsFromDBResult
 } from '@src/db/utils';
 
 const BLOCK_VERSION = [
@@ -607,6 +609,7 @@ export const addUtxos = async (
  * @param txId - Transaction id
  * @param timestamp - The transaction timestamp
  * @param version - The transaction version
+ * @param weight - The transaction weight
  */
 export const updateTx = async (
   mysql: ServerlessMysql,
@@ -627,6 +630,7 @@ export const updateTx = async (
  * @param txId - Transaction id
  * @param timestamp - The transaction timestamp
  * @param version - The transaction version
+ * @param weight - the transaction weight
  */
 export const addOrUpdateTx = async (
   mysql: ServerlessMysql,
@@ -641,7 +645,7 @@ export const addOrUpdateTx = async (
   await mysql.query(
     `INSERT INTO \`transaction\` (tx_id, height, timestamp, version, weight)
      VALUES ?
-         ON DUPLICATE KEY UPDATE height = ?, weight = ?`,
+         ON DUPLICATE KEY UPDATE height = ?`,
     [entries, height, weight],
   );
 };
@@ -1741,22 +1745,8 @@ export const getTxsAfterHeight = async (
         AND \`voided\` = FALSE`,
     [height],
   );
-  const transactions = [];
 
-  for (const result of results) {
-    const tx: Tx = {
-      txId: result.tx_id as string,
-      timestamp: result.timestamp as number,
-      version: result.version as number,
-      voided: result.voided as boolean,
-      height: result.height as number,
-      weight: result.weight as number,
-    };
-
-    transactions.push(tx);
-  }
-
-  return transactions;
+  return getTxsFromDBResult(results);
 };
 
 /**
@@ -1824,22 +1814,8 @@ export const getTransactionsById = async (
         AND \`voided\` = FALSE`,
     [txIds],
   );
-  const transactions = [];
 
-  for (const result of results) {
-    const tx: Tx = {
-      txId: result.tx_id as string,
-      timestamp: result.timestamp as number,
-      version: result.version as number,
-      voided: result.voided as boolean,
-      height: result.height as number,
-      weight: result.weight as number,
-    };
-
-    transactions.push(tx);
-  }
-
-  return transactions;
+  return getTxsFromDBResult(results);
 };
 
 /**
@@ -2120,22 +2096,8 @@ export const fetchTx = async (
     [txId],
   );
 
-  if (results.length === 0) {
-    return null;
-  }
-
-  const result = results[0];
-
-  const tx: Tx = {
-    txId: result.tx_id as string,
-    timestamp: result.timestamp as number,
-    version: result.version as number,
-    voided: result.voided === 1,
-    height: result.height as number,
-    weight: result.weight as number,
-  };
-
-  return tx;
+  const txResult = getTxsFromDBResult(results);
+  return get(txResult, '[0]', null);
 };
 
 /**
@@ -2332,22 +2294,8 @@ export const getMempoolTransactionsBeforeDate = async (
         AND \`height\` IS NULL`,
     [date],
   );
-  const transactions = [];
 
-  for (const result of results) {
-    const tx: Tx = {
-      txId: result.tx_id as string,
-      timestamp: result.timestamp as number,
-      version: result.version as number,
-      voided: result.voided as boolean,
-      height: result.height as number,
-      weight: result.weight as number,
-    };
-
-    transactions.push(tx);
-  }
-
-  return transactions;
+  return getTxsFromDBResult(results);
 };
 
 /**

@@ -136,6 +136,7 @@ CREATE TABLE `transaction` (
   `voided` boolean NOT NULL DEFAULT false,
   -- Height is the block's height if it's a block and the height of the `first_block` if it is a transaction.
   `height` int unsigned DEFAULT NULL,
+  `weight` float unsigned NOT NULL,
   PRIMARY KEY (`tx_id`)
 );
 
