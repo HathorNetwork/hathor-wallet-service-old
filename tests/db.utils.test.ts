@@ -3,7 +3,9 @@ import {
 } from '@src/db/utils';
 
 test('getTxsFromDBResult should transform DB Result to array of Tx', async () => {
-  //Simulate Row Data Packets
+  expect.hasAssertions();
+
+  // Simulate Row Data Packets
   const dbResult = [
     {
       tx_id: 'txId10',
@@ -33,7 +35,7 @@ test('getTxsFromDBResult should transform DB Result to array of Tx', async () =>
 
   const txs = getTxsFromDBResult(dbResult);
 
-  //txId is an attribute of Tx interface
+  // txId is an attribute of Tx interface
   expect(txs[0].txId).toBe('txId10');
   expect(txs[1].txId).toBe('txId8');
   expect(txs[2].txId).toBe('txId9');

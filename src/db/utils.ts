@@ -74,7 +74,12 @@ export const getWalletFromDbEntry = (entry: Record<string, unknown>): Wallet => 
   readyAt: entry.ready_at as number,
 });
 
-
+/**
+ * Receive a DbSelectResult with multiple records and transform it in an array of Tx
+ *
+ * @param results
+ * @returns Txs converted from DbSelectResult
+ */
 export const getTxsFromDBResult = (results: DbSelectResult): Tx[] => {
   const transactions = [];
 
@@ -92,4 +97,4 @@ export const getTxsFromDBResult = (results: DbSelectResult): Tx[] => {
   }
 
   return transactions;
-}; 
+};

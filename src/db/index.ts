@@ -48,7 +48,7 @@ import {
 } from '@src/utils';
 import {
   getWalletFromDbEntry,
-  getTxsFromDBResult
+  getTxsFromDBResult,
 } from '@src/db/utils';
 
 const BLOCK_VERSION = [
