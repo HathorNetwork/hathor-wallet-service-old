@@ -3,7 +3,7 @@
 module.exports = {
   up: async (queryInterface, Sequelize) => {
     await queryInterface.addColumn('transaction', 'weight', {
-      type: Sequelize.INTEGER.UNSIGNED,
+      type: Sequelize.FLOAT.UNSIGNED,
       allowNull: true,
       defaultValue: null,
     });
