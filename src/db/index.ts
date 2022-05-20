@@ -646,7 +646,7 @@ export const addOrUpdateTx = async (
     `INSERT INTO \`transaction\` (tx_id, height, timestamp, version, weight)
      VALUES ?
          ON DUPLICATE KEY UPDATE height = ?`,
-    [entries, height, weight],
+    [entries, height],
   );
 };
 
