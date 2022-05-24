@@ -511,7 +511,7 @@ test('searchForLatestValidBlock should find the first voided block', async () =>
   }));
 
   for (let i = 0; i < mockData.length; i++) {
-    await addOrUpdateTx(mysql, mockData[i].txId, mockData[i].height, i, 0);
+    await addOrUpdateTx(mysql, mockData[i].txId, mockData[i].height, i, 0, 60);
   }
 
   const result = await searchForLatestValidBlock(mysql);

@@ -27,9 +27,9 @@ test('onHandleOldVoidedTxs', async () => {
   expect.hasAssertions();
 
   const transactions = [
-    [TX_IDS[0], 1, 2, false, null],
-    [TX_IDS[1], 601, 2, false, null],
-    [TX_IDS[2], 1000, 2, false, null],
+    [TX_IDS[0], 1, 2, false, null, 60],
+    [TX_IDS[1], 601, 2, false, null, 60],
+    [TX_IDS[2], 1000, 2, false, null, 60],
   ];
 
   const utxos = [
@@ -61,7 +61,7 @@ test('onHandleOldVoidedTxs should try to confirm the block by fetching the first
   expect.hasAssertions();
 
   const transactions = [
-    [TX_IDS[0], 1, 2, false, null],
+    [TX_IDS[0], 1, 2, false, null, 60],
   ];
 
   const utxos = [
