@@ -260,7 +260,7 @@ const _unsafeAddNewTx = async (_logger: Logger, tx: Transaction, now: number, bl
     // set height and break out because it was already on the mempool
     // so we can consider that our balances have already been calculated
     // and the utxos were already inserted
-    await updateTx(mysql, txId, tx.height, tx.timestamp, tx.version);
+    await updateTx(mysql, txId, tx.height, tx.timestamp, tx.version, tx.weight);
 
     return;
   }
@@ -310,7 +310,7 @@ const _unsafeAddNewTx = async (_logger: Logger, tx: Transaction, now: number, bl
   // add transaction outputs to the tx_outputs table
   markLockedOutputs(outputs, now, heightlock !== null);
   logger.debug(`Adding ${txId} to database`);
-  await addOrUpdateTx(mysql, txId, tx.height, tx.timestamp, tx.version);
+  await addOrUpdateTx(mysql, txId, tx.height, tx.timestamp, tx.version, tx.weight);
   logger.debug(`Adding ${outputs.length} utxos to database`);
   await addUtxos(mysql, txId, outputs, heightlock);
 

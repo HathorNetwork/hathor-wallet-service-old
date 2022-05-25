@@ -410,8 +410,8 @@ test('GET /txhistory', async () => {
     ['my-wallet', 'tx2', 'token3', 7, 1001, true],
   ]);
   await addToTransactionTable(mysql, [
-    ['tx1', 100, 2, false, null],
-    ['tx2', 100, 3, false, null],
+    ['tx1', 100, 2, false, null, 60],
+    ['tx2', 100, 3, false, null, 60],
   ]);
 
   // check CORS headers

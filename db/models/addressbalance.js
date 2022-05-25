@@ -60,6 +60,16 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.INTEGER.UNSIGNED,
       allowNull: false,
     },
+    createdAt: {
+      type: 'TIMESTAMP',
+      allowNull: false,
+      defaultValue: DataTypes.literal('CURRENT_TIMESTAMP'),
+    },
+    updatedAt: {
+      type: 'TIMESTAMP',
+      allowNull: false,
+      defaultValue: DataTypes.literal('CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'),
+    },
   }, {
     sequelize,
     modelName: 'AddressBalance',
