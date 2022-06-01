@@ -48,11 +48,22 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true,
       defaultValue: null,
     },
+    createdAt: {
+      type: 'TIMESTAMP',
+      allowNull: false,
+      defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
+    },
+    updatedAt: {
+      type: 'TIMESTAMP',
+      allowNull: false,
+      defaultValue: Sequelize.literal('CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'),
+    },
   }, {
     sequelize,
     modelName: 'Transaction',
     tableName: 'transaction',
     timestamps: false,
+    underscored: true,
     indexes: [{
       name: 'transaction_version_idx',
       fields: ['version'],
