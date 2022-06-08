@@ -71,6 +71,9 @@ module.exports = (sequelize, DataTypes) => {
     }, {
       name: 'transaction_height_idx',
       fields: ['height'],
+    }, {
+      name: 'transaction_updated_at_idx',
+      fields: ['updated_at'],
     }],
   });
   return Transaction;
