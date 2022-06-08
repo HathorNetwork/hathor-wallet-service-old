@@ -137,6 +137,8 @@ CREATE TABLE `transaction` (
   -- Height is the block's height if it's a block and the height of the `first_block` if it is a transaction.
   `height` int unsigned DEFAULT NULL,
   `weight` float unsigned NOT NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`tx_id`)
 );
 
@@ -144,6 +146,7 @@ CREATE INDEX transaction_version_idx USING HASH ON `transaction`(`version`);
 CREATE INDEX tx_output_heightlock_idx USING HASH ON `tx_output`(`heightlock`);
 CREATE INDEX tx_output_timelock_idx USING HASH ON `tx_output`(`timelock`);
 CREATE INDEX transaction_height_idx USING HASH ON `transaction`(`height`);
+CREATE INDEX transaction_updated_at_idx USING HASH ON `transaction`(`updated_at`);
 
 ```
 
