@@ -297,6 +297,10 @@ const _unsafeAddNewTx = async (_logger: Logger, tx: Transaction, now: number, bl
 
   if (tx.version === hathorLib.constants.CREATE_TOKEN_TX_VERSION) {
     await storeTokenInformation(mysql, tx.tx_id, tx.token_name, tx.token_symbol);
+
+    if (hathorLib.tokens.isNFTToken(tx)) {
+      console.log('Update S3');
+    }
   }
 
   const outputs: TxOutputWithIndex[] = prepareOutputs(tx.outputs, txId);

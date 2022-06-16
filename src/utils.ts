@@ -16,6 +16,7 @@ import * as ecc from 'tiny-secp256k1';
 import BIP32Factory from 'bip32';
 
 const bip32 = BIP32Factory(ecc);
+import axios from 'axios';
 
 /* TODO: We should remove this as soon as the wallet-lib is refactored
 *  (https://github.com/HathorNetwork/hathor-wallet-lib/issues/122)
@@ -355,4 +356,46 @@ export const getAddressFromXpub = (xpubkey: string): string => {
     pubkey: node.publicKey,
     network: hathorNetwork,
   }).address;
+};
+
+/**
+ * A helper for reading, generating and updating a NFT Token's metadata.
+ *
+ * @todo: This should be a class into its own file, but it would be too different from all the other project utils.
+ *       When a refactor is made to have an utils folder, this should be refactored too.
+ */
+export const tokenMetadataHelper = {
+  /**
+   * @todo: should be retrieved from configurations
+   * @type: string
+   */
+  tokenMetadataApi: 'https://explorer-service.hathor.network/metadata/dag',
+
+  /**
+   * Generates a JSON containing the basic metadata for an NFT, based on the token uid passed as parameter
+   * @param nftUid
+   * @returns {Record<string,{id:string,nft:boolean}>}
+   */
+  generateNFTTokenMetadataJSON: (nftUid) => {
+    const nftMetadata = {};
+    nftMetadata[nftUid] = {
+      id: nftUid,
+      nft: true,
+    };
+    return nftMetadata;
+  },
+
+  /**
+   * Gets the token metadata from the default Web API for this purpose.
+   * @param tokenUid
+   * @returns {Promise<Object>} Token metadata
+   */
+  getTokenMetadata: async (tokenUid) => {
+    const metadataResponse = await axios.get(
+      tokenMetadataHelper.tokenMetadataApi,
+      { params: { id: tokenUid } },
+    );
+
+    return metadataResponse.data;
+  },
 };
