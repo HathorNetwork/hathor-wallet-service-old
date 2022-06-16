@@ -373,10 +373,10 @@ export const tokenMetadataHelper = {
 
   /**
    * Generates a JSON containing the basic metadata for an NFT, based on the token uid passed as parameter
-   * @param nftUid
+   * @param {string} nftUid
    * @returns {Record<string,{id:string,nft:boolean}>}
    */
-  generateNFTTokenMetadataJSON: (nftUid) => {
+  generateNFTTokenMetadataJSON: (nftUid: string): Record<string, {id:string, nft:boolean}> => {
     const nftMetadata = {};
     nftMetadata[nftUid] = {
       id: nftUid,
@@ -388,7 +388,7 @@ export const tokenMetadataHelper = {
   /**
    * Gets the token metadata from the default Web API for this purpose.
    * @param tokenUid
-   * @returns {Promise<Object>} Token metadata
+   * @returns {Promise<Record<string, unknown>>} Token metadata
    */
   getTokenMetadata: async (tokenUid) => {
     const metadataResponse = await axios.get(
@@ -397,5 +397,40 @@ export const tokenMetadataHelper = {
     );
 
     return metadataResponse.data;
+  },
+
+  /**
+   * Not implemented!
+   * @param {string} nftUid
+   * @param {Record<string, unknown>} metadata
+   */
+  updateMetadata: async (nftUid: string, metadata: Record<string, unknown>) => {
+    // Make some magic here
+    const updatedMetadata = { nftUid, ...metadata };
+    return { updated: updatedMetadata };
+  },
+
+  /**
+   * Identifies if the metadata for a NFT needs updating and, if it does, update it.
+   * @param {string} nftUid
+   */
+  createOrUpdateNftMetadata: async (nftUid) => {
+    // Fetching current metadata for this token
+    const existingMetadata = await tokenMetadataHelper.getTokenMetadata(nftUid) || {};
+
+    // Metadata already exists and is correct: Do nothing.
+    if (existingMetadata[nftUid] && existingMetadata[nftUid].nft === true) {
+      return existingMetadata;
+    }
+
+    // Metadata already exists, but does not have the NFT flag: Update existing data.
+    if (existingMetadata[nftUid]) {
+      existingMetadata[nftUid].nft = true;
+      return tokenMetadataHelper.updateMetadata(nftUid, existingMetadata);
+    }
+
+    // There is no metadata for this token: create and upload it.
+    const newMetadata = tokenMetadataHelper.generateNFTTokenMetadataJSON(nftUid);
+    return tokenMetadataHelper.updateMetadata(nftUid, newMetadata);
   },
 };
