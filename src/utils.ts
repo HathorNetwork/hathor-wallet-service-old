@@ -405,9 +405,13 @@ export const tokenMetadataHelper = {
    * @param {Record<string, unknown>} metadata
    */
   updateMetadata: async (nftUid: string, metadata: Record<string, unknown>) => {
-    // Make some magic here
-    const updatedMetadata = { nftUid, ...metadata };
-    return { updated: updatedMetadata };
+    const updateResponse = await axios.put(
+      tokenMetadataHelper.tokenMetadataApi,
+      metadata,
+      { params: { id: nftUid } },
+    );
+
+    return { updated: updateResponse.data };
   },
 
   /**
