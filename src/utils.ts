@@ -14,9 +14,9 @@ import * as bitcoin from 'bitcoinjs-lib';
 import * as bitcoinMessage from 'bitcoinjs-message';
 import * as ecc from 'tiny-secp256k1';
 import BIP32Factory from 'bip32';
+import axios from 'axios';
 
 const bip32 = BIP32Factory(ecc);
-import axios from 'axios';
 
 /* TODO: We should remove this as soon as the wallet-lib is refactored
 *  (https://github.com/HathorNetwork/hathor-wallet-lib/issues/122)
