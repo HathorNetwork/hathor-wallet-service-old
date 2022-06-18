@@ -366,10 +366,10 @@ export const getAddressFromXpub = (xpubkey: string): string => {
  */
 export const tokenMetadataHelper = {
   /**
-   * @todo: should be retrieved from configurations
+   * Url of the API that provides and updates token metadata
    * @type: string
    */
-  tokenMetadataApi: 'https://explorer-service.hathor.network/metadata/dag',
+  tokenMetadataApi: process.env.TOKEN_METADATA_URL || 'https://explorer-service.hathor.network/metadata/dag',
 
   /**
    * Generates a JSON containing the basic metadata for an NFT, based on the token uid passed as parameter
