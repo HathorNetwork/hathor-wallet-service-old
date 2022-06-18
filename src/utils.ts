@@ -386,11 +386,11 @@ export const tokenMetadataHelper = {
   },
 
   /**
-   * Gets the token metadata from the default Web API for this purpose.
-   * @param tokenUid
+   * Gets the token metadata from the Explorer Service API.
+   * @param {string} tokenUid
    * @returns {Promise<Record<string, unknown>>} Token metadata
    */
-  getTokenMetadata: async (tokenUid) => {
+  getTokenMetadata: async (tokenUid: string) => {
     const metadataResponse = await axios.get(
       tokenMetadataHelper.tokenMetadataApi,
       { params: { id: tokenUid } },
@@ -400,7 +400,7 @@ export const tokenMetadataHelper = {
   },
 
   /**
-   * Not implemented!
+   * Calls the token metadata on the Explorer Service API to update a token's metadata
    * @param {string} nftUid
    * @param {Record<string, unknown>} metadata
    */
