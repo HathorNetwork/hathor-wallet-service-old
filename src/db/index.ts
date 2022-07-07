@@ -2041,6 +2041,7 @@ export const rebuildAddressBalancesFromUtxos = async (
         AND timelock IS NULL
         AND spent_by IS NULL
         AND voided = FALSE
+        AND locked = FALSE
         AND address IN (?)
    GROUP BY address, token_id
   `, [addresses]);
@@ -2068,6 +2069,7 @@ export const rebuildAddressBalancesFromUtxos = async (
            OR \`timelock\` IS NOT NULL)
           AND spent_by IS NULL
           AND voided = FALSE
+          AND locked = TRUE
           AND address IN (?)
      GROUP BY \`address\`, \`token_id\`
    ON DUPLICATE KEY UPDATE
