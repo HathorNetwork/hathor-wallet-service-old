@@ -1542,6 +1542,8 @@ test('rebuildAddressBalancesFromUtxos', async () => {
     { value: 5, address: addr1, token: 'token1', locked: false, spentBy: null },
     { value: 15, address: addr1, token: 'token1', locked: false, spentBy: null },
     { value: 25, address: addr2, token: 'token2', timelock: 500, locked: true, spentBy: null },
+    { value: 75, address: addr2, token: 'token1', heightlock: 70, locked: true, spentBy: null },
+    { value: 150, address: addr2, token: 'token1', heightlock: 70, locked: true, spentBy: null },
     { value: 35, address: addr2, token: 'token1', locked: false, spentBy: null },
     // authority utxo
     { value: 0b11, address: addr1, token: 'token1', locked: false, tokenData: 129, spentBy: null },
@@ -1569,8 +1571,9 @@ test('rebuildAddressBalancesFromUtxos', async () => {
   expect(addressBalances[0].tokenId).toStrictEqual('token1');
 
   expect(addressBalances[1].unlockedBalance).toStrictEqual(35);
+  expect(addressBalances[1].lockedBalance).toStrictEqual(225);
   expect(addressBalances[1].address).toStrictEqual(addr2);
-  expect(addressBalances[1].transactions).toStrictEqual(1);
+  expect(addressBalances[1].transactions).toStrictEqual(2);
   expect(addressBalances[1].tokenId).toStrictEqual('token1');
 
   expect(addressBalances[2].lockedBalance).toStrictEqual(25);
