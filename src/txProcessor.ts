@@ -300,7 +300,7 @@ const _unsafeAddNewTx = async (_logger: Logger, tx: Transaction, now: number, bl
     await storeTokenInformation(mysql, tx.tx_id, tx.token_name, tx.token_symbol);
 
     // Here we check if the token is a valid NFT and build its relevant metadata
-    if (hathorLib.tokens.isNFTToken(tx)) {
+    if (tokenMetadataHelper.isTransactionNFTCreation(tx)) {
       await tokenMetadataHelper.createOrUpdateNftMetadata(tx.tx_id);
     }
   }

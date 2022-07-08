@@ -15,6 +15,7 @@ import * as bitcoinMessage from 'bitcoinjs-message';
 import * as ecc from 'tiny-secp256k1';
 import BIP32Factory from 'bip32';
 import axios from 'axios';
+import { Transaction } from "@src/types";
 
 const bip32 = BIP32Factory(ecc);
 
@@ -371,6 +372,25 @@ export const tokenMetadataHelper = {
    */
   tokenMetadataApi: process.env.TOKEN_METADATA_URL || 'https://explorer-service.hathor.network/metadata/dag',
   metadataUpdateApiKey: process.env.EXPLORER_SERVICE_UPDATE_S3_KEY,
+
+  /**
+   * Returns if the transaction in the parameter is an NFT Creation.
+   * @param {Transaction} tx
+   * @returns {boolean}
+   */
+  isTransactionNFTCreation: (tx: Transaction):boolean => {
+    let isNftCreationTx;
+
+    const libTx: hathorLib.CreateTokenTransaction = hathorLib.helpersUtils.createTxFromHistoryObject(tx);
+    try {
+      libTx.validateNftCreation(); // This method will throw if the transaction is not an NFT Creation
+      isNftCreationTx = true;
+    } catch (ex) {
+      isNftCreationTx = false;
+    }
+
+    return isNftCreationTx;
+  },
 
   /**
    * Generates a JSON containing the basic metadata for an NFT, based on the token uid passed as parameter
