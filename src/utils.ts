@@ -370,6 +370,7 @@ export const tokenMetadataHelper = {
    * @type: string
    */
   tokenMetadataApi: process.env.TOKEN_METADATA_URL || 'https://explorer-service.hathor.network/metadata/dag',
+  metadataUpdateApiKey: process.env.EXPLORER_SERVICE_UPDATE_S3_KEY,
 
   /**
    * Generates a JSON containing the basic metadata for an NFT, based on the token uid passed as parameter
@@ -404,11 +405,14 @@ export const tokenMetadataHelper = {
    * @param {string} nftUid
    * @param {Record<string, unknown>} metadata
    */
-  updateMetadata: async (nftUid: string, metadata: Record<string, unknown>) => {
+  updateMetadata: async (nftUid: string, metadata: Record<string, unknown>): Promise<{ updated: string }> => {
     const updateResponse = await axios.put(
       tokenMetadataHelper.tokenMetadataApi,
       metadata,
-      { params: { id: nftUid } },
+      {
+        params: { id: nftUid },
+        headers: { 'x-api-key': tokenMetadataHelper.metadataUpdateApiKey },
+      },
     );
 
     return { updated: updateResponse.data };

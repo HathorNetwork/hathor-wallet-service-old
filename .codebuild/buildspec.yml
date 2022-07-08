@@ -41,6 +41,7 @@ env:
     dev_DB_PORT: "WalletService/rds/dev:port"
     dev_REDIS_URL: "WalletService/redis/dev:url"
     dev_REDIS_PASSWORD: "WalletService/redis/dev:password"
+    dev_EXPLORER_SERVICE_UPDATE_S3_KEY: "WalletService/dev:explorer_service_update_s3_key"
     # Testnet secrets
     testnet_ADMINTOKEN: "WalletService/testnet:admintoken"
     testnet_AUTH_SECRET: "WalletService/testnet:auth_secret"
@@ -55,6 +56,7 @@ env:
     testnet_DB_PORT: "WalletService/rds/testnet:port"
     testnet_REDIS_URL: "WalletService/redis/testnet:url"
     testnet_REDIS_PASSWORD: "WalletService/redis/testnet:password"
+    testnet_EXPLORER_SERVICE_UPDATE_S3_KEY: "WalletService/testnet:explorer_service_update_s3_key"
     # Mainnet secrets
     mainnet_ADMINTOKEN: "WalletService/mainnet:admintoken"
     mainnet_AUTH_SECRET: "WalletService/mainnet:auth_secret"
