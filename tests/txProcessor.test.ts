@@ -3,7 +3,7 @@ import tokenCreationTx from '@events/tokenCreationTx.json';
 import { getLatestHeight, getTokenInformation } from '@src/db';
 import * as Db from '@src/db';
 import * as txProcessor from '@src/txProcessor';
-import { closeDbConnection, getDbConnection, isAuthority } from '@src/utils';
+import { closeDbConnection, getDbConnection, isAuthority, tokenMetadataHelper } from '@src/utils';
 import {
   XPUBKEY,
   AUTH_XPUBKEY,
@@ -22,6 +22,7 @@ import {
   createInput,
   addToAddressTxHistoryTable,
 } from '@tests/utils';
+import { nftCreationEvt } from '@events/nftCreationTx';
 
 const mysql = getDbConnection();
 const blockReward = 6400;
@@ -289,6 +290,49 @@ test('txProcessor should ignore NFT outputs', async () => {
   await txProcessor.onNewTxEvent(evt);
   // check databases
   await expect(checkUtxoTable(mysql, 1, txId2, 1, '00', addr, 39, 0, null, null, false)).resolves.toBe(true);
+});
+
+describe('NFT metadata updating', () => {
+  const spyFetchMetadata = jest.spyOn(tokenMetadataHelper, 'getTokenMetadata');
+  const spyUpdateMetadata = jest.spyOn(tokenMetadataHelper, 'updateMetadata');
+
+  it('should update metadata for NFT transactions', async () => {
+    expect.hasAssertions();
+
+    spyFetchMetadata.mockImplementation(async (tokenUid) => ({
+      id: tokenUid,
+      nft: true,
+    }));
+
+    spyUpdateMetadata.mockImplementation(async (nftUid, metadata) => ({
+      updated: 'ok',
+    }));
+
+    await txProcessor.onNewTxEvent(nftCreationEvt);
+    expect(spyFetchMetadata).toHaveBeenCalledTimes(1);
+    expect(spyUpdateMetadata).toHaveBeenCalledTimes(1);
+  });
+
+  it('should not query nor update metadata for a default transaction', async () => {
+    expect.hasAssertions();
+
+    const evt = JSON.parse(JSON.stringify(eventTemplate));
+    await txProcessor.onNewTxEvent(evt);
+
+    expect(spyFetchMetadata).toHaveBeenCalledTimes(0);
+    expect(spyUpdateMetadata).toHaveBeenCalledTimes(0);
+  });
+
+  it('should not query nor update metadata for a non-nft token creation', async () => {
+    expect.hasAssertions();
+
+    const evt = JSON.parse(JSON.stringify(eventTemplate));
+    evt.Records[0].body = tokenCreationTx;
+    await txProcessor.onNewTxEvent(evt);
+
+    expect(spyFetchMetadata).toHaveBeenCalledTimes(0);
+    expect(spyUpdateMetadata).toHaveBeenCalledTimes(0);
+  });
 });
 
 test('receive token creation tx', async () => {
