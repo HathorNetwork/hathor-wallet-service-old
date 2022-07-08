@@ -304,7 +304,7 @@ describe('NFT metadata updating', () => {
       nft: true,
     }));
 
-    spyUpdateMetadata.mockImplementation(async (nftUid, metadata) => ({
+    spyUpdateMetadata.mockImplementation(async () => ({
       updated: 'ok',
     }));
 

@@ -15,7 +15,6 @@ import * as bitcoinMessage from 'bitcoinjs-message';
 import * as ecc from 'tiny-secp256k1';
 import BIP32Factory from 'bip32';
 import axios from 'axios';
-import { Transaction } from "@src/types";
 
 const bip32 = BIP32Factory(ecc);
 
@@ -378,7 +377,8 @@ export const tokenMetadataHelper = {
    * @param {Transaction} tx
    * @returns {boolean}
    */
-  isTransactionNFTCreation: (tx: Transaction):boolean => {
+  isTransactionNFTCreation: (tx):boolean => {
+    // FIXME: Declaring that this parameter is of the type Transaction creates a circular dependency
     let isNftCreationTx;
 
     const libTx: hathorLib.CreateTokenTransaction = hathorLib.helpersUtils.createTxFromHistoryObject(tx);
@@ -411,7 +411,7 @@ export const tokenMetadataHelper = {
    * @param {string} tokenUid
    * @returns {Promise<Record<string, unknown>>} Token metadata
    */
-  getTokenMetadata: async (tokenUid: string) => {
+  getTokenMetadata: async (tokenUid: string): Promise<Record<string, unknown>> => {
     const metadataResponse = await axios.get(
       tokenMetadataHelper.tokenMetadataApi,
       { params: { id: tokenUid } },
@@ -441,24 +441,27 @@ export const tokenMetadataHelper = {
   /**
    * Identifies if the metadata for a NFT needs updating and, if it does, update it.
    * @param {string} nftUid
+   * @returns {Promise<void>} No data is returned after a successful update or skip
    */
-  createOrUpdateNftMetadata: async (nftUid) => {
+  createOrUpdateNftMetadata: async (nftUid: string): Promise<void> => {
     // Fetching current metadata for this token
     const existingMetadata = await tokenMetadataHelper.getTokenMetadata(nftUid) || {};
 
     // Metadata already exists and is correct: Do nothing.
-    if (existingMetadata[nftUid] && existingMetadata[nftUid].nft === true) {
-      return existingMetadata;
+    const tokenMetadata = existingMetadata[nftUid] as any;
+    if (tokenMetadata && tokenMetadata.nft === true) {
+      return;
     }
 
     // Metadata already exists, but does not have the NFT flag: Update existing data.
-    if (existingMetadata[nftUid]) {
-      existingMetadata[nftUid].nft = true;
-      return tokenMetadataHelper.updateMetadata(nftUid, existingMetadata);
+    if (tokenMetadata) {
+      tokenMetadata.nft = true;
+      await tokenMetadataHelper.updateMetadata(nftUid, existingMetadata);
+      return;
     }
 
     // There is no metadata for this token: create and upload it.
     const newMetadata = tokenMetadataHelper.generateNFTTokenMetadataJSON(nftUid);
-    return tokenMetadataHelper.updateMetadata(nftUid, newMetadata);
+    await tokenMetadataHelper.updateMetadata(nftUid, newMetadata);
   },
 };
