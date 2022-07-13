@@ -3,8 +3,8 @@ frameworkVersion: '2'
 
 useDotenv: true
 
-custom: 
-  logLevelMap:  
+custom:
+  logLevelMap:
     mainnet: info
     testnet: info
     dev-testnet: info
@@ -126,6 +126,8 @@ functions:
     timeout: 300 # 5 minutes
   onNewTxEvent:
     handler: src/txProcessor.onNewTxEvent
+  onNewNftEvent:
+    handler: src/txProcessor.onNewNftEvent
   loadWalletAsync:
     handler: src/api/wallet.loadWallet
   loadWalletApi:

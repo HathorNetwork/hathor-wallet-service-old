@@ -18,7 +18,7 @@
     "url": "https://github.com/HathorNetwork/hathor-wallet-service.git"
   },
   "dependencies": {
-    "@hathor/wallet-lib": "^0.31.0",
+    "@hathor/wallet-lib": "^0.39.0",
     "@middy/core": "^2.5.7",
     "@middy/http-cors": "^2.5.7",
     "@types/redis": "^2.8.28",

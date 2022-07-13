@@ -52,9 +52,13 @@ import {
   closeDbConnection,
   getDbConnection,
   getUnixTimestamp,
-  tokenMetadataHelper,
 } from '@src/utils';
 import createDefaultLogger from '@src/logger';
+import {
+  createOrUpdateNftMetadata,
+  invokeNftHandlerLambda,
+  isTransactionNFTCreation,
+} from '@src/utils/nft.utils';
 
 const mysql = getDbConnection();
 
@@ -80,6 +84,7 @@ export const IGNORE_TXS = {
  * calls the appropriate function to handle the transaction.
  *
  * @param event - The SQS event
+ * @deprecated
  */
 export const onNewTxEvent = async (event: SQSEvent): Promise<APIGatewayProxyResult> => {
   const logger: Logger = createDefaultLogger();
@@ -123,16 +128,10 @@ export const onNewTxRequest: APIGatewayProxyHandler = async (event, context) => 
 
   const now = getUnixTimestamp();
   const blockRewardLock = parseInt(process.env.BLOCK_REWARD_LOCK, 10);
+  const tx = (event.body as unknown) as Transaction;
 
   try {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    await addNewTx(logger, event.body, now, blockRewardLock);
-
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ success: true }),
-    };
+    await addNewTx(logger, tx, now, blockRewardLock);
   } catch (e) {
     // eslint-disable-next-line
     logger.error('Errored on onNewTxRequest: ', e);
@@ -145,6 +144,22 @@ export const onNewTxRequest: APIGatewayProxyHandler = async (event, context) => 
       }),
     };
   }
+
+  // Validating for NFTs after the tx is successfully added
+  // This process is not critical, so in case of errors we can just log the exception and take no action on it.
+  try {
+    if (isTransactionNFTCreation(tx)) {
+      invokeNftHandlerLambda(tx.tx_id)
+        .catch((err) => { throw err; });
+    }
+  } catch (e) {
+    logger.error('Errored on NFT validation', e);
+  }
+
+  return {
+    statusCode: 200,
+    body: JSON.stringify({ success: true }),
+  };
 };
 
 /**
@@ -214,6 +229,43 @@ export const handleVoidedTx = async (tx: Transaction): Promise<void> => {
   }
 
   await handleVoided(mysql, logger, transaction);
+};
+
+/**
+ * This handler is responsible for making the final validations and calling the Explorer Service to update an NFT
+ * metadata, if needed.
+ *
+ * @remarks
+ * This is a lambda function that should be invoked using the aws-sdk.
+ */
+export const onNewNftEvent: APIGatewayProxyHandler = async (event, context) => {
+  const logger = createDefaultLogger();
+
+  // Logs the request id on every line, so we can see all logs from a request
+  logger.defaultMeta = {
+    requestId: context.awsRequestId,
+  };
+
+  try {
+    // Checks existing metadata on this transaction and updates it if necessary
+    const nftUid = event.body as string;
+    await createOrUpdateNftMetadata(nftUid);
+  } catch (e) {
+    logger.error('Errored on onNewNftEvent: ', e);
+
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        success: false,
+        message: 'onNewNftEvent failed',
+      }),
+    };
+  }
+
+  return {
+    statusCode: 200,
+    body: JSON.stringify({ success: true }),
+  };
 };
 
 /**
@@ -298,11 +350,6 @@ const _unsafeAddNewTx = async (_logger: Logger, tx: Transaction, now: number, bl
 
   if (tx.version === hathorLib.constants.CREATE_TOKEN_TX_VERSION) {
     await storeTokenInformation(mysql, tx.tx_id, tx.token_name, tx.token_symbol);
-
-    // Here we check if the token is a valid NFT and build its relevant metadata
-    if (tokenMetadataHelper.isTransactionNFTCreation(tx)) {
-      await tokenMetadataHelper.createOrUpdateNftMetadata(tx.tx_id);
-    }
   }
 
   const outputs: TxOutputWithIndex[] = prepareOutputs(tx.outputs, txId);
