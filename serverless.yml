@@ -32,6 +32,8 @@ plugins:
   - serverless-webpack
   - serverless-prune-plugin
   - serverless-api-gateway-throttling
+  - serverless-plugin-warmup
+
 
 resources:
   Resources:
@@ -127,10 +129,12 @@ functions:
   onNewTxEvent:
     handler: src/txProcessor.onNewTxEvent
   loadWalletAsync:
+    warmup: true
     handler: src/api/wallet.loadWallet
   loadWalletApi:
     role: arn:aws:iam::769498303037:role/WalletServiceLoadWalletLambda
     handler: src/api/wallet.load
+    warmup: true
     events:
       - http:
           path: wallet/init
@@ -145,6 +149,7 @@ functions:
           cors: true
   getWalletStatusApi:
     handler: src/api/wallet.get
+    warmup: true
     events:
       - http:
           path: wallet/status
@@ -153,6 +158,7 @@ functions:
           authorizer: ${self:custom.authorizer.walletBearer}
   getAddressesApi:
     handler: src/api/addresses.get
+    warmup: true
     events:
       - http:
           path: wallet/addresses
@@ -161,6 +167,7 @@ functions:
           authorizer: ${self:custom.authorizer.walletBearer}
   getNewAddresses:
     handler: src/api/newAddresses.get
+    warmup: true
     events:
       - http:
           path: wallet/addresses/new
@@ -185,6 +192,7 @@ functions:
           authorizer: ${self:custom.authorizer.walletBearer}
   getBalanceApi:
     handler: src/api/balances.get
+    warmup: true
     events:
       - http:
           path: wallet/balances
@@ -193,6 +201,7 @@ functions:
           authorizer: ${self:custom.authorizer.walletBearer}
   getTokensApi:
     handler: src/api/tokens.get
+    warmup: true
     events:
       - http:
           path: wallet/tokens
@@ -213,6 +222,7 @@ functions:
                 token_id: true
   getVersionData:
     handler: src/api/version.get
+    warmup: true
     events:
       - http:
           path: version
@@ -220,6 +230,7 @@ functions:
           cors: true
   getTxHistoryApi:
     handler: src/api/txhistory.get
+    warmup: true
     events:
       - http:
           path: wallet/history
