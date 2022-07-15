@@ -4,6 +4,12 @@ frameworkVersion: '2'
 useDotenv: true
 
 custom: 
+  warmup: 
+    walletWarmer: # Keeps the lambdas used by the wallets initialization warm
+      enabled: true
+      verbose: true
+      events:
+        - schedule: cron(0/5 * ? * MON-SUN *) # Every 5 minutes, every day
   logLevelMap:  
     mainnet: info
     testnet: info
