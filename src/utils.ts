@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { createHash, HexBase64Latin1Encoding } from 'crypto';
+import { BinaryToTextEncoding, createHash } from 'crypto';
 
 import serverlessMysql, { ServerlessMysql } from 'serverless-mysql';
 import hathorLib from '@hathor/wallet-lib';
@@ -81,7 +81,7 @@ const hathorNetwork = {
  * @param encoding - The encoding of the returned object
  * @returns The sha256d hash of the data
  */
-export const sha256d = (data: string, encoding: HexBase64Latin1Encoding): string => {
+export const sha256d = (data: string, encoding: BinaryToTextEncoding): string => {
   const hash1 = createHash('sha256');
   hash1.update(data);
   const hash2 = createHash('sha256');
