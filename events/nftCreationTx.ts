@@ -1,8 +1,7 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
 
-import eventTemplate from '@events/eventTemplate.json';
-import { APIGatewayEventDefaultAuthorizerContext, APIGatewayProxyEventBase, Context, SQSEvent } from 'aws-lambda';
-import { cloneDeep } from 'lodash';
+import { APIGatewayEventDefaultAuthorizerContext, APIGatewayProxyEventBase, Context } from 'aws-lambda';
+import { Transaction } from '@src/types';
 
 export const nftCreationTx = {
   tx_id: '0025a6488045d7466639ead179a7f6beb188320f41cdb6df3a971db2ee86dbc3',
@@ -98,10 +97,46 @@ export const nftCreationTx = {
   throttled: false,
 };
 
-const cloneObj = (obj) => cloneDeep(obj);
-
-const evt: SQSEvent = cloneObj(eventTemplate);
-evt.Records[0].body = cloneObj(nftCreationTx);
+export function getTransaction(): Transaction {
+  const result = {
+    tx_id: nftCreationTx.tx_id,
+    nonce: 1,
+    timestamp: nftCreationTx.timestamp,
+    version: nftCreationTx.version,
+    weight: nftCreationTx.weight,
+    parents: nftCreationTx.parents,
+    inputs: nftCreationTx.inputs.map((i) => ({
+      tx_id: i.tx_id,
+      index: i.index,
+      value: i.value,
+      token_data: i.token_data,
+      script: i.script,
+      token: i.token,
+      decoded: {
+        type: i.decoded.type,
+        address: i.decoded.address,
+        timelock: i.decoded.timelock,
+      },
+    })),
+    outputs: nftCreationTx.outputs.map((o) => ({
+      value: o.value,
+      script: o.script,
+      token: o.token,
+      decoded: {
+        type: o.decoded.type,
+        address: o.decoded.address,
+        timelock: o.decoded.timelock,
+      },
+      spent_by: o.spent_by,
+      token_data: o.token_data,
+      locked: false,
+    })),
+    height: 8,
+    token_name: nftCreationTx.token_name,
+    token_symbol: nftCreationTx.token_symbol,
+  };
+  return result;
+}
 
 export function getApiGatewayEvent(body: unknown = ''): APIGatewayProxyEventBase<APIGatewayEventDefaultAuthorizerContext> {
   return {

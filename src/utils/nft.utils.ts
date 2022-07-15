@@ -35,8 +35,8 @@ export class NftUtils {
    */
     if (
       tx.version !== hathorLib.constants.CREATE_TOKEN_TX_VERSION // Must be a token creation tx
-    || tx.outputs.length < 2 // Must have at least 2 outputs
-    || tx.outputs[0].value !== 1 // One of the conditions of the DataScript output
+    || !tx.token_name // Must have a token name
+    || !tx.token_symbol // Must have a token symbol
     ) {
       return false;
     }
@@ -45,7 +45,7 @@ export class NftUtils {
     let isNftCreationTx;
     const libTx: hathorLib.CreateTokenTransaction = hathorLib.helpersUtils.createTxFromHistoryObject(tx);
     try {
-      libTx.validateNftCreation(); // This method will throw if the transaction is not an NFT Creation
+      libTx.validateNft(); // This method will throw if the transaction is not an NFT Creation
       isNftCreationTx = true;
     } catch (ex) {
       isNftCreationTx = false;
