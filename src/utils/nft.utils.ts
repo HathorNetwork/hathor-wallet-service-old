@@ -11,6 +11,8 @@ import { Transaction } from '@src/types';
 import hathorLib from '@hathor/wallet-lib';
 import createDefaultLogger from '@src/logger';
 
+const MAX_METADATA_UPDATE_RETRIES: number = parseInt(process.env.MAX_METADATA_UPDATE_RETRIES || '3', 10);
+
 /**
  * A helper for reading, generating and updating a NFT Token's metadata.
  */
@@ -105,8 +107,7 @@ async function updateMetadata(nftUid: string, metadata: Record<string, unknown>)
 
   const logger = createDefaultLogger();
   let retryCount = 0;
-  const MAX_RETRIES = 3;
-  while (retryCount < MAX_RETRIES) {
+  while (retryCount < MAX_METADATA_UPDATE_RETRIES) {
     const response = await lambda.invoke(params).promise();
 
     // Event InvocationType returns 202 for a successful invokation
@@ -124,7 +125,7 @@ async function updateMetadata(nftUid: string, metadata: Record<string, unknown>)
   }
 
   // Exceeded retry limit
-  throw new Error(`Metadata update failed for token ${nftUid}.`);
+  throw new Error('Metadata update failed.');
 }
 
 /**
