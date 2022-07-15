@@ -246,9 +246,10 @@ export const onNewNftEvent: APIGatewayProxyHandler = async (event, context) => {
     requestId: context.awsRequestId,
   };
 
+  let nftUid = null;
   try {
     // Checks existing metadata on this transaction and updates it if necessary
-    const nftUid = event.body as string;
+    nftUid = event.body as string;
     await createOrUpdateNftMetadata(nftUid);
   } catch (e) {
     logger.error('Errored on onNewNftEvent: ', e);
@@ -257,7 +258,7 @@ export const onNewNftEvent: APIGatewayProxyHandler = async (event, context) => {
       statusCode: 500,
       body: JSON.stringify({
         success: false,
-        message: 'onNewNftEvent failed',
+        message: `onNewNftEvent failed for token ${nftUid}`, // Failures on event body parsing yield a falsey nftUid
       }),
     };
   }
