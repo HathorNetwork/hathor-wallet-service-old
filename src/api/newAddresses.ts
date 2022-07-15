@@ -9,7 +9,7 @@ import 'source-map-support/register';
 
 import { APIGatewayProxyHandler } from 'aws-lambda';
 import { ApiError } from '@src/api/errors';
-import { closeDbAndGetError } from '@src/api/utils';
+import { closeDbAndGetError, warmupMiddleware } from '@src/api/utils';
 import {
   getWallet,
   getNewAddresses,
@@ -46,4 +46,5 @@ export const get: APIGatewayProxyHandler = middy(walletIdProxyHandler(async (wal
     statusCode: 200,
     body: JSON.stringify({ success: true, addresses }),
   };
-})).use(cors());
+})).use(cors())
+  .use(warmupMiddleware());

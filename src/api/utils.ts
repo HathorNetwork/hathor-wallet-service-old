@@ -63,3 +63,23 @@ export const closeDbAndGetError = async (
     body: JSON.stringify(body),
   };
 };
+
+/**
+ * Will return early if the request is a wake-up call from serverless-plugin-warmup
+ */
+export const warmupMiddleware = () => {
+  const warmupBefore = (event): APIGatewayProxyResult | undefined => {
+    if (event.source === 'serverless-plugin-warmup') {
+      return {
+        statusCode: 200,
+        body: 'OK',
+      };
+    }
+
+    return undefined;
+  };
+
+  return {
+    before: warmupBefore,
+  };
+};

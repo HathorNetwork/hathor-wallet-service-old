@@ -63,7 +63,7 @@
     "serverless": "^2.56.0",
     "serverless-api-gateway-throttling": "^1.1.1",
     "serverless-offline": "^8.0.0",
-    "serverless-plugin-warmup": "^7.1.0",
+    "serverless-plugin-warmup": "^6.2.1",
     "serverless-prune-plugin": "^1.5.0",
     "serverless-webpack": "^5.5.0",
     "sqlite3": "^5.0.2",

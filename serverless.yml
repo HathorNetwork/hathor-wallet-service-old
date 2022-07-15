@@ -8,7 +8,6 @@ custom:
     mainnet: info
     testnet: info
     dev-testnet: info
-  logLevel: ${self:custom.logLevelMap.${opt:stage}, 'debug'}
   webpack:
     webpackConfig: ./webpack.config.js
     includeModules: true
@@ -129,8 +128,8 @@ functions:
   onNewTxEvent:
     handler: src/txProcessor.onNewTxEvent
   loadWalletAsync:
-    warmup: true
     handler: src/api/wallet.loadWallet
+    warmup: true
   loadWalletApi:
     role: arn:aws:iam::769498303037:role/WalletServiceLoadWalletLambda
     handler: src/api/wallet.load
