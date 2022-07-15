@@ -9,6 +9,7 @@ import axios from 'axios';
 import { Lambda } from 'aws-sdk';
 import { Transaction } from '@src/types';
 import hathorLib from '@hathor/wallet-lib';
+import createDefaultLogger from '@src/logger';
 
 /**
  * A helper for reading, generating and updating a NFT Token's metadata.
@@ -102,14 +103,28 @@ async function updateMetadata(nftUid: string, metadata: Record<string, unknown>)
     }),
   };
 
-  const response = await lambda.invoke(params).promise();
+  const logger = createDefaultLogger();
+  let retryCount = 0;
+  const MAX_RETRIES = 3;
+  while (retryCount < MAX_RETRIES) {
+    const response = await lambda.invoke(params).promise();
 
-  // Event InvocationType returns 202 for a successful invokation
-  if (response.StatusCode !== 202) {
-    throw new Error('Lambda invoke failed');
+    // Event InvocationType returns 202 for a successful invokation
+    if (response.StatusCode === 202) {
+      // End the loop successfully
+      return response;
+    }
+
+    logger.warn('Failed metadata update', {
+      nftUid,
+      statusCode: response.StatusCode,
+      message: response.Payload.toString(),
+    });
+    ++retryCount;
   }
 
-  return response;
+  // Exceeded retry limit
+  throw new Error(`Metadata update failed for token ${nftUid}.`);
 }
 
 /**
