@@ -54,11 +54,7 @@ import {
   getUnixTimestamp,
 } from '@src/utils';
 import createDefaultLogger from '@src/logger';
-import {
-  createOrUpdateNftMetadata,
-  invokeNftHandlerLambda,
-  isTransactionNFTCreation,
-} from '@src/utils/nft.utils';
+import { NftUtils } from '@src/utils/nft.utils';
 
 const mysql = getDbConnection();
 
@@ -148,8 +144,8 @@ export const onNewTxRequest: APIGatewayProxyHandler = async (event, context) => 
   // Validating for NFTs after the tx is successfully added
   // This process is not critical, so in case of errors we can just log the exception and take no action on it.
   try {
-    if (isTransactionNFTCreation(tx)) {
-      invokeNftHandlerLambda(tx.tx_id)
+    if (NftUtils.isTransactionNFTCreation(tx)) {
+      NftUtils.invokeNftHandlerLambda(tx.tx_id)
         .catch((err) => { throw err; });
     }
   } catch (e) {
@@ -250,7 +246,7 @@ export const onNewNftEvent: APIGatewayProxyHandler = async (event, context) => {
   try {
     // Checks existing metadata on this transaction and updates it if necessary
     nftUid = event.body as string;
-    await createOrUpdateNftMetadata(nftUid);
+    await NftUtils.createOrUpdateNftMetadata(nftUid);
   } catch (e) {
     logger.error('Errored on onNewNftEvent: ', e);
 

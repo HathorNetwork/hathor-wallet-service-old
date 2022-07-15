@@ -5,7 +5,7 @@ import { getLatestHeight, getTokenInformation } from '@src/db';
 import * as Db from '@src/db';
 import * as txProcessor from '@src/txProcessor';
 import { closeDbConnection, getDbConnection, isAuthority } from '@src/utils';
-import * as tokenMetadataHelper from '@src/utils/nft.utils';
+import { NftUtils } from '@src/utils/nft.utils';
 import {
   XPUBKEY,
   AUTH_XPUBKEY,
@@ -295,8 +295,19 @@ test('txProcessor should ignore NFT outputs', async () => {
 });
 
 describe('NFT metadata updating', () => {
-  const spyFetchMetadata = jest.spyOn(tokenMetadataHelper, '_getTokenMetadata');
-  const spyUpdateMetadata = jest.spyOn(tokenMetadataHelper, '_updateMetadata');
+  const spyFetchMetadata = jest.spyOn(NftUtils, '_getTokenMetadata');
+  const spyUpdateMetadata = jest.spyOn(NftUtils, '_updateMetadata');
+
+  afterEach(() => {
+    spyFetchMetadata.mockReset();
+    spyUpdateMetadata.mockReset();
+  });
+
+  afterAll(() => {
+    // Clear mocks
+    spyFetchMetadata.mockRestore();
+    spyUpdateMetadata.mockRestore();
+  });
 
   it('should update metadata for NFT transactions', async () => {
     expect.hasAssertions();
