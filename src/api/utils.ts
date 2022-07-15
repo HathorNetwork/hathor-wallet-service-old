@@ -5,8 +5,9 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { APIGatewayProxyResult } from 'aws-lambda';
+import { APIGatewayProxyResult, APIGatewayProxyEvent } from 'aws-lambda';
 import { ServerlessMysql } from 'serverless-mysql';
+import middy from '@middy/core';
 
 import { ApiError } from '@src/api/errors';
 import { StringMap } from '@src/types';
@@ -67,9 +68,9 @@ export const closeDbAndGetError = async (
 /**
  * Will return early if the request is a wake-up call from serverless-plugin-warmup
  */
-export const warmupMiddleware = () => {
-  const warmupBefore = (event): APIGatewayProxyResult | undefined => {
-    if (event.source === 'serverless-plugin-warmup') {
+export const warmupMiddleware = (): middy.MiddlewareObj<APIGatewayProxyEvent, APIGatewayProxyResult> => {
+  const warmupBefore = (request: middy.Request): APIGatewayProxyResult | undefined => {
+    if (request.event.source === 'serverless-plugin-warmup') {
       return {
         statusCode: 200,
         body: 'OK',
