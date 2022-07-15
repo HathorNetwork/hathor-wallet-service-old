@@ -1,5 +1,6 @@
 import eventTemplate from '@events/eventTemplate.json';
 import { SQSEvent } from 'aws-lambda';
+import { cloneDeep } from 'lodash';
 
 export const nftCreationTx = {
   tx_id: '0025a6488045d7466639ead179a7f6beb188320f41cdb6df3a971db2ee86dbc3',
@@ -95,7 +96,7 @@ export const nftCreationTx = {
   throttled: false,
 };
 
-const cloneObj = (obj) => JSON.parse(JSON.stringify(obj));
+const cloneObj = (obj) => cloneDeep(obj);
 
 const evt: SQSEvent = cloneObj(eventTemplate);
 evt.Records[0].body = cloneObj(nftCreationTx);
