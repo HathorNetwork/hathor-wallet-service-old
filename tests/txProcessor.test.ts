@@ -24,7 +24,7 @@ import {
   createInput,
   addToAddressTxHistoryTable,
 } from '@tests/utils';
-import { nftCreationEvt } from '@events/nftCreationTx';
+import { nftCreationTx } from '@events/nftCreationTx';
 
 const mysql = getDbConnection();
 const blockReward = 6400;
@@ -310,33 +310,39 @@ describe('NFT metadata updating', () => {
       updated: 'ok',
     }));
 
-    await txProcessor.onNewNftEvent({ headers: undefined,
-      httpMethod: '',
-      isBase64Encoded: false,
-      multiValueHeaders: undefined,
-      multiValueQueryStringParameters: undefined,
-      path: '',
-      pathParameters: undefined,
-      queryStringParameters: undefined,
-      requestContext: undefined,
-      resource: '',
-      stageVariables: undefined,
-      body: 'abc123' }, {
-      awsRequestId: '',
-      callbackWaitsForEmptyEventLoop: false,
-      functionName: '',
-      functionVersion: '',
-      invokedFunctionArn: '',
-      logGroupName: '',
-      logStreamName: '',
-      memoryLimitInMB: '',
-      done(error?: Error, result?: any): void {},
-      fail(error: Error | string): void {},
-      getRemainingTimeInMillis(): number {
-        return 0;
+    await txProcessor.onNewNftEvent(
+      {
+        headers: undefined,
+        httpMethod: '',
+        isBase64Encoded: false,
+        multiValueHeaders: undefined,
+        multiValueQueryStringParameters: undefined,
+        path: '',
+        pathParameters: undefined,
+        queryStringParameters: undefined,
+        requestContext: undefined,
+        resource: '',
+        stageVariables: undefined,
+        body: nftCreationTx.tx_id,
       },
-      succeed(message: any, object?: any): void {},
-    }, () => '');
+      {
+        awsRequestId: '',
+        callbackWaitsForEmptyEventLoop: false,
+        functionName: '',
+        functionVersion: '',
+        invokedFunctionArn: '',
+        logGroupName: '',
+        logStreamName: '',
+        memoryLimitInMB: '',
+        done(): void {},
+        fail(): void {},
+        getRemainingTimeInMillis(): number {
+          return 0;
+        },
+        succeed(): void {},
+      },
+      () => '',
+    );
     expect(spyFetchMetadata).toHaveBeenCalledTimes(1);
     expect(spyUpdateMetadata).toHaveBeenCalledTimes(1);
   });
