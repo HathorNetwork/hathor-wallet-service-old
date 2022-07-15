@@ -1,5 +1,7 @@
+/* eslint-disable @typescript-eslint/no-empty-function */
+
 import eventTemplate from '@events/eventTemplate.json';
-import { SQSEvent } from 'aws-lambda';
+import { APIGatewayEventDefaultAuthorizerContext, APIGatewayProxyEventBase, Context, SQSEvent } from 'aws-lambda';
 import { cloneDeep } from 'lodash';
 
 export const nftCreationTx = {
@@ -100,4 +102,39 @@ const cloneObj = (obj) => cloneDeep(obj);
 
 const evt: SQSEvent = cloneObj(eventTemplate);
 evt.Records[0].body = cloneObj(nftCreationTx);
-export const nftCreationEvt = evt;
+
+export function getApiGatewayEvent(body: unknown = ''): APIGatewayProxyEventBase<APIGatewayEventDefaultAuthorizerContext> {
+  return {
+    headers: undefined,
+    httpMethod: '',
+    isBase64Encoded: false,
+    multiValueHeaders: undefined,
+    multiValueQueryStringParameters: undefined,
+    path: '',
+    pathParameters: undefined,
+    queryStringParameters: undefined,
+    requestContext: undefined,
+    resource: '',
+    stageVariables: undefined,
+    body: body.toString(),
+  };
+}
+
+export function getApiGatewayContext(): Context {
+  return {
+    awsRequestId: '',
+    callbackWaitsForEmptyEventLoop: false,
+    functionName: '',
+    functionVersion: '',
+    invokedFunctionArn: '',
+    logGroupName: '',
+    logStreamName: '',
+    memoryLimitInMB: '',
+    done(): void {},
+    fail(): void {},
+    getRemainingTimeInMillis(): number {
+      return 0;
+    },
+    succeed(): void {},
+  };
+}

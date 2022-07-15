@@ -79,6 +79,10 @@ export class NftUtils {
       { params: { id: tokenUid } },
     );
 
+    if (metadataResponse.status === 404) {
+      return {};
+    }
+
     return metadataResponse.data;
   }
 

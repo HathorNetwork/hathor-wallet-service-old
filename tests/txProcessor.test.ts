@@ -24,7 +24,7 @@ import {
   createInput,
   addToAddressTxHistoryTable,
 } from '@tests/utils';
-import { nftCreationTx } from '@events/nftCreationTx';
+import { getApiGatewayContext, getApiGatewayEvent, nftCreationTx } from '@events/nftCreationTx';
 
 const mysql = getDbConnection();
 const blockReward = 6400;
@@ -309,73 +309,66 @@ describe('NFT metadata updating', () => {
     spyUpdateMetadata.mockRestore();
   });
 
-  it('should update metadata for NFT transactions', async () => {
+  it('should request update when metadata does not exist', async () => {
     expect.hasAssertions();
 
-    spyFetchMetadata.mockImplementation(async (tokenUid) => ({
-      id: tokenUid,
-      nft: true,
-    }));
-
-    spyUpdateMetadata.mockImplementation(async () => ({
-      updated: 'ok',
-    }));
+    spyFetchMetadata.mockImplementation(async () => ({}));
+    spyUpdateMetadata.mockImplementation(async () => ({ updated: 'ok' }));
 
     await txProcessor.onNewNftEvent(
-      {
-        headers: undefined,
-        httpMethod: '',
-        isBase64Encoded: false,
-        multiValueHeaders: undefined,
-        multiValueQueryStringParameters: undefined,
-        path: '',
-        pathParameters: undefined,
-        queryStringParameters: undefined,
-        requestContext: undefined,
-        resource: '',
-        stageVariables: undefined,
-        body: nftCreationTx.tx_id,
-      },
-      {
-        awsRequestId: '',
-        callbackWaitsForEmptyEventLoop: false,
-        functionName: '',
-        functionVersion: '',
-        invokedFunctionArn: '',
-        logGroupName: '',
-        logStreamName: '',
-        memoryLimitInMB: '',
-        done(): void {},
-        fail(): void {},
-        getRemainingTimeInMillis(): number {
-          return 0;
-        },
-        succeed(): void {},
-      },
+      getApiGatewayEvent(nftCreationTx.tx_id),
+      getApiGatewayContext(),
       () => '',
     );
     expect(spyFetchMetadata).toHaveBeenCalledTimes(1);
     expect(spyUpdateMetadata).toHaveBeenCalledTimes(1);
   });
 
-  it('should not query nor update metadata for a default transaction', async () => {
+  it('should request update for an existing non-nft metadata', async () => {
     expect.hasAssertions();
 
-    const evt = JSON.parse(JSON.stringify(eventTemplate));
-    await txProcessor.onNewTxEvent(evt);
+    spyFetchMetadata.mockImplementation(async (tokenUid) => {
+      const responseBody = {};
+      responseBody[tokenUid] = {
+        id: tokenUid,
+        nft: false,
+      };
+      return responseBody;
+    });
+    spyUpdateMetadata.mockImplementation(async () => ({ updated: 'ok' }));
 
-    expect(spyFetchMetadata).toHaveBeenCalledTimes(0);
-    expect(spyUpdateMetadata).toHaveBeenCalledTimes(0);
+    await txProcessor.onNewNftEvent(
+      getApiGatewayEvent(nftCreationTx.tx_id),
+      getApiGatewayContext(),
+      () => '',
+    );
+
+    expect(spyFetchMetadata).toHaveBeenCalledTimes(1);
+    expect(spyUpdateMetadata).toHaveBeenCalledTimes(1);
   });
 
-  it('should not query nor update metadata for a non-nft token creation', async () => {
+  it('should not request update for an existing nft metadata', async () => {
     expect.hasAssertions();
 
-    const evt = JSON.parse(JSON.stringify(eventTemplate));
-    evt.Records[0].body = tokenCreationTx;
-    await txProcessor.onNewTxEvent(evt);
+    spyFetchMetadata.mockImplementation(async (tokenUid) => {
+      const responseBody = {};
+      responseBody[tokenUid] = {
+        id: tokenUid,
+        nft: true,
+      };
+      return responseBody;
+    });
+    spyUpdateMetadata.mockImplementation(async () => ({
+      updated: 'should not be called',
+    }));
 
-    expect(spyFetchMetadata).toHaveBeenCalledTimes(0);
+    await txProcessor.onNewNftEvent(
+      getApiGatewayEvent(nftCreationTx.tx_id),
+      getApiGatewayContext(),
+      () => '',
+    );
+
+    expect(spyFetchMetadata).toHaveBeenCalledTimes(1);
     expect(spyUpdateMetadata).toHaveBeenCalledTimes(0);
   });
 });
