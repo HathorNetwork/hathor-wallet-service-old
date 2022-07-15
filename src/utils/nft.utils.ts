@@ -72,7 +72,7 @@ function generateNFTTokenMetadataJSON(nftUid: string): Record<string, { id: stri
  * @param {string} tokenUid
  * @returns {Promise<Record<string, unknown>>} Token metadata
  */
-async function getTokenMetadata(tokenUid: string): Promise<Record<string, unknown>> {
+export async function _getTokenMetadata(tokenUid: string): Promise<Record<string, unknown>> {
   const metadataResponse = await axios.get(
     tokenMetadataApi,
     { params: { id: tokenUid } },
@@ -86,7 +86,7 @@ async function getTokenMetadata(tokenUid: string): Promise<Record<string, unknow
    * @param {string} nftUid
    * @param {Record<string, unknown>} metadata
    */
-async function updateMetadata(nftUid: string, metadata: Record<string, unknown>): Promise<unknown> {
+export async function _updateMetadata(nftUid: string, metadata: Record<string, unknown>): Promise<unknown> {
   // invoke lambda asynchronously to metadata update
   const lambda = new Lambda({
     apiVersion: '2015-03-31',
@@ -135,7 +135,7 @@ async function updateMetadata(nftUid: string, metadata: Record<string, unknown>)
    */
 export async function createOrUpdateNftMetadata(nftUid: string): Promise<void> {
   // Fetching current metadata for this token
-  const existingMetadata = await getTokenMetadata(nftUid) || {};
+  const existingMetadata = await _getTokenMetadata(nftUid) || {};
 
   // Metadata already exists and is correct: Do nothing.
   const tokenMetadata = existingMetadata[nftUid] as { nft: boolean };
@@ -146,13 +146,13 @@ export async function createOrUpdateNftMetadata(nftUid: string): Promise<void> {
   // Metadata already exists, but does not have the NFT flag: Update existing data.
   if (tokenMetadata) {
     tokenMetadata.nft = true;
-    await updateMetadata(nftUid, existingMetadata);
+    await _updateMetadata(nftUid, existingMetadata);
     return;
   }
 
   // There is no metadata for this token: create and upload it.
   const newMetadata = generateNFTTokenMetadataJSON(nftUid);
-  await updateMetadata(nftUid, newMetadata);
+  await _updateMetadata(nftUid, newMetadata);
 }
 
 export async function invokeNftHandlerLambda(txId: string): Promise<void> {

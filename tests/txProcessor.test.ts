@@ -1,9 +1,11 @@
+/* eslint-disable @typescript-eslint/no-empty-function */
 import eventTemplate from '@events/eventTemplate.json';
 import tokenCreationTx from '@events/tokenCreationTx.json';
 import { getLatestHeight, getTokenInformation } from '@src/db';
 import * as Db from '@src/db';
 import * as txProcessor from '@src/txProcessor';
-import { closeDbConnection, getDbConnection, isAuthority, tokenMetadataHelper } from '@src/utils';
+import { closeDbConnection, getDbConnection, isAuthority } from '@src/utils';
+import * as tokenMetadataHelper from '@src/utils/nft.utils';
 import {
   XPUBKEY,
   AUTH_XPUBKEY,
@@ -293,8 +295,8 @@ test('txProcessor should ignore NFT outputs', async () => {
 });
 
 describe('NFT metadata updating', () => {
-  const spyFetchMetadata = jest.spyOn(tokenMetadataHelper, 'getTokenMetadata');
-  const spyUpdateMetadata = jest.spyOn(tokenMetadataHelper, 'updateMetadata');
+  const spyFetchMetadata = jest.spyOn(tokenMetadataHelper, '_getTokenMetadata');
+  const spyUpdateMetadata = jest.spyOn(tokenMetadataHelper, '_updateMetadata');
 
   it('should update metadata for NFT transactions', async () => {
     expect.hasAssertions();
@@ -308,7 +310,33 @@ describe('NFT metadata updating', () => {
       updated: 'ok',
     }));
 
-    await txProcessor.onNewTxEvent(nftCreationEvt);
+    await txProcessor.onNewNftEvent({ headers: undefined,
+      httpMethod: '',
+      isBase64Encoded: false,
+      multiValueHeaders: undefined,
+      multiValueQueryStringParameters: undefined,
+      path: '',
+      pathParameters: undefined,
+      queryStringParameters: undefined,
+      requestContext: undefined,
+      resource: '',
+      stageVariables: undefined,
+      body: 'abc123' }, {
+      awsRequestId: '',
+      callbackWaitsForEmptyEventLoop: false,
+      functionName: '',
+      functionVersion: '',
+      invokedFunctionArn: '',
+      logGroupName: '',
+      logStreamName: '',
+      memoryLimitInMB: '',
+      done(error?: Error, result?: any): void {},
+      fail(error: Error | string): void {},
+      getRemainingTimeInMillis(): number {
+        return 0;
+      },
+      succeed(message: any, object?: any): void {},
+    }, () => '');
     expect(spyFetchMetadata).toHaveBeenCalledTimes(1);
     expect(spyUpdateMetadata).toHaveBeenCalledTimes(1);
   });
