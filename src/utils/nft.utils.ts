@@ -59,7 +59,7 @@ export class NftUtils {
  * @param {string} nftUid
  * @returns {Record<string,{id:string,nft:boolean}>}
  */
-  static generateNFTTokenMetadataJSON(nftUid: string): Record<string, { id: string, nft: boolean }> {
+  static _generateNFTTokenMetadataJSON(nftUid: string): Record<string, { id: string, nft: boolean }> {
     const nftMetadata = {};
     nftMetadata[nftUid] = {
       id: nftUid,
@@ -156,7 +156,7 @@ export class NftUtils {
     }
 
     // There is no metadata for this token: create and upload it.
-    const newMetadata = NftUtils.generateNFTTokenMetadataJSON(nftUid);
+    const newMetadata = NftUtils._generateNFTTokenMetadataJSON(nftUid);
     await NftUtils._updateMetadata(nftUid, newMetadata);
   }
 
