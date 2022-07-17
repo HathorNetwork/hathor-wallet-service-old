@@ -77,11 +77,14 @@ export class NftUtils {
     const metadataResponse = await axios.get(
       tokenMetadataApi,
       { params: { id: tokenUid } },
-    );
+    )
+      .catch((errResponse) => {
+        if (errResponse.status === 404) {
+          return { data: {} };
+        }
 
-    if (metadataResponse.status === 404) {
-      return {};
-    }
+        throw errResponse;
+      });
 
     return metadataResponse.data;
   }

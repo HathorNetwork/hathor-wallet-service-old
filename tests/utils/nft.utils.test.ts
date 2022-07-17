@@ -1,6 +1,7 @@
 import hathorLib from '@hathor/wallet-lib';
 import { NftUtils } from '@src/utils/nft.utils';
 import { getTransaction } from '@events/nftCreationTx';
+import axios from 'axios';
 
 describe('isTransactionNFTCreation', () => {
   it('should return false on quick validations', () => {
@@ -146,5 +147,59 @@ describe('createOrUpdateNftMetadata', () => {
     expect(spyUpdateMetadata).toHaveBeenCalledTimes(1);
 
     expect(spyUpdateMetadata).toHaveBeenCalledWith('sampleUid', expectedUpdateRequest);
+  });
+});
+
+describe('_getTokenMetadata', () => {
+  const spyAxiosGet = jest.spyOn(axios, 'get');
+
+  afterEach(() => {
+    spyAxiosGet.mockReset();
+  });
+
+  afterAll(() => {
+    spyAxiosGet.mockRestore();
+  });
+
+  it('should retrieve metadata from http response', async () => {
+    expect.hasAssertions();
+    const expectedHttpResponse = {
+      status: 200,
+      data: { mockedResponse: 'yes' },
+    };
+    spyAxiosGet.mockImplementation(async () => expectedHttpResponse);
+
+    const results = await NftUtils._getTokenMetadata('sampleUid');
+    expect(results).toStrictEqual(expectedHttpResponse.data);
+  });
+
+  it('should retrieve an empty object when the token metadata is not found', async () => {
+    expect.hasAssertions();
+    const expectedHttpResponse = {
+      status: 404,
+      data: { whateverData: 'ignore' },
+    };
+    spyAxiosGet.mockImplementation(async () => {
+      throw expectedHttpResponse;
+    });
+
+    const results = await NftUtils._getTokenMetadata('sampleUid');
+    expect(results).toStrictEqual({});
+  });
+
+  it('should rethrow when an error happens', async () => {
+    expect.hasAssertions();
+    const expectedHttpResponse = {
+      status: 500,
+      data: { description: 'error message' },
+    };
+    spyAxiosGet.mockImplementation(async () => {
+      throw expectedHttpResponse;
+    });
+
+    const result = await NftUtils._getTokenMetadata('sampleUid')
+      .catch((err) => err);
+
+    expect(result).toStrictEqual(expectedHttpResponse);
   });
 });
