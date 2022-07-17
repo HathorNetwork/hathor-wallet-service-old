@@ -11,7 +11,7 @@ import { Transaction } from '@src/types';
 import hathorLib from '@hathor/wallet-lib';
 import createDefaultLogger from '@src/logger';
 
-const MAX_METADATA_UPDATE_RETRIES: number = parseInt(process.env.MAX_METADATA_UPDATE_RETRIES || '3', 10);
+export const MAX_METADATA_UPDATE_RETRIES: number = parseInt(process.env.MAX_METADATA_UPDATE_RETRIES || '3', 10);
 
 /**
  * A helper for reading, generating and updating a NFT Token's metadata.

@@ -2,6 +2,7 @@ import hathorLib from '@hathor/wallet-lib';
 import { NftUtils } from '@src/utils/nft.utils';
 import { getTransaction } from '@events/nftCreationTx';
 import axios from 'axios';
+import { Lambda } from 'aws-sdk';
 
 describe('isTransactionNFTCreation', () => {
   it('should return false on quick validations', () => {
@@ -201,5 +202,35 @@ describe('_getTokenMetadata', () => {
       .catch((err) => err);
 
     expect(result).toStrictEqual(expectedHttpResponse);
+  });
+});
+
+// eslint-disable-next-line jest/no-disabled-tests
+describe.skip('_updateMetadata', () => {
+  // const spyLambdaInvoke = jest.spyOn(Lambda.prototype, 'invoke');
+  // afterEach(() => {
+  //   spyLambdaInvoke.mockReset();
+  // });
+  // afterAll(() => {
+  //   spyLambdaInvoke.mockRestore();
+  // });
+
+  it('should return the update lambda response on success', async () => {
+    expect.hasAssertions();
+
+    const expectedResponse = {
+      StatusCode: 202,
+      Payload: 'sampleData',
+    };
+
+    // Typescript demands this object to be more complex than the tests need. Supressing these requirements.
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    spyLambdaInvoke.mockImplementation(async () => ({
+      promise: async () => expectedResponse,
+    }));
+
+    const result = await NftUtils._updateMetadata('sampleUid', { sampleData: 'fake' });
+    expect(result).toStrictEqual(expectedResponse);
   });
 });
