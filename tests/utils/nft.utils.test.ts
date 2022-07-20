@@ -2,7 +2,12 @@ import hathorLib from '@hathor/wallet-lib';
 import { NftUtils } from '@src/utils/nft.utils';
 import { getTransaction } from '@events/nftCreationTx';
 import axios from 'axios';
-import { Lambda } from 'aws-sdk';
+import { Lambda as LambdaMock } from 'aws-sdk';
+
+jest.mock('aws-sdk', () => {
+  const mLambda = { invoke: jest.fn() };
+  return { Lambda: jest.fn(() => mLambda) };
+});
 
 describe('isTransactionNFTCreation', () => {
   it('should return false on quick validations', () => {
@@ -214,32 +219,22 @@ describe('_getTokenMetadata', () => {
   });
 });
 
-// eslint-disable-next-line jest/no-disabled-tests
-describe.skip('_updateMetadata', () => {
-  // const spyLambdaInvoke = jest.spyOn(Lambda.prototype, 'invoke');
-  // afterEach(() => {
-  //   spyLambdaInvoke.mockReset();
-  // });
-  // afterAll(() => {
-  //   spyLambdaInvoke.mockRestore();
-  // });
-
+describe('_updateMetadata', () => {
   it('should return the update lambda response on success', async () => {
     expect.hasAssertions();
 
-    const expectedResponse = {
+    // Building the mock lambda
+    const expectedLambdaResponse = {
       StatusCode: 202,
       Payload: 'sampleData',
     };
-
-    // Typescript demands this object to be more complex than the tests need. Supressing these requirements.
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    spyLambdaInvoke.mockImplementation(async () => ({
-      promise: async () => expectedResponse,
+    const mLambda = new LambdaMock();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (mLambda.invoke as jest.Mocked<any>).mockImplementationOnce(() => ({
+      promise: async () => expectedLambdaResponse,
     }));
 
     const result = await NftUtils._updateMetadata('sampleUid', { sampleData: 'fake' });
-    expect(result).toStrictEqual(expectedResponse);
+    expect(result).toStrictEqual(expectedLambdaResponse);
   });
 });
