@@ -4,7 +4,8 @@
   "description": "",
   "scripts": {
     "postinstall": "npm dedupe",
-    "jest": "jest --runInBand --collectCoverage --detectOpenHandles --forceExit",
+    "jest": "jest --runInBand --collectCoverage --forceExit",
+    "jest-detect-handles": "jest --runInBand --collectCoverage --detectOpenHandles --forceExit",
     "lint": "eslint src/ tests/ --ext .js,.jsx,.ts,.tsx src tests",
     "lint-fix": "eslint src/ tests/ --fix --ext .js,.jsx,.ts,.tsx src tests",
     "check-types": "tsc --noemit",
