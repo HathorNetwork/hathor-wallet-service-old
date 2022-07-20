@@ -106,6 +106,12 @@ provider:
         - sqs:*
       Resource:
         Fn::GetAtt: [ WalletServiceNewTxQueue, Arn ]
+    - Effect: Allow
+      Action:
+        - lambda:InvokeFunction
+        - lambda:InvokeAsync
+      Resource:
+        Fn::GetAtt: [ onNewNftEvent, Arn ]
 
 functions:
   onHandleOldVoidedTxs:
