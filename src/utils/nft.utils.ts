@@ -20,7 +20,7 @@ export const MAX_METADATA_UPDATE_RETRIES: number = parseInt(process.env.MAX_META
 /**
  * Url of the API that provides and updates token metadata
  */
-const tokenMetadataApi: string = process.env.TOKEN_METADATA_URL || 'https://explorer-service.hathor.network/metadata/dag';
+const tokenMetadataApi: string = process.env.TOKEN_METADATA_URL;
 
 export class NftUtils {
 /**
@@ -74,6 +74,10 @@ export class NftUtils {
  * @returns {Promise<Record<string, unknown>>} Token metadata
  */
   static async _getTokenMetadata(tokenUid: string): Promise<Record<string, unknown>> {
+    if (!tokenMetadataApi) {
+      throw new Error('Missing TOKEN_METADATA_URL setting');
+    }
+
     const metadataResponse = await axios.get(
       tokenMetadataApi,
       { params: { id: tokenUid } },
