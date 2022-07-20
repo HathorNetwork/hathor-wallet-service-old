@@ -97,6 +97,7 @@ provider:
     STAGE: ${opt:stage, 'dev'}
     VOIDED_TX_OFFSET: ${env:VOIDED_TX_OFFSET}
     DEFAULT_SERVER: ${env:DEFAULT_SERVER}
+    TOKEN_METADATA_URL: ${env:TOKEN_METADATA_URL}
     WS_DOMAIN: ${env:WS_DOMAIN}
     TX_HISTORY_MAX_COUNT: ${env:TX_HISTORY_MAX_COUNT}
     LOG_LEVEL: ${self:custom.logLevel}
@@ -111,7 +112,9 @@ provider:
         - lambda:InvokeFunction
         - lambda:InvokeAsync
       Resource:
-        Fn::GetAtt: [ onNewNftEvent, Arn ]
+        # Syntax is: {normalizedFunctionName}LambdaFunction ( normalization capitalizes first letter )
+#         Fn::GetAtt: [ OnNewNftEventLambdaFunction, Arn ]
+        arn:aws:lambda:eu-central-1:769498303037:function:hathor-wallet-service-dev-testnet-onNewNftEvent
 
 functions:
   onHandleOldVoidedTxs:
