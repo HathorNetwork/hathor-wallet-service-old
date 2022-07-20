@@ -17,17 +17,17 @@ export const MAX_METADATA_UPDATE_RETRIES: number = parseInt(process.env.MAX_META
  * A helper for reading, generating and updating a NFT Token's metadata.
  */
 
-/**
- * Url of the API that provides and updates token metadata
- */
-const tokenMetadataApi: string = process.env.TOKEN_METADATA_URL;
-
 export class NftUtils {
-/**
- * Returns if the transaction in the parameter is an NFT Creation.
- * @param {Transaction} tx
- * @returns {boolean}
- */
+  /**
+   * Url of the API that provides and updates token metadata
+   */
+  static tokenMetadataApi: string = process.env.TOKEN_METADATA_URL
+
+  /**
+   * Returns if the transaction in the parameter is an NFT Creation.
+   * @param {Transaction} tx
+   * @returns {boolean}
+   */
   static isTransactionNFTCreation(tx: Transaction): boolean {
   /*
    * To fully check if a transaction is an NFT creation, we need to instantiate a new Transaction object in the lib.
@@ -74,12 +74,12 @@ export class NftUtils {
  * @returns {Promise<Record<string, unknown>>} Token metadata
  */
   static async _getTokenMetadata(tokenUid: string): Promise<Record<string, unknown>> {
-    if (!tokenMetadataApi) {
+    if (!NftUtils.tokenMetadataApi) {
       throw new Error('Missing TOKEN_METADATA_URL setting');
     }
 
     const metadataResponse = await axios.get(
-      tokenMetadataApi,
+      NftUtils.tokenMetadataApi,
       { params: { id: tokenUid } },
     )
       .catch((errResponse) => {

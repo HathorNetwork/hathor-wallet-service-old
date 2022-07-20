@@ -217,6 +217,22 @@ describe('_getTokenMetadata', () => {
 
     expect(result).toStrictEqual(expectedHttpResponse);
   });
+
+  it('should throw when the API url is not set', async () => {
+    expect.hasAssertions();
+    spyAxiosGet.mockImplementation(async () => ({}));
+
+    // Mocking the API environment url
+    const oldUrl = NftUtils.tokenMetadataApi;
+    NftUtils.tokenMetadataApi = '';
+
+    await expect(NftUtils._getTokenMetadata('sampleUid'))
+      .rejects.toThrow(new Error('Missing TOKEN_METADATA_URL setting'));
+    expect(spyAxiosGet).not.toHaveBeenCalled();
+
+    // Reverting mocked value
+    NftUtils.tokenMetadataApi = oldUrl;
+  });
 });
 
 describe('_updateMetadata', () => {
