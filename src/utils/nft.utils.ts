@@ -45,7 +45,7 @@ export class NftUtils {
     let isNftCreationTx;
     const libTx: hathorLib.CreateTokenTransaction = hathorLib.helpersUtils.createTxFromHistoryObject(tx);
     try {
-      libTx.validateNft(); // This method will throw if the transaction is not an NFT Creation
+      libTx.validateNft(new hathorLib.Network(process.env.NETWORK)); // This method will throw if the transaction is not an NFT Creation
       isNftCreationTx = true;
     } catch (ex) {
       isNftCreationTx = false;

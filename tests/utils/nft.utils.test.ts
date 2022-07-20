@@ -55,6 +55,15 @@ describe('isTransactionNFTCreation', () => {
     spyNftValidation.mockRestore();
   });
 
+  it('should return true when the wallet-lib validation does not fail (unmocked)', () => {
+    expect.hasAssertions();
+
+    // Validation
+    const tx = getTransaction();
+    const result = NftUtils.isTransactionNFTCreation(tx);
+    expect(result).toBe(true);
+  });
+
   it('should return false when the wallet-lib validation throws', () => {
     expect.hasAssertions();
 
