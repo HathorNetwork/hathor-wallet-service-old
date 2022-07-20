@@ -1,5 +1,5 @@
 import hathorLib from '@hathor/wallet-lib';
-import { NftUtils } from '@src/utils/nft.utils';
+import { MAX_METADATA_UPDATE_RETRIES, NftUtils } from '@src/utils/nft.utils';
 import { getTransaction } from '@events/nftCreationTx';
 import axios from 'axios';
 import { Lambda as LambdaMock } from 'aws-sdk';
@@ -236,5 +236,60 @@ describe('_updateMetadata', () => {
 
     const result = await NftUtils._updateMetadata('sampleUid', { sampleData: 'fake' });
     expect(result).toStrictEqual(expectedLambdaResponse);
+  });
+
+  it('should retry calling the update lambda a set number of times', async () => {
+    expect.hasAssertions();
+
+    // Building the mock lambda
+    let failureCount = 0;
+    const expectedLambdaResponse = {
+      StatusCode: 202,
+      Payload: 'sampleData',
+    };
+    const mLambda = new LambdaMock();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (mLambda.invoke as jest.Mocked<any>).mockImplementation(() => ({
+      promise: async () => {
+        if (failureCount < MAX_METADATA_UPDATE_RETRIES - 1) {
+          ++failureCount;
+          return {
+            StatusCode: 500,
+            Payload: 'failurePayload',
+          };
+        }
+        return expectedLambdaResponse;
+      },
+    }));
+
+    const result = await NftUtils._updateMetadata('sampleUid', { sampleData: 'fake' });
+    expect(result).toStrictEqual(expectedLambdaResponse);
+  });
+
+  it('should throw after reaching retry count', async () => {
+    expect.hasAssertions();
+
+    // Building the mock lambda
+    let failureCount = 0;
+    const mLambda = new LambdaMock();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (mLambda.invoke as jest.Mocked<any>).mockImplementation(() => ({
+      promise: async () => {
+        if (failureCount < MAX_METADATA_UPDATE_RETRIES) {
+          ++failureCount;
+          return {
+            StatusCode: 500,
+            Payload: 'failurePayload',
+          };
+        }
+        return {
+          StatusCode: 202,
+          Payload: 'sampleData',
+        };
+      },
+    }));
+
+    expect(NftUtils._updateMetadata('sampleUid', { sampleData: 'fake' }))
+      .rejects.toThrow(new Error('Metadata update failed.'));
   });
 });
