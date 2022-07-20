@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
+import hathorLib from '@hathor/wallet-lib';
 import eventTemplate from '@events/eventTemplate.json';
 import tokenCreationTx from '@events/tokenCreationTx.json';
 import { getLatestHeight, getTokenInformation } from '@src/db';
@@ -370,6 +371,33 @@ describe('NFT metadata updating', () => {
 
     expect(spyFetchMetadata).toHaveBeenCalledTimes(1);
     expect(spyUpdateMetadata).toHaveBeenCalledTimes(0);
+  });
+
+  it('should return a standardized message on nft validation failure', async () => {
+    expect.hasAssertions();
+
+    const spyCreateOrUpdate = jest.spyOn(NftUtils, 'createOrUpdateNftMetadata');
+    spyCreateOrUpdate.mockImplementation(() => {
+      throw new Error('Failure on validation');
+    });
+
+    const result = await txProcessor.onNewNftEvent(
+      getApiGatewayEvent(nftCreationTx.tx_id),
+      getApiGatewayContext(),
+      () => '',
+    );
+
+    const expectedResult = {
+      statusCode: 500,
+      body: JSON.stringify({
+        success: false,
+        message: `onNewNftEvent failed for token ${nftCreationTx.tx_id}`,
+      }),
+    };
+    expect(result).toStrictEqual(expectedResult);
+
+    spyCreateOrUpdate.mockReset();
+    spyCreateOrUpdate.mockRestore();
   });
 });
 
