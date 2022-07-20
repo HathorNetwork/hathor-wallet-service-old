@@ -289,6 +289,7 @@ describe('_updateMetadata', () => {
       },
     }));
 
+    // eslint-disable-next-line jest/valid-expect
     expect(NftUtils._updateMetadata('sampleUid', { sampleData: 'fake' }))
       .rejects.toThrow(new Error('Metadata update failed.'));
   });
