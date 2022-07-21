@@ -314,3 +314,79 @@ describe('_updateMetadata', () => {
       .rejects.toThrow(new Error('Metadata update failed.'));
   });
 });
+
+describe('invokeNftHandlerLambda', () => {
+  it('should return the lambda response on success', async () => {
+    expect.hasAssertions();
+
+    // Building the mock lambda
+    const expectedLambdaResponse: LambdaMock.InvocationResponse = {
+      StatusCode: 202,
+      Payload: JSON.stringify({ success: true }),
+    };
+    const mLambda = new LambdaMock();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (mLambda.invoke as jest.Mocked<any>).mockImplementationOnce(() => ({
+      promise: async () => expectedLambdaResponse,
+    }));
+
+    await expect(NftUtils.invokeNftHandlerLambda('sampleUid')).resolves.toBeUndefined();
+  });
+
+  it('should throw when payload response status is invalid', async () => {
+    expect.hasAssertions();
+
+    // Building the mock lambda
+    const mLambda = new LambdaMock();
+    const expectedLambdaResponse: LambdaMock.InvocationResponse = {
+      StatusCode: 500,
+      Payload: {
+        success: false,
+        message: 'had a failure',
+      },
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (mLambda.invoke as jest.Mocked<any>).mockImplementation(() => ({
+      promise: async () => expectedLambdaResponse,
+    }));
+
+    await expect(NftUtils.invokeNftHandlerLambda('sampleUid'))
+      .rejects.toThrow(new Error('NFT Handler lambda invoke failed'));
+  });
+
+  it('should throw when payload response payload is invalid', async () => {
+    expect.hasAssertions();
+
+    // Building the mock lambda
+    const mLambda = new LambdaMock();
+    const expectedLambdaResponse: LambdaMock.InvocationResponse = {
+      StatusCode: 202,
+      Payload: '{ "malformedJson": true, ',
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (mLambda.invoke as jest.Mocked<any>).mockImplementation(() => ({
+      promise: async () => expectedLambdaResponse,
+    }));
+
+    await expect(NftUtils.invokeNftHandlerLambda('sampleUid'))
+      .rejects.toThrow(new Error('Unable to parse invoke payload response: Unexpected end of JSON input'));
+  });
+
+  it('should throw when success is not true', async () => {
+    expect.hasAssertions();
+
+    // Building the mock lambda
+    const mLambda = new LambdaMock();
+    const expectedLambdaResponse: LambdaMock.InvocationResponse = {
+      StatusCode: 202,
+      Payload: JSON.stringify({ success: false, message: 'had a failure' }),
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (mLambda.invoke as jest.Mocked<any>).mockImplementation(() => ({
+      promise: async () => expectedLambdaResponse,
+    }));
+
+    await expect(NftUtils.invokeNftHandlerLambda('sampleUid'))
+      .rejects.toThrow(new Error('Unsuccessful invoke: had a failure'));
+  });
+});

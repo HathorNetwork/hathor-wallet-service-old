@@ -191,5 +191,16 @@ export class NftUtils {
     if (response.StatusCode !== 202) {
       throw new Error('NFT Handler lambda invoke failed');
     }
+
+    let payload;
+    try {
+      payload = JSON.parse(response.Payload.toString()) as unknown as { success: boolean, message?: string };
+    } catch (e) {
+      throw new Error(`Unable to parse invoke payload response: ${e.message}`);
+    }
+
+    if (payload.success !== true) {
+      throw new Error(`Unsuccessful invoke: ${payload.message}`);
+    }
   }
 }
