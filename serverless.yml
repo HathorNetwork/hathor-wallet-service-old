@@ -4,11 +4,16 @@ frameworkVersion: '2'
 useDotenv: true
 
 custom: 
+  warmup: 
+    walletWarmer: # Keeps the lambdas used by the wallets initialization warm
+      enabled: true
+      verbose: true
+      events:
+        - schedule: cron(0/5 * ? * MON-SUN *) # Every 5 minutes, every day
   logLevelMap:  
     mainnet: info
     testnet: info
     dev-testnet: info
-  logLevel: ${self:custom.logLevelMap.${opt:stage}, 'debug'}
   webpack:
     webpackConfig: ./webpack.config.js
     includeModules: true
@@ -32,6 +37,8 @@ plugins:
   - serverless-webpack
   - serverless-prune-plugin
   - serverless-api-gateway-throttling
+  - serverless-plugin-warmup
+
 
 resources:
   Resources:
@@ -131,6 +138,7 @@ functions:
   loadWalletApi:
     role: arn:aws:iam::769498303037:role/WalletServiceLoadWalletLambda
     handler: src/api/wallet.load
+    warmup: true
     events:
       - http:
           path: wallet/init
@@ -145,6 +153,7 @@ functions:
           cors: true
   getWalletStatusApi:
     handler: src/api/wallet.get
+    warmup: true
     events:
       - http:
           path: wallet/status
@@ -153,6 +162,7 @@ functions:
           authorizer: ${self:custom.authorizer.walletBearer}
   getAddressesApi:
     handler: src/api/addresses.get
+    warmup: true
     events:
       - http:
           path: wallet/addresses
@@ -161,6 +171,7 @@ functions:
           authorizer: ${self:custom.authorizer.walletBearer}
   getNewAddresses:
     handler: src/api/newAddresses.get
+    warmup: true
     events:
       - http:
           path: wallet/addresses/new
@@ -185,6 +196,7 @@ functions:
           authorizer: ${self:custom.authorizer.walletBearer}
   getBalanceApi:
     handler: src/api/balances.get
+    warmup: true
     events:
       - http:
           path: wallet/balances
@@ -193,6 +205,7 @@ functions:
           authorizer: ${self:custom.authorizer.walletBearer}
   getTokensApi:
     handler: src/api/tokens.get
+    warmup: true
     events:
       - http:
           path: wallet/tokens
@@ -213,6 +226,7 @@ functions:
                 token_id: true
   getVersionData:
     handler: src/api/version.get
+    warmup: true
     events:
       - http:
           path: version
@@ -220,6 +234,7 @@ functions:
           cors: true
   getTxHistoryApi:
     handler: src/api/txhistory.get
+    warmup: true
     events:
       - http:
           path: wallet/history

@@ -32,7 +32,7 @@ import {
   validateAuthTimestamp,
   AUTH_MAX_TIMESTAMP_SHIFT_IN_SECONDS,
 } from '@src/utils';
-import { closeDbAndGetError } from '@src/api/utils';
+import { closeDbAndGetError, warmupMiddleware } from '@src/api/utils';
 import { walletIdProxyHandler } from '@src/commons';
 import middy from '@middy/core';
 import cors from '@middy/http-cors';
@@ -59,7 +59,8 @@ export const get: APIGatewayProxyHandler = middy(walletIdProxyHandler(async (wal
     statusCode: 200,
     body: JSON.stringify({ success: true, status }),
   };
-})).use(cors());
+})).use(cors())
+  .use(warmupMiddleware());
 
 // If the env requires to validate the first address
 // then we must set the firstAddress field as required
@@ -365,9 +366,11 @@ export const load: APIGatewayProxyHandler = middy(async (event) => {
     statusCode: 200,
     body: JSON.stringify({ success: true, status: wallet }),
   };
-}).use(cors());
+}).use(cors())
+  .use(warmupMiddleware());
 
 interface LoadEvent {
+  source?: string;
   xpubkey: string;
   maxGap: number;
 }
@@ -385,6 +388,16 @@ interface LoadResult {
  * This lambda is called async by another lambda, the one reponsible for the load wallet API
  */
 export const loadWallet: Handler<LoadEvent, LoadResult> = async (event) => {
+  // Can't use a middleware on this event, so we should just check the source (added by the warmup plugin) as
+  // our default middleware does
+  if (event.source === 'serverless-plugin-warmup') {
+    return {
+      success: true,
+      walletId: '',
+      xpubkey: '',
+    };
+  }
+
   const xpubkey = event.xpubkey;
   const maxGap = event.maxGap;
   const walletId = getWalletId(xpubkey);
