@@ -111,7 +111,7 @@ export class NftUtils {
 
     const params = {
     // FunctionName is composed of: service name - stage - function name
-      FunctionName: `hathor-explorer-service-${process.env.STAGE}-handle_create_or_update`,
+      FunctionName: `hathor-explorer-service-${process.env.STAGE}-create_or_update_dag_metadata`,
       InvocationType: 'Event',
       Payload: JSON.stringify({
         query: { id: nftUid },
