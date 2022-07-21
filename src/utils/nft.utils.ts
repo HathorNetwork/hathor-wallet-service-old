@@ -93,11 +93,18 @@ export class NftUtils {
       .catch((err) => {
         const errResponse = err.response;
 
+        // This is a valid response, the metadata just wasn't created yet.
         if (errResponse?.status === 404) {
           return { data: {} };
         }
 
-        throw errResponse;
+        // Handling an axios error
+        if (typeof err.toJSON === 'function') {
+          throw err.toJSON();
+        }
+
+        // Handling an unknown error
+        throw err;
       });
 
     return metadataResponse.data;

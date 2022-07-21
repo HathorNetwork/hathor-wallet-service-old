@@ -204,22 +204,34 @@ describe('_getTokenMetadata', () => {
     expect(results).toStrictEqual({});
   });
 
-  it('should rethrow when an error happens', async () => {
+  it('should rethrow when an axios error happens', async () => {
     expect.hasAssertions();
     const expectedHttpError = {
       response: {
         status: 500,
         data: { description: 'error message' },
       },
+      toJSON: () => ({}),
     };
+    // Mocking the axios helper
+    expectedHttpError.toJSON = () => expectedHttpError.response;
     spyAxiosGet.mockImplementation(async () => {
       throw expectedHttpError;
     });
 
-    const result = await NftUtils._getTokenMetadata('sampleUid')
-      .catch((err) => err);
+    await expect(NftUtils._getTokenMetadata('sampleUid'))
+      .rejects.toStrictEqual(expectedHttpError.response);
+  });
 
-    expect(result).toStrictEqual(expectedHttpError.response);
+  it('should rethrow when an unknown error happens', async () => {
+    expect.hasAssertions();
+    const expectedError = new Error('unknown failure');
+    spyAxiosGet.mockImplementation(async () => {
+      throw expectedError;
+    });
+
+    await expect(NftUtils._getTokenMetadata('sampleUid'))
+      .rejects.toThrow(expectedError);
   });
 
   it('should throw when the API url is not set', async () => {

@@ -146,7 +146,7 @@ export const onNewTxRequest: APIGatewayProxyHandler = async (event, context) => 
   try {
     if (NftUtils.isTransactionNFTCreation(tx)) {
       NftUtils.invokeNftHandlerLambda(tx.tx_id)
-        .catch((err) => { throw err; });
+        .catch((err) => { throw err; }); // Avoid having to return a value
     }
   } catch (e) {
     logger.error('Errored on NFT validation', e);
@@ -250,6 +250,10 @@ export const onNewNftEvent: Handler<NewNftEvent, NftValidationResults> = async (
   logger.defaultMeta = {
     requestId: context.awsRequestId,
   };
+
+  if (!event.nftUid) {
+    throw new Error('Missing mandatory parameter nftUid');
+  }
 
   try {
     // Checks existing metadata on this transaction and updates it if necessary

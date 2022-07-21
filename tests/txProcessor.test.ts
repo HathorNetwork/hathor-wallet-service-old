@@ -310,6 +310,21 @@ describe('NFT metadata updating', () => {
     spyUpdateMetadata.mockRestore();
   });
 
+  it('should reject a call for a missing mandatory parameter', async () => {
+    expect.hasAssertions();
+
+    spyFetchMetadata.mockImplementation(async () => ({}));
+    spyUpdateMetadata.mockImplementation(async () => ({ updated: 'ok' }));
+
+    await expect(txProcessor.onNewNftEvent(
+      { nftUid: '' },
+      getApiGatewayContext(),
+      () => '',
+    )).rejects.toThrow('Missing mandatory parameter nftUid');
+    expect(spyFetchMetadata).toHaveBeenCalledTimes(0);
+    expect(spyUpdateMetadata).toHaveBeenCalledTimes(0);
+  });
+
   it('should request update when metadata does not exist', async () => {
     expect.hasAssertions();
 
