@@ -1,6 +1,6 @@
 import hathorLib from '@hathor/wallet-lib';
 import { MAX_METADATA_UPDATE_RETRIES, NftUtils } from '@src/utils/nft.utils';
-import { getTransaction } from '@events/nftCreationTx';
+import { getApiGatewayContext, getTransaction } from '@events/nftCreationTx';
 import axios from 'axios';
 import { Lambda as LambdaMock } from 'aws-sdk';
 
@@ -388,5 +388,17 @@ describe('invokeNftHandlerLambda', () => {
 
     await expect(NftUtils.invokeNftHandlerLambda('sampleUid'))
       .rejects.toThrow(new Error('Unsuccessful invoke: had a failure'));
+  });
+});
+
+describe('event helper', () => {
+  it('should generate an event context', () => {
+    expect.hasAssertions();
+
+    const c = getApiGatewayContext();
+    expect(c.done()).toBeUndefined();
+    expect(c.fail('fail')).toBeUndefined();
+    expect(c.getRemainingTimeInMillis()).toStrictEqual(0);
+    expect(c.succeed('pass')).toBeUndefined();
   });
 });

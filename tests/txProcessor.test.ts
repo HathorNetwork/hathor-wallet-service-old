@@ -25,7 +25,7 @@ import {
   createInput,
   addToAddressTxHistoryTable,
 } from '@tests/utils';
-import { getApiGatewayContext, getApiGatewayEvent, nftCreationTx } from '@events/nftCreationTx';
+import { getApiGatewayContext, nftCreationTx } from '@events/nftCreationTx';
 
 const mysql = getDbConnection();
 const blockReward = 6400;

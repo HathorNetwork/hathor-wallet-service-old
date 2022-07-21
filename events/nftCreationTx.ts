@@ -138,23 +138,6 @@ export function getTransaction(): Transaction {
   return result;
 }
 
-export function getApiGatewayEvent(body: unknown = ''): APIGatewayProxyEventBase<APIGatewayEventDefaultAuthorizerContext> {
-  return {
-    headers: undefined,
-    httpMethod: '',
-    isBase64Encoded: false,
-    multiValueHeaders: undefined,
-    multiValueQueryStringParameters: undefined,
-    path: '',
-    pathParameters: undefined,
-    queryStringParameters: undefined,
-    requestContext: undefined,
-    resource: '',
-    stageVariables: undefined,
-    body: JSON.stringify(body),
-  };
-}
-
 export function getApiGatewayContext(): Context {
   return {
     awsRequestId: '',
