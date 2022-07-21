@@ -190,12 +190,14 @@ describe('_getTokenMetadata', () => {
 
   it('should retrieve an empty object when the token metadata is not found', async () => {
     expect.hasAssertions();
-    const expectedHttpResponse = {
-      status: 404,
-      data: { whateverData: 'ignore' },
+    const expectedHttpError = {
+      response: {
+        status: 404,
+        data: { whateverData: 'ignore' },
+      },
     };
     spyAxiosGet.mockImplementation(async () => {
-      throw expectedHttpResponse;
+      throw expectedHttpError;
     });
 
     const results = await NftUtils._getTokenMetadata('sampleUid');
@@ -204,18 +206,20 @@ describe('_getTokenMetadata', () => {
 
   it('should rethrow when an error happens', async () => {
     expect.hasAssertions();
-    const expectedHttpResponse = {
-      status: 500,
-      data: { description: 'error message' },
+    const expectedHttpError = {
+      response: {
+        status: 500,
+        data: { description: 'error message' },
+      },
     };
     spyAxiosGet.mockImplementation(async () => {
-      throw expectedHttpResponse;
+      throw expectedHttpError;
     });
 
     const result = await NftUtils._getTokenMetadata('sampleUid')
       .catch((err) => err);
 
-    expect(result).toStrictEqual(expectedHttpResponse);
+    expect(result).toStrictEqual(expectedHttpError.response);
   });
 
   it('should throw when the API url is not set', async () => {

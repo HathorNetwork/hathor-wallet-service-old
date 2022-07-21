@@ -82,8 +82,10 @@ export class NftUtils {
       NftUtils.tokenMetadataApi,
       { params: { id: tokenUid } },
     )
-      .catch((errResponse) => {
-        if (errResponse.status === 404) {
+      .catch((err) => {
+        const errResponse = err.response;
+
+        if (errResponse?.status === 404) {
           return { data: {} };
         }
 
