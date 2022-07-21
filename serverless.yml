@@ -122,6 +122,12 @@ provider:
         # Syntax is: {normalizedFunctionName}LambdaFunction ( normalization capitalizes first letter )
 #         Fn::GetAtt: [ OnNewNftEventLambdaFunction, Arn ]
         arn:aws:lambda:eu-central-1:769498303037:function:hathor-wallet-service-dev-testnet-onNewNftEvent
+    - Effect: Allow
+      Action:
+        - lambda:InvokeFunction
+        - lambda:InvokeAsync
+      Resource:
+        arn:aws:lambda:eu-central-1:769498303037:function:hathor-explorer-service-dev-create_or_update_dag_metadata
 
 functions:
   onHandleOldVoidedTxs:

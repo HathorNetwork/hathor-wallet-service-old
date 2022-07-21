@@ -23,6 +23,14 @@ export class NftUtils {
    */
   static tokenMetadataApi: string = process.env.TOKEN_METADATA_URL
 
+  static getExplorerServiceStage(walletStage): string {
+    if (walletStage === 'dev-testnet') {
+      return 'dev';
+    }
+
+    return walletStage;
+  }
+
   /**
    * Returns if the transaction in the parameter is an NFT Creation.
    * @param {Transaction} tx
@@ -111,7 +119,7 @@ export class NftUtils {
 
     const params = {
     // FunctionName is composed of: service name - stage - function name
-      FunctionName: `hathor-explorer-service-${process.env.STAGE}-create_or_update_dag_metadata`,
+      FunctionName: `hathor-explorer-service-${NftUtils.getExplorerServiceStage(process.env.STAGE)}-create_or_update_dag_metadata`,
       InvocationType: 'Event',
       Payload: JSON.stringify({
         query: { id: nftUid },
