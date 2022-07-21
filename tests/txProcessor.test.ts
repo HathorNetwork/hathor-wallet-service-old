@@ -316,13 +316,14 @@ describe('NFT metadata updating', () => {
     spyFetchMetadata.mockImplementation(async () => ({}));
     spyUpdateMetadata.mockImplementation(async () => ({ updated: 'ok' }));
 
-    await txProcessor.onNewNftEvent(
-      getApiGatewayEvent({ nftUid: nftCreationTx.tx_id }),
+    const result = await txProcessor.onNewNftEvent(
+      { nftUid: nftCreationTx.tx_id },
       getApiGatewayContext(),
       () => '',
     );
     expect(spyFetchMetadata).toHaveBeenCalledTimes(1);
     expect(spyUpdateMetadata).toHaveBeenCalledTimes(1);
+    expect(result).toStrictEqual({ success: true });
   });
 
   it('should request update for an existing non-nft metadata', async () => {
@@ -338,14 +339,15 @@ describe('NFT metadata updating', () => {
     });
     spyUpdateMetadata.mockImplementation(async () => ({ updated: 'ok' }));
 
-    await txProcessor.onNewNftEvent(
-      getApiGatewayEvent({ nftUid: nftCreationTx.tx_id }),
+    const result = await txProcessor.onNewNftEvent(
+      { nftUid: nftCreationTx.tx_id },
       getApiGatewayContext(),
       () => '',
     );
 
     expect(spyFetchMetadata).toHaveBeenCalledTimes(1);
     expect(spyUpdateMetadata).toHaveBeenCalledTimes(1);
+    expect(result).toStrictEqual({ success: true });
   });
 
   it('should not request update for an existing nft metadata', async () => {
@@ -363,14 +365,15 @@ describe('NFT metadata updating', () => {
       updated: 'should not be called',
     }));
 
-    await txProcessor.onNewNftEvent(
-      getApiGatewayEvent({ nftUid: nftCreationTx.tx_id }),
+    const result = await txProcessor.onNewNftEvent(
+      { nftUid: nftCreationTx.tx_id },
       getApiGatewayContext(),
       () => '',
     );
 
     expect(spyFetchMetadata).toHaveBeenCalledTimes(1);
     expect(spyUpdateMetadata).toHaveBeenCalledTimes(0);
+    expect(result).toStrictEqual({ success: true });
   });
 
   it('should return a standardized message on nft validation failure', async () => {
@@ -382,19 +385,17 @@ describe('NFT metadata updating', () => {
     });
 
     const result = await txProcessor.onNewNftEvent(
-      getApiGatewayEvent({ nftUid: nftCreationTx.tx_id }),
+      { nftUid: nftCreationTx.tx_id },
       getApiGatewayContext(),
       () => '',
     );
 
     const expectedResult = {
-      statusCode: 500,
-      body: JSON.stringify({
-        success: false,
-        message: `onNewNftEvent failed for token ${nftCreationTx.tx_id}`,
-      }),
+      success: false,
+      message: `onNewNftEvent failed for token ${nftCreationTx.tx_id}`,
     };
     expect(result).toStrictEqual(expectedResult);
+    expect(spyCreateOrUpdate).toHaveBeenCalledWith(nftCreationTx.tx_id);
 
     spyCreateOrUpdate.mockReset();
     spyCreateOrUpdate.mockRestore();

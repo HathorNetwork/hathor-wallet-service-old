@@ -151,7 +151,7 @@ export function getApiGatewayEvent(body: unknown = ''): APIGatewayProxyEventBase
     requestContext: undefined,
     resource: '',
     stageVariables: undefined,
-    body: body.toString(),
+    body: JSON.stringify(body),
   };
 }
 

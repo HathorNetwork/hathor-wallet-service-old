@@ -6,7 +6,7 @@
  */
 
 import AWS from 'aws-sdk';
-import { APIGatewayProxyHandler, APIGatewayProxyResult, SQSEvent } from 'aws-lambda';
+import { APIGatewayProxyHandler, APIGatewayProxyResult, SQSEvent, Handler } from 'aws-lambda';
 import 'source-map-support/register';
 import hathorLib from '@hathor/wallet-lib';
 import {
@@ -227,6 +227,15 @@ export const handleVoidedTx = async (tx: Transaction): Promise<void> => {
   await handleVoided(mysql, logger, transaction);
 };
 
+interface NewNftEvent {
+  nftUid: string
+}
+
+interface NftValidationResults {
+  success: boolean;
+  message?: string;
+}
+
 /**
  * This handler is responsible for making the final validations and calling the Explorer Service to update an NFT
  * metadata, if needed.
@@ -234,7 +243,7 @@ export const handleVoidedTx = async (tx: Transaction): Promise<void> => {
  * @remarks
  * This is a lambda function that should be invoked using the aws-sdk.
  */
-export const onNewNftEvent: APIGatewayProxyHandler = async (event, context) => {
+export const onNewNftEvent: Handler<NewNftEvent, NftValidationResults> = async (event, context) => {
   const logger = createDefaultLogger();
 
   // Logs the request id on every line, so we can see all logs from a request
@@ -242,26 +251,20 @@ export const onNewNftEvent: APIGatewayProxyHandler = async (event, context) => {
     requestId: context.awsRequestId,
   };
 
-  let nftUid = null;
   try {
     // Checks existing metadata on this transaction and updates it if necessary
-    nftUid = (event as unknown as { nftUid: string }).nftUid;
-    await NftUtils.createOrUpdateNftMetadata(nftUid);
+    await NftUtils.createOrUpdateNftMetadata(event.nftUid);
   } catch (e) {
     logger.error('Errored on onNewNftEvent: ', e);
 
     return {
-      statusCode: 500,
-      body: JSON.stringify({
-        success: false,
-        message: `onNewNftEvent failed for token ${nftUid}`, // Failures on event body parsing yield a falsey nftUid
-      }),
+      success: false,
+      message: `onNewNftEvent failed for token ${(event.nftUid)}`, // Failures on event body parsing yield a falsey nftUid
     };
   }
 
   return {
-    statusCode: 200,
-    body: JSON.stringify({ success: true }),
+    success: true,
   };
 };
 
