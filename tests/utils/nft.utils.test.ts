@@ -334,7 +334,7 @@ describe('invokeNftHandlerLambda', () => {
     // Building the mock lambda
     const expectedLambdaResponse: LambdaMock.InvocationResponse = {
       StatusCode: 202,
-      Payload: JSON.stringify({ success: true }),
+      Payload: '',
     };
     const mLambda = new LambdaMock();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -363,43 +363,7 @@ describe('invokeNftHandlerLambda', () => {
     }));
 
     await expect(NftUtils.invokeNftHandlerLambda('sampleUid'))
-      .rejects.toThrow(new Error('NFT Handler lambda invoke failed'));
-  });
-
-  it('should throw when payload response payload is invalid', async () => {
-    expect.hasAssertions();
-
-    // Building the mock lambda
-    const mLambda = new LambdaMock();
-    const expectedLambdaResponse: LambdaMock.InvocationResponse = {
-      StatusCode: 202,
-      Payload: '{ "malformedJson": true, ',
-    };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (mLambda.invoke as jest.Mocked<any>).mockImplementation(() => ({
-      promise: async () => expectedLambdaResponse,
-    }));
-
-    await expect(NftUtils.invokeNftHandlerLambda('sampleUid'))
-      .rejects.toThrow(new Error('Unable to parse invoke payload response: Unexpected end of JSON input'));
-  });
-
-  it('should throw when success is not true', async () => {
-    expect.hasAssertions();
-
-    // Building the mock lambda
-    const mLambda = new LambdaMock();
-    const expectedLambdaResponse: LambdaMock.InvocationResponse = {
-      StatusCode: 202,
-      Payload: JSON.stringify({ success: false, message: 'had a failure' }),
-    };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (mLambda.invoke as jest.Mocked<any>).mockImplementation(() => ({
-      promise: async () => expectedLambdaResponse,
-    }));
-
-    await expect(NftUtils.invokeNftHandlerLambda('sampleUid'))
-      .rejects.toThrow(new Error('Unsuccessful invoke: had a failure'));
+      .rejects.toThrow(new Error('onNewNftEvent lambda invoke failed for tx: sampleUid'));
   });
 });
 
