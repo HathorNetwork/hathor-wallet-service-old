@@ -58,9 +58,15 @@ test('spend "locked" utxo', async () => {
   const timelock = 1000;
   const maxGap = parseInt(process.env.MAX_ADDRESS_GAP, 10);
 
-  await addToWalletTable(mysql, [
-    [walletId, XPUBKEY, AUTH_XPUBKEY, 'ready', 10, 1, 2],
-  ]);
+  await addToWalletTable(mysql, [{
+    id: walletId,
+    xpubkey: XPUBKEY,
+    authXpubkey: AUTH_XPUBKEY,
+    status: 'ready',
+    maxGap: 10,
+    createdAt: 1,
+    readyAt: 2,
+  }]);
 
   await addToUtxoTable(mysql, [
     // we received a tx that has timelock
@@ -240,9 +246,15 @@ test('txProcessor should ignore NFT outputs', async () => {
   const walletId = 'walletId';
   const timelock = 1000;
 
-  await addToWalletTable(mysql, [
-    [walletId, XPUBKEY, AUTH_XPUBKEY, 'ready', 10, 1, 2],
-  ]);
+  await addToWalletTable(mysql, [{
+    id: walletId,
+    xpubkey: XPUBKEY,
+    authXpubkey: AUTH_XPUBKEY,
+    status: 'ready',
+    maxGap: 10,
+    createdAt: 1,
+    readyAt: 2,
+  }]);
 
   await addToUtxoTable(mysql, [
     [txId1, 0, '00', addr, 41, 0, null, null, false, null],
@@ -351,9 +363,15 @@ test('onHandleVoidedTxRequest', async () => {
   const walletId = 'walletId';
   const timelock = 1000;
 
-  await addToWalletTable(mysql, [
-    [walletId, XPUBKEY, AUTH_XPUBKEY, 'ready', 10, 1, 2],
-  ]);
+  await addToWalletTable(mysql, [{
+    id: walletId,
+    xpubkey: XPUBKEY,
+    authXpubkey: AUTH_XPUBKEY,
+    status: 'ready',
+    maxGap: 10,
+    createdAt: 1,
+    readyAt: 2,
+  }]);
 
   await addToUtxoTable(mysql, [
     [txId1, 0, token, addr, 2500, 0, null, null, false, null],

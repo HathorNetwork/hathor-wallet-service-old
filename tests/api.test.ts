@@ -97,7 +97,15 @@ const _testMissingWallet = async (fn: APIGatewayProxyHandler, walletId: string, 
 
 const _testWalletNotReady = async (fn: APIGatewayProxyHandler) => {
   const walletId = 'wallet-not-started';
-  await addToWalletTable(mysql, [[walletId, 'aaaa', AUTH_XPUBKEY, 'creating', 5, 10000, null]]);
+  await addToWalletTable(mysql, [{
+    id: walletId,
+    xpubkey: 'aaaa',
+    authXpubkey: AUTH_XPUBKEY,
+    status: 'creating',
+    maxGap: 5,
+    createdAt: 10000,
+    readyAt: null,
+  }]);
   const event = makeGatewayEventWithAuthorizer(walletId, {});
   const result = await fn(event, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(result.body as string);
@@ -109,7 +117,15 @@ const _testWalletNotReady = async (fn: APIGatewayProxyHandler) => {
 test('GET /addresses', async () => {
   expect.hasAssertions();
 
-  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'auth_xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToWalletTable(mysql, [{
+    id: 'my-wallet',
+    xpubkey: 'xpubkey',
+    authXpubkey: 'auth_xpubkey',
+    status: 'ready',
+    maxGap: 5,
+    createdAt: 10000,
+    readyAt: 10001,
+  }]);
   await addToAddressTable(mysql, [
     { address: ADDRESSES[0], index: 0, walletId: 'my-wallet', transactions: 0 },
     { address: ADDRESSES[1], index: 1, walletId: 'my-wallet', transactions: 0 },
@@ -140,7 +156,16 @@ test('GET /addresses', async () => {
 test('GET /addresses/new', async () => {
   expect.hasAssertions();
 
-  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'auth_xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToWalletTable(mysql, [{
+    id: 'my-wallet',
+    xpubkey: 'xpubkey',
+    authXpubkey: 'auth_xpubkey',
+    status: 'ready',
+    maxGap: 5,
+    highestUsedIndex: 4,
+    createdAt: 10000,
+    readyAt: 10001,
+  }]);
   await addToAddressTable(mysql, [
     { address: ADDRESSES[0], index: 0, walletId: 'my-wallet', transactions: 0 },
     { address: ADDRESSES[1], index: 1, walletId: 'my-wallet', transactions: 0 },
@@ -179,7 +204,16 @@ test('GET /addresses/new', async () => {
 test('GET /addresses/new with no transactions', async () => {
   expect.hasAssertions();
 
-  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'auth_xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToWalletTable(mysql, [{
+    id: 'my-wallet',
+    xpubkey: 'xpubkey',
+    authXpubkey: 'auth_xpubkey',
+    status: 'ready',
+    maxGap: 5,
+    createdAt: 10000,
+    readyAt: 10001,
+  }]);
+
   await addToAddressTable(mysql, [
     { address: ADDRESSES[0], index: 0, walletId: 'my-wallet', transactions: 0 },
     { address: ADDRESSES[1], index: 1, walletId: 'my-wallet', transactions: 0 },
@@ -217,7 +251,15 @@ test('GET /addresses/new with no transactions', async () => {
 test('GET /balances', async () => {
   expect.hasAssertions();
 
-  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'auth_xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToWalletTable(mysql, [{
+    id: 'my-wallet',
+    xpubkey: 'xpubkey',
+    authXpubkey: 'auth_xpubkey',
+    status: 'ready',
+    maxGap: 5,
+    createdAt: 10000,
+    readyAt: 10001,
+  }]);
 
   // add tokens
   const token1 = { id: 'token1', name: 'MyToken1', symbol: 'MT1' };
@@ -402,7 +444,15 @@ test('GET /balances', async () => {
 test('GET /txhistory', async () => {
   expect.hasAssertions();
 
-  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'auth_xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToWalletTable(mysql, [{
+    id: 'my-wallet',
+    xpubkey: 'xpubkey',
+    authXpubkey: 'auth_xpubkey',
+    status: 'ready',
+    maxGap: 5,
+    createdAt: 10000,
+    readyAt: 10001,
+  }]);
   await addToWalletTxHistoryTable(mysql, [
     ['my-wallet', 'tx1', '00', 5, 1000, false],
     ['my-wallet', 'tx1', 'token2', '7', 1000, false],
@@ -481,7 +531,15 @@ test('GET /txhistory', async () => {
 test('GET /wallet', async () => {
   expect.hasAssertions();
 
-  await addToWalletTable(mysql, [['my-wallet', XPUBKEY, AUTH_XPUBKEY, 'ready', 5, 10000, 10001]]);
+  await addToWalletTable(mysql, [{
+    id: 'my-wallet',
+    xpubkey: XPUBKEY,
+    authXpubkey: AUTH_XPUBKEY,
+    status: 'ready',
+    maxGap: 5,
+    createdAt: 10000,
+    readyAt: 10001,
+  }]);
 
   // check CORS headers
   await _testCORSHeaders(walletGet, 'some-wallet', {});
@@ -879,7 +937,15 @@ test('changeAuthXpub should fail if signatures do not match', async () => {
   expect.hasAssertions();
 
   const walletId = getWalletId(XPUBKEY);
-  await addToWalletTable(mysql, [[walletId, XPUBKEY, AUTH_XPUBKEY, 'creating', 5, 10000, null]]);
+  await addToWalletTable(mysql, [{
+    id: walletId,
+    xpubkey: XPUBKEY,
+    authXpubkey: AUTH_XPUBKEY,
+    status: 'creating',
+    maxGap: 5,
+    createdAt: 10000,
+    readyAt: null,
+  }]);
 
   const event = makeGatewayEvent({}, JSON.stringify({
     xpubkey: XPUBKEY,
@@ -1118,7 +1184,15 @@ test('loadWallet should update wallet status to ERROR if an error occurs', async
 test('GET /wallet/tokens', async () => {
   expect.hasAssertions();
 
-  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'auth_xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToWalletTable(mysql, [{
+    id: 'my-wallet',
+    xpubkey: 'xpubkey',
+    authXpubkey: 'auth_xpubkey',
+    status: 'ready',
+    maxGap: 5,
+    createdAt: 10000,
+    readyAt: 10001,
+  }]);
   await addToWalletTxHistoryTable(mysql, [
     ['my-wallet', 'tx1', '00', 5, 1000, false],
     ['my-wallet', 'tx1', 'token2', '7', 1000, false],
@@ -1144,7 +1218,15 @@ test('GET /wallet/tokens/token_id/details', async () => {
   // check CORS headers
   await _testCORSHeaders(getTokenDetails, null, null);
 
-  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'auth_xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToWalletTable(mysql, [{
+    id: 'my-wallet',
+    xpubkey: 'xpubkey',
+    authXpubkey: 'auth_xpubkey',
+    status: 'ready',
+    maxGap: 5,
+    createdAt: 10000,
+    readyAt: 10001,
+  }]);
 
   let event = makeGatewayEventWithAuthorizer('my-wallet', { token_id: 'unknown' });
   let result = await getTokenDetails(event, null, null) as APIGatewayProxyResult;

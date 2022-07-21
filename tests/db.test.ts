@@ -244,7 +244,15 @@ test('getAddressWalletInfo', async () => {
     await mysql.query('INSERT INTO `wallet` SET ? ON DUPLICATE KEY UPDATE id=id', [entry]);
   }
   // add wallet that should not be on the results
-  await addToWalletTable(mysql, [['wallet3', 'xpubkey3', 'authxpubkey3', WalletStatus.READY, 5, 0, 0]]);
+  await addToWalletTable(mysql, [{
+    id: 'wallet3',
+    xpubkey: 'xpubkey3',
+    authXpubkey: 'authxpubkey3',
+    status: WalletStatus.READY,
+    maxGap: 5,
+    createdAt: 0,
+    readyAt: 0,
+  }]);
 
   const addressWalletMap = await getAddressWalletInfo(mysql, Object.keys(finalMap));
   expect(addressWalletMap).toStrictEqual(finalMap);
@@ -298,11 +306,11 @@ test('addNewAddresses', async () => {
   const walletId = 'walletId';
 
   // test adding empty dict
-  await addNewAddresses(mysql, walletId, {});
+  await addNewAddresses(mysql, walletId, {}, -1);
   await expect(checkAddressTable(mysql, 0)).resolves.toBe(true);
 
   // add some addresses
-  await addNewAddresses(mysql, walletId, addrMap);
+  await addNewAddresses(mysql, walletId, addrMap, -1);
   for (const [index, address] of ADDRESSES.entries()) {
     await expect(checkAddressTable(mysql, ADDRESSES.length, address, index, walletId, 0)).resolves.toBe(true);
   }
@@ -321,7 +329,7 @@ test('updateExistingAddresses', async () => {
   for (const address of ADDRESSES) {
     newAddrMap[address] = null;
   }
-  await addNewAddresses(mysql, null, newAddrMap);
+  await addNewAddresses(mysql, null, newAddrMap, -1);
   for (const address of ADDRESSES) {
     await expect(checkAddressTable(mysql, ADDRESSES.length, address, null, null, 0)).resolves.toBe(true);
   }

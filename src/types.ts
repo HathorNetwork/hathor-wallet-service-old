@@ -28,6 +28,7 @@ export interface GenerateAddresses {
   addresses: string[];
   existingAddresses: StringMap<number>;
   newAddresses: StringMap<number>;
+  highestUsedIndex: number;
 }
 
 export enum TxProposalStatus {

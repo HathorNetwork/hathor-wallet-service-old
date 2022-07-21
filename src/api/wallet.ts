@@ -403,10 +403,10 @@ export const loadWallet: Handler<LoadEvent, LoadResult> = async (event) => {
   const walletId = getWalletId(xpubkey);
 
   try {
-    const { addresses, existingAddresses, newAddresses } = await generateAddresses(mysql, xpubkey, maxGap);
+    const { addresses, existingAddresses, newAddresses, highestUsedIndex } = await generateAddresses(mysql, xpubkey, maxGap);
 
     // update address table with new addresses
-    await addNewAddresses(mysql, walletId, newAddresses);
+    await addNewAddresses(mysql, walletId, newAddresses, highestUsedIndex);
 
     // update existing addresses' walletId and index
     await updateExistingAddresses(mysql, walletId, existingAddresses);
