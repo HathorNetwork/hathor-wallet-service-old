@@ -245,7 +245,7 @@ export const onNewNftEvent: APIGatewayProxyHandler = async (event, context) => {
   let nftUid = null;
   try {
     // Checks existing metadata on this transaction and updates it if necessary
-    nftUid = event.body;
+    nftUid = (event as unknown as { nftUid: string }).nftUid;
     await NftUtils.createOrUpdateNftMetadata(nftUid);
   } catch (e) {
     logger.error('Errored on onNewNftEvent: ', e);

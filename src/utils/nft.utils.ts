@@ -180,7 +180,7 @@ export class NftUtils {
     // FunctionName is composed of: service name - stage - function name
       FunctionName: `${process.env.SERVICE_NAME}-${process.env.STAGE}-onNewNftEvent`,
       InvocationType: 'Event',
-      Payload: JSON.stringify(txId),
+      Payload: JSON.stringify({ nftUid: txId }),
     };
 
     const response = await lambda.invoke(params).promise();

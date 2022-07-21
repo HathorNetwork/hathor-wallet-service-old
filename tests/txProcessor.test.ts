@@ -317,7 +317,7 @@ describe('NFT metadata updating', () => {
     spyUpdateMetadata.mockImplementation(async () => ({ updated: 'ok' }));
 
     await txProcessor.onNewNftEvent(
-      getApiGatewayEvent(nftCreationTx.tx_id),
+      getApiGatewayEvent({ nftUid: nftCreationTx.tx_id }),
       getApiGatewayContext(),
       () => '',
     );
@@ -339,7 +339,7 @@ describe('NFT metadata updating', () => {
     spyUpdateMetadata.mockImplementation(async () => ({ updated: 'ok' }));
 
     await txProcessor.onNewNftEvent(
-      getApiGatewayEvent(nftCreationTx.tx_id),
+      getApiGatewayEvent({ nftUid: nftCreationTx.tx_id }),
       getApiGatewayContext(),
       () => '',
     );
@@ -364,7 +364,7 @@ describe('NFT metadata updating', () => {
     }));
 
     await txProcessor.onNewNftEvent(
-      getApiGatewayEvent(nftCreationTx.tx_id),
+      getApiGatewayEvent({ nftUid: nftCreationTx.tx_id }),
       getApiGatewayContext(),
       () => '',
     );
@@ -382,7 +382,7 @@ describe('NFT metadata updating', () => {
     });
 
     const result = await txProcessor.onNewNftEvent(
-      getApiGatewayEvent(nftCreationTx.tx_id),
+      getApiGatewayEvent({ nftUid: nftCreationTx.tx_id }),
       getApiGatewayContext(),
       () => '',
     );
