@@ -25,7 +25,7 @@ import {
   createInput,
   addToAddressTxHistoryTable,
 } from '@tests/utils';
-import { getApiGatewayContext, nftCreationTx } from '@events/nftCreationTx';
+import { getHandlerContext, nftCreationTx } from '@events/nftCreationTx';
 
 const mysql = getDbConnection();
 const blockReward = 6400;
@@ -318,7 +318,7 @@ describe('NFT metadata updating', () => {
 
     await expect(txProcessor.onNewNftEvent(
       { nftUid: '' },
-      getApiGatewayContext(),
+      getHandlerContext(),
       () => '',
     )).rejects.toThrow('Missing mandatory parameter nftUid');
     expect(spyFetchMetadata).toHaveBeenCalledTimes(0);
@@ -333,7 +333,7 @@ describe('NFT metadata updating', () => {
 
     const result = await txProcessor.onNewNftEvent(
       { nftUid: nftCreationTx.tx_id },
-      getApiGatewayContext(),
+      getHandlerContext(),
       () => '',
     );
     expect(spyFetchMetadata).toHaveBeenCalledTimes(1);
@@ -356,7 +356,7 @@ describe('NFT metadata updating', () => {
 
     const result = await txProcessor.onNewNftEvent(
       { nftUid: nftCreationTx.tx_id },
-      getApiGatewayContext(),
+      getHandlerContext(),
       () => '',
     );
 
@@ -382,7 +382,7 @@ describe('NFT metadata updating', () => {
 
     const result = await txProcessor.onNewNftEvent(
       { nftUid: nftCreationTx.tx_id },
-      getApiGatewayContext(),
+      getHandlerContext(),
       () => '',
     );
 
@@ -401,7 +401,7 @@ describe('NFT metadata updating', () => {
 
     const result = await txProcessor.onNewNftEvent(
       { nftUid: nftCreationTx.tx_id },
-      getApiGatewayContext(),
+      getHandlerContext(),
       () => '',
     );
 

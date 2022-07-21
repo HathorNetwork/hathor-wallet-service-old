@@ -1,6 +1,6 @@
 import hathorLib from '@hathor/wallet-lib';
 import { MAX_METADATA_UPDATE_RETRIES, NftUtils } from '@src/utils/nft.utils';
-import { getApiGatewayContext, getTransaction } from '@events/nftCreationTx';
+import { getHandlerContext, getTransaction } from '@events/nftCreationTx';
 import axios from 'axios';
 import { Lambda as LambdaMock } from 'aws-sdk';
 
@@ -407,7 +407,7 @@ describe('minor helpers', () => {
   it('should generate an event context', () => {
     expect.hasAssertions();
 
-    const c = getApiGatewayContext();
+    const c = getHandlerContext();
     expect(c.done()).toBeUndefined();
     expect(c.fail('fail')).toBeUndefined();
     expect(c.getRemainingTimeInMillis()).toStrictEqual(0);

@@ -1,8 +1,18 @@
+/**
+ * Copyright (c) Hathor Labs and its affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 /* eslint-disable @typescript-eslint/no-empty-function */
 
-import { APIGatewayEventDefaultAuthorizerContext, APIGatewayProxyEventBase, Context } from 'aws-lambda';
+import { Context } from 'aws-lambda';
 import { Transaction } from '@src/types';
 
+/**
+ * A sample transaction for an NFT creation, as obtained by a wallet's history methods
+ */
 export const nftCreationTx = {
   tx_id: '0025a6488045d7466639ead179a7f6beb188320f41cdb6df3a971db2ee86dbc3',
   version: 2,
@@ -97,6 +107,9 @@ export const nftCreationTx = {
   throttled: false,
 };
 
+/**
+ * Gets a copy of the `nftCreationTx` in the Wallet Service's Transaction format.
+ */
 export function getTransaction(): Transaction {
   const result = {
     tx_id: nftCreationTx.tx_id,
@@ -138,7 +151,10 @@ export function getTransaction(): Transaction {
   return result;
 }
 
-export function getApiGatewayContext(): Context {
+/**
+ * Creates a Handler Context object, for use on tests invoking lambdas
+ */
+export function getHandlerContext(): Context {
   return {
     awsRequestId: '',
     callbackWaitsForEmptyEventLoop: false,
