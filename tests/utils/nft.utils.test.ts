@@ -75,7 +75,7 @@ describe('isTransactionNFTCreation', () => {
     // Preparing mocks
     const spyNftValidation = jest.spyOn(hathorLib.CreateTokenTransaction.prototype, 'validateNft');
     spyNftValidation.mockImplementation(() => {
-      throw new Error('not an nft');
+      throw new Error('not a nft');
     });
 
     // Validation

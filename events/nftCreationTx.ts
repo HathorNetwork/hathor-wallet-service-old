@@ -11,7 +11,7 @@ import { Context } from 'aws-lambda';
 import { Transaction } from '@src/types';
 
 /**
- * A sample transaction for an NFT creation, as obtained by a wallet's history methods
+ * A sample transaction for a NFT creation, as obtained by a wallet's history methods
  */
 export const nftCreationTx = {
   tx_id: '0025a6488045d7466639ead179a7f6beb188320f41cdb6df3a971db2ee86dbc3',

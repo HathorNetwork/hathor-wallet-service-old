@@ -32,13 +32,13 @@ export class NftUtils {
   }
 
   /**
-   * Returns if the transaction in the parameter is an NFT Creation.
+   * Returns if the transaction in the parameter is a NFT Creation.
    * @param {Transaction} tx
    * @returns {boolean}
    */
   static isTransactionNFTCreation(tx: Transaction): boolean {
   /*
-   * To fully check if a transaction is an NFT creation, we need to instantiate a new Transaction object in the lib.
+   * To fully check if a transaction is a NFT creation, we need to instantiate a new Transaction object in the lib.
    * So first we do some very fast checks to filter the bulk of the requests for NFTs with minimum processing.
    */
     if (
@@ -53,7 +53,7 @@ export class NftUtils {
     let isNftCreationTx;
     const libTx: hathorLib.CreateTokenTransaction = hathorLib.helpersUtils.createTxFromHistoryObject(tx);
     try {
-      libTx.validateNft(new hathorLib.Network(process.env.NETWORK)); // This method will throw if the transaction is not an NFT Creation
+      libTx.validateNft(new hathorLib.Network(process.env.NETWORK)); // This method will throw if the transaction is not a NFT Creation
       isNftCreationTx = true;
     } catch (ex) {
       isNftCreationTx = false;
@@ -63,7 +63,7 @@ export class NftUtils {
   }
 
   /**
- * Generates a JSON containing the basic metadata for an NFT, based on the token uid passed as parameter
+ * Generates a JSON containing the basic metadata for a NFT, based on the token uid passed as parameter
  * @param {string} nftUid
  * @returns {Record<string,{id:string,nft:boolean}>}
  */

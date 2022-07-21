@@ -126,6 +126,7 @@ export const onNewTxRequest: APIGatewayProxyHandler = async (event, context) => 
   const blockRewardLock = parseInt(process.env.BLOCK_REWARD_LOCK, 10);
   const tx = (event.body as unknown) as Transaction;
 
+  // Critical processing: add the transaction to the database.
   try {
     await addNewTx(logger, tx, now, blockRewardLock);
   } catch (e) {
@@ -141,7 +142,7 @@ export const onNewTxRequest: APIGatewayProxyHandler = async (event, context) => 
     };
   }
 
-  // Validating for NFTs after the tx is successfully added
+  // Validating for NFTs only after the tx is successfully added
   // This process is not critical, so in case of errors we can just log the exception and take no action on it.
   try {
     if (NftUtils.isTransactionNFTCreation(tx)) {
@@ -237,7 +238,7 @@ interface NftValidationResults {
 }
 
 /**
- * This handler is responsible for making the final validations and calling the Explorer Service to update an NFT
+ * This handler is responsible for making the final validations and calling the Explorer Service to update a NFT
  * metadata, if needed.
  *
  * @remarks
@@ -251,6 +252,7 @@ export const onNewNftEvent: Handler<NewNftEvent, NftValidationResults> = async (
     requestId: context.awsRequestId,
   };
 
+  // An invalid event object is a signal of a greater communication problem and should be thrown
   if (!event.nftUid) {
     throw new Error('Missing mandatory parameter nftUid');
   }
@@ -261,6 +263,7 @@ export const onNewNftEvent: Handler<NewNftEvent, NftValidationResults> = async (
   } catch (e) {
     logger.error('Errored on onNewNftEvent: ', e);
 
+    // No errors should be thrown from the process, only logged and returned gracefully as a success: false
     return {
       success: false,
       message: `onNewNftEvent failed for token ${(event.nftUid)}`, // Failures on event body parsing yield a falsey nftUid
