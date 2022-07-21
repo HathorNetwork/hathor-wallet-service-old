@@ -138,6 +138,9 @@ functions:
     handler: src/height.getLatestBlock
   onNewTxRequest:
     handler: src/txProcessor.onNewTxRequest
+    warmup:
+      walletWarmer:
+        enabled: false
   onMinersListRequest:
     handler: src/api/miners.onMinersListRequest
   onTotalSupplyRequest:
@@ -150,6 +153,9 @@ functions:
     handler: src/txProcessor.onNewTxEvent
   onNewNftEvent:
     handler: src/txProcessor.onNewNftEvent
+    warmup:
+      walletWarmer:
+        enabled: false
   loadWalletAsync:
     handler: src/api/wallet.loadWallet
   loadWalletApi:
