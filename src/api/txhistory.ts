@@ -9,7 +9,7 @@ import 'source-map-support/register';
 import hathorLib from '@hathor/wallet-lib';
 
 import { ApiError } from '@src/api/errors';
-import { closeDbAndGetError } from '@src/api/utils';
+import { closeDbAndGetError, warmupMiddleware } from '@src/api/utils';
 import {
   getWallet,
   getWalletTxHistory,
@@ -85,4 +85,5 @@ export const get = middy(walletIdProxyHandler(async (walletId, event) => {
     statusCode: 200,
     body: JSON.stringify({ success: true, history, skip, count }),
   };
-})).use(cors());
+})).use(cors())
+  .use(warmupMiddleware());

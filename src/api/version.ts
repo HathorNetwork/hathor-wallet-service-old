@@ -18,6 +18,7 @@ import {
   closeDbConnection,
   getDbConnection,
 } from '@src/utils';
+import { warmupMiddleware } from '@src/api/utils';
 import { maybeRefreshWalletConstants } from '@src/commons';
 import middy from '@middy/core';
 import cors from '@middy/http-cors';
@@ -43,4 +44,5 @@ export const get: APIGatewayProxyHandler = middy(async () => {
       data: versionData,
     }),
   };
-}).use(cors());
+}).use(cors())
+  .use(warmupMiddleware());

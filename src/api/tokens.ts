@@ -13,7 +13,7 @@ import {
 } from '@src/types';
 import { getDbConnection } from '@src/utils';
 import { ApiError } from '@src/api/errors';
-import { closeDbAndGetError } from '@src/api/utils';
+import { closeDbAndGetError, warmupMiddleware } from '@src/api/utils';
 import Joi from 'joi';
 import { constants } from '@hathor/wallet-lib';
 import middy from '@middy/core';
@@ -36,7 +36,8 @@ export const get = middy(walletIdProxyHandler(async (walletId) => {
       tokens: walletTokens,
     }),
   };
-})).use(cors());
+})).use(cors())
+  .use(warmupMiddleware());
 
 const getTokenDetailsParamsSchema = Joi.object({
   token_id: Joi.string()
@@ -104,4 +105,5 @@ export const getTokenDetails = middy(walletIdProxyHandler(async (walletId, event
       },
     }),
   };
-})).use(cors());
+})).use(cors())
+  .use(warmupMiddleware());
