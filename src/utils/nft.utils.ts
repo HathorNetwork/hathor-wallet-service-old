@@ -64,16 +64,12 @@ export class NftUtils {
 
   /**
  * Generates a JSON containing the basic metadata for a NFT, based on the token uid passed as parameter
- * @param {string} nftUid
- * @returns {Record<string,{id:string,nft:boolean}>}
  */
-  static _generateNFTTokenMetadataJSON(nftUid: string): Record<string, { id: string, nft: boolean }> {
-    const nftMetadata = {};
-    nftMetadata[nftUid] = {
+  static _generateNFTTokenMetadataJSON(nftUid: string): { id: string; nft: boolean } {
+    return {
       id: nftUid,
       nft: true,
     };
-    return nftMetadata;
   }
 
   /**
@@ -129,8 +125,8 @@ export class NftUtils {
       FunctionName: `hathor-explorer-service-${NftUtils.getExplorerServiceStage(process.env.STAGE)}-create_or_update_dag_metadata`,
       InvocationType: 'Event',
       Payload: JSON.stringify({
-        query: { id: nftUid },
-        body: metadata,
+        id: nftUid,
+        metadata,
       }),
     };
 
@@ -163,23 +159,7 @@ export class NftUtils {
    * @returns {Promise<void>} No data is returned after a successful update or skip
    */
   static async createOrUpdateNftMetadata(nftUid: string): Promise<void> {
-  // Fetching current metadata for this token
-    const existingMetadata = await NftUtils._getTokenMetadata(nftUid) || {};
-
-    // Metadata already exists and is correct: Do nothing.
-    const tokenMetadata = existingMetadata[nftUid] as { nft: boolean };
-    if (tokenMetadata && tokenMetadata.nft === true) {
-      return;
-    }
-
-    // Metadata already exists, but does not have the NFT flag: Update existing data.
-    if (tokenMetadata) {
-      tokenMetadata.nft = true;
-      await NftUtils._updateMetadata(nftUid, existingMetadata);
-      return;
-    }
-
-    // There is no metadata for this token: create and upload it.
+    // The explorer service automatically merges the metadata content if it already exists.
     const newMetadata = NftUtils._generateNFTTokenMetadataJSON(nftUid);
     await NftUtils._updateMetadata(nftUid, newMetadata);
   }
