@@ -7,9 +7,8 @@ custom:
   warmup:
     walletWarmer: # Keeps the lambdas used by the wallets initialization warm
       enabled: true
-      verbose: true
       events:
-        - schedule: cron(0/5 * ? * MON-SUN *) # Every 5 minutes, every day
+        - schedule: rate(5 minutes)
   logLevelMap:
     mainnet: info
     testnet: info
@@ -104,7 +103,6 @@ provider:
     STAGE: ${opt:stage, 'dev'}
     VOIDED_TX_OFFSET: ${env:VOIDED_TX_OFFSET}
     DEFAULT_SERVER: ${env:DEFAULT_SERVER}
-    TOKEN_METADATA_URL: ${env:TOKEN_METADATA_URL}
     WS_DOMAIN: ${env:WS_DOMAIN}
     TX_HISTORY_MAX_COUNT: ${env:TX_HISTORY_MAX_COUNT}
     LOG_LEVEL: ${self:custom.logLevel}
@@ -134,8 +132,14 @@ functions:
     handler: src/mempool.onHandleOldVoidedTxs
     events:
       - schedule: rate(${env:VOIDED_TX_OFFSET} minutes)
+    warmup:
+      walletWarmer:
+        enabled: false
   getLatestBlock:
     handler: src/height.getLatestBlock
+    warmup:
+      walletWarmer:
+        enabled: false
   onNewTxRequest:
     handler: src/txProcessor.onNewTxRequest
     warmup:
@@ -143,30 +147,42 @@ functions:
         enabled: false
   onMinersListRequest:
     handler: src/api/miners.onMinersListRequest
+    warmup:
+      walletWarmer:
+        enabled: false
   onTotalSupplyRequest:
     handler: src/api/totalSupply.onTotalSupplyRequest
     timeout: 120 # 2 minutes
+    warmup:
+      walletWarmer:
+        enabled: false
   onHandleReorgRequest:
     handler: src/txProcessor.onHandleReorgRequest
     timeout: 300 # 5 minutes
+    warmup:
+      walletWarmer:
+        enabled: false
   onNewTxEvent:
     handler: src/txProcessor.onNewTxEvent
-  onNewNftEvent:
-    handler: src/txProcessor.onNewNftEvent
     warmup:
       walletWarmer:
         enabled: false
   loadWalletAsync:
     handler: src/api/wallet.loadWallet
+    warmup:
+      walletWarmer:
+        enabled: false
   loadWalletApi:
     role: arn:aws:iam::769498303037:role/WalletServiceLoadWalletLambda
     handler: src/api/wallet.load
-    warmup: true
     events:
       - http:
           path: wallet/init
           method: post
           cors: true
+    warmup:
+      walletWarmer:
+        enabled: true
   changeWalletAuthXpubApi:
     handler: src/api/wallet.changeAuthXpub
     events:
@@ -174,33 +190,42 @@ functions:
           path: wallet/auth
           method: put
           cors: true
+    warmup:
+      walletWarmer:
+        enabled: false
   getWalletStatusApi:
     handler: src/api/wallet.get
-    warmup: true
     events:
       - http:
           path: wallet/status
           method: get
           cors: true
           authorizer: ${self:custom.authorizer.walletBearer}
+    warmup:
+      walletWarmer:
+        enabled: true
   getAddressesApi:
     handler: src/api/addresses.get
-    warmup: true
     events:
       - http:
           path: wallet/addresses
           method: get
           cors: true
           authorizer: ${self:custom.authorizer.walletBearer}
+    warmup:
+      walletWarmer:
+        enabled: true
   getNewAddresses:
     handler: src/api/newAddresses.get
-    warmup: true
     events:
       - http:
           path: wallet/addresses/new
           method: get
           cors: true
           authorizer: ${self:custom.authorizer.walletBearer}
+    warmup:
+      walletWarmer:
+        enabled: true
   getUtxos:
     handler: src/api/txOutputs.getFilteredUtxos
     events:
@@ -209,6 +234,9 @@ functions:
           method: get
           cors: true
           authorizer: ${self:custom.authorizer.walletBearer}
+    warmup:
+      walletWarmer:
+        enabled: false
   getTxOutputs:
     handler: src/api/txOutputs.getFilteredTxOutputs
     events:
@@ -217,24 +245,31 @@ functions:
           method: get
           cors: true
           authorizer: ${self:custom.authorizer.walletBearer}
+    warmup:
+      walletWarmer:
+        enabled: false
   getBalanceApi:
     handler: src/api/balances.get
-    warmup: true
     events:
       - http:
           path: wallet/balances
           method: get
           cors: true
           authorizer: ${self:custom.authorizer.walletBearer}
+    warmup:
+      walletWarmer:
+        enabled: true
   getTokensApi:
     handler: src/api/tokens.get
-    warmup: true
     events:
       - http:
           path: wallet/tokens
           method: get
           cors: true
           authorizer: ${self:custom.authorizer.walletBearer}
+    warmup:
+      walletWarmer:
+        enabled: true
   getTokenDetails:
     handler: src/api/tokens.getTokenDetails
     events:
@@ -247,23 +282,30 @@ functions:
             parameters:
               paths:
                 token_id: true
+    warmup:
+      walletWarmer:
+        enabled: false
   getVersionData:
     handler: src/api/version.get
-    warmup: true
     events:
       - http:
           path: version
           method: get
           cors: true
+    warmup:
+      walletWarmer:
+        enabled: true
   getTxHistoryApi:
     handler: src/api/txhistory.get
-    warmup: true
     events:
       - http:
           path: wallet/history
           method: get
           cors: true
           authorizer: ${self:custom.authorizer.walletBearer}
+    warmup:
+      walletWarmer:
+        enabled: true
   createTxProposalApi:
     handler: src/api/txProposalCreate.create
     events:
@@ -272,6 +314,9 @@ functions:
           method: post
           cors: true
           authorizer: ${self:custom.authorizer.walletBearer}
+    warmup:
+      walletWarmer:
+        enabled: false
   sendTxProposalApi:
     handler: src/api/txProposalSend.send
     events:
@@ -284,6 +329,9 @@ functions:
             parameters:
               paths:
                 txProposalId: true
+    warmup:
+      walletWarmer:
+        enabled: false
   deleteTxProposalApi:
     handler: src/api/txProposalDestroy.destroy
     events:
@@ -296,6 +344,9 @@ functions:
             parameters:
               paths:
                 txProposalId: true
+    warmup:
+      walletWarmer:
+        enabled: false
   wsConnect:
     handler: src/ws/connection.connect
     timeout: 1
@@ -306,12 +357,18 @@ functions:
           route: $disconnect
       - websocket:
           route: ping
+    warmup:
+      walletWarmer:
+        enabled: false
   wsJoin:
     handler: src/ws/join.handler
     timeout: 1
     events:
       - websocket:
           route: join
+    warmup:
+      walletWarmer:
+        enabled: false
   wsTxNotifyNew:
     handler: src/ws/txNotify.onNewTx
     timeout: 1
@@ -321,20 +378,36 @@ functions:
             Fn::GetAtt:
               - WalletServiceNewTxQueue
               - Arn
-          batchSize: 10
-          maximumBatchingWindow: 3
+          batchSize: 1 # Will send every tx to the lambda istead of batching it, this should be tuned when we have more
+                       # users using the wallet-service facade
+          maximumBatchingWindow: 0 # This is the default value, will wait 0 seconds before calling the lambda
+    warmup:
+      walletWarmer:
+        enabled: false
   wsTxNotifyUpdate:
     handler: src/ws/txNotify.onUpdateTx
     timeout: 1
+    warmup:
+      walletWarmer:
+        enabled: false
   wsAdminBroadcast:
     handler: src/ws/admin.broadcast
     timeout: 1
+    warmup:
+      walletWarmer:
+        enabled: false
   wsAdminDisconnect:
     handler: src/ws/admin.disconnect
     timeout: 1
+    warmup:
+      walletWarmer:
+        enabled: false
   wsAdminMulticast:
     handler: src/ws/admin.multicast
     timeout: 1
+    warmup:
+      walletWarmer:
+        enabled: false
   authTokenApi:
     handler: src/api/auth.tokenHandler
     timeout: 6
@@ -343,8 +416,14 @@ functions:
           path: auth/token
           method: post
           cors: true
+    warmup:
+      walletWarmer:
+        enabled: false
   bearerAuthorizer:
     handler: src/api/auth.bearerAuthorizer
+    warmup:
+      walletWarmer:
+        enabled: false
   metrics:
     handler: src/metrics.getMetrics
     events:
@@ -354,3 +433,6 @@ functions:
           throttling:
             maxRequestsPerSecond: 2
             maxConcurrentRequests: 2
+    warmup:
+      walletWarmer:
+        enabled: false

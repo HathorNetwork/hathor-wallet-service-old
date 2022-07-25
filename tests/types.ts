@@ -30,3 +30,14 @@ export interface TokenTableEntry {
   name: string;
   symbol: string;
 }
+
+export interface WalletTableEntry {
+  id: string;
+  xpubkey: string;
+  authXpubkey: string;
+  status: string;
+  maxGap: number;
+  highestUsedIndex?: number;
+  createdAt: number;
+  readyAt: number;
+}
