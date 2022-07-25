@@ -150,6 +150,8 @@ test('generateAddresses', async () => {
   addressesInfo = await generateAddresses(mysql, XPUBKEY, maxGap);
   expect(addressesInfo.addresses).toHaveLength(maxGap);
   expect(addressesInfo.existingAddresses).toStrictEqual({ [address0]: 0 });
+  expect(addressesInfo.lastUsedAddressIndex).toStrictEqual(-1);
+
   let totalLength = Object.keys(addressesInfo.addresses).length;
   let existingLength = Object.keys(addressesInfo.existingAddresses).length;
   expect(Object.keys(addressesInfo.newAddresses)).toHaveLength(totalLength - existingLength);
@@ -161,6 +163,8 @@ test('generateAddresses', async () => {
   addressesInfo = await generateAddresses(mysql, XPUBKEY, maxGap);
   expect(addressesInfo.addresses).toHaveLength(maxGap + usedIndex + 1);
   expect(addressesInfo.existingAddresses).toStrictEqual({ [address0]: 0 });
+  expect(addressesInfo.lastUsedAddressIndex).toStrictEqual(0);
+
   totalLength = Object.keys(addressesInfo.addresses).length;
   existingLength = Object.keys(addressesInfo.existingAddresses).length;
   expect(Object.keys(addressesInfo.newAddresses)).toHaveLength(totalLength - existingLength);
@@ -177,6 +181,7 @@ test('generateAddresses', async () => {
   addressesInfo = await generateAddresses(mysql, XPUBKEY, maxGap);
   expect(addressesInfo.addresses).toHaveLength(maxGap + usedIndex + 1);
   expect(addressesInfo.existingAddresses).toStrictEqual({ [address0]: 0, [address1]: 1 });
+  expect(addressesInfo.lastUsedAddressIndex).toStrictEqual(1);
   totalLength = Object.keys(addressesInfo.addresses).length;
   existingLength = Object.keys(addressesInfo.existingAddresses).length;
   expect(Object.keys(addressesInfo.newAddresses)).toHaveLength(totalLength - existingLength);
@@ -193,6 +198,7 @@ test('generateAddresses', async () => {
   addressesInfo = await generateAddresses(mysql, XPUBKEY, maxGap);
   expect(addressesInfo.addresses).toHaveLength(maxGap + usedIndex + 1);
   expect(addressesInfo.existingAddresses).toStrictEqual({ [address0]: 0, [address1]: 1, [address4]: 4 });
+  expect(addressesInfo.lastUsedAddressIndex).toStrictEqual(4);
   totalLength = Object.keys(addressesInfo.addresses).length;
   existingLength = Object.keys(addressesInfo.existingAddresses).length;
   expect(Object.keys(addressesInfo.newAddresses)).toHaveLength(totalLength - existingLength);
