@@ -1,7 +1,6 @@
 import hathorLib from '@hathor/wallet-lib';
 import { MAX_METADATA_UPDATE_RETRIES, NftUtils } from '@src/utils/nft.utils';
 import { getHandlerContext, getTransaction } from '@events/nftCreationTx';
-import axios from 'axios';
 import { Lambda as LambdaMock } from 'aws-sdk';
 
 jest.mock('aws-sdk', () => {
@@ -93,161 +92,34 @@ describe('generateNFTTokenMetadataJSON', () => {
     expect.hasAssertions();
 
     const result = NftUtils._generateNFTTokenMetadataJSON('sampleUid');
-    expect(result).toStrictEqual({
-      sampleUid: { id: 'sampleUid', nft: true },
-    });
+    expect(result).toStrictEqual({ id: 'sampleUid', nft: true });
   });
 });
 
 describe('createOrUpdateNftMetadata', () => {
-  const spyFetchMetadata = jest.spyOn(NftUtils, '_getTokenMetadata');
   const spyUpdateMetadata = jest.spyOn(NftUtils, '_updateMetadata');
 
   afterEach(() => {
-    spyFetchMetadata.mockReset();
     spyUpdateMetadata.mockReset();
   });
 
   afterAll(() => {
     // Clear mocks
-    spyFetchMetadata.mockRestore();
     spyUpdateMetadata.mockRestore();
   });
 
-  it('should not update metadata when it already exists', async () => {
+  it('should request the create/update metadata with minimum nft data', async () => {
     expect.hasAssertions();
-
-    spyFetchMetadata.mockImplementation(async () => ({
-      sampleUid: {
-        id: 'sampleUid',
-        nft: true,
-      },
-    }));
-    spyUpdateMetadata.mockImplementation(async () => ({}));
-    await NftUtils.createOrUpdateNftMetadata('sampleUid');
-
-    expect(spyFetchMetadata).toHaveBeenCalledTimes(1);
-    expect(spyUpdateMetadata).toHaveBeenCalledTimes(0);
-  });
-
-  it('should create metadata with minimum nft data', async () => {
-    expect.hasAssertions();
-    const expectedUpdateRequest = { sampleUid: { id: 'sampleUid', nft: true } };
+    const expectedUpdateRequest = { id: 'sampleUid', nft: true };
     const expectedUpdateResponse = { updated: 'ok' };
 
-    spyFetchMetadata.mockImplementation(async () => ({}));
     spyUpdateMetadata.mockImplementation(async () => expectedUpdateResponse);
     const result = await NftUtils.createOrUpdateNftMetadata('sampleUid');
 
-    expect(spyFetchMetadata).toHaveBeenCalledTimes(1);
     expect(spyUpdateMetadata).toHaveBeenCalledTimes(1);
 
     expect(spyUpdateMetadata).toHaveBeenCalledWith('sampleUid', expectedUpdateRequest);
     expect(result).toBeUndefined(); // The method returns void
-  });
-
-  it('should preserve existing metadata when adding nft field', async () => {
-    expect.hasAssertions();
-    const existingMetadata = {
-      id: 'sampleUid',
-      otherField: 1,
-    };
-    const expectedUpdateRequest = { sampleUid: { ...existingMetadata, nft: true } };
-
-    spyFetchMetadata.mockImplementation(async () => ({ sampleUid: existingMetadata }));
-    spyUpdateMetadata.mockImplementation(async () => ({ updated: 'ok' }));
-    const result = await NftUtils.createOrUpdateNftMetadata('sampleUid');
-
-    expect(spyFetchMetadata).toHaveBeenCalledTimes(1);
-    expect(spyUpdateMetadata).toHaveBeenCalledTimes(1);
-
-    expect(spyUpdateMetadata).toHaveBeenCalledWith('sampleUid', expectedUpdateRequest);
-  });
-});
-
-describe('_getTokenMetadata', () => {
-  const spyAxiosGet = jest.spyOn(axios, 'get');
-
-  afterEach(() => {
-    spyAxiosGet.mockReset();
-  });
-
-  afterAll(() => {
-    spyAxiosGet.mockRestore();
-  });
-
-  it('should retrieve metadata from http response', async () => {
-    expect.hasAssertions();
-    const expectedHttpResponse = {
-      status: 200,
-      data: { mockedResponse: 'yes' },
-    };
-    spyAxiosGet.mockImplementation(async () => expectedHttpResponse);
-
-    const results = await NftUtils._getTokenMetadata('sampleUid');
-    expect(results).toStrictEqual(expectedHttpResponse.data);
-  });
-
-  it('should retrieve an empty object when the token metadata is not found', async () => {
-    expect.hasAssertions();
-    const expectedHttpError = {
-      response: {
-        status: 404,
-        data: { whateverData: 'ignore' },
-      },
-    };
-    spyAxiosGet.mockImplementation(async () => {
-      throw expectedHttpError;
-    });
-
-    const results = await NftUtils._getTokenMetadata('sampleUid');
-    expect(results).toStrictEqual({});
-  });
-
-  it('should rethrow when an axios error happens', async () => {
-    expect.hasAssertions();
-    const expectedHttpError = {
-      response: {
-        status: 500,
-        data: { description: 'error message' },
-      },
-      toJSON: () => ({}),
-    };
-    // Mocking the axios helper
-    expectedHttpError.toJSON = () => expectedHttpError.response;
-    spyAxiosGet.mockImplementation(async () => {
-      throw expectedHttpError;
-    });
-
-    await expect(NftUtils._getTokenMetadata('sampleUid'))
-      .rejects.toStrictEqual(expectedHttpError.response);
-  });
-
-  it('should rethrow when an unknown error happens', async () => {
-    expect.hasAssertions();
-    const expectedError = new Error('unknown failure');
-    spyAxiosGet.mockImplementation(async () => {
-      throw expectedError;
-    });
-
-    await expect(NftUtils._getTokenMetadata('sampleUid'))
-      .rejects.toThrow(expectedError);
-  });
-
-  it('should throw when the API url is not set', async () => {
-    expect.hasAssertions();
-    spyAxiosGet.mockImplementation(async () => ({}));
-
-    // Mocking the API environment url
-    const oldUrl = NftUtils.tokenMetadataApi;
-    NftUtils.tokenMetadataApi = '';
-
-    await expect(NftUtils._getTokenMetadata('sampleUid'))
-      .rejects.toThrow(new Error('Missing TOKEN_METADATA_URL setting'));
-    expect(spyAxiosGet).not.toHaveBeenCalled();
-
-    // Reverting mocked value
-    NftUtils.tokenMetadataApi = oldUrl;
   });
 });
 
@@ -265,9 +137,12 @@ describe('_updateMetadata', () => {
     (mLambda.invoke as jest.Mocked<any>).mockImplementationOnce(() => ({
       promise: async () => expectedLambdaResponse,
     }));
+    const oldStage = process.env.STAGE;
+    process.env.STAGE = 'dev'; // Testing all code branches, including the developer ones, for increased coverage
 
     const result = await NftUtils._updateMetadata('sampleUid', { sampleData: 'fake' });
     expect(result).toStrictEqual(expectedLambdaResponse);
+    process.env.STAGE = oldStage;
   });
 
   it('should retry calling the update lambda a set number of times', async () => {

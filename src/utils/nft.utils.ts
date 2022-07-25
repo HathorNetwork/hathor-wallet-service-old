@@ -73,40 +73,6 @@ export class NftUtils {
   }
 
   /**
- * Gets the token metadata from the Explorer Service API.
- * @param {string} tokenUid
- * @returns {Promise<Record<string, unknown>>} Token metadata
- */
-  static async _getTokenMetadata(tokenUid: string): Promise<Record<string, unknown>> {
-    if (!NftUtils.tokenMetadataApi) {
-      throw new Error('Missing TOKEN_METADATA_URL setting');
-    }
-
-    const metadataResponse = await axios.get(
-      NftUtils.tokenMetadataApi,
-      { params: { id: tokenUid } },
-    )
-      .catch((err) => {
-        const errResponse = err.response;
-
-        // This is a valid response, the metadata just wasn't created yet.
-        if (errResponse?.status === 404) {
-          return { data: {} };
-        }
-
-        // Handling an axios error
-        if (typeof err.toJSON === 'function') {
-          throw err.toJSON();
-        }
-
-        // Handling an unknown error
-        throw err;
-      });
-
-    return metadataResponse.data;
-  }
-
-  /**
    * Calls the token metadata on the Explorer Service API to update a token's metadata
    * @param {string} nftUid
    * @param {Record<string, unknown>} metadata

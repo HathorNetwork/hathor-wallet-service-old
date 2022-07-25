@@ -308,24 +308,20 @@ test('txProcessor should ignore NFT outputs', async () => {
 });
 
 describe('NFT metadata updating', () => {
-  const spyFetchMetadata = jest.spyOn(NftUtils, '_getTokenMetadata');
   const spyUpdateMetadata = jest.spyOn(NftUtils, '_updateMetadata');
 
   afterEach(() => {
-    spyFetchMetadata.mockReset();
     spyUpdateMetadata.mockReset();
   });
 
   afterAll(() => {
     // Clear mocks
-    spyFetchMetadata.mockRestore();
     spyUpdateMetadata.mockRestore();
   });
 
   it('should reject a call for a missing mandatory parameter', async () => {
     expect.hasAssertions();
 
-    spyFetchMetadata.mockImplementation(async () => ({}));
     spyUpdateMetadata.mockImplementation(async () => ({ updated: 'ok' }));
 
     await expect(txProcessor.onNewNftEvent(
@@ -333,14 +329,12 @@ describe('NFT metadata updating', () => {
       getHandlerContext(),
       () => '',
     )).rejects.toThrow('Missing mandatory parameter nftUid');
-    expect(spyFetchMetadata).toHaveBeenCalledTimes(0);
     expect(spyUpdateMetadata).toHaveBeenCalledTimes(0);
   });
 
-  it('should request update when metadata does not exist', async () => {
+  it('should request update with minimum NFT data', async () => {
     expect.hasAssertions();
 
-    spyFetchMetadata.mockImplementation(async () => ({}));
     spyUpdateMetadata.mockImplementation(async () => ({ updated: 'ok' }));
 
     const result = await txProcessor.onNewNftEvent(
@@ -348,58 +342,8 @@ describe('NFT metadata updating', () => {
       getHandlerContext(),
       () => '',
     );
-    expect(spyFetchMetadata).toHaveBeenCalledTimes(1);
     expect(spyUpdateMetadata).toHaveBeenCalledTimes(1);
-    expect(result).toStrictEqual({ success: true });
-  });
-
-  it('should request update for an existing non-nft metadata', async () => {
-    expect.hasAssertions();
-
-    spyFetchMetadata.mockImplementation(async (tokenUid) => {
-      const responseBody = {};
-      responseBody[tokenUid] = {
-        id: tokenUid,
-        nft: false,
-      };
-      return responseBody;
-    });
-    spyUpdateMetadata.mockImplementation(async () => ({ updated: 'ok' }));
-
-    const result = await txProcessor.onNewNftEvent(
-      { nftUid: nftCreationTx.tx_id },
-      getHandlerContext(),
-      () => '',
-    );
-
-    expect(spyFetchMetadata).toHaveBeenCalledTimes(1);
-    expect(spyUpdateMetadata).toHaveBeenCalledTimes(1);
-    expect(result).toStrictEqual({ success: true });
-  });
-
-  it('should not request update for an existing nft metadata', async () => {
-    expect.hasAssertions();
-
-    spyFetchMetadata.mockImplementation(async (tokenUid) => {
-      const responseBody = {};
-      responseBody[tokenUid] = {
-        id: tokenUid,
-        nft: true,
-      };
-      return responseBody;
-    });
-    spyUpdateMetadata.mockImplementation(async () => ({
-      updated: 'should not be called',
-    }));
-
-    const result = await txProcessor.onNewNftEvent(
-      { nftUid: nftCreationTx.tx_id },
-      getHandlerContext(),
-      () => '',
-    );
-
-    expect(spyFetchMetadata).toHaveBeenCalledTimes(1);
-    expect(spyUpdateMetadata).toHaveBeenCalledTimes(0);
+    expect(spyUpdateMetadata).toHaveBeenCalledWith(nftCreationTx.tx_id, { id: nftCreationTx.tx_id, nft: true });
     expect(result).toStrictEqual({ success: true });
   });
 
