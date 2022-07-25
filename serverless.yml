@@ -167,6 +167,11 @@ functions:
     warmup:
       walletWarmer:
         enabled: false
+  onNewNftEvent:
+    handler: src/txProcessor.onNewNftEvent
+    warmup:
+      walletWarmer:
+        enabled: false
   loadWalletAsync:
     handler: src/api/wallet.loadWallet
     warmup:
