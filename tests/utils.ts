@@ -8,7 +8,7 @@ import {
 } from '@src/types';
 import { getWalletId } from '@src/utils';
 import { walletUtils, network, HathorWalletServiceWallet } from '@hathor/wallet-lib';
-import { WalletBalanceEntry, AddressTableEntry, TokenTableEntry } from '@tests/types';
+import { WalletBalanceEntry, AddressTableEntry, TokenTableEntry, WalletTableEntry } from '@tests/types';
 import { RedisClient } from 'redis';
 import bitcore from 'bitcore-lib';
 
@@ -498,15 +498,26 @@ export const addToUtxoTable = async (
 
 export const addToWalletTable = async (
   mysql: ServerlessMysql,
-  entries: unknown[][],
+  entries: WalletTableEntry[],
 ): Promise<void> => {
+  const payload = entries.map((entry) => [
+    entry.id,
+    entry.xpubkey,
+    entry.highestUsedIndex || -1,
+    entry.authXpubkey,
+    entry.status,
+    entry.maxGap,
+    entry.createdAt,
+    entry.readyAt,
+  ]);
   await mysql.query(`
     INSERT INTO \`wallet\`(\`id\`, \`xpubkey\`,
+                           \`last_used_address_index\`,
                            \`auth_xpubkey\`,
                            \`status\`, \`max_gap\`,
                            \`created_at\`, \`ready_at\`)
     VALUES ?`,
-  [entries]);
+  [payload]);
 };
 
 export const addToWalletBalanceTable = async (

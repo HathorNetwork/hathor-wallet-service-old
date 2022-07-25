@@ -70,8 +70,6 @@ const BURN_ADDRESS = 'HDeadDeadDeadDeadDeadDeadDeagTPgmn';
  * @returns Object with all addresses for the given xpubkey and corresponding index
  */
 export const generateAddresses = async (mysql: ServerlessMysql, xpubkey: string, maxGap: number): Promise<GenerateAddresses> => {
-  let highestCheckedIndex = -1;
-  let highestUsedIndex = -1;
   const existingAddresses: AddressIndexMap = {};
   const newAddresses: AddressIndexMap = {};
   const allAddresses: string[] = [];
@@ -81,6 +79,8 @@ export const generateAddresses = async (mysql: ServerlessMysql, xpubkey: string,
   // so we derive our xpub to this path and use it to get the addresses
   const derivedXpub = xpubDeriveChild(xpubkey, 0);
 
+  let highestCheckedIndex = -1;
+  let lastUsedAddressIndex = -1;
   do {
     const addrMap = getAddresses(derivedXpub, highestCheckedIndex + 1, maxGap);
     allAddresses.push(...Object.keys(addrMap));
@@ -103,8 +103,8 @@ export const generateAddresses = async (mysql: ServerlessMysql, xpubkey: string,
       existingAddresses[address] = index;
 
       // if address is used, check if its index is higher than the current highest used index
-      if (entry.transactions > 0 && index > highestUsedIndex) {
-        highestUsedIndex = index;
+      if (entry.transactions > 0 && index > lastUsedAddressIndex) {
+        lastUsedAddressIndex = index;
       }
 
       delete addrMap[address];
@@ -112,13 +112,13 @@ export const generateAddresses = async (mysql: ServerlessMysql, xpubkey: string,
 
     highestCheckedIndex += maxGap;
     Object.assign(newAddresses, addrMap);
-  } while (highestUsedIndex + maxGap > highestCheckedIndex);
+  } while (lastUsedAddressIndex + maxGap > highestCheckedIndex);
 
   // we probably generated more addresses than needed, as we always generate
   // addresses in maxGap blocks
-  const totalAddresses = highestUsedIndex + maxGap + 1;
+  const totalAddresses = lastUsedAddressIndex + maxGap + 1;
   for (const [address, index] of Object.entries(newAddresses)) {
-    if (index > highestUsedIndex + maxGap) {
+    if (index > lastUsedAddressIndex + maxGap) {
       delete newAddresses[address];
     }
   }
@@ -127,6 +127,7 @@ export const generateAddresses = async (mysql: ServerlessMysql, xpubkey: string,
     addresses: allAddresses.slice(0, totalAddresses),
     newAddresses,
     existingAddresses,
+    lastUsedAddressIndex,
   };
 };
 
@@ -280,7 +281,12 @@ export const updateWalletAuthXpub = async (
  * @param walletId - The wallet id
  * @param addresses - A map of addresses and corresponding indexes
  */
-export const addNewAddresses = async (mysql: ServerlessMysql, walletId: string, addresses: AddressIndexMap): Promise<void> => {
+export const addNewAddresses = async (
+  mysql: ServerlessMysql,
+  walletId: string,
+  addresses: AddressIndexMap,
+  lastUsedAddressIndex: number,
+): Promise<void> => {
   if (Object.keys(addresses).length === 0) return;
   const entries = [];
   for (const [address, index] of Object.entries(addresses)) {
@@ -291,6 +297,14 @@ export const addNewAddresses = async (mysql: ServerlessMysql, walletId: string, 
                              \`wallet_id\`, \`transactions\`)
      VALUES ?`,
     [entries],
+  );
+
+  // Store on the wallet table the highest used index
+  await mysql.query(
+    `UPDATE \`wallet\`
+        SET \`last_used_address_index\` = ?
+      WHERE \`id\` = ?`,
+    [lastUsedAddressIndex, walletId],
   );
 };
 
@@ -1192,26 +1206,17 @@ export const getNewAddresses = async (mysql: ServerlessMysql, walletId: string):
   const resultsWallet: DbSelectResult = await mysql.query('SELECT * FROM `wallet` WHERE `id` = ?', walletId);
   if (resultsWallet.length) {
     const gapLimit = resultsWallet[0].max_gap as number;
+    const latestUsedIndex = resultsWallet[0].last_used_address_index as number;
     // Select all addresses that are empty and the index is bigger than the last used address index
     const results: DbSelectResult = await mysql.query(`
       SELECT *
         FROM \`address\`
        WHERE \`wallet_id\` = ?
          AND \`transactions\` = 0
-         AND \`index\` > (
-           IFNULL(
-             (
-               SELECT MAX(\`index\`)
-                FROM \`address\`
-               WHERE \`wallet_id\` = ?
-                 AND \`transactions\` > 0
-             ),
-             -1
-           )
-         )
+         AND \`index\` > ?
     ORDER BY \`index\`
          ASC
-    LIMIT ?`, [walletId, walletId, gapLimit]);
+    LIMIT ?`, [walletId, latestUsedIndex, gapLimit]);
 
     for (const result of results) {
       const index = result.index as number;
