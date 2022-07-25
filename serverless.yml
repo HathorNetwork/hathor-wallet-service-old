@@ -364,8 +364,9 @@ functions:
             Fn::GetAtt:
               - WalletServiceNewTxQueue
               - Arn
-          batchSize: 10
-          maximumBatchingWindow: 3
+          batchSize: 1 # Will send every tx to the lambda istead of batching it, this should be tuned when we have more
+                       # users using the wallet-service facade
+          maximumBatchingWindow: 0 # This is the default value, will wait 0 seconds before calling the lambda
     warmup:
       walletWarmer:
         enabled: false
