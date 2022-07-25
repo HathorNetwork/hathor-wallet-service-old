@@ -80,7 +80,7 @@ export const generateAddresses = async (mysql: ServerlessMysql, xpubkey: string,
   const derivedXpub = xpubDeriveChild(xpubkey, 0);
 
   let highestCheckedIndex = -1;
-  let highestUsedIndex = -1;
+  let lastUsedAddressIndex = -1;
   do {
     const addrMap = getAddresses(derivedXpub, highestCheckedIndex + 1, maxGap);
     allAddresses.push(...Object.keys(addrMap));
@@ -103,8 +103,8 @@ export const generateAddresses = async (mysql: ServerlessMysql, xpubkey: string,
       existingAddresses[address] = index;
 
       // if address is used, check if its index is higher than the current highest used index
-      if (entry.transactions > 0 && index > highestUsedIndex) {
-        highestUsedIndex = index;
+      if (entry.transactions > 0 && index > lastUsedAddressIndex) {
+        lastUsedAddressIndex = index;
       }
 
       delete addrMap[address];
@@ -112,13 +112,13 @@ export const generateAddresses = async (mysql: ServerlessMysql, xpubkey: string,
 
     highestCheckedIndex += maxGap;
     Object.assign(newAddresses, addrMap);
-  } while (highestUsedIndex + maxGap > highestCheckedIndex);
+  } while (lastUsedAddressIndex + maxGap > highestCheckedIndex);
 
   // we probably generated more addresses than needed, as we always generate
   // addresses in maxGap blocks
-  const totalAddresses = highestUsedIndex + maxGap + 1;
+  const totalAddresses = lastUsedAddressIndex + maxGap + 1;
   for (const [address, index] of Object.entries(newAddresses)) {
-    if (index > highestUsedIndex + maxGap) {
+    if (index > lastUsedAddressIndex + maxGap) {
       delete newAddresses[address];
     }
   }
@@ -127,7 +127,7 @@ export const generateAddresses = async (mysql: ServerlessMysql, xpubkey: string,
     addresses: allAddresses.slice(0, totalAddresses),
     newAddresses,
     existingAddresses,
-    highestUsedIndex,
+    lastUsedAddressIndex,
   };
 };
 
@@ -285,7 +285,7 @@ export const addNewAddresses = async (
   mysql: ServerlessMysql,
   walletId: string,
   addresses: AddressIndexMap,
-  highestUsedIndex: number,
+  lastUsedAddressIndex: number,
 ): Promise<void> => {
   if (Object.keys(addresses).length === 0) return;
   const entries = [];
@@ -304,7 +304,7 @@ export const addNewAddresses = async (
     `UPDATE \`wallet\`
         SET \`last_used_address_index\` = ?
       WHERE \`id\` = ?`,
-    [highestUsedIndex, walletId],
+    [lastUsedAddressIndex, walletId],
   );
 };
 
