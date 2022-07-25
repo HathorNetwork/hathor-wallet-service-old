@@ -340,9 +340,9 @@ const _unsafeAddNewTx = async (_logger: Logger, tx: Transaction, now: number, bl
     // this map might contain duplicate wallet values, as 2 different addresses might belong to the same wallet
     if (seenWallets.has(walletId)) continue;
     seenWallets.add(walletId);
-    const { newAddresses } = await generateAddresses(mysql, wallet.xpubkey, wallet.maxGap);
+    const { newAddresses, lastUsedAddressIndex } = await generateAddresses(mysql, wallet.xpubkey, wallet.maxGap);
     // might need to generate new addresses to keep maxGap
-    await addNewAddresses(mysql, walletId, newAddresses);
+    await addNewAddresses(mysql, walletId, newAddresses, lastUsedAddressIndex);
     // update existing addresses' walletId and index
   }
   // update wallet_balance and wallet_tx_history tables
