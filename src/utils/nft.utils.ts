@@ -5,7 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import axios from 'axios';
 import { Lambda } from 'aws-sdk';
 import { Transaction } from '@src/types';
 import hathorLib from '@hathor/wallet-lib';
