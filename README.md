@@ -54,7 +54,6 @@ BLOCK_REWARD_LOCK=300
 CONFIRM_FIRST_ADDRESS=true
 WS_DOMAIN=ws.wallet-service.hathor.network
 DEFAULT_SERVER=https://node1.mainnet.hathor.network/v1a/
-TOKEN_METADATA_URL=https://explorer-service.hathor.network/metadata/dag
 DB_ENDPOINT=localhost
 DB_NAME=wallet_service
 DB_USER=my_user

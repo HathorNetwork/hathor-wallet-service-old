@@ -18,11 +18,6 @@ export const MAX_METADATA_UPDATE_RETRIES: number = parseInt(process.env.MAX_META
  */
 
 export class NftUtils {
-  /**
-   * Url of the API that provides and updates token metadata
-   */
-  static tokenMetadataApi: string = process.env.TOKEN_METADATA_URL
-
   static getExplorerServiceStage(walletStage): string {
     if (walletStage === 'dev-testnet') {
       return 'dev';
