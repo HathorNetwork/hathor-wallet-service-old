@@ -68,7 +68,7 @@ export const onHandleOldVoidedTxs = async (): Promise<void> => {
          */
         try {
           // This will also throw if the height was not found on the requested block
-          const [height] = await fetchBlockHeight(transaction.meta.first_block);
+          const [height] = await fetchBlockHeight(transaction.meta.first_block, logger);
 
           // Balances have already been calculated as this transaction was on the mempool, we are safe to just update the height
           await updateTx(mysql, tx.txId, height, tx.timestamp, tx.version, tx.weight);

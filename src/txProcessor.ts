@@ -299,7 +299,7 @@ const _unsafeAddNewTx = async (_logger: Logger, tx: Transaction, now: number, bl
     await storeTokenInformation(mysql, tx.tx_id, tx.token_name, tx.token_symbol);
   }
 
-  const outputs: TxOutputWithIndex[] = prepareOutputs(tx.outputs, txId);
+  const outputs: TxOutputWithIndex[] = prepareOutputs(tx.outputs, txId, logger);
 
   // check if any of the inputs are still marked as locked and update tables accordingly.
   // See remarks on getLockedUtxoFromInputs for more explanation. It's important to perform this
@@ -375,7 +375,7 @@ const _unsafeAddNewTx = async (_logger: Logger, tx: Transaction, now: number, bl
  * @param now - Current timestamp
  * @param blockRewardLock - The block reward lock
  */
-export const addNewTx = async (logger: Logger, tx: Transaction, now: number, blockRewardLock: number) => {
+export const addNewTx = async (logger: Logger, tx: Transaction, now: number, blockRewardLock: number): Promise<void> => {
   /* eslint-disable-next-line  @typescript-eslint/ban-types */
   const wrappedAddNewTx = await transactionDecorator(mysql, _unsafeAddNewTx);
 
