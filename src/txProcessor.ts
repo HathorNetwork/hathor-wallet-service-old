@@ -146,8 +146,9 @@ export const onNewTxRequest: APIGatewayProxyHandler = async (event, context) => 
   try {
     if (NftUtils.isTransactionNFTCreation(tx)) {
       // This process is not critical, so we run it in a fire-and-forget manner.
-      // In case of errors, just log the exception and take no action on it.
-      NftUtils.invokeNftHandlerLambda(tx.tx_id).catch((err) => logger.error(err));
+      // In case of errors, just log the asynchronous exception and take no action on it.
+      NftUtils.invokeNftHandlerLambda(tx.tx_id)
+        .catch((err) => logger.error('Errored on nftHandlerLambda invocation', err));
     }
   } catch (e) {
     logger.error('Errored on NFT validation', e);
