@@ -948,6 +948,7 @@ export const updateAddressTablesWithTx = async (
       const entry = {
         address,
         token_id: token,
+        total_received: tokenBalance.totalAmountSent,
         // if it's < 0, there must be an entry already, so it will execute "ON DUPLICATE KEY UPDATE" instead of setting it to 0
         unlocked_balance: (tokenBalance.unlockedAmount < 0 ? 0 : tokenBalance.unlockedAmount),
         // this is never less than 0, as locked balance only changes when a tx is unlocked
@@ -962,7 +963,8 @@ export const updateAddressTablesWithTx = async (
         `INSERT INTO address_balance
                  SET ?
                   ON DUPLICATE KEY
-                            UPDATE unlocked_balance = unlocked_balance + ?,
+                            UPDATE total_received = total_reveiced + ?,
+                                   unlocked_balance = unlocked_balance + ?,
                                    locked_balance = locked_balance + ?,
                                    transactions = transactions + 1,
                                    timelock_expires = CASE
@@ -972,7 +974,7 @@ export const updateAddressTablesWithTx = async (
                                                       END,
                                    unlocked_authorities = (unlocked_authorities | VALUES(unlocked_authorities)),
                                    locked_authorities = locked_authorities | VALUES(locked_authorities)`,
-        [entry, tokenBalance.unlockedAmount, tokenBalance.lockedAmount, address, token],
+        [entry, tokenBalance.totalAmountSent, tokenBalance.unlockedAmount, tokenBalance.lockedAmount, address, token],
       );
 
       // if we're removing any of the authorities, we need to refresh the authority columns. Unlike the values,
@@ -2074,6 +2076,23 @@ export const rebuildAddressBalancesFromUtxos = async (
     timelock_expires = VALUES(timelock_expires),
     transactions = transactions + VALUES(\`transactions\`)
    `, [addresses]);
+
+  await mysql.query(`
+    UPDATE a
+      SET a.\`total_received\` = t.\`total\`,
+      FROM \`address_balance\` a
+      INNER JOIN (
+        SELECT SUM(\`value\`) AS total
+               \`address\`,
+               \`token_id\`
+        FROM \`tx_output\`
+        WHERE voided = FALSE
+          AND authorities = 0
+          AND address IN (?)
+        GROUP BY address, token_id
+      ) t
+      ON a.\`address\` = t.\`address\` AND a.\`token_id\` = t.\`token_id\`
+  `, [addresses]);
 };
 
 /**
