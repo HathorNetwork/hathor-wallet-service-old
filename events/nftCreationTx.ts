@@ -5,6 +5,10 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+/*
+ * This file contains helper data and methods for the tests
+ */
+
 /* eslint-disable @typescript-eslint/no-empty-function */
 
 import { Context } from 'aws-lambda';

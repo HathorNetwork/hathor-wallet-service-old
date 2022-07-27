@@ -17,7 +17,7 @@ export const MAX_METADATA_UPDATE_RETRIES: number = parseInt(process.env.MAX_META
  */
 
 export class NftUtils {
-  static getExplorerServiceStage(walletStage): string {
+  static getExplorerServiceStage(walletStage: string): string {
     if (walletStage === 'dev-testnet') {
       return 'dev';
     }
