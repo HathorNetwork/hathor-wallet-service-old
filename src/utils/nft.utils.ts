@@ -13,10 +13,13 @@ import createDefaultLogger from '@src/logger';
 export const MAX_METADATA_UPDATE_RETRIES: number = parseInt(process.env.MAX_METADATA_UPDATE_RETRIES || '3', 10);
 
 /**
- * A helper for reading, generating and updating a NFT Token's metadata.
+ * A helper for generating and updating a NFT Token's metadata.
  */
 
 export class NftUtils {
+  /**
+   * The wallet-service `dev-testnet` environments maps to the explorer-service's `dev`
+   */
   static getExplorerServiceStage(walletStage: string): string {
     if (walletStage === 'dev-testnet') {
       return 'dev';
@@ -54,16 +57,6 @@ export class NftUtils {
     }
 
     return isNftCreationTx;
-  }
-
-  /**
- * Generates a JSON containing the basic metadata for a NFT, based on the token uid passed as parameter
- */
-  static _generateNFTTokenMetadataJSON(nftUid: string): { id: string; nft: boolean } {
-    return {
-      id: nftUid,
-      nft: true,
-    };
   }
 
   /**
@@ -120,10 +113,17 @@ export class NftUtils {
    */
   static async createOrUpdateNftMetadata(nftUid: string): Promise<void> {
     // The explorer service automatically merges the metadata content if it already exists.
-    const newMetadata = NftUtils._generateNFTTokenMetadataJSON(nftUid);
+    const newMetadata = {
+      id: nftUid,
+      nft: true,
+    };
     await NftUtils._updateMetadata(nftUid, newMetadata);
   }
 
+  /**
+   * Invokes this application's own intermediary lambda `onNewNftEvent`.
+   * This is to improve the failure tolerance on this non-critical step of the sync loop.
+   */
   static async invokeNftHandlerLambda(txId: string): Promise<void> {
   // invoke lambda asynchronously to handle NFT metadata addition
     const lambda = new Lambda({

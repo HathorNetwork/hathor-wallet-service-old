@@ -239,8 +239,8 @@ interface NftValidationResults {
 }
 
 /**
- * This handler is responsible for making the final validations and calling the Explorer Service to update a NFT
- * metadata, if needed.
+ * This intermediary handler is responsible for making the final validations and calling
+ * the Explorer Service to update a NFT metadata, if needed.
  *
  * @remarks
  * This is a lambda function that should be invoked using the aws-sdk.
@@ -267,7 +267,7 @@ export const onNewNftEvent: Handler<NewNftEvent, NftValidationResults> = async (
     // No errors should be thrown from the process, only logged and returned gracefully as a success: false
     return {
       success: false,
-      message: `onNewNftEvent failed for token ${(event.nftUid)}`, // Failures on event body parsing yield a falsey nftUid
+      message: `onNewNftEvent failed for token ${(event.nftUid)}`,
     };
   }
 

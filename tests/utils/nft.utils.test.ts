@@ -87,15 +87,6 @@ describe('isTransactionNFTCreation', () => {
   });
 });
 
-describe('generateNFTTokenMetadataJSON', () => {
-  it('should return a NFT token metadata json', () => {
-    expect.hasAssertions();
-
-    const result = NftUtils._generateNFTTokenMetadataJSON('sampleUid');
-    expect(result).toStrictEqual({ id: 'sampleUid', nft: true });
-  });
-});
-
 describe('createOrUpdateNftMetadata', () => {
   const spyUpdateMetadata = jest.spyOn(NftUtils, '_updateMetadata');
 
