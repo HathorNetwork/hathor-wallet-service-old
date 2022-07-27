@@ -242,6 +242,8 @@ export class Authorities {
 }
 
 export class Balance {
+  totalAmountSent: number;
+
   lockedAmount: number;
 
   unlockedAmount: number;
@@ -252,7 +254,8 @@ export class Balance {
 
   lockExpires: number | null;
 
-  constructor(unlockedAmount = 0, lockedAmount = 0, lockExpires = null, unlockedAuthorities = null, lockedAuthorities = null) {
+  constructor(totalAmountSent = 0, unlockedAmount = 0, lockedAmount = 0, lockExpires = null, unlockedAuthorities = null, lockedAuthorities = null) {
+    this.totalAmountSent = totalAmountSent;
     this.unlockedAmount = unlockedAmount;
     this.lockedAmount = lockedAmount;
     this.lockExpires = lockExpires;
@@ -284,7 +287,14 @@ export class Balance {
    * @returns A new Balance object with the same information
    */
   clone(): Balance {
-    return new Balance(this.unlockedAmount, this.lockedAmount, this.lockExpires, this.unlockedAuthorities.clone(), this.lockedAuthorities.clone());
+    return new Balance(
+      this.totalAmountSent,
+      this.unlockedAmount,
+      this.lockedAmount,
+      this.lockExpires,
+      this.unlockedAuthorities.clone(),
+      this.lockedAuthorities.clone(),
+    );
   }
 
   /**
@@ -307,6 +317,7 @@ export class Balance {
       lockExpires = Math.min(b1.lockExpires, b2.lockExpires);
     }
     return new Balance(
+      b1.totalAmountSent + b2.totalAmountSent,
       b1.unlockedAmount + b2.unlockedAmount,
       b1.lockedAmount + b2.lockedAmount,
       lockExpires,
@@ -363,7 +374,7 @@ export class TokenBalanceMap {
 
   get(tokenId: string): Balance {
     // if the token is not present, return 0 instead of undefined
-    return this.map[tokenId] || new Balance(0, 0);
+    return this.map[tokenId] || new Balance(0, 0, 0);
   }
 
   set(tokenId: string, balance: Balance): void {
@@ -405,7 +416,7 @@ export class TokenBalanceMap {
   static fromStringMap(tokenBalanceMap: StringMap<StringMap<number | Authorities>>): TokenBalanceMap {
     const obj = new TokenBalanceMap();
     for (const [tokenId, balance] of Object.entries(tokenBalanceMap)) {
-      obj.set(tokenId, new Balance(balance.unlocked as number, balance.locked as number, balance.lockExpires || null,
+      obj.set(tokenId, new Balance(balance.totalSent as number, balance.unlocked as number, balance.locked as number, balance.lockExpires || null,
         balance.unlockedAuthorities, balance.lockedAuthorities));
     }
     return obj;
@@ -443,14 +454,14 @@ export class TokenBalanceMap {
 
     if (output.locked) {
       if (isAuthority(output.token_data)) {
-        obj.set(token, new Balance(0, 0, output.decoded.timelock, 0, new Authorities(output.value)));
+        obj.set(token, new Balance(0, 0, 0, output.decoded.timelock, 0, new Authorities(output.value)));
       } else {
-        obj.set(token, new Balance(0, value, output.decoded.timelock, 0, 0));
+        obj.set(token, new Balance(value, 0, value, output.decoded.timelock, 0, 0));
       }
     } else if (isAuthority(output.token_data)) {
-      obj.set(token, new Balance(0, 0, null, new Authorities(output.value), 0));
+      obj.set(token, new Balance(0, 0, 0, null, new Authorities(output.value), 0));
     } else {
-      obj.set(token, new Balance(value, 0, null));
+      obj.set(token, new Balance(value, value, 0, null));
     }
 
     return obj;
@@ -474,7 +485,7 @@ export class TokenBalanceMap {
       const authorities = new Authorities(input.value);
       obj.set(token, new Balance(0, 0, null, authorities.toNegative(), new Authorities(0)));
     } else {
-      obj.set(token, new Balance(-input.value, 0, null));
+      obj.set(token, new Balance(0, -input.value, 0, null));
     }
     return obj;
   }
