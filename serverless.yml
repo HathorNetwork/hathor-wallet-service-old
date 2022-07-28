@@ -191,7 +191,7 @@ functions:
       walletWarmer:
         enabled: false
   loadWalletApi:
-    role: arn:aws:iam::769498303037:role/WalletServiceLoadWalletLambda # TODO: Use local iamRoleStatements instead of this rule
+    role: arn:aws:iam::769498303037:role/WalletServiceLoadWalletLambda
     handler: src/api/wallet.load
     events:
       - http:
