@@ -6,7 +6,7 @@
  */
 
 import AWS from 'aws-sdk';
-import { APIGatewayProxyHandler, APIGatewayProxyResult, SQSEvent, Handler } from 'aws-lambda';
+import { APIGatewayProxyHandler, APIGatewayProxyResult, Handler, SQSEvent } from 'aws-lambda';
 import 'source-map-support/register';
 import hathorLib from '@hathor/wallet-lib';
 import {
@@ -229,15 +229,6 @@ export const handleVoidedTx = async (tx: Transaction): Promise<void> => {
   await handleVoided(mysql, logger, transaction);
 };
 
-interface NewNftEvent {
-  nftUid: string
-}
-
-interface NftValidationResults {
-  success: boolean;
-  message?: string;
-}
-
 /**
  * This intermediary handler is responsible for making the final validations and calling
  * the Explorer Service to update a NFT metadata, if needed.
@@ -245,7 +236,10 @@ interface NftValidationResults {
  * @remarks
  * This is a lambda function that should be invoked using the aws-sdk.
  */
-export const onNewNftEvent: Handler<NewNftEvent, NftValidationResults> = async (event, context) => {
+export const onNewNftEvent: Handler<
+  { nftUid: string },
+  { success: boolean, message?: string }
+> = async (event, context) => {
   const logger = createDefaultLogger();
 
   // Logs the request id on every line, so we can see all logs from a request
