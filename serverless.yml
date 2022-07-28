@@ -149,7 +149,7 @@ functions:
           - lambda:InvokeFunction
           - lambda:InvokeAsync
         Resource:
-          arn:aws:lambda:eu-central-1:769498303037:function:hathor-wallet-service-${self:custom.stage}-onNewNftEvent
+          Fn::GetAtt: [ OnNewNftEventLambdaFunction, Arn ]
   onMinersListRequest:
     handler: src/api/miners.onMinersListRequest
     warmup:
