@@ -37,16 +37,16 @@ custom:
       Set:
         custom.explorerServiceStage: dev
       ElseSet:
-        custom.explorerServiceStage: ${custom.stage}
+        custom.explorerServiceStage: ${self:custom.stage}
 
 plugins:
+  - serverless-plugin-ifelse # This must be the first plugin on this list to work properly
   - serverless-offline
   - serverless-webpack
   - serverless-prune-plugin
   - serverless-api-gateway-throttling
   - serverless-plugin-warmup
   - serverless-iam-roles-per-function
-  - serverless-plugin-ifelse
 
 
 resources:
