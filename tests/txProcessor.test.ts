@@ -1,9 +1,12 @@
+/* eslint-disable @typescript-eslint/no-empty-function */
+import hathorLib from '@hathor/wallet-lib';
 import eventTemplate from '@events/eventTemplate.json';
 import tokenCreationTx from '@events/tokenCreationTx.json';
 import { getLatestHeight, getTokenInformation } from '@src/db';
 import * as Db from '@src/db';
 import * as txProcessor from '@src/txProcessor';
 import { closeDbConnection, getDbConnection, isAuthority } from '@src/utils';
+import { NftUtils } from '@src/utils/nft.utils';
 import {
   XPUBKEY,
   AUTH_XPUBKEY,
@@ -22,6 +25,7 @@ import {
   createInput,
   addToAddressTxHistoryTable,
 } from '@tests/utils';
+import { getHandlerContext, nftCreationTx } from '@events/nftCreationTx';
 
 const mysql = getDbConnection();
 const blockReward = 6400;
@@ -301,6 +305,72 @@ test('txProcessor should ignore NFT outputs', async () => {
   await txProcessor.onNewTxEvent(evt);
   // check databases
   await expect(checkUtxoTable(mysql, 1, txId2, 1, '00', addr, 39, 0, null, null, false)).resolves.toBe(true);
+});
+
+describe('NFT metadata updating', () => {
+  const spyUpdateMetadata = jest.spyOn(NftUtils, '_updateMetadata');
+
+  afterEach(() => {
+    spyUpdateMetadata.mockReset();
+  });
+
+  afterAll(() => {
+    // Clear mocks
+    spyUpdateMetadata.mockRestore();
+  });
+
+  it('should reject a call for a missing mandatory parameter', async () => {
+    expect.hasAssertions();
+
+    spyUpdateMetadata.mockImplementation(async () => ({ updated: 'ok' }));
+
+    await expect(txProcessor.onNewNftEvent(
+      { nftUid: '' },
+      getHandlerContext(),
+      () => '',
+    )).rejects.toThrow('Missing mandatory parameter nftUid');
+    expect(spyUpdateMetadata).toHaveBeenCalledTimes(0);
+  });
+
+  it('should request update with minimum NFT data', async () => {
+    expect.hasAssertions();
+
+    spyUpdateMetadata.mockImplementation(async () => ({ updated: 'ok' }));
+
+    const result = await txProcessor.onNewNftEvent(
+      { nftUid: nftCreationTx.tx_id },
+      getHandlerContext(),
+      () => '',
+    );
+    expect(spyUpdateMetadata).toHaveBeenCalledTimes(1);
+    expect(spyUpdateMetadata).toHaveBeenCalledWith(nftCreationTx.tx_id, { id: nftCreationTx.tx_id, nft: true });
+    expect(result).toStrictEqual({ success: true });
+  });
+
+  it('should return a standardized message on nft validation failure', async () => {
+    expect.hasAssertions();
+
+    const spyCreateOrUpdate = jest.spyOn(NftUtils, 'createOrUpdateNftMetadata');
+    spyCreateOrUpdate.mockImplementation(() => {
+      throw new Error('Failure on validation');
+    });
+
+    const result = await txProcessor.onNewNftEvent(
+      { nftUid: nftCreationTx.tx_id },
+      getHandlerContext(),
+      () => '',
+    );
+
+    const expectedResult = {
+      success: false,
+      message: `onNewNftEvent failed for token ${nftCreationTx.tx_id}`,
+    };
+    expect(result).toStrictEqual(expectedResult);
+    expect(spyCreateOrUpdate).toHaveBeenCalledWith(nftCreationTx.tx_id);
+
+    spyCreateOrUpdate.mockReset();
+    spyCreateOrUpdate.mockRestore();
+  });
 });
 
 test('receive token creation tx', async () => {
