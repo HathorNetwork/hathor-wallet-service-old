@@ -36,10 +36,26 @@ export class NftUtils {
     }
 
     // Continue with a deeper validation
+    const logger = createDefaultLogger();
     let isNftCreationTx;
-    const libTx: hathorLib.CreateTokenTransaction = hathorLib.helpersUtils.createTxFromHistoryObject(tx);
+    let libTx: hathorLib.CreateTokenTransaction;
+
+    // Transaction parsing failures should be alerted
     try {
-      libTx.validateNft(new hathorLib.Network(process.env.NETWORK)); // This method will throw if the transaction is not a NFT Creation
+      libTx = hathorLib.helpersUtils.createTxFromHistoryObject(tx);
+    } catch (ex) {
+      logger.error('[ALERT] Error when parsing transaction on isTransactionNFTCreation', {
+        transaction: tx,
+        error: ex,
+      });
+
+      // isTransactionNFTCreation should never throw. We will just raise an alert and exit gracefully.
+      return false;
+    }
+
+    // Validate the token: the validateNft will throw if the transaction is not a NFT Creation
+    try {
+      libTx.validateNft(new hathorLib.Network(process.env.NETWORK));
       isNftCreationTx = true;
     } catch (ex) {
       isNftCreationTx = false;
