@@ -96,6 +96,7 @@ export class NftUtils {
 
       logger.warn('Failed metadata update', {
         nftUid,
+        retryCount,
         statusCode: response.StatusCode,
         message: response.Payload.toString(),
       });
@@ -103,7 +104,7 @@ export class NftUtils {
     }
 
     // Exceeded retry limit
-    throw new Error('Metadata update failed.');
+    throw new Error(`Metadata update failed for tx_id: ${nftUid}.`);
   }
 
   /**
