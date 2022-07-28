@@ -18,17 +18,6 @@ export const MAX_METADATA_UPDATE_RETRIES: number = parseInt(process.env.MAX_META
 
 export class NftUtils {
   /**
-   * The wallet-service `dev-testnet` environments maps to the explorer-service's `dev`
-   */
-  static getExplorerServiceStage(walletStage: string): string {
-    if (walletStage === 'dev-testnet') {
-      return 'dev';
-    }
-
-    return walletStage;
-  }
-
-  /**
    * Returns if the transaction in the parameter is a NFT Creation.
    * @param {Transaction} tx
    * @returns {boolean}
@@ -68,14 +57,11 @@ export class NftUtils {
   // invoke lambda asynchronously to metadata update
     const lambda = new Lambda({
       apiVersion: '2015-03-31',
-      endpoint: process.env.STAGE === 'dev'
-        ? 'http://localhost:3001'
-        : 'https://lambda.eu-central-1.amazonaws.com',
+      endpoint: process.env.EXPLORER_SERVICE_LAMBDA_ENDPOINT,
     });
 
     const params = {
-    // FunctionName is composed of: service name - stage - function name
-      FunctionName: `hathor-explorer-service-${NftUtils.getExplorerServiceStage(process.env.STAGE)}-create_or_update_dag_metadata`,
+      FunctionName: `hathor-explorer-service-${process.env.EXPLORER_SERVICE_STAGE}-create_or_update_dag_metadata`,
       InvocationType: 'Event',
       Payload: JSON.stringify({
         id: nftUid,
@@ -129,14 +115,11 @@ export class NftUtils {
   // invoke lambda asynchronously to handle NFT metadata addition
     const lambda = new Lambda({
       apiVersion: '2015-03-31',
-      endpoint: process.env.STAGE === 'dev'
-        ? 'http://localhost:3002'
-        : `https://lambda.${process.env.AWS_REGION}.amazonaws.com`,
+      endpoint: process.env.WALLET_SERVICE_LAMBDA_ENDPOINT,
     });
 
     const params = {
-    // FunctionName is composed of: service name - stage - function name
-      FunctionName: `${process.env.SERVICE_NAME}-${process.env.STAGE}-onNewNftEvent`,
+      FunctionName: `hathor-wallet-service-${process.env.STAGE}-onNewNftEvent`,
       InvocationType: 'Event',
       Payload: JSON.stringify({ nftUid: txId }),
     };

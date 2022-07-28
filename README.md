@@ -61,6 +61,8 @@ DB_PASS=password123
 REDIS_HOST=localhost
 REDIS_PORT=6379
 AUTH_SECRET=foobar
+EXPLORER_SERVICE_LAMBDA_ENDPOINT=http://localhost:3001
+WALLET_SERVICE_LAMBDA_ENDPOINT=http://localhost:3000
 ```
 
 Do not modify the `STAGE` variable. The other variables should be updated accordingly.

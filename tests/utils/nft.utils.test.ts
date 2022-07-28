@@ -243,13 +243,4 @@ describe('minor helpers', () => {
     expect(c.getRemainingTimeInMillis()).toStrictEqual(0);
     expect(c.succeed('pass')).toBeUndefined();
   });
-
-  it('should get the explorer service stage name', () => {
-    expect.hasAssertions();
-
-    expect(NftUtils.getExplorerServiceStage('dev-testnet')).toStrictEqual('dev');
-    expect(NftUtils.getExplorerServiceStage('dev')).toStrictEqual('dev');
-    expect(NftUtils.getExplorerServiceStage('testnet')).toStrictEqual('testnet');
-    expect(NftUtils.getExplorerServiceStage('mainnet')).toStrictEqual('mainnet');
-  });
 });

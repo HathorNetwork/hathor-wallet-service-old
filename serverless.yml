@@ -111,6 +111,7 @@ provider:
     REDIS_PASSWORD: ${env:REDIS_PASSWORD}
     SERVICE_NAME: ${self:service}
     STAGE: ${self:custom.stage}
+    EXPLORER_SERVICE_STAGE: ${self:custom.explorerServiceStage}
     VOIDED_TX_OFFSET: ${env:VOIDED_TX_OFFSET}
     DEFAULT_SERVER: ${env:DEFAULT_SERVER}
     WS_DOMAIN: ${env:WS_DOMAIN}
