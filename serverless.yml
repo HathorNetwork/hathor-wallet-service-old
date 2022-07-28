@@ -3,13 +3,13 @@ frameworkVersion: '2'
 
 useDotenv: true
 
-custom: 
-  warmup: 
+custom:
+  warmup:
     walletWarmer: # Keeps the lambdas used by the wallets initialization warm
       enabled: true
       events:
         - schedule: rate(5 minutes)
-  logLevelMap:  
+  logLevelMap:
     mainnet: info
     testnet: info
     dev-testnet: info
@@ -30,6 +30,14 @@ custom:
   apiGatewayThrottling:
     maxRequestsPerSecond: 500
     maxConcurrentRequests: 250
+  stage: ${opt:stage, 'dev'}
+  explorerServiceStage: dev # The wallet-service `dev-testnet` environments maps to the explorer-service's `dev`
+  serverlessIfElse:
+    - If: '"${self:custom.stage}" == "dev-testnet"'
+      Set:
+        custom.explorerServiceStage: dev
+      ElseSet:
+        custom.explorerServiceStage: ${custom.stage}
 
 plugins:
   - serverless-offline
@@ -37,6 +45,8 @@ plugins:
   - serverless-prune-plugin
   - serverless-api-gateway-throttling
   - serverless-plugin-warmup
+  - serverless-iam-roles-per-function
+  - serverless-plugin-ifelse
 
 
 resources:
@@ -57,7 +67,7 @@ resources:
       Type: "AWS::SQS::Queue"
       Properties:
         QueueName:
-            WalletServiceNewTxQueue_${opt:stage, 'dev'}
+            WalletServiceNewTxQueue_${self:custom.stage}
 
 provider:
   name: aws
@@ -68,7 +78,7 @@ provider:
   memorySize: 256
   # This is the default timeout. Each function can specify a different value
   timeout: 6
-  websocketsApiName: wallet-realtime-ws-api-${opt:stage, 'dev'}
+  websocketsApiName: wallet-realtime-ws-api-${self:custom.stage}
   websocketsApiRouteSelectionExpression: $request.body.action
   vpc:
     securityGroupIds:
@@ -100,7 +110,8 @@ provider:
     REDIS_URL: ${env:REDIS_URL}
     REDIS_PASSWORD: ${env:REDIS_PASSWORD}
     SERVICE_NAME: ${self:service}
-    STAGE: ${opt:stage, 'dev'}
+    STAGE: ${self:custom.stage}
+    EXPLORER_SERVICE_STAGE: ${self:custom.explorerServiceStage}
     VOIDED_TX_OFFSET: ${env:VOIDED_TX_OFFSET}
     DEFAULT_SERVER: ${env:DEFAULT_SERVER}
     WS_DOMAIN: ${env:WS_DOMAIN}
@@ -131,6 +142,14 @@ functions:
     warmup:
       walletWarmer:
         enabled: false
+    iamRoleStatementsInherit: true
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - lambda:InvokeFunction
+          - lambda:InvokeAsync
+        Resource:
+          Fn::GetAtt: [ OnNewNftEventLambdaFunction, Arn ]
   onMinersListRequest:
     handler: src/api/miners.onMinersListRequest
     warmup:
@@ -153,6 +172,19 @@ functions:
     warmup:
       walletWarmer:
         enabled: false
+  onNewNftEvent:
+    handler: src/txProcessor.onNewNftEvent
+    warmup:
+      walletWarmer:
+        enabled: false
+    iamRoleStatementsInherit: true
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - lambda:InvokeFunction
+          - lambda:InvokeAsync
+        Resource:
+          arn:aws:lambda:eu-central-1:769498303037:function:hathor-explorer-service-${self:custom.explorerServiceStage}-create_or_update_dag_metadata
   loadWalletAsync:
     handler: src/api/wallet.loadWallet
     warmup:
