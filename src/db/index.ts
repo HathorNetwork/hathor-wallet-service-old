@@ -948,6 +948,8 @@ export const updateAddressTablesWithTx = async (
       const entry = {
         address,
         token_id: token,
+        // totalAmountSent is the sum of the value of all outputs of this token on the tx being sent to this address
+        // which means it is the "total_received" for this address
         total_received: tokenBalance.totalAmountSent,
         // if it's < 0, there must be an entry already, so it will execute "ON DUPLICATE KEY UPDATE" instead of setting it to 0
         unlocked_balance: (tokenBalance.unlockedAmount < 0 ? 0 : tokenBalance.unlockedAmount),
@@ -2077,10 +2079,11 @@ export const rebuildAddressBalancesFromUtxos = async (
     transactions = transactions + VALUES(\`transactions\`)
    `, [addresses]);
 
+  // total_received is the sum of all outputs sent to an address
+  // This query is needed because on the previous ones we exclude all spent outputs
+  // which we need to include for total_received.
   await mysql.query(`
-    UPDATE a
-      SET a.\`total_received\` = t.\`total\`,
-      FROM \`address_balance\` a
+    UPDATE \`address_balance\` a
       INNER JOIN (
         SELECT SUM(\`value\`) AS total
                \`address\`,
@@ -2090,8 +2093,9 @@ export const rebuildAddressBalancesFromUtxos = async (
           AND authorities = 0
           AND address IN (?)
         GROUP BY address, token_id
-      ) t
-      ON a.\`address\` = t.\`address\` AND a.\`token_id\` = t.\`token_id\`
+      ) b
+      ON a.\`address\` = b.\`address\` AND a.\`token_id\` = b.\`token_id\`
+      SET a.\`total_received\` = b.\`total\`
   `, [addresses]);
 };
 
