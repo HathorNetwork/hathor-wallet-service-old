@@ -2040,7 +2040,7 @@ export const rebuildAddressBalancesFromUtxos = async (
             BIT_OR(\`authorities\`), -- unlocked_authorities
             0, -- locked_authorities
             0, -- timelock_expires
-            COUNT(DISTINCT \`tx_id\`) -- transactions
+            0 -- transactions
        FROM \`tx_output\`
       WHERE spent_by IS NULL
         AND voided = FALSE
@@ -2066,7 +2066,7 @@ export const rebuildAddressBalancesFromUtxos = async (
               SUM(\`value\`) AS locked_balance,
               BIT_OR(\`authorities\`) AS locked_authorities,
               MIN(\`timelock\`) AS timelock_expires,
-              COUNT(DISTINCT \`tx_id\`) -- transactions
+              0 -- transactions
          FROM \`tx_output\`
         WHERE spent_by IS NULL
           AND voided = FALSE
@@ -2076,8 +2076,25 @@ export const rebuildAddressBalancesFromUtxos = async (
    ON DUPLICATE KEY UPDATE
     locked_balance = VALUES(locked_balance),
     locked_authorities = VALUES(locked_authorities),
-    timelock_expires = VALUES(timelock_expires),
-    transactions = transactions + VALUES(\`transactions\`)
+    timelock_expires = VALUES(timelock_expires)
+   `, [addresses]);
+
+  // update address balances with the correct amount of transactions
+  await mysql.query(`
+    INSERT INTO \`address_balance\` (
+      \`address\`,
+      \`token_id\`,
+      \`transactions\`
+    )
+       SELECT address,
+              token_id,
+              COUNT(DISTINCT(\`tx_id\`)) AS transactions -- transactions
+         FROM \`tx_output\`
+        WHERE voided = FALSE
+          AND address IN (?)
+     GROUP BY \`address\`, \`token_id\`
+   ON DUPLICATE KEY UPDATE
+    transactions = VALUES(transactions)
    `, [addresses]);
 };
 

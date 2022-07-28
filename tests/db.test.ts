@@ -1551,8 +1551,9 @@ test('rebuildAddressBalancesFromUtxos', async () => {
   const addr1 = 'address1';
   const addr2 = 'address2';
   const txId = 'tx1';
+  const txId2 = 'tx2';
 
-  const utxos = [
+  const utxosTx1 = [
     { value: 5, address: addr1, token: 'token1', locked: false, spentBy: null },
     { value: 15, address: addr1, token: 'token1', locked: false, spentBy: null },
     { value: 25, address: addr2, token: 'token2', timelock: 500, locked: true, spentBy: null },
@@ -1563,7 +1564,13 @@ test('rebuildAddressBalancesFromUtxos', async () => {
     { value: 0b11, address: addr1, token: 'token1', locked: false, tokenData: 129, spentBy: null },
   ];
 
-  const outputs = utxos.map((utxo, index) => createOutput(
+  const utxosTx2 = [
+    // spent utxos
+    { value: 80, address: addr2, token: 'token1', heightlock: 70, locked: false, spentBy: 'tx1' },
+    { value: 90, address: addr2, token: 'token1', heightlock: 70, locked: false, spentBy: 'tx2' },
+  ];
+
+  const mapUtxoListToOutput = (utxoList: any[]) => utxoList.map((utxo, index) => createOutput(
     index,
     utxo.value,
     utxo.address,
@@ -1571,9 +1578,11 @@ test('rebuildAddressBalancesFromUtxos', async () => {
     utxo.timelock || null,
     utxo.locked,
     utxo.tokenData || 0,
+    utxo.spentBy,
   ));
 
-  await addUtxos(mysql, txId, outputs);
+  await addUtxos(mysql, txId, mapUtxoListToOutput(utxosTx1));
+  await addUtxos(mysql, txId2, mapUtxoListToOutput(utxosTx2));
   await rebuildAddressBalancesFromUtxos(mysql, ['address1', 'address2']);
 
   const addressBalances = await fetchAddressBalance(mysql, [addr1, addr2]);
@@ -1584,7 +1593,7 @@ test('rebuildAddressBalancesFromUtxos', async () => {
   expect(addressBalances[0].transactions).toStrictEqual(1);
   expect(addressBalances[0].tokenId).toStrictEqual('token1');
 
-  expect(addressBalances[1].unlockedBalance).toStrictEqual(35);
+  expect(addressBalances[1].unlockedBalance).toStrictEqual(205);
   expect(addressBalances[1].lockedBalance).toStrictEqual(225);
   expect(addressBalances[1].address).toStrictEqual(addr2);
   expect(addressBalances[1].transactions).toStrictEqual(2);

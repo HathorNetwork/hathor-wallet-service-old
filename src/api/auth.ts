@@ -29,7 +29,7 @@ import {
 import middy from '@middy/core';
 import cors from '@middy/http-cors';
 
-const EXPIRATION_TIME_IN_SECONDS = 1800;
+const EXPIRATION_TIME_IN_SECONDS = 180;
 
 const bodySchema = Joi.object({
   ts: Joi.number().positive().required(),
