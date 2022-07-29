@@ -965,7 +965,7 @@ export const updateAddressTablesWithTx = async (
         `INSERT INTO address_balance
                  SET ?
                   ON DUPLICATE KEY
-                            UPDATE total_received = total_reveiced + ?,
+                            UPDATE total_received = total_received + ?,
                                    unlocked_balance = unlocked_balance + ?,
                                    locked_balance = locked_balance + ?,
                                    transactions = transactions + 1,
