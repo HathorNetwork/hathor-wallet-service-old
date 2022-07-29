@@ -1255,6 +1255,7 @@ export const getWalletBalances = async (mysql: ServerlessMysql, walletId: string
 
   const results: DbSelectResult = await mysql.query(query, params);
   for (const result of results) {
+    const totalAmount = result.total_received as number;
     const unlockedBalance = result.unlocked_balance as number;
     const lockedBalance = result.locked_balance as number;
     const unlockedAuthorities = new Authorities(result.unlocked_authorities as number);
@@ -1263,7 +1264,7 @@ export const getWalletBalances = async (mysql: ServerlessMysql, walletId: string
 
     const balance = new WalletTokenBalance(
       new TokenInfo(result.token_id as string, result.name as string, result.symbol as string),
-      new Balance(unlockedBalance, lockedBalance, timelockExpires, unlockedAuthorities, lockedAuthorities),
+      new Balance(totalAmount, unlockedBalance, lockedBalance, timelockExpires, unlockedAuthorities, lockedAuthorities),
       result.transactions as number,
     );
     balances.push(balance);
