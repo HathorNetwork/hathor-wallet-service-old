@@ -2085,7 +2085,7 @@ export const rebuildAddressBalancesFromUtxos = async (
   await mysql.query(`
     UPDATE \`address_balance\` a
       INNER JOIN (
-        SELECT SUM(\`value\`) AS total
+        SELECT SUM(\`value\`) AS total,
                \`address\`,
                \`token_id\`
         FROM \`tx_output\`
