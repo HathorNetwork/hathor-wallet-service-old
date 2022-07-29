@@ -483,7 +483,7 @@ export class TokenBalanceMap {
     if (isAuthority(input.token_data)) {
       // for inputs, the authorities will have a value of -1 when set
       const authorities = new Authorities(input.value);
-      obj.set(token, new Balance(0, 0, null, authorities.toNegative(), new Authorities(0)));
+      obj.set(token, new Balance(0, 0, 0, null, authorities.toNegative(), new Authorities(0)));
     } else {
       obj.set(token, new Balance(0, -input.value, 0, null));
     }
