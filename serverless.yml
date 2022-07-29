@@ -31,16 +31,9 @@ custom:
     maxRequestsPerSecond: 500
     maxConcurrentRequests: 250
   stage: ${opt:stage, 'dev'}
-  explorerServiceStage: dev # The wallet-service `dev-testnet` environments maps to the explorer-service's `dev`
-  serverlessIfElse:
-    - If: '"${self:custom.stage}" == "dev-testnet"'
-      Set:
-        custom.explorerServiceStage: dev
-      ElseSet:
-        custom.explorerServiceStage: ${self:custom.stage}
+  explorerServiceStage: ${env:EXPLORER_STAGE, 'dev'}
 
 plugins:
-  - serverless-plugin-ifelse # This must be the first plugin on this list to work properly
   - serverless-offline
   - serverless-webpack
   - serverless-prune-plugin
