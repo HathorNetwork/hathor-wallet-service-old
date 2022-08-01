@@ -430,14 +430,26 @@ export const handleVoided = async (mysql: ServerlessMysql, logger: Logger, tx: T
   }
 
   // fetch all addresses affected by the voided tx
-  const affectedAddresses = affectedUtxoList.reduce((acc: Set<string>, utxo: DbTxOutput) => acc.add(utxo.address), new Set<string>());
+  const [affectedAddresses, affectedTxIds] = affectedUtxoList.reduce(
+    (acc: [Set<string>, Set<string>], utxo: DbTxOutput) => {
+      acc[0].add(utxo.address);
+      acc[1].add(utxo.txId);
+
+      return acc;
+    },
+    [new Set<string>(), new Set<string>()],
+  );
 
   if (affectedAddresses.size > 0) {
     const addresses = [...affectedAddresses];
+
     logger.debug(`Rebuilding balances for ${addresses.length} addresses.`, {
       addresses,
     });
-    await rebuildAddressBalancesFromUtxos(mysql, addresses);
+    logger.debug(`Rebuilding tx count from ${affectedTxIds.size} transactions`, {
+      affectedTxIds,
+    });
+    await rebuildAddressBalancesFromUtxos(mysql, addresses, [...affectedTxIds]);
     await validateAddressBalances(mysql, addresses);
   }
 
@@ -520,15 +532,26 @@ export const handleReorg = async (mysql: ServerlessMysql, logger: Logger): Promi
     await removeTxsHeight(mysql, remainingTxs);
   }
 
-  // fetch all addresses affected by the reorg
-  const affectedAddresses = affectedUtxoList.reduce((acc: Set<string>, utxo: DbTxOutput) => acc.add(utxo.address), new Set<string>());
+  // fetch all addresses and transactions affected by the reorg
+  const [affectedAddresses, affectedTxIds] = affectedUtxoList.reduce(
+    (acc: [Set<string>, Set<string>], utxo: DbTxOutput) => {
+      acc[0].add(utxo.address);
+      acc[1].add(utxo.txId);
+
+      return acc;
+    },
+    [new Set<string>(), new Set<string>()],
+  );
 
   if (affectedAddresses.size > 0) {
     const addresses = [...affectedAddresses];
     logger.debug(`Rebuilding balances for ${addresses.length} addresses.`, {
       addresses,
     });
-    await rebuildAddressBalancesFromUtxos(mysql, addresses);
+    logger.debug(`Rebuilding tx count from ${affectedTxIds.size} transactions`, {
+      affectedTxIds,
+    });
+    await rebuildAddressBalancesFromUtxos(mysql, addresses, [...affectedTxIds]);
     await validateAddressBalances(mysql, addresses);
   }
 

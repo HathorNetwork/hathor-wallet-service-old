@@ -2008,11 +2008,21 @@ export const markWalletTxHistoryAsVoided = async (
 
  * @param mysql - Database connection
  * @param addresses - The list of addresses to rebuild
+ * @param txList - The list of affected transactions, to rebuild the transaction count
  */
 export const rebuildAddressBalancesFromUtxos = async (
   mysql: ServerlessMysql,
   addresses: string[],
+  txList: string[],
 ): Promise<void> => {
+  // first we need to store the transactions count before deleting
+  const oldAddressTokenTransactions: DbSelectResult = await mysql.query(
+    `SELECT \`address\`, \`token_id\` AS tokenId, \`transactions\`
+       FROM \`address_balance\`
+      WHERE \`address\` IN (?)`,
+    [addresses],
+  );
+
   // delete affected address_balances
   await mysql.query(
     `DELETE
@@ -2079,6 +2089,17 @@ export const rebuildAddressBalancesFromUtxos = async (
     timelock_expires = VALUES(timelock_expires)
    `, [addresses]);
 
+  if (txList.length === 0) {
+    return;
+  }
+
+  const addressTransactionCount: StringMap<number> = await getAffectedAddressTxCountFromTxList(mysql, txList);
+  const finalTxCount = oldAddressTokenTransactions.map(({ address, tokenId, transactions }) => {
+    const diff = addressTransactionCount[`${address}_${tokenId}`] || 0;
+
+    return [address, tokenId, transactions as number - diff];
+  });
+
   // update address balances with the correct amount of transactions
   await mysql.query(`
     INSERT INTO \`address_balance\` (
@@ -2086,16 +2107,10 @@ export const rebuildAddressBalancesFromUtxos = async (
       \`token_id\`,
       \`transactions\`
     )
-       SELECT address,
-              token_id,
-              COUNT(DISTINCT(\`tx_id\`)) AS transactions -- transactions
-         FROM \`tx_output\`
-        WHERE voided = FALSE
-          AND address IN (?)
-     GROUP BY \`address\`, \`token_id\`
+    VALUES ?
    ON DUPLICATE KEY UPDATE
     transactions = VALUES(transactions)
-   `, [addresses]);
+   `, [finalTxCount]);
 };
 
 /**
@@ -2477,4 +2492,28 @@ export const getAvailableAuthorities = async (
   const utxos = results.map(mapDbResultToDbTxOutput);
 
   return utxos;
+};
+
+export const getAffectedAddressTxCountFromTxList = async (
+  mysql: ServerlessMysql,
+  txList: string[],
+): Promise<StringMap<number>> => {
+  const results: DbSelectResult = await mysql.query(`
+    SELECT address, COUNT(DISTINCT(tx_id)) AS txCount, token_id as tokenId
+      FROM address_tx_history 
+     WHERE tx_id IN (?)
+  GROUP BY address, token_id
+  `, [txList]);
+
+  const addressTransactions = results.reduce((acc, result) => {
+    const address = result.address as string;
+    const txCount = result.txCount as number;
+    const tokenId = result.tokenId as string;
+
+    acc[`${address}_${tokenId}`] = txCount;
+
+    return acc;
+  }, {});
+
+  return addressTransactions as StringMap<number>;
 };

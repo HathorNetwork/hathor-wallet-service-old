@@ -62,6 +62,7 @@ import {
   getExpiredTimelocksUtxos,
   getTotalTransactions,
   getAvailableAuthorities,
+  getAffectedAddressTxCountFromTxList,
 } from '@src/db';
 import {
   beginTransaction,
@@ -1552,22 +1553,41 @@ test('rebuildAddressBalancesFromUtxos', async () => {
   const addr2 = 'address2';
   const txId = 'tx1';
   const txId2 = 'tx2';
+  const txId3 = 'tx3';
+  const txId4 = 'tx4';
+  const token1 = 'token1';
+  const token2 = 'token2';
+  const timestamp1 = 10;
 
   const utxosTx1 = [
-    { value: 5, address: addr1, token: 'token1', locked: false, spentBy: null },
-    { value: 15, address: addr1, token: 'token1', locked: false, spentBy: null },
-    { value: 25, address: addr2, token: 'token2', timelock: 500, locked: true, spentBy: null },
-    { value: 75, address: addr2, token: 'token1', heightlock: 70, locked: true, spentBy: null },
-    { value: 150, address: addr2, token: 'token1', heightlock: 70, locked: true, spentBy: null },
-    { value: 35, address: addr2, token: 'token1', locked: false, spentBy: null },
+    { value: 5, address: addr1, token: token1, locked: false, spentBy: null },
+    { value: 15, address: addr1, token: token1, locked: false, spentBy: null },
+    { value: 75, address: addr2, token: token1, heightlock: 70, locked: true, spentBy: null },
+    { value: 150, address: addr2, token: token1, heightlock: 70, locked: true, spentBy: null },
+    { value: 35, address: addr2, token: token1, locked: false, spentBy: null },
+
+    { value: 25, address: addr2, token: token2, timelock: 500, locked: true, spentBy: null },
+
     // authority utxo
-    { value: 0b11, address: addr1, token: 'token1', locked: false, tokenData: 129, spentBy: null },
+    { value: 0b11, address: addr1, token: token1, locked: false, tokenData: 129, spentBy: null },
   ];
 
   const utxosTx2 = [
     // spent utxos
-    { value: 80, address: addr2, token: 'token1', heightlock: 70, locked: false, spentBy: 'tx1' },
-    { value: 90, address: addr2, token: 'token1', heightlock: 70, locked: false, spentBy: 'tx2' },
+    { value: 80, address: addr2, token: token1, heightlock: 70, locked: false, spentBy: null },
+    { value: 90, address: addr2, token: token1, heightlock: 70, locked: false, spentBy: null },
+  ];
+
+  const utxosTx3 = [
+    // spent utxos
+    { value: 5, address: addr2, token: token1, heightlock: 70, locked: false, spentBy: null },
+    { value: 10, address: addr2, token: token1, heightlock: 70, locked: false, spentBy: null },
+  ];
+
+  const utxosTx4 = [
+    // spent utxos
+    { value: 20, address: addr1, token: token1, heightlock: 70, locked: false, spentBy: null },
+    { value: 1, address: addr1, token: token1, heightlock: 70, locked: false, spentBy: null },
   ];
 
   const mapUtxoListToOutput = (utxoList: any[]) => utxoList.map((utxo, index) => createOutput(
@@ -1583,17 +1603,48 @@ test('rebuildAddressBalancesFromUtxos', async () => {
 
   await addUtxos(mysql, txId, mapUtxoListToOutput(utxosTx1));
   await addUtxos(mysql, txId2, mapUtxoListToOutput(utxosTx2));
-  await rebuildAddressBalancesFromUtxos(mysql, ['address1', 'address2']);
+  await addUtxos(mysql, txId3, mapUtxoListToOutput(utxosTx3));
+  await addUtxos(mysql, txId4, mapUtxoListToOutput(utxosTx4));
+
+  // We need to have a address_balance row before rebuilding as rebuildAddressBalancesFromUtxos will
+  // subtract the number of affected transactions from it.
+  // Since the actual balances are rebuilt from the utxos and we are only modifying the transactions count,
+  // we can safely set all balances and authorities to 0.
+
+  const addressEntries = [
+    // address, tokenId, unlocked, locked, lockExpires, transactions, unlocked_authorities, locked_authorities
+    [addr1, token1, 0, 0, null, 2, 0, 0],
+    [addr2, token1, 0, 0, null, 3, 0, 0],
+    [addr2, token2, 0, 0, null, 1, 0, 0],
+  ];
+
+  await addToAddressBalanceTable(mysql, addressEntries);
+
+  const txHistory = [
+    [addr1, txId, token1, 20, timestamp1],
+    [addr1, txId4, token1, 21, timestamp1],
+
+    [addr2, txId, token1, 260, timestamp1],
+    [addr2, txId, token2, 25, timestamp1],
+    [addr2, txId2, token1, 80, timestamp1],
+    [addr2, txId3, token1, 15, timestamp1],
+  ];
+
+  await addToAddressTxHistoryTable(mysql, txHistory);
+
+  // We are only using the txList parameter on `transactions` recalculation, so our balance
+  // checks should include txId3 and txId4, but the transaction count should not.
+  await rebuildAddressBalancesFromUtxos(mysql, [addr1, addr2], [txId3, txId4]);
 
   const addressBalances = await fetchAddressBalance(mysql, [addr1, addr2]);
 
-  expect(addressBalances[0].unlockedBalance).toStrictEqual(20);
+  expect(addressBalances[0].unlockedBalance).toStrictEqual(41);
   expect(addressBalances[0].unlockedAuthorities).toStrictEqual(0b11);
   expect(addressBalances[0].address).toStrictEqual(addr1);
   expect(addressBalances[0].transactions).toStrictEqual(1);
   expect(addressBalances[0].tokenId).toStrictEqual('token1');
 
-  expect(addressBalances[1].unlockedBalance).toStrictEqual(205);
+  expect(addressBalances[1].unlockedBalance).toStrictEqual(220);
   expect(addressBalances[1].lockedBalance).toStrictEqual(225);
   expect(addressBalances[1].address).toStrictEqual(addr2);
   expect(addressBalances[1].transactions).toStrictEqual(2);
@@ -2021,4 +2072,57 @@ test('getUtxo, getAuthorityUtxo', async () => {
     txProposalIndex: null,
     spentBy: null,
   });
+});
+
+test('getAffectedAddressTxCountFromTxList', async () => {
+  expect.hasAssertions();
+
+  const addr1 = 'addr1';
+  const addr2 = 'addr2';
+  const addr3 = 'addr3';
+  const token1 = 'token1';
+  const token2 = 'token2';
+  const token3 = 'token3';
+  const txId1 = 'txId1';
+  const txId2 = 'txId2';
+  const txId3 = 'txId3';
+  const timestamp1 = 10;
+  const timestamp2 = 20;
+
+  const entries = [
+    [addr1, txId1, token1, 10, timestamp1],
+    [addr1, txId1, token2, 7, timestamp1],
+    [addr2, txId1, token2, 5, timestamp1],
+    [addr3, txId1, token1, 3, timestamp1],
+    [addr1, txId2, token1, -1, timestamp2],
+    [addr1, txId2, token3, 3, timestamp2],
+    [addr2, txId3, token2, -5, timestamp2],
+    [addr3, txId3, token1, 3, timestamp2],
+  ];
+
+  await addToAddressTxHistoryTable(mysql, entries);
+
+  const result = await getAffectedAddressTxCountFromTxList(mysql, [txId1, txId3]);
+
+  expect(result).toStrictEqual([{
+    address: addr1,
+    transactions: 1,
+    tokenId: token1,
+    balance: 0,
+  }, {
+    address: addr1,
+    transactions: 1,
+    tokenId: token2,
+    balance: 0,
+  }, {
+    address: addr2,
+    transactions: 2,
+    tokenId: token2,
+    balance: 0,
+  }, {
+    address: addr3,
+    transactions: 2,
+    tokenId: token1,
+    balance: 0,
+  }]);
 });
