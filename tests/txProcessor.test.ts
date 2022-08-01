@@ -382,7 +382,7 @@ test('onHandleVoidedTxRequest', async () => {
   ]);
 
   await addToAddressBalanceTable(mysql, [
-    [addr, token, 2500, 0, null, 1, 0, 0],
+    [addr, token, 2500, 0, null, 2, 0, 0],
   ]);
 
   await addToAddressTxHistoryTable(mysql, [

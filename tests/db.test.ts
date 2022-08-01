@@ -2104,25 +2104,10 @@ test('getAffectedAddressTxCountFromTxList', async () => {
 
   const result = await getAffectedAddressTxCountFromTxList(mysql, [txId1, txId3]);
 
-  expect(result).toStrictEqual([{
-    address: addr1,
-    transactions: 1,
-    tokenId: token1,
-    balance: 0,
-  }, {
-    address: addr1,
-    transactions: 1,
-    tokenId: token2,
-    balance: 0,
-  }, {
-    address: addr2,
-    transactions: 2,
-    tokenId: token2,
-    balance: 0,
-  }, {
-    address: addr3,
-    transactions: 2,
-    tokenId: token1,
-    balance: 0,
-  }]);
+  expect(result).toStrictEqual({
+    [`${addr1}_${token1}`]: 1,
+    [`${addr1}_${token2}`]: 1,
+    [`${addr2}_${token2}`]: 2,
+    [`${addr3}_${token1}`]: 2,
+  });
 });
