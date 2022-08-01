@@ -1,6 +1,8 @@
 import { onHandleOldVoidedTxs } from '@src/mempool';
 import { closeDbConnection, getDbConnection } from '@src/utils';
 import {
+  addToAddressTxHistoryTable,
+  addToAddressBalanceTable,
   addToTransactionTable,
   addToUtxoTable,
   checkUtxoTable,
@@ -39,6 +41,23 @@ test('onHandleOldVoidedTxs', async () => {
     [TX_IDS[2], 1, '00', ADDRESSES[3], 200, 0, null, null, false, null],
   ];
 
+  const txHistory = [
+    [ADDRESSES[0], TX_IDS[0], '00', 50, 10],
+    [ADDRESSES[1], TX_IDS[1], '00', 100, 10],
+    [ADDRESSES[2], TX_IDS[2], '00', 150, 10],
+    [ADDRESSES[3], TX_IDS[2], '00', 200, 10],
+  ];
+
+  const addressEntries = [
+    // address, tokenId, unlocked, locked, lockExpires, transactions, unlocked_authorities, locked_authorities
+    [ADDRESSES[0], '00', 0, 0, null, 1, 0, 0],
+    [ADDRESSES[1], '00', 0, 0, null, 1, 0, 0],
+    [ADDRESSES[2], '00', 0, 0, null, 1, 0, 0],
+    [ADDRESSES[3], '00', 0, 0, null, 1, 0, 0],
+  ];
+
+  await addToAddressBalanceTable(mysql, addressEntries);
+  await addToAddressTxHistoryTable(mysql, txHistory);
   await addToTransactionTable(mysql, transactions);
   await addToUtxoTable(mysql, utxos);
 
