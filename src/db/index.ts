@@ -2110,9 +2110,9 @@ export const rebuildAddressBalancesFromUtxos = async (
        WHERE \`address\` = ?
          AND \`token_id\` = ?
     `, [
+      addressTokenTx[2],
       addressTokenTx[0],
       addressTokenTx[1],
-      addressTokenTx[2],
     ]);
   }
 };
