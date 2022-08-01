@@ -2101,16 +2101,20 @@ export const rebuildAddressBalancesFromUtxos = async (
   });
 
   // update address balances with the correct amount of transactions
-  await mysql.query(`
-    INSERT INTO \`address_balance\` (
-      \`address\`,
-      \`token_id\`,
-      \`transactions\`
-    )
-    VALUES ?
-   ON DUPLICATE KEY UPDATE
-    transactions = VALUES(transactions)
-   `, [finalTxCount]);
+  // We have to run multiple updates because we don't want to insert new rows to the table (which would be done
+  // if we used the INSERT ... ON CONFLICT syntax)
+  for (const addressTokenTx of finalTxCount) {
+    await mysql.query(`
+      UPDATE \`address_balance\` 
+         SET \`transactions\` = ?
+       WHERE \`address\` = ?
+         AND \`token_id\` = ?
+    `, [
+      addressTokenTx[0],
+      addressTokenTx[1],
+      addressTokenTx[2],
+    ]);
+  }
 };
 
 /**
