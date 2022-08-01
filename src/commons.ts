@@ -429,7 +429,7 @@ export const handleVoided = async (mysql: ServerlessMysql, logger: Logger, tx: T
     affectedUtxoList = [...affectedUtxoList, ...newAffectedUtxoList];
   }
 
-  // fetch all addresses affected by the voided tx
+  // fetch all addresses and transactions affected by the voided transaction
   const [affectedAddresses, affectedTxIds] = affectedUtxoList.reduce(
     (acc: [Set<string>, Set<string>], utxo: DbTxOutput) => {
       acc[0].add(utxo.address);

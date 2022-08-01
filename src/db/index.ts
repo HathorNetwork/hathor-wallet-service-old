@@ -2498,6 +2498,15 @@ export const getAvailableAuthorities = async (
   return utxos;
 };
 
+/**
+ * Get the number of transactions for each token from the address_tx_history table
+ * given a list of transactions
+ *
+ * @param mysql - Database connection
+ * @param txList - A list of affected transactions to get the addresses token transaction count
+
+ * @returns A Map with address_tokenId as key and the transaction count as values
+ */
 export const getAffectedAddressTxCountFromTxList = async (
   mysql: ServerlessMysql,
   txList: string[],
