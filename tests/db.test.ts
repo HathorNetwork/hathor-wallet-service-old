@@ -1623,12 +1623,12 @@ test('rebuildAddressBalancesFromUtxos', async () => {
 
   const txHistory = [
     { address: addr1, txId, tokenId: token1, balance: 20, timestamp: timestamp1 },
-    { address: addr1, txId: txId4, tokenId: token1, balance: 21, timestamp: timestamp1 },
+    { address: addr1, txId: txId4, tokenId: token1, balance: 21, timestamp: timestamp1, voided: true },
 
     { address: addr2, txId, tokenId: token1, balance: 260, timestamp: timestamp1 },
     { address: addr2, txId, tokenId: token2, balance: 25, timestamp: timestamp1 },
     { address: addr2, txId: txId2, tokenId: token1, balance: 80, timestamp: timestamp1 },
-    { address: addr2, txId: txId3, tokenId: token1, balance: 15, timestamp: timestamp1 },
+    { address: addr2, txId: txId3, tokenId: token1, balance: 15, timestamp: timestamp1, voided: true },
   ];
 
   await addToAddressTxHistoryTable(mysql, txHistory);
