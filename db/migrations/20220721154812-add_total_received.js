@@ -11,6 +11,15 @@ module.exports = {
       },
     );
 
+    await queryInterface.addIndex(
+      'address_balance',
+      ['updated_at'],
+      {
+        name: 'address_balance_updated_at_idx',
+        fields: 'updated_at',
+      },
+    );
+
     await queryInterface.addColumn('address_balance', 'total_received', {
       type: Sequelize.BIGINT.UNSIGNED,
       allowNull: false,
@@ -20,6 +29,7 @@ module.exports = {
 
   down: async (queryInterface, Sequelize) => {
     await queryInterface.removeIndex('address_tx_history', 'address_tx_history_timestamp_idx');
+    await queryInterface.removeIndex('address_balance', 'address_balance_updated_at_idx');
     await queryInterface.removeColumn('address_balance', 'total_received');
   },
 };
