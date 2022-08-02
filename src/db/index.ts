@@ -2515,6 +2515,7 @@ export const getAffectedAddressTxCountFromTxList = async (
     SELECT address, COUNT(DISTINCT(tx_id)) AS txCount, token_id as tokenId
       FROM address_tx_history 
      WHERE tx_id IN (?)
+       AND voided = TRUE
   GROUP BY address, token_id
   `, [txList]);
 

@@ -382,7 +382,7 @@ test('onHandleVoidedTxRequest', async () => {
   ]);
 
   await addToAddressBalanceTable(mysql, [
-    [addr, token, 2500, 0, null, 2, 0, 0],
+    [addr, token, 2500, 0, null, 1, 0, 0],
   ]);
 
   await addToAddressTxHistoryTable(mysql, [
@@ -411,6 +411,7 @@ test('onHandleVoidedTxRequest', async () => {
     createOutput(1, 500, 'other', token),  // and one to another address
   ];
 
+  // Adds txId2 that spends the utxo with index 0 from txId1
   await txProcessor.onNewTxEvent(evt);
 
   const evt2 = JSON.parse(JSON.stringify(eventTemplate));
@@ -424,19 +425,28 @@ test('onHandleVoidedTxRequest', async () => {
     createOutput(1, 500, 'other', token),  // and one to another address
   ];
 
+  // Adds txId3 that spends the utxo with index 0 from txId2
   await txProcessor.onNewTxEvent(evt2);
 
-  // void the transaction
+  // Balance for addr should be 1500 and it should have 3 transactions (txId1, txId2 and txId3)
+  await expect(checkAddressBalanceTable(mysql, 2, addr, token, 1500, 0, null, 3)).resolves.toBe(true);
+
+  // Voids the first transaction (txId2), causing txId3 to be voided as well,
+  // as it spends utxos from txId2
   await txProcessor.handleVoidedTx(tx);
 
   // both utxos should be voided
   await expect(checkUtxoTable(mysql, 5, txId2, 0, token, addr, 2000, 0, null, null, false, null, true)).resolves.toBe(true);
   await expect(checkUtxoTable(mysql, 5, txId2, 1, token, 'other', 500, 0, null, null, false, null, true)).resolves.toBe(true);
-  // txId3 will be voided because txId2 was voided
+
+  // txId3 will be voided because txId2 was voided and it spends its utxo
   await expect(checkUtxoTable(mysql, 5, txId3, 0, token, addr, 1500, 0, null, null, false, null, true)).resolves.toBe(true);
-  // the original utxo should not be voided and should not have been spent
+
+  // the original utxo (txId1, 0) should not be voided and should not have been spent
   await expect(checkUtxoTable(mysql, 5, txId1, 0, token, addr, 2500, 0, null, null, false, null, false)).resolves.toBe(true);
 
+  // Balance should be back to 2500 as the transactions that spent the original utxo were voided and we should
+  // have total of one transaction as both txId2 and txId3 were voided.
   await expect(checkAddressBalanceTable(mysql, 1, addr, token, 2500, 0, 0, 1)).resolves.toBe(true);
 }, 20000);
 
