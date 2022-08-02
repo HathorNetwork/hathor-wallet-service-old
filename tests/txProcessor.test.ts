@@ -269,7 +269,7 @@ test('txProcessor should ignore NFT outputs', async () => {
   ]);
 
   await addToAddressTxHistoryTable(mysql, [
-    [addr, txId1, '00', 41, 0],
+    { address: addr, txId: txId1, tokenId: '00', balance: 41, timestamp: 0 },
   ]);
 
   await addToWalletBalanceTable(mysql, [{
@@ -386,7 +386,7 @@ test('onHandleVoidedTxRequest', async () => {
   ]);
 
   await addToAddressTxHistoryTable(mysql, [
-    [addr, txId1, token, 2500, 0],
+    { address: addr, txId: txId1, tokenId: token, balance: 2500, timestamp: 0 },
   ]);
 
   await addToWalletBalanceTable(mysql, [{

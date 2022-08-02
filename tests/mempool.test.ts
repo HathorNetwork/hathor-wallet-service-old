@@ -42,10 +42,10 @@ test('onHandleOldVoidedTxs', async () => {
   ];
 
   const txHistory = [
-    [ADDRESSES[0], TX_IDS[0], '00', 50, 10],
-    [ADDRESSES[1], TX_IDS[1], '00', 100, 10],
-    [ADDRESSES[2], TX_IDS[2], '00', 150, 10],
-    [ADDRESSES[3], TX_IDS[2], '00', 200, 10],
+    { address: ADDRESSES[0], txId: TX_IDS[0], tokenId: '00', balance: 50, timestamp: 10 },
+    { address: ADDRESSES[1], txId: TX_IDS[1], tokenId: '00', balance: 100, timestamp: 10 },
+    { address: ADDRESSES[2], txId: TX_IDS[2], tokenId: '00', balance: 150, timestamp: 10 },
+    { address: ADDRESSES[3], txId: TX_IDS[2], tokenId: '00', balance: 200, timestamp: 10 },
   ];
 
   const addressEntries = [
