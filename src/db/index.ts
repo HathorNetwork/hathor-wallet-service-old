@@ -2015,6 +2015,11 @@ export const rebuildAddressBalancesFromUtxos = async (
   addresses: string[],
   txList: string[],
 ): Promise<void> => {
+  if (txList.length === 0) {
+    // This should never happen, we should throw so the re-org is rolled back
+    // and an error is triggered for manual inspection
+    throw new Error('Attempted to rebuild address balances but no transactions were affected');
+  }
   // first we need to store the transactions count before deleting
   const oldAddressTokenTransactions: DbSelectResult = await mysql.query(
     `SELECT \`address\`, \`token_id\` AS tokenId, \`transactions\`
@@ -2088,10 +2093,6 @@ export const rebuildAddressBalancesFromUtxos = async (
     locked_authorities = VALUES(locked_authorities),
     timelock_expires = VALUES(timelock_expires)
    `, [addresses]);
-
-  if (txList.length === 0) {
-    return;
-  }
 
   const addressTransactionCount: StringMap<number> = await getAffectedAddressTxCountFromTxList(mysql, txList);
   const finalTxCount = oldAddressTokenTransactions.map(({ address, tokenId, transactions }) => {
