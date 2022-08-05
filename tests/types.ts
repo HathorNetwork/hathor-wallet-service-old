@@ -18,6 +18,15 @@ export interface WalletBalanceEntry {
   transactions: number;
 }
 
+export interface AddressTxHistoryTableEntry {
+  address: string;
+  txId: string;
+  tokenId: string;
+  balance: number;
+  timestamp: number;
+  voided?: boolean;
+}
+
 export interface AddressTableEntry {
   address: string;
   index: number;
