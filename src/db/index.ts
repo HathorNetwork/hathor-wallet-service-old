@@ -70,8 +70,6 @@ const BURN_ADDRESS = 'HDeadDeadDeadDeadDeadDeadDeagTPgmn';
  * @returns Object with all addresses for the given xpubkey and corresponding index
  */
 export const generateAddresses = async (mysql: ServerlessMysql, xpubkey: string, maxGap: number): Promise<GenerateAddresses> => {
-  let highestCheckedIndex = -1;
-  let highestUsedIndex = -1;
   const existingAddresses: AddressIndexMap = {};
   const newAddresses: AddressIndexMap = {};
   const allAddresses: string[] = [];
@@ -81,6 +79,8 @@ export const generateAddresses = async (mysql: ServerlessMysql, xpubkey: string,
   // so we derive our xpub to this path and use it to get the addresses
   const derivedXpub = xpubDeriveChild(xpubkey, 0);
 
+  let highestCheckedIndex = -1;
+  let lastUsedAddressIndex = -1;
   do {
     const addrMap = getAddresses(derivedXpub, highestCheckedIndex + 1, maxGap);
     allAddresses.push(...Object.keys(addrMap));
@@ -103,8 +103,8 @@ export const generateAddresses = async (mysql: ServerlessMysql, xpubkey: string,
       existingAddresses[address] = index;
 
       // if address is used, check if its index is higher than the current highest used index
-      if (entry.transactions > 0 && index > highestUsedIndex) {
-        highestUsedIndex = index;
+      if (entry.transactions > 0 && index > lastUsedAddressIndex) {
+        lastUsedAddressIndex = index;
       }
 
       delete addrMap[address];
@@ -112,13 +112,13 @@ export const generateAddresses = async (mysql: ServerlessMysql, xpubkey: string,
 
     highestCheckedIndex += maxGap;
     Object.assign(newAddresses, addrMap);
-  } while (highestUsedIndex + maxGap > highestCheckedIndex);
+  } while (lastUsedAddressIndex + maxGap > highestCheckedIndex);
 
   // we probably generated more addresses than needed, as we always generate
   // addresses in maxGap blocks
-  const totalAddresses = highestUsedIndex + maxGap + 1;
+  const totalAddresses = lastUsedAddressIndex + maxGap + 1;
   for (const [address, index] of Object.entries(newAddresses)) {
-    if (index > highestUsedIndex + maxGap) {
+    if (index > lastUsedAddressIndex + maxGap) {
       delete newAddresses[address];
     }
   }
@@ -127,6 +127,7 @@ export const generateAddresses = async (mysql: ServerlessMysql, xpubkey: string,
     addresses: allAddresses.slice(0, totalAddresses),
     newAddresses,
     existingAddresses,
+    lastUsedAddressIndex,
   };
 };
 
@@ -280,7 +281,12 @@ export const updateWalletAuthXpub = async (
  * @param walletId - The wallet id
  * @param addresses - A map of addresses and corresponding indexes
  */
-export const addNewAddresses = async (mysql: ServerlessMysql, walletId: string, addresses: AddressIndexMap): Promise<void> => {
+export const addNewAddresses = async (
+  mysql: ServerlessMysql,
+  walletId: string,
+  addresses: AddressIndexMap,
+  lastUsedAddressIndex: number,
+): Promise<void> => {
   if (Object.keys(addresses).length === 0) return;
   const entries = [];
   for (const [address, index] of Object.entries(addresses)) {
@@ -291,6 +297,14 @@ export const addNewAddresses = async (mysql: ServerlessMysql, walletId: string, 
                              \`wallet_id\`, \`transactions\`)
      VALUES ?`,
     [entries],
+  );
+
+  // Store on the wallet table the highest used index
+  await mysql.query(
+    `UPDATE \`wallet\`
+        SET \`last_used_address_index\` = ?
+      WHERE \`id\` = ?`,
+    [lastUsedAddressIndex, walletId],
   );
 };
 
@@ -1196,26 +1210,17 @@ export const getNewAddresses = async (mysql: ServerlessMysql, walletId: string):
   const resultsWallet: DbSelectResult = await mysql.query('SELECT * FROM `wallet` WHERE `id` = ?', walletId);
   if (resultsWallet.length) {
     const gapLimit = resultsWallet[0].max_gap as number;
+    const latestUsedIndex = resultsWallet[0].last_used_address_index as number;
     // Select all addresses that are empty and the index is bigger than the last used address index
     const results: DbSelectResult = await mysql.query(`
       SELECT *
         FROM \`address\`
        WHERE \`wallet_id\` = ?
          AND \`transactions\` = 0
-         AND \`index\` > (
-           IFNULL(
-             (
-               SELECT MAX(\`index\`)
-                FROM \`address\`
-               WHERE \`wallet_id\` = ?
-                 AND \`transactions\` > 0
-             ),
-             -1
-           )
-         )
+         AND \`index\` > ?
     ORDER BY \`index\`
          ASC
-    LIMIT ?`, [walletId, walletId, gapLimit]);
+    LIMIT ?`, [walletId, latestUsedIndex, gapLimit]);
 
     for (const result of results) {
       const index = result.index as number;
@@ -2008,11 +2013,26 @@ export const markWalletTxHistoryAsVoided = async (
 
  * @param mysql - Database connection
  * @param addresses - The list of addresses to rebuild
+ * @param txList - The list of affected transactions, to rebuild the transaction count
  */
 export const rebuildAddressBalancesFromUtxos = async (
   mysql: ServerlessMysql,
   addresses: string[],
+  txList: string[],
 ): Promise<void> => {
+  if (txList.length === 0) {
+    // This should never happen, we should throw so the re-org is rolled back
+    // and an error is triggered for manual inspection
+    throw new Error('Attempted to rebuild address balances but no transactions were affected');
+  }
+  // first we need to store the transactions count before deleting
+  const oldAddressTokenTransactions: DbSelectResult = await mysql.query(
+    `SELECT \`address\`, \`token_id\` AS tokenId, \`transactions\`
+       FROM \`address_balance\`
+      WHERE \`address\` IN (?)`,
+    [addresses],
+  );
+
   // delete affected address_balances
   await mysql.query(
     `DELETE
@@ -2040,7 +2060,7 @@ export const rebuildAddressBalancesFromUtxos = async (
             BIT_OR(\`authorities\`), -- unlocked_authorities
             0, -- locked_authorities
             0, -- timelock_expires
-            COUNT(DISTINCT \`tx_id\`) -- transactions
+            0 -- transactions
        FROM \`tx_output\`
       WHERE spent_by IS NULL
         AND voided = FALSE
@@ -2066,7 +2086,7 @@ export const rebuildAddressBalancesFromUtxos = async (
               SUM(\`value\`) AS locked_balance,
               BIT_OR(\`authorities\`) AS locked_authorities,
               MIN(\`timelock\`) AS timelock_expires,
-              COUNT(DISTINCT \`tx_id\`) -- transactions
+              0 -- transactions
          FROM \`tx_output\`
         WHERE spent_by IS NULL
           AND voided = FALSE
@@ -2076,9 +2096,31 @@ export const rebuildAddressBalancesFromUtxos = async (
    ON DUPLICATE KEY UPDATE
     locked_balance = VALUES(locked_balance),
     locked_authorities = VALUES(locked_authorities),
-    timelock_expires = VALUES(timelock_expires),
-    transactions = transactions + VALUES(\`transactions\`)
+    timelock_expires = VALUES(timelock_expires)
    `, [addresses]);
+
+  const addressTransactionCount: StringMap<number> = await getAffectedAddressTxCountFromTxList(mysql, txList);
+  const finalTxCount = oldAddressTokenTransactions.map(({ address, tokenId, transactions }) => {
+    const diff = addressTransactionCount[`${address}_${tokenId}`] || 0;
+
+    return [address, tokenId, transactions as number - diff];
+  });
+
+  // update address balances with the correct amount of transactions
+  // We have to run multiple updates because we don't want to insert new rows to the table (which would be done
+  // if we used the INSERT ... ON CONFLICT syntax)
+  for (const addressTokenTx of finalTxCount) {
+    await mysql.query(`
+      UPDATE \`address_balance\` 
+         SET \`transactions\` = ?
+       WHERE \`address\` = ?
+         AND \`token_id\` = ?
+    `, [
+      addressTokenTx[2],
+      addressTokenTx[0],
+      addressTokenTx[1],
+    ]);
+  }
 
   // total_received is the sum of all outputs sent to an address
   // This query is needed because on the previous ones we exclude all spent outputs
@@ -2479,4 +2521,38 @@ export const getAvailableAuthorities = async (
   const utxos = results.map(mapDbResultToDbTxOutput);
 
   return utxos;
+};
+
+/**
+ * Get the number of transactions for each token from the address_tx_history table
+ * given a list of transactions
+ *
+ * @param mysql - Database connection
+ * @param txList - A list of affected transactions to get the addresses token transaction count
+
+ * @returns A Map with address_tokenId as key and the transaction count as values
+ */
+export const getAffectedAddressTxCountFromTxList = async (
+  mysql: ServerlessMysql,
+  txList: string[],
+): Promise<StringMap<number>> => {
+  const results: DbSelectResult = await mysql.query(`
+    SELECT address, COUNT(DISTINCT(tx_id)) AS txCount, token_id as tokenId
+      FROM address_tx_history 
+     WHERE tx_id IN (?)
+       AND voided = TRUE
+  GROUP BY address, token_id
+  `, [txList]);
+
+  const addressTransactions = results.reduce((acc, result) => {
+    const address = result.address as string;
+    const txCount = result.txCount as number;
+    const tokenId = result.tokenId as string;
+
+    acc[`${address}_${tokenId}`] = txCount;
+
+    return acc;
+  }, {});
+
+  return addressTransactions as StringMap<number>;
 };

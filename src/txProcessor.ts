@@ -6,7 +6,7 @@
  */
 
 import AWS from 'aws-sdk';
-import { APIGatewayProxyHandler, APIGatewayProxyResult, SQSEvent } from 'aws-lambda';
+import { APIGatewayProxyHandler, APIGatewayProxyResult, Handler, SQSEvent } from 'aws-lambda';
 import 'source-map-support/register';
 import hathorLib from '@hathor/wallet-lib';
 import {
@@ -54,6 +54,7 @@ import {
   getUnixTimestamp,
 } from '@src/utils';
 import createDefaultLogger from '@src/logger';
+import { NftUtils } from '@src/utils/nft.utils';
 
 const mysql = getDbConnection();
 
@@ -79,6 +80,7 @@ export const IGNORE_TXS = {
  * calls the appropriate function to handle the transaction.
  *
  * @param event - The SQS event
+ * @deprecated
  */
 export const onNewTxEvent = async (event: SQSEvent): Promise<APIGatewayProxyResult> => {
   const logger: Logger = createDefaultLogger();
@@ -122,16 +124,11 @@ export const onNewTxRequest: APIGatewayProxyHandler = async (event, context) => 
 
   const now = getUnixTimestamp();
   const blockRewardLock = parseInt(process.env.BLOCK_REWARD_LOCK, 10);
+  const tx = (event.body as unknown) as Transaction;
 
+  // Critical processing: add the transaction to the database.
   try {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    await addNewTx(logger, event.body, now, blockRewardLock);
-
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ success: true }),
-    };
+    await addNewTx(logger, tx, now, blockRewardLock);
   } catch (e) {
     // eslint-disable-next-line
     logger.error('Errored on onNewTxRequest: ', e);
@@ -144,6 +141,19 @@ export const onNewTxRequest: APIGatewayProxyHandler = async (event, context) => 
       }),
     };
   }
+
+  // Validating for NFTs only after the tx is successfully added
+  if (NftUtils.isTransactionNFTCreation(tx)) {
+    // This process is not critical, so we run it in a fire-and-forget manner, not waiting for the promise.
+    // In case of errors, just log the asynchronous exception and take no action on it.
+    NftUtils.invokeNftHandlerLambda(tx.tx_id)
+      .catch((err) => logger.error('[ALERT] Errored on nftHandlerLambda invocation', err));
+  }
+
+  return {
+    statusCode: 200,
+    body: JSON.stringify({ success: true }),
+  };
 };
 
 /**
@@ -213,6 +223,47 @@ export const handleVoidedTx = async (tx: Transaction): Promise<void> => {
   }
 
   await handleVoided(mysql, logger, transaction);
+};
+
+/**
+ * This intermediary handler is responsible for making the final validations and calling
+ * the Explorer Service to update a NFT metadata, if needed.
+ *
+ * @remarks
+ * This is a lambda function that should be invoked using the aws-sdk.
+ */
+export const onNewNftEvent: Handler<
+  { nftUid: string },
+  { success: boolean, message?: string }
+> = async (event, context) => {
+  const logger = createDefaultLogger();
+
+  // Logs the request id on every line, so we can see all logs from a request
+  logger.defaultMeta = {
+    requestId: context.awsRequestId,
+  };
+
+  // An invalid event object is a signal of a greater communication problem and should be thrown
+  if (!event.nftUid) {
+    throw new Error('Missing mandatory parameter nftUid');
+  }
+
+  try {
+    // Checks existing metadata on this transaction and updates it if necessary
+    await NftUtils.createOrUpdateNftMetadata(event.nftUid);
+  } catch (e) {
+    logger.error('Errored on onNewNftEvent: ', e);
+
+    // No errors should be thrown from the process, only logged and returned gracefully as a success: false
+    return {
+      success: false,
+      message: `onNewNftEvent failed for token ${(event.nftUid)}`,
+    };
+  }
+
+  return {
+    success: true,
+  };
 };
 
 /**
@@ -340,9 +391,9 @@ const _unsafeAddNewTx = async (_logger: Logger, tx: Transaction, now: number, bl
     // this map might contain duplicate wallet values, as 2 different addresses might belong to the same wallet
     if (seenWallets.has(walletId)) continue;
     seenWallets.add(walletId);
-    const { newAddresses } = await generateAddresses(mysql, wallet.xpubkey, wallet.maxGap);
+    const { newAddresses, lastUsedAddressIndex } = await generateAddresses(mysql, wallet.xpubkey, wallet.maxGap);
     // might need to generate new addresses to keep maxGap
-    await addNewAddresses(mysql, walletId, newAddresses);
+    await addNewAddresses(mysql, walletId, newAddresses, lastUsedAddressIndex);
     // update existing addresses' walletId and index
   }
   // update wallet_balance and wallet_tx_history tables

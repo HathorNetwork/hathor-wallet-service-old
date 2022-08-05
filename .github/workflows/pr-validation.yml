@@ -78,3 +78,5 @@ jobs:
           BLOCK_REWARD_LOCK: 300
           CONFIRM_FIRST_ADDRESS: true
           WS_DOMAIN: ws.ci.wallet-service.hathor.network
+          EXPLORER_SERVICE_LAMBDA_ENDPOINT: https://lambda.eu-central-1.amazonaws.com
+          WALLET_SERVICE_LAMBDA_ENDPOINT: https://lambda.eu-central-1.amazonaws.com

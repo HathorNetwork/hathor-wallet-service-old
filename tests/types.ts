@@ -18,6 +18,15 @@ export interface WalletBalanceEntry {
   transactions: number;
 }
 
+export interface AddressTxHistoryTableEntry {
+  address: string;
+  txId: string;
+  tokenId: string;
+  balance: number;
+  timestamp: number;
+  voided?: boolean;
+}
+
 export interface AddressTableEntry {
   address: string;
   index: number;
@@ -29,4 +38,15 @@ export interface TokenTableEntry {
   id: string;
   name: string;
   symbol: string;
+}
+
+export interface WalletTableEntry {
+  id: string;
+  xpubkey: string;
+  authXpubkey: string;
+  status: string;
+  maxGap: number;
+  highestUsedIndex?: number;
+  createdAt: number;
+  readyAt: number;
 }

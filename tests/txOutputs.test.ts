@@ -28,7 +28,15 @@ afterAll(async () => {
 test('filter utxos api with invalid parameters', async () => {
   expect.hasAssertions();
 
-  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'auth_xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToWalletTable(mysql, [{
+    id: 'my-wallet',
+    xpubkey: 'xpubkey',
+    authXpubkey: 'auth_xpubkey',
+    status: 'ready',
+    maxGap: 5,
+    createdAt: 10000,
+    readyAt: 10001,
+  }]);
   await addToAddressTable(mysql, [{
     address: ADDRESSES[0],
     index: 0,
@@ -110,7 +118,16 @@ test('filter utxos api with invalid parameters', async () => {
 test('filter tx_output api with invalid parameters', async () => {
   expect.hasAssertions();
 
-  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'auth_xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToWalletTable(mysql, [{
+    id: 'my-wallet',
+    xpubkey: 'xpubkey',
+    authXpubkey: 'auth_xpubkey',
+    status: 'ready',
+    maxGap: 5,
+    createdAt: 10000,
+    readyAt: 10001,
+  }]);
+
   await addToAddressTable(mysql, [{
     address: ADDRESSES[0],
     index: 0,
@@ -192,7 +209,15 @@ test('filter tx_output api with invalid parameters', async () => {
 test('get utxos with wallet id', async () => {
   expect.hasAssertions();
 
-  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'auth_xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToWalletTable(mysql, [{
+    id: 'my-wallet',
+    xpubkey: 'xpubkey',
+    authXpubkey: 'auth_xpubkey',
+    status: 'ready',
+    maxGap: 5,
+    createdAt: 10000,
+    readyAt: 10001,
+  }]);
   await addToAddressTable(mysql, [{
     address: ADDRESSES[0],
     index: 0,
@@ -251,7 +276,15 @@ test('get utxos with wallet id', async () => {
 test('get tx outputs with wallet id', async () => {
   expect.hasAssertions();
 
-  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'auth_xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToWalletTable(mysql, [{
+    id: 'my-wallet',
+    xpubkey: 'xpubkey',
+    authXpubkey: 'auth_xpubkey',
+    status: 'ready',
+    maxGap: 5,
+    createdAt: 10000,
+    readyAt: 10001,
+  }]);
   await addToAddressTable(mysql, [{
     address: ADDRESSES[0],
     index: 0,
@@ -310,7 +343,15 @@ test('get tx outputs with wallet id', async () => {
 test('get authority utxos', async () => {
   expect.hasAssertions();
 
-  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'auth_xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToWalletTable(mysql, [{
+    id: 'my-wallet',
+    xpubkey: 'xpubkey',
+    authXpubkey: 'auth_xpubkey',
+    status: 'ready',
+    maxGap: 5,
+    createdAt: 10000,
+    readyAt: 10001,
+  }]);
   await addToAddressTable(mysql, [{
     address: ADDRESSES[0],
     index: 0,
@@ -382,7 +423,15 @@ test('get authority utxos', async () => {
 test('get a specific utxo', async () => {
   expect.hasAssertions();
 
-  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'auth_xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToWalletTable(mysql, [{
+    id: 'my-wallet',
+    xpubkey: 'xpubkey',
+    authXpubkey: 'auth_xpubkey',
+    status: 'ready',
+    maxGap: 5,
+    createdAt: 10000,
+    readyAt: 10001,
+  }]);
   await addToAddressTable(mysql, [{
     address: ADDRESSES[0],
     index: 0,
@@ -439,7 +488,15 @@ test('get a specific utxo', async () => {
 test('get utxos from addresses that are not my own should fail with ApiError.ADDRESS_NOT_IN_WALLET', async () => {
   expect.hasAssertions();
 
-  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'auth_xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToWalletTable(mysql, [{
+    id: 'my-wallet',
+    xpubkey: 'xpubkey',
+    authXpubkey: 'auth_xpubkey',
+    status: 'ready',
+    maxGap: 5,
+    createdAt: 10000,
+    readyAt: 10001,
+  }]);
   await addToAddressTable(mysql, [{
     address: ADDRESSES[0],
     index: 0,
@@ -478,7 +535,15 @@ test('get utxos from addresses that are not my own should fail with ApiError.ADD
 test('get spent tx_output', async () => {
   expect.hasAssertions();
 
-  await addToWalletTable(mysql, [['my-wallet', 'xpubkey', 'auth_xpubkey', 'ready', 5, 10000, 10001]]);
+  await addToWalletTable(mysql, [{
+    id: 'my-wallet',
+    xpubkey: 'xpubkey',
+    authXpubkey: 'auth_xpubkey',
+    status: 'ready',
+    maxGap: 5,
+    createdAt: 10000,
+    readyAt: 10001,
+  }]);
   await addToAddressTable(mysql, [{
     address: ADDRESSES[0],
     index: 0,

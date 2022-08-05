@@ -8,7 +8,13 @@ import {
 } from '@src/types';
 import { getWalletId } from '@src/utils';
 import { walletUtils, network, HathorWalletServiceWallet } from '@hathor/wallet-lib';
-import { WalletBalanceEntry, AddressTableEntry, TokenTableEntry } from '@tests/types';
+import {
+  AddressTxHistoryTableEntry,
+  AddressTableEntry,
+  WalletBalanceEntry,
+  WalletTableEntry,
+  TokenTableEntry,
+} from '@tests/types';
 import { RedisClient } from 'redis';
 import bitcore from 'bitcore-lib';
 
@@ -498,15 +504,26 @@ export const addToUtxoTable = async (
 
 export const addToWalletTable = async (
   mysql: ServerlessMysql,
-  entries: unknown[][],
+  entries: WalletTableEntry[],
 ): Promise<void> => {
+  const payload = entries.map((entry) => [
+    entry.id,
+    entry.xpubkey,
+    entry.highestUsedIndex || -1,
+    entry.authXpubkey,
+    entry.status,
+    entry.maxGap,
+    entry.createdAt,
+    entry.readyAt,
+  ]);
   await mysql.query(`
     INSERT INTO \`wallet\`(\`id\`, \`xpubkey\`,
+                           \`last_used_address_index\`,
                            \`auth_xpubkey\`,
                            \`status\`, \`max_gap\`,
                            \`created_at\`, \`ready_at\`)
     VALUES ?`,
-  [entries]);
+  [payload]);
 };
 
 export const addToWalletBalanceTable = async (
@@ -563,6 +580,27 @@ export const addToAddressTable = async (
   [payload]);
 };
 
+export const addToAddressTxHistoryTable = async (
+  mysql: ServerlessMysql,
+  entries: AddressTxHistoryTableEntry[],
+): Promise<void> => {
+  const payload = entries.map((entry) => ([
+    entry.address,
+    entry.txId,
+    entry.tokenId,
+    entry.balance,
+    entry.timestamp,
+    entry.voided || false,
+  ]));
+
+  await mysql.query(`
+    INSERT INTO \`address_tx_history\`(\`address\`, \`tx_id\`,
+                                       \`token_id\`, \`balance\`,
+                                       \`timestamp\`, \`voided\`)
+    VALUES ?`,
+  [payload]);
+};
+
 export const addToAddressBalanceTable = async (
   mysql: ServerlessMysql,
   entries: unknown[][],
@@ -572,18 +610,6 @@ export const addToAddressBalanceTable = async (
                                     \`unlocked_balance\`, \`locked_balance\`,
                                     \`timelock_expires\`, \`transactions\`,
                                     \`unlocked_authorities\`, \`locked_authorities\`)
-    VALUES ?`,
-  [entries]);
-};
-
-export const addToAddressTxHistoryTable = async (
-  mysql: ServerlessMysql,
-  entries: unknown[][],
-): Promise<void> => {
-  await mysql.query(`
-    INSERT INTO \`address_tx_history\`(\`address\`, \`tx_id\`,
-                                       \`token_id\`, \`balance\`,
-                                       \`timestamp\`)
     VALUES ?`,
   [entries]);
 };

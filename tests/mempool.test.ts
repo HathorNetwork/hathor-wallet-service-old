@@ -1,6 +1,8 @@
 import { onHandleOldVoidedTxs } from '@src/mempool';
 import { closeDbConnection, getDbConnection } from '@src/utils';
 import {
+  addToAddressTxHistoryTable,
+  addToAddressBalanceTable,
   addToTransactionTable,
   addToUtxoTable,
   checkUtxoTable,
@@ -39,6 +41,23 @@ test('onHandleOldVoidedTxs', async () => {
     [TX_IDS[2], 1, '00', ADDRESSES[3], 200, 0, null, null, false, null],
   ];
 
+  const txHistory = [
+    { address: ADDRESSES[0], txId: TX_IDS[0], tokenId: '00', balance: 50, timestamp: 10 },
+    { address: ADDRESSES[1], txId: TX_IDS[1], tokenId: '00', balance: 100, timestamp: 10 },
+    { address: ADDRESSES[2], txId: TX_IDS[2], tokenId: '00', balance: 150, timestamp: 10 },
+    { address: ADDRESSES[3], txId: TX_IDS[2], tokenId: '00', balance: 200, timestamp: 10 },
+  ];
+
+  const addressEntries = [
+    // address, tokenId, unlocked, locked, lockExpires, transactions, unlocked_authorities, locked_authorities
+    [ADDRESSES[0], '00', 0, 0, null, 1, 0, 0],
+    [ADDRESSES[1], '00', 0, 0, null, 1, 0, 0],
+    [ADDRESSES[2], '00', 0, 0, null, 1, 0, 0],
+    [ADDRESSES[3], '00', 0, 0, null, 1, 0, 0],
+  ];
+
+  await addToAddressBalanceTable(mysql, addressEntries);
+  await addToAddressTxHistoryTable(mysql, txHistory);
   await addToTransactionTable(mysql, transactions);
   await addToUtxoTable(mysql, utxos);
 

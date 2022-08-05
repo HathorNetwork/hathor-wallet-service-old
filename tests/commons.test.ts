@@ -218,9 +218,15 @@ test('unlockUtxos', async () => {
     [txId5, 0, token, addr, 0, 0b10, now * 3, null, true, null],
   ]);
 
-  await addToWalletTable(mysql, [
-    [walletId, 'xpub', 'auth_xpubkey', 'ready', 10, now, now + 1],
-  ]);
+  await addToWalletTable(mysql, [{
+    id: walletId,
+    xpubkey: 'xpub',
+    authXpubkey: 'auth_xpubkey',
+    status: 'ready',
+    maxGap: 10,
+    createdAt: now,
+    readyAt: now + 1,
+  }]);
 
   await addToAddressTable(mysql, [{
     address: addr,
@@ -329,9 +335,15 @@ test('unlockTimelockedUtxos', async () => {
     [txId3, 0, token, addr, 0, 0b10, now * 3, null, true, null],
   ]);
 
-  await addToWalletTable(mysql, [
-    [walletId, 'xpub', 'auth_xpubkey', 'ready', 10, now, now + 1],
-  ]);
+  await addToWalletTable(mysql, [{
+    id: walletId,
+    xpubkey: 'xpub',
+    authXpubkey: 'auth_xpubkey',
+    status: 'ready',
+    maxGap: 10,
+    createdAt: now,
+    readyAt: now + 1,
+  }]);
 
   await addToAddressTable(mysql, [{
     address: addr,

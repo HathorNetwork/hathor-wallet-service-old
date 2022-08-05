@@ -1,9 +1,12 @@
+/* eslint-disable @typescript-eslint/no-empty-function */
+import hathorLib from '@hathor/wallet-lib';
 import eventTemplate from '@events/eventTemplate.json';
 import tokenCreationTx from '@events/tokenCreationTx.json';
 import { getLatestHeight, getTokenInformation } from '@src/db';
 import * as Db from '@src/db';
 import * as txProcessor from '@src/txProcessor';
 import { closeDbConnection, getDbConnection, isAuthority } from '@src/utils';
+import { NftUtils } from '@src/utils/nft.utils';
 import {
   XPUBKEY,
   AUTH_XPUBKEY,
@@ -22,6 +25,7 @@ import {
   createInput,
   addToAddressTxHistoryTable,
 } from '@tests/utils';
+import { getHandlerContext, nftCreationTx } from '@events/nftCreationTx';
 
 const mysql = getDbConnection();
 const blockReward = 6400;
@@ -58,9 +62,15 @@ test('spend "locked" utxo', async () => {
   const timelock = 1000;
   const maxGap = parseInt(process.env.MAX_ADDRESS_GAP, 10);
 
-  await addToWalletTable(mysql, [
-    [walletId, XPUBKEY, AUTH_XPUBKEY, 'ready', 10, 1, 2],
-  ]);
+  await addToWalletTable(mysql, [{
+    id: walletId,
+    xpubkey: XPUBKEY,
+    authXpubkey: AUTH_XPUBKEY,
+    status: 'ready',
+    maxGap: 10,
+    createdAt: 1,
+    readyAt: 2,
+  }]);
 
   await addToUtxoTable(mysql, [
     // we received a tx that has timelock
@@ -240,9 +250,15 @@ test('txProcessor should ignore NFT outputs', async () => {
   const walletId = 'walletId';
   const timelock = 1000;
 
-  await addToWalletTable(mysql, [
-    [walletId, XPUBKEY, AUTH_XPUBKEY, 'ready', 10, 1, 2],
-  ]);
+  await addToWalletTable(mysql, [{
+    id: walletId,
+    xpubkey: XPUBKEY,
+    authXpubkey: AUTH_XPUBKEY,
+    status: 'ready',
+    maxGap: 10,
+    createdAt: 1,
+    readyAt: 2,
+  }]);
 
   await addToUtxoTable(mysql, [
     [txId1, 0, '00', addr, 41, 0, null, null, false, null],
@@ -257,7 +273,7 @@ test('txProcessor should ignore NFT outputs', async () => {
   ]);
 
   await addToAddressTxHistoryTable(mysql, [
-    [addr, txId1, '00', 41, 0],
+    { address: addr, txId: txId1, tokenId: '00', balance: 41, timestamp: 0 },
   ]);
 
   await addToWalletBalanceTable(mysql, [{
@@ -289,6 +305,72 @@ test('txProcessor should ignore NFT outputs', async () => {
   await txProcessor.onNewTxEvent(evt);
   // check databases
   await expect(checkUtxoTable(mysql, 1, txId2, 1, '00', addr, 39, 0, null, null, false)).resolves.toBe(true);
+});
+
+describe('NFT metadata updating', () => {
+  const spyUpdateMetadata = jest.spyOn(NftUtils, '_updateMetadata');
+
+  afterEach(() => {
+    spyUpdateMetadata.mockReset();
+  });
+
+  afterAll(() => {
+    // Clear mocks
+    spyUpdateMetadata.mockRestore();
+  });
+
+  it('should reject a call for a missing mandatory parameter', async () => {
+    expect.hasAssertions();
+
+    spyUpdateMetadata.mockImplementation(async () => ({ updated: 'ok' }));
+
+    await expect(txProcessor.onNewNftEvent(
+      { nftUid: '' },
+      getHandlerContext(),
+      () => '',
+    )).rejects.toThrow('Missing mandatory parameter nftUid');
+    expect(spyUpdateMetadata).toHaveBeenCalledTimes(0);
+  });
+
+  it('should request update with minimum NFT data', async () => {
+    expect.hasAssertions();
+
+    spyUpdateMetadata.mockImplementation(async () => ({ updated: 'ok' }));
+
+    const result = await txProcessor.onNewNftEvent(
+      { nftUid: nftCreationTx.tx_id },
+      getHandlerContext(),
+      () => '',
+    );
+    expect(spyUpdateMetadata).toHaveBeenCalledTimes(1);
+    expect(spyUpdateMetadata).toHaveBeenCalledWith(nftCreationTx.tx_id, { id: nftCreationTx.tx_id, nft: true });
+    expect(result).toStrictEqual({ success: true });
+  });
+
+  it('should return a standardized message on nft validation failure', async () => {
+    expect.hasAssertions();
+
+    const spyCreateOrUpdate = jest.spyOn(NftUtils, 'createOrUpdateNftMetadata');
+    spyCreateOrUpdate.mockImplementation(() => {
+      throw new Error('Failure on validation');
+    });
+
+    const result = await txProcessor.onNewNftEvent(
+      { nftUid: nftCreationTx.tx_id },
+      getHandlerContext(),
+      () => '',
+    );
+
+    const expectedResult = {
+      success: false,
+      message: `onNewNftEvent failed for token ${nftCreationTx.tx_id}`,
+    };
+    expect(result).toStrictEqual(expectedResult);
+    expect(spyCreateOrUpdate).toHaveBeenCalledWith(nftCreationTx.tx_id);
+
+    spyCreateOrUpdate.mockReset();
+    spyCreateOrUpdate.mockRestore();
+  });
 });
 
 test('receive token creation tx', async () => {
@@ -351,9 +433,15 @@ test('onHandleVoidedTxRequest', async () => {
   const walletId = 'walletId';
   const timelock = 1000;
 
-  await addToWalletTable(mysql, [
-    [walletId, XPUBKEY, AUTH_XPUBKEY, 'ready', 10, 1, 2],
-  ]);
+  await addToWalletTable(mysql, [{
+    id: walletId,
+    xpubkey: XPUBKEY,
+    authXpubkey: AUTH_XPUBKEY,
+    status: 'ready',
+    maxGap: 10,
+    createdAt: 1,
+    readyAt: 2,
+  }]);
 
   await addToUtxoTable(mysql, [
     [txId1, 0, token, addr, 2500, 0, null, null, false, null],
@@ -368,7 +456,7 @@ test('onHandleVoidedTxRequest', async () => {
   ]);
 
   await addToAddressTxHistoryTable(mysql, [
-    [addr, txId1, token, 2500, 0],
+    { address: addr, txId: txId1, tokenId: token, balance: 2500, timestamp: 0 },
   ]);
 
   await addToWalletBalanceTable(mysql, [{
@@ -393,6 +481,7 @@ test('onHandleVoidedTxRequest', async () => {
     createOutput(1, 500, 'other', token),  // and one to another address
   ];
 
+  // Adds txId2 that spends the utxo with index 0 from txId1
   await txProcessor.onNewTxEvent(evt);
 
   const evt2 = JSON.parse(JSON.stringify(eventTemplate));
@@ -406,19 +495,28 @@ test('onHandleVoidedTxRequest', async () => {
     createOutput(1, 500, 'other', token),  // and one to another address
   ];
 
+  // Adds txId3 that spends the utxo with index 0 from txId2
   await txProcessor.onNewTxEvent(evt2);
 
-  // void the transaction
+  // Balance for addr should be 1500 and it should have 3 transactions (txId1, txId2 and txId3)
+  await expect(checkAddressBalanceTable(mysql, 2, addr, token, 1500, 0, null, 3)).resolves.toBe(true);
+
+  // Voids the first transaction (txId2), causing txId3 to be voided as well,
+  // as it spends utxos from txId2
   await txProcessor.handleVoidedTx(tx);
 
   // both utxos should be voided
   await expect(checkUtxoTable(mysql, 5, txId2, 0, token, addr, 2000, 0, null, null, false, null, true)).resolves.toBe(true);
   await expect(checkUtxoTable(mysql, 5, txId2, 1, token, 'other', 500, 0, null, null, false, null, true)).resolves.toBe(true);
-  // txId3 will be voided because txId2 was voided
+
+  // txId3 will be voided because txId2 was voided and it spends its utxo
   await expect(checkUtxoTable(mysql, 5, txId3, 0, token, addr, 1500, 0, null, null, false, null, true)).resolves.toBe(true);
-  // the original utxo should not be voided and should not have been spent
+
+  // the original utxo (txId1, 0) should not be voided and should not have been spent
   await expect(checkUtxoTable(mysql, 5, txId1, 0, token, addr, 2500, 0, null, null, false, null, false)).resolves.toBe(true);
 
+  // Balance should be back to 2500 as the transactions that spent the original utxo were voided and we should
+  // have total of one transaction as both txId2 and txId3 were voided.
   await expect(checkAddressBalanceTable(mysql, 1, addr, token, 2500, 0, 0, 1)).resolves.toBe(true);
 }, 20000);
 
