@@ -1328,12 +1328,12 @@ export const getWalletTxHistory = async (
 ): Promise<TxTokenBalance[]> => {
   const history: TxTokenBalance[] = [];
   const results: DbSelectResult = await mysql.query(`
-    SELECT wallet_tx_history.balance AS balance, 
-           wallet_tx_history.timestamp AS timestamp, 
-           wallet_tx_history.token_id AS token_id, 
-           wallet_tx_history.tx_id AS tx_id, 
-           wallet_tx_history.voided AS voided, 
-           wallet_tx_history.wallet_id AS wallet_id, 
+    SELECT wallet_tx_history.balance AS balance,
+           wallet_tx_history.timestamp AS timestamp,
+           wallet_tx_history.token_id AS token_id,
+           wallet_tx_history.tx_id AS tx_id,
+           wallet_tx_history.voided AS voided,
+           wallet_tx_history.wallet_id AS wallet_id,
            transaction.version AS version
       FROM wallet_tx_history
 LEFT OUTER JOIN transaction ON transaction.tx_id = wallet_tx_history.tx_id
@@ -2111,7 +2111,7 @@ export const rebuildAddressBalancesFromUtxos = async (
   // if we used the INSERT ... ON CONFLICT syntax)
   for (const addressTokenTx of finalTxCount) {
     await mysql.query(`
-      UPDATE \`address_balance\` 
+      UPDATE \`address_balance\`
          SET \`transactions\` = ?
        WHERE \`address\` = ?
          AND \`token_id\` = ?
@@ -2123,8 +2123,7 @@ export const rebuildAddressBalancesFromUtxos = async (
   }
 
   // total_received is the sum of all outputs sent to an address
-  // This query is needed because on the previous ones we exclude all spent outputs
-  // which we need to include for total_received.
+  // we will remove the affected tx_id output values from the affected addresses
   await mysql.query(`
     UPDATE \`address_balance\` a
       INNER JOIN (
@@ -2132,14 +2131,12 @@ export const rebuildAddressBalancesFromUtxos = async (
                \`address\`,
                \`token_id\`
         FROM \`tx_output\`
-        WHERE voided = FALSE
-          AND authorities = 0
-          AND address IN (?)
+        WHERE authorities = 0 AND tx_id IN (?)
         GROUP BY address, token_id
       ) b
       ON a.\`address\` = b.\`address\` AND a.\`token_id\` = b.\`token_id\`
-      SET a.\`total_received\` = b.\`total\`
-  `, [addresses]);
+      SET a.\`total_received\` = a.\`total_received\` - b.\`total\`
+  `, [txList]);
 };
 
 /**
@@ -2452,7 +2449,7 @@ export const getExpiredTimelocksUtxos = async (
   const results: DbSelectResult = await mysql.query(`
     SELECT *
       FROM tx_output
-     WHERE locked = TRUE 
+     WHERE locked = TRUE
        AND timelock IS NOT NULL
        AND timelock < ?
   `, [now]);
@@ -2538,7 +2535,7 @@ export const getAffectedAddressTxCountFromTxList = async (
 ): Promise<StringMap<number>> => {
   const results: DbSelectResult = await mysql.query(`
     SELECT address, COUNT(DISTINCT(tx_id)) AS txCount, token_id as tokenId
-      FROM address_tx_history 
+      FROM address_tx_history
      WHERE tx_id IN (?)
        AND voided = TRUE
   GROUP BY address, token_id
