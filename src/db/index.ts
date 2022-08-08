@@ -2059,7 +2059,7 @@ export const rebuildAddressBalancesFromUtxos = async (
                 0,
                 BIT_OR(\`authorities\`), -- unlocked_authorities
                 0, -- locked_authorities
-                0, -- timelock_expires
+                NULL, -- timelock_expires
                 0 -- transactions
           FROM \`tx_output\`
          WHERE spent_by IS NULL
