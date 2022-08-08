@@ -2027,7 +2027,7 @@ export const rebuildAddressBalancesFromUtxos = async (
   }
   // first we need to store the transactions count before deleting
   const oldAddressTokenTransactions: DbSelectResult = await mysql.query(
-    `SELECT \`address\`, \`token_id\` AS tokenId, \`transactions\`
+    `SELECT \`address\`, \`token_id\` AS tokenId, \`transactions\`, \`total_received\`
        FROM \`address_balance\`
       WHERE \`address\` IN (?)`,
     [addresses],
@@ -2100,43 +2100,27 @@ export const rebuildAddressBalancesFromUtxos = async (
    `, [addresses]);
 
   const addressTransactionCount: StringMap<number> = await getAffectedAddressTxCountFromTxList(mysql, txList);
-  const finalTxCount = oldAddressTokenTransactions.map(({ address, tokenId, transactions }) => {
-    const diff = addressTransactionCount[`${address}_${tokenId}`] || 0;
+  const addressTotalReceived: StringMap<number> = await getAffectedAddressTotalReceivedFromTxList(mysql, txList);
 
-    return [address, tokenId, transactions as number - diff];
+  const finalValues = oldAddressTokenTransactions.map(({ address, tokenId, transactions, totalReceived }) => {
+    const diffTransactions = addressTransactionCount[`${address}_${tokenId}`] || 0;
+    const diffTotalReceived = addressTotalReceived[`${address}_${tokenId}`] || 0;
+
+    return [transactions as number - diffTransactions, totalReceived as number - diffTotalReceived, address, tokenId];
   });
 
   // update address balances with the correct amount of transactions
   // We have to run multiple updates because we don't want to insert new rows to the table (which would be done
   // if we used the INSERT ... ON CONFLICT syntax)
-  for (const addressTokenTx of finalTxCount) {
+  for (const item of finalValues) {
     await mysql.query(`
       UPDATE \`address_balance\`
          SET \`transactions\` = ?
+         SET \`total_received\` = ?
        WHERE \`address\` = ?
          AND \`token_id\` = ?
-    `, [
-      addressTokenTx[2],
-      addressTokenTx[0],
-      addressTokenTx[1],
-    ]);
+    `, item);
   }
-
-  // total_received is the sum of all outputs sent to an address
-  // we will remove the affected tx_id output values from the affected addresses
-  await mysql.query(`
-    UPDATE \`address_balance\` a
-      INNER JOIN (
-        SELECT SUM(\`value\`) AS total,
-               \`address\`,
-               \`token_id\`
-        FROM \`tx_output\`
-        WHERE authorities = 0 AND tx_id IN (?)
-        GROUP BY address, token_id
-      ) b
-      ON a.\`address\` = b.\`address\` AND a.\`token_id\` = b.\`token_id\`
-      SET a.\`total_received\` = a.\`total_received\` - b.\`total\`
-  `, [txList]);
 };
 
 /**
@@ -2552,4 +2536,36 @@ export const getAffectedAddressTxCountFromTxList = async (
   }, {});
 
   return addressTransactions as StringMap<number>;
+};
+
+/**
+ * Get the affected total_received for each address/token pair given a list of transactions
+ *
+ * @param mysql - Database connection
+ * @param txList - A list of affected transactions
+
+ * @returns {Promise<StringMap<number>>} A Map with address_tokenId as key and the affected total_received as values
+ */
+export const getAffectedAddressTotalReceivedFromTxList = async (
+  mysql: ServerlessMysql,
+  txList: string[],
+): Promise<StringMap<number>> => {
+  const results: DbSelectResult = await mysql.query(`
+    SELECT address, token_id as tokenId, SUM(value) as total
+     FROM tx_output
+     WHERE tx_id IN (?) AND voided = TRUE
+     GROUP BY address, token_id
+  `, [txList]);
+
+  const addressTotalReceivedMap = results.reduce((acc, result) => {
+    const address = result.address as string;
+    const total = result.total as number;
+    const tokenId = result.tokenId as string;
+
+    acc[`${address}_${tokenId}`] = total;
+
+    return acc;
+  }, {});
+
+  return addressTotalReceivedMap as StringMap<number>;
 };
