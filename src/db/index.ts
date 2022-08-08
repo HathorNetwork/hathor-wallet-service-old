@@ -2030,8 +2030,13 @@ export const rebuildAddressBalancesFromUtxos = async (
 
   // delete affected address_balances
   await mysql.query(
-    `DELETE
-       FROM \`address_balance\`
+    `UPDATE \`address_balance\`
+        SET \`unlocked_balance\` = 0,
+            \`locked_balance\` = 0,
+            \`locked_authorities\` = 0,
+            \`unlocked_authorities\` = 0,
+            \`timelock_expires\` = NULL,
+            \`transactions\` = 0
       WHERE \`address\` IN (?)`,
     [addresses],
   );
@@ -2048,20 +2053,23 @@ export const rebuildAddressBalancesFromUtxos = async (
       \`timelock_expires\`,
       \`transactions\`
     )
-     SELECT address,
-            token_id,
-            SUM(\`value\`), -- unlocked_balance
-            0,
-            BIT_OR(\`authorities\`), -- unlocked_authorities
-            0, -- locked_authorities
-            0, -- timelock_expires
-            0 -- transactions
-       FROM \`tx_output\`
-      WHERE spent_by IS NULL
-        AND voided = FALSE
-        AND locked = FALSE
-        AND address IN (?)
-   GROUP BY address, token_id
+        SELECT address,
+                token_id,
+                SUM(\`value\`), -- unlocked_balance
+                0,
+                BIT_OR(\`authorities\`), -- unlocked_authorities
+                0, -- locked_authorities
+                0, -- timelock_expires
+                0 -- transactions
+          FROM \`tx_output\`
+         WHERE spent_by IS NULL
+           AND voided = FALSE
+           AND locked = FALSE
+           AND address IN (?)
+      GROUP BY address, token_id
+   ON DUPLICATE KEY UPDATE
+    unlocked_balance = VALUES(unlocked_balance),
+    unlocked_authorities = VALUES(unlocked_authorities)
   `, [addresses]);
 
   // update address balances with locked utxos
