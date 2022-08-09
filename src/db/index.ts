@@ -2027,7 +2027,7 @@ export const rebuildAddressBalancesFromUtxos = async (
   }
   // first we need to store the transactions count before deleting
   const oldAddressTokenTransactions: DbSelectResult = await mysql.query(
-    `SELECT \`address\`, \`token_id\` AS tokenId, \`transactions\`, \`total_received\`
+    `SELECT \`address\`, \`token_id\` AS tokenId, \`transactions\`, \`total_received\` as \`totalReceived\`
        FROM \`address_balance\`
       WHERE \`address\` IN (?)`,
     [addresses],
@@ -2115,8 +2115,8 @@ export const rebuildAddressBalancesFromUtxos = async (
   for (const item of finalValues) {
     await mysql.query(`
       UPDATE \`address_balance\`
-         SET \`transactions\` = ?
-         SET \`total_received\` = ?
+        SET \`transactions\` = ?,
+            \`total_received\` = ?
        WHERE \`address\` = ?
          AND \`token_id\` = ?
     `, item);
