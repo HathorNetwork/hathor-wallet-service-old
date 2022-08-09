@@ -236,7 +236,7 @@ test('unlockUtxos', async () => {
   }]);
 
   await addToAddressBalanceTable(mysql, [
-    [addr, token, 0, 2 * reward + 5000, now, 5, 0, 0b10],
+    [addr, token, 0, 2 * reward + 5000, now, 5, 0, 0b10, 4 * reward + 5000],
   ]);
 
   await addToWalletBalanceTable(mysql, [{
@@ -353,7 +353,7 @@ test('unlockTimelockedUtxos', async () => {
   }]);
 
   await addToAddressBalanceTable(mysql, [
-    [addr, token, 0, 5000, now, 3, 0, 0b10],
+    [addr, token, 0, 5000, now, 3, 0, 0b10, 10000],
   ]);
 
   await addToWalletBalanceTable(mysql, [{

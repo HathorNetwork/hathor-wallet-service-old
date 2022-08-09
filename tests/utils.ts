@@ -609,7 +609,8 @@ export const addToAddressBalanceTable = async (
     INSERT INTO \`address_balance\`(\`address\`, \`token_id\`,
                                     \`unlocked_balance\`, \`locked_balance\`,
                                     \`timelock_expires\`, \`transactions\`,
-                                    \`unlocked_authorities\`, \`locked_authorities\`)
+                                    \`unlocked_authorities\`, \`locked_authorities\`,
+                                    \`total_received\`)
     VALUES ?`,
   [entries]);
 };
