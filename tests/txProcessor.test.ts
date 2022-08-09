@@ -517,7 +517,7 @@ test('onHandleVoidedTxRequest', async () => {
 
   // Balance should be back to 2500 as the transactions that spent the original utxo were voided and we should
   // have total of one transaction as both txId2 and txId3 were voided.
-  await expect(checkAddressBalanceTable(mysql, 1, addr, token, 2500, 0, 0, 1)).resolves.toBe(true);
+  await expect(checkAddressBalanceTable(mysql, 2, addr, token, 2500, 0, null, 1)).resolves.toBe(true);
 }, 20000);
 
 test('txProcessor should rollback the entire transaction if an error occurs on balance calculation', async () => {
