@@ -358,7 +358,7 @@ test('GET /balances', async () => {
     walletId: 'my-wallet',
     transactions: 2,
   }]);
-  await addToAddressBalanceTable(mysql, [[ADDRESSES[0], 'token3', 5, 1, lockExpires2, 2, 0, 0]]);
+  await addToAddressBalanceTable(mysql, [[ADDRESSES[0], 'token3', 5, 1, lockExpires2, 2, 0, 0, 10]]);
   await addToWalletBalanceTable(mysql, [{
     walletId: 'my-wallet',
     tokenId: 'token3',
@@ -385,7 +385,7 @@ test('GET /balances', async () => {
   });
 
   // balance that needs to be refreshed, but there's another locked utxo in the future
-  await addToAddressBalanceTable(mysql, [[ADDRESSES[0], 'token4', 10, 5, lockExpires2, 3, 0, 0]]);
+  await addToAddressBalanceTable(mysql, [[ADDRESSES[0], 'token4', 10, 5, lockExpires2, 3, 0, 0, 30]]);
   await addToWalletBalanceTable(mysql, [{
     walletId: 'my-wallet',
     tokenId: 'token4',

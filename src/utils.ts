@@ -14,6 +14,7 @@ import * as bitcoin from 'bitcoinjs-lib';
 import * as bitcoinMessage from 'bitcoinjs-message';
 import * as ecc from 'tiny-secp256k1';
 import BIP32Factory from 'bip32';
+import { Logger } from 'winston';
 
 const bip32 = BIP32Factory(ecc);
 
@@ -194,11 +195,11 @@ export const isTxVoided = async (txId: string): Promise<[boolean, any]> => {
  *
  * @returns A tuple with the result and the downloaded transaction
  */
-export const fetchBlockHeight = async (txId: string): Promise<[number, any]> => {
+export const fetchBlockHeight = async (txId: string, logger: Logger): Promise<[number, any]> => {
   const transaction = await fullnode.downloadTx(txId);
 
   if (!transaction.tx.height) {
-    console.error(JSON.stringify(transaction));
+    logger.error(JSON.stringify(transaction));
     throw new Error(`Block ${txId} has no height.`);
   }
 

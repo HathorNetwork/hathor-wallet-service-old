@@ -34,6 +34,10 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false,
       primaryKey: true,
     },
+    total_received: {
+      type: DataTypes.BIGINT.UNSIGNED,
+      allowNull: false,
+    },
     unlocked_balance: {
       type: DataTypes.BIGINT.UNSIGNED,
       allowNull: false,
@@ -60,12 +64,12 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.INTEGER.UNSIGNED,
       allowNull: false,
     },
-    createdAt: {
+    created_at: {
       type: 'TIMESTAMP',
       allowNull: false,
       defaultValue: DataTypes.literal('CURRENT_TIMESTAMP'),
     },
-    updatedAt: {
+    updated_at: {
       type: 'TIMESTAMP',
       allowNull: false,
       defaultValue: DataTypes.literal('CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'),
@@ -75,6 +79,10 @@ module.exports = (sequelize, DataTypes) => {
     modelName: 'AddressBalance',
     tableName: 'address_balance',
     timestamps: false,
+    indexes: [{
+      name: 'address_balance_updated_at_idx',
+      fields: ['updated_at'],
+    }],
   });
   return AddressBalance;
 };

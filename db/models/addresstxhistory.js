@@ -53,6 +53,9 @@ module.exports = (sequelize, DataTypes) => {
     }, {
       name: 'address_tx_history_tokenid_idx',
       fields: ['token_id'],
+    }, {
+      name: 'address_tx_history_timestamp_idx',
+      fields: ['timestamp'],
     }],
   });
   return AddressTxHistory;

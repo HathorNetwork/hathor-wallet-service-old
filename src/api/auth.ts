@@ -28,6 +28,8 @@ import {
 } from '@src/utils';
 import middy from '@middy/core';
 import cors from '@middy/http-cors';
+import createDefaultLogger from '@src/logger';
+import { Logger } from 'winston';
 
 const EXPIRATION_TIME_IN_SECONDS = 1800;
 
@@ -155,7 +157,7 @@ export const tokenHandler: APIGatewayProxyHandler = middy(async (event) => {
 /**
  * Generates a aws policy document to allow/deny access to the resource
  */
-const _generatePolicy = (principalId: string, effect: string, resource: string) => {
+const _generatePolicy = (principalId: string, effect: string, resource: string, logger: Logger) => {
   const resourcePrefix = `${resource.split('/').slice(0, 2).join('/')}/*`;
   const policyDocument: PolicyDocument = {
     Version: '2012-10-17',
@@ -182,12 +184,12 @@ const _generatePolicy = (principalId: string, effect: string, resource: string) 
   authResponse.context = context;
 
   // XXX: to get the resulting policy on the logs, since we can't check the cached policy
-  // eslint-disable-next-line
-  console.info('Generated policy:', authResponse);
+  logger.info('Generated policy:', authResponse);
   return authResponse;
 };
 
 export const bearerAuthorizer: APIGatewayTokenAuthorizerHandler = middy(async (event) => {
+  const logger = createDefaultLogger();
   const { authorizationToken } = event;
   if (!authorizationToken) {
     throw new Error('Unauthorized'); // returns a 401
@@ -210,8 +212,7 @@ export const bearerAuthorizer: APIGatewayTokenAuthorizerHandler = middy(async (e
     } else if (e.name === 'TokenExpiredError') {
       throw new Error('Unauthorized');
     } else {
-      // eslint-disable-next-line
-      console.log('Error on bearerAuthorizer: ', e);
+      logger.warn('Error on bearerAuthorizer: ', e);
       throw e;
     }
   }
@@ -227,8 +228,8 @@ export const bearerAuthorizer: APIGatewayTokenAuthorizerHandler = middy(async (e
   const verified = verifySignature(signature, timestamp, address, walletId);
 
   if (verified && Math.floor(Date.now() / 1000) <= expirationTs) {
-    return _generatePolicy(walletId, 'Allow', event.methodArn);
+    return _generatePolicy(walletId, 'Allow', event.methodArn, logger);
   }
 
-  return _generatePolicy(walletId, 'Deny', event.methodArn);
+  return _generatePolicy(walletId, 'Deny', event.methodArn, logger);
 }).use(cors());
