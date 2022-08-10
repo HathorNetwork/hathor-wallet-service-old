@@ -132,6 +132,7 @@ functions:
         enabled: false
   onNewTxRequest:
     handler: src/txProcessor.onNewTxRequest
+    timeout: 12 # seconds
     warmup:
       walletWarmer:
         enabled: false

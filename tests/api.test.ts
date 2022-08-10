@@ -1265,9 +1265,9 @@ test('GET /wallet/tokens/token_id/details', async () => {
   ]);
 
   await addToAddressTxHistoryTable(mysql, [
-    [ADDRESSES[0], 'txId', token1.id, 100, 0],
-    [ADDRESSES[0], 'txId2', token2.id, 250, 0],
-    [ADDRESSES[0], 'txId3', token2.id, 0, 0],
+    { address: ADDRESSES[0], txId: 'txId', tokenId: token1.id, balance: 100, timestamp: 0 },
+    { address: ADDRESSES[0], txId: 'txId2', tokenId: token2.id, balance: 250, timestamp: 0 },
+    { address: ADDRESSES[0], txId: 'txId3', tokenId: token2.id, balance: 0, timestamp: 0 },
   ]);
 
   event = makeGatewayEventWithAuthorizer('my-wallet', { token_id: token1.id });
