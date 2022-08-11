@@ -1635,6 +1635,13 @@ test('rebuildAddressBalancesFromUtxos', async () => {
 
   await addToAddressTxHistoryTable(mysql, txHistory);
 
+  // add to the token table
+  await addToTokenTable(mysql, [
+    { id: token1, name: 'token1', symbol: 'TKN1', transactions: 2 },
+  ]);
+
+  await expect(checkTokenTable(mysql, 1, token1, 'TKN1', 'token1', 2)).resolves.toBe(true);
+
   // We are only using the txList parameter on `transactions` recalculation, so our balance
   // checks should include txId3 and txId4, but the transaction count should not.
   await rebuildAddressBalancesFromUtxos(mysql, [addr1, addr2], [txId3, txId4]);
@@ -1657,6 +1664,8 @@ test('rebuildAddressBalancesFromUtxos', async () => {
   expect(addressBalances[2].address).toStrictEqual(addr2);
   expect(addressBalances[2].transactions).toStrictEqual(1);
   expect(addressBalances[2].tokenId).toStrictEqual('token2');
+
+  await expect(checkTokenTable(mysql, 1, token1, 'TKN1', 'token1', 0)).resolves.toBe(true);
 });
 
 test('markAddressTxHistoryAsVoided', async () => {

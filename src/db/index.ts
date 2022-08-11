@@ -2121,6 +2121,7 @@ export const rebuildAddressBalancesFromUtxos = async (
 
   const addressTransactionCount: StringMap<number> = await getAffectedAddressTxCountFromTxList(mysql, txList);
   const addressTotalReceived: StringMap<number> = await getAffectedAddressTotalReceivedFromTxList(mysql, txList);
+  const tokenTransactionCount: StringMap<number> = await getAffectedTokenTxCountFromTxList(mysql, txList);
 
   const finalValues = oldAddressTokenTransactions.map(({ address, tokenId, transactions, totalReceived }) => {
     const diffTransactions = addressTransactionCount[`${address}_${tokenId}`] || 0;
@@ -2140,6 +2141,15 @@ export const rebuildAddressBalancesFromUtxos = async (
        WHERE \`address\` = ?
          AND \`token_id\` = ?
     `, item);
+  }
+
+  // update token table with the correct amount of transactions
+  for (const token of Object.keys(tokenTransactionCount)) {
+    await mysql.query(`
+      UPDATE \`token\`
+        SET \`transactions\` = \`transactions\` - ?
+       WHERE \`id\` = ?
+    `, [tokenTransactionCount[token], token]);
   }
 };
 
@@ -2556,6 +2566,39 @@ export const getAffectedAddressTxCountFromTxList = async (
   }, {});
 
   return addressTransactions as StringMap<number>;
+};
+
+/**
+ * Get the number of affected transactions for each token from the address_tx_history table
+ * given a list of transactions
+ *
+ * @param mysql - Database connection
+ * @param txList - A list of affected transactions to get the token tx count
+
+ * @returns A Map with tokenId as key and the transaction count as values
+ */
+export const getAffectedTokenTxCountFromTxList = async (
+  mysql: ServerlessMysql,
+  txList: string[],
+): Promise<StringMap<number>> => {
+  const results: DbSelectResult = await mysql.query(`
+    SELECT token_id AS tokenId, COUNT(DISTINCT(tx_id)) AS txCount
+      FROM address_tx_history
+     WHERE tx_id IN (?)
+       AND voided = TRUE
+  GROUP BY token_id
+  `, [txList]);
+
+  const tokenTransactions = results.reduce((acc, result) => {
+    const tokenId = result.tokenId as string;
+    const txCount = result.txCount as number;
+
+    acc[tokenId] = txCount;
+
+    return acc;
+  }, {});
+
+  return tokenTransactions as StringMap<number>;
 };
 
 /**
