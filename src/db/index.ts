@@ -2572,9 +2572,10 @@ export const getAffectedAddressTotalReceivedFromTxList = async (
 ): Promise<StringMap<number>> => {
   const results: DbSelectResult = await mysql.query(`
     SELECT address, token_id as tokenId, SUM(value) as total
-     FROM tx_output
-     WHERE tx_id IN (?) AND voided = TRUE
-     GROUP BY address, token_id
+      FROM tx_output
+     WHERE tx_id IN (?)
+       AND voided = TRUE
+  GROUP BY address, token_id
   `, [txList]);
 
   const addressTotalReceivedMap = results.reduce((acc, result) => {
