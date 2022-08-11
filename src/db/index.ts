@@ -1256,7 +1256,21 @@ export const getWalletBalances = async (mysql: ServerlessMysql, walletId: string
   }
 
   // use LEFT JOIN as HTR token ('00') won't be on the token table, so INNER JOIN would never match it
-  const query = `SELECT * FROM (${subquery}) w LEFT JOIN token ON w.token_id = token.id;`;
+  const query = `
+    SELECT NULL AS total_received,
+           w.unlocked_balance AS unlocked_balance,
+           w.locked_balance AS locked_balance,
+           w.unlocked_authorities AS unlocked_authorities,
+           w.locked_authorities AS locked_authorities,
+           w.timelock_expires AS timelock_expires,
+           w.transactions AS transactions,
+           w.token_id AS token_id,
+           token.name AS name,
+           token.symbol AS symbol
+      FROM (${subquery}) w
+ LEFT JOIN token
+        ON w.token_id = token.id
+  `;
 
   const results: DbSelectResult = await mysql.query(query, params);
   for (const result of results) {
@@ -2576,4 +2590,15 @@ export const getAffectedAddressTotalReceivedFromTxList = async (
   }, {});
 
   return addressTotalReceivedMap as StringMap<number>;
+};
+
+export const updateTokensTxCount = async (
+  mysql: ServerlessMysql,
+  tokenList: string[],
+): Promise<void> => {
+  await mysql.query(`
+    UPDATE \`token\`
+       SET \`transactions\` = \`transactions\` + 1
+     WHERE \`id\` IN (?)
+  `, [tokenList]);
 };

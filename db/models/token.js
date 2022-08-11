@@ -40,6 +40,10 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false,
       defaultValue: DataTypes.literal('CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'),
     },
+    transactions: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: false,
+    },
   }, {
     sequelize,
     modelName: 'Token',

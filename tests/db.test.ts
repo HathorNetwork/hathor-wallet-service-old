@@ -63,6 +63,7 @@ import {
   getTotalTransactions,
   getAvailableAuthorities,
   getAffectedAddressTxCountFromTxList,
+  updateTokensTxCount,
 } from '@src/db';
 import {
   beginTransaction,
@@ -109,6 +110,7 @@ import {
   createOutput,
   createInput,
   countTxOutputTable,
+  checkTokenTable,
 } from '@tests/utils';
 import { AddressTxHistoryTableEntry } from '@tests/types';
 
@@ -917,8 +919,8 @@ test('getWalletBalances', async () => {
   }]);
 
   await addToTokenTable(mysql, [
-    { id: token1.id, name: token1.name, symbol: token1.symbol },
-    { id: token2.id, name: token2.name, symbol: token2.symbol },
+    { id: token1.id, name: token1.name, symbol: token1.symbol, transactions: 0 },
+    { id: token2.id, name: token2.name, symbol: token2.symbol, transactions: 0 },
   ]);
 
   // first test fetching all tokens
@@ -2120,4 +2122,21 @@ test('getAffectedAddressTxCountFromTxList', async () => {
 
   // We should get an empty object if no addresses have been affected:
   expect(await getAffectedAddressTxCountFromTxList(mysql, [txId2])).toStrictEqual({});
+});
+
+test('updateTokensTxCount', async () => {
+  expect.hasAssertions();
+
+  const token1 = new TokenInfo('token1', 'MyToken1', 'MT1', 10);
+  const token2 = new TokenInfo('token2', 'MyToken2', 'MT2', 15);
+
+  await addToTokenTable(mysql, [
+    { id: token1.id, name: token1.name, symbol: token1.symbol, transactions: token1.transactions },
+    { id: token2.id, name: token2.name, symbol: token2.symbol, transactions: token2.transactions },
+  ]);
+
+  await updateTokensTxCount(mysql, ['token1', '00', 'token2']);
+
+  await expect(checkTokenTable(mysql, 2, token1.id, token1.symbol, token1.name, token1.transactions + 1)).resolves.toBe(true);
+  await expect(checkTokenTable(mysql, 2, token1.id, token1.symbol, token1.name, token1.transactions + 1)).resolves.toBe(true);
 });

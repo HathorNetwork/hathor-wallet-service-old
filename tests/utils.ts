@@ -458,6 +458,51 @@ export const checkWalletBalanceTable = async (
   return true;
 };
 
+export const checkTokenTable = async (
+  mysql: ServerlessMysql,
+  totalResults: number,
+  tokenId: string,
+  tokenSymbol: string,
+  tokenName: string,
+  transactions: number,
+): Promise<boolean | Record<string, unknown>> => {
+  // first check the total number of rows in the table
+  let results: DbSelectResult = await mysql.query('SELECT * FROM `token`');
+  if (results.length !== totalResults) {
+    return {
+      error: 'checkTokenTable total results',
+      expected: totalResults,
+      received: results.length,
+      results,
+    };
+  }
+
+  if (totalResults === 0) return true;
+
+  // now fetch the exact entry
+  const query = `
+    SELECT *
+      FROM \`token\`
+     WHERE \`id\` = ?
+       AND \`name\` = ?
+       AND \`symbol\` = ?
+       AND \`transactions\` = ?
+  `;
+  results = await mysql.query(
+    query,
+    [tokenId, tokenName, tokenSymbol, transactions],
+  );
+
+  if (results.length !== 1) {
+    return {
+      error: 'checkAddressTable query',
+      params: { tokenId, tokenName, tokenSymbol, transactions },
+      results,
+    };
+  }
+  return true;
+};
+
 export const countTxOutputTable = async (
   mysql: ServerlessMysql,
 ): Promise<number> => {
@@ -623,10 +668,11 @@ export const addToTokenTable = async (
     entry.id,
     entry.name,
     entry.symbol,
+    entry.transactions,
   ]));
 
   await mysql.query(
-    'INSERT INTO `token`(`id`, `name`, `symbol`) VALUES ?',
+    'INSERT INTO `token`(`id`, `name`, `symbol`, `transactions`) VALUES ?',
     [payload],
   );
 };
