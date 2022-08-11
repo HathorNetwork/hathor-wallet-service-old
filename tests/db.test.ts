@@ -63,7 +63,7 @@ import {
   getTotalTransactions,
   getAvailableAuthorities,
   getAffectedAddressTxCountFromTxList,
-  updateTokensTxCount,
+  incrementTokensTxCount,
 } from '@src/db';
 import {
   beginTransaction,
@@ -2124,7 +2124,7 @@ test('getAffectedAddressTxCountFromTxList', async () => {
   expect(await getAffectedAddressTxCountFromTxList(mysql, [txId2])).toStrictEqual({});
 });
 
-test('updateTokensTxCount', async () => {
+test('incrementTokensTxCount', async () => {
   expect.hasAssertions();
 
   const token1 = new TokenInfo('token1', 'MyToken1', 'MT1', 10);
@@ -2135,7 +2135,7 @@ test('updateTokensTxCount', async () => {
     { id: token2.id, name: token2.name, symbol: token2.symbol, transactions: token2.transactions },
   ]);
 
-  await updateTokensTxCount(mysql, ['token1', '00', 'token2']);
+  await incrementTokensTxCount(mysql, ['token1', '00', 'token2']);
 
   await expect(checkTokenTable(mysql, 2, token1.id, token1.symbol, token1.name, token1.transactions + 1)).resolves.toBe(true);
   await expect(checkTokenTable(mysql, 2, token1.id, token1.symbol, token1.name, token1.transactions + 1)).resolves.toBe(true);

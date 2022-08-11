@@ -2590,7 +2590,13 @@ export const getAffectedAddressTotalReceivedFromTxList = async (
   return addressTotalReceivedMap as StringMap<number>;
 };
 
-export const updateTokensTxCount = async (
+/**
+ * Increment a list of tokens transactions count
+ *
+ * @param mysql - Database connection
+ * @param tokenList - The list of tokens to increment
+ */
+export const incrementTokensTxCount = async (
   mysql: ServerlessMysql,
   tokenList: string[],
 ): Promise<void> => {
