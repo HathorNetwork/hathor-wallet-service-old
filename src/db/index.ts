@@ -1255,7 +1255,6 @@ export const getWalletBalances = async (mysql: ServerlessMysql, walletId: string
     params.push(tokenIds);
   }
 
-  // use LEFT JOIN as HTR token ('00') won't be on the token table, so INNER JOIN would never match it
   const query = `
     SELECT NULL AS total_received,
            w.unlocked_balance AS unlocked_balance,
@@ -1268,8 +1267,7 @@ export const getWalletBalances = async (mysql: ServerlessMysql, walletId: string
            token.name AS name,
            token.symbol AS symbol
       FROM (${subquery}) w
- LEFT JOIN token
-        ON w.token_id = token.id
+INNER JOIN token ON w.token_id = token.id
   `;
 
   const results: DbSelectResult = await mysql.query(query, params);

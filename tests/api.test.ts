@@ -261,12 +261,15 @@ test('GET /balances', async () => {
     readyAt: 10001,
   }]);
 
+  // add the hathor token as it will be deleted by the beforeAll
+  const htrToken = { id: '00', name: 'Hathor', symbol: 'HTR' };
   // add tokens
   const token1 = { id: 'token1', name: 'MyToken1', symbol: 'MT1' };
   const token2 = { id: 'token2', name: 'MyToken2', symbol: 'MT2' };
   const token3 = { id: 'token3', name: 'MyToken3', symbol: 'MT3' };
   const token4 = { id: 'token4', name: 'MyToken4', symbol: 'MT4' };
   await addToTokenTable(mysql, [
+    { ...htrToken, transactions: 0 },
     { id: token1.id, name: token1.name, symbol: token1.symbol, transactions: 0 },
     { id: token2.id, name: token2.name, symbol: token2.symbol, transactions: 0 },
     { id: token3.id, name: token3.name, symbol: token3.symbol, transactions: 0 },
