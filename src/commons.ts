@@ -191,6 +191,13 @@ export const getAddressBalanceMap = (
   return addressBalanceMap;
 };
 
+/**
+ * Gets a list of tokens from a list of inputs and outputs
+ *
+ * @param inputs - The transaction inputs
+ * @param outputs - The transaction outputs
+ * @returns A list of tokens present in the inputs and outputs
+ */
 export const getTokenListFromInputsAndOutputs = (inputs: TxInput[], outputs: TxOutput[]): string[] => {
   const tokenIds = new Set<string>([]);
 
