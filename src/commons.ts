@@ -198,7 +198,7 @@ export const getAddressBalanceMap = (
  * @param outputs - The transaction outputs
  * @returns A list of tokens present in the inputs and outputs
  */
-export const getTokenListFromInputsAndOutputs = (inputs: TxInput[], outputs: TxOutput[]): string[] => {
+export const getTokenListFromInputsAndOutputs = (inputs: TxInput[], outputs: TxOutputWithIndex[]): string[] => {
   const tokenIds = new Set<string>([]);
 
   for (const input of inputs) {
