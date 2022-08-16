@@ -2136,16 +2136,19 @@ test('getAffectedAddressTxCountFromTxList', async () => {
 test('incrementTokensTxCount', async () => {
   expect.hasAssertions();
 
+  const htr = new TokenInfo('00', 'Hathor', 'HTR', 5);
   const token1 = new TokenInfo('token1', 'MyToken1', 'MT1', 10);
   const token2 = new TokenInfo('token2', 'MyToken2', 'MT2', 15);
 
   await addToTokenTable(mysql, [
+    { id: htr.id, name: htr.name, symbol: htr.symbol, transactions: htr.transactions },
     { id: token1.id, name: token1.name, symbol: token1.symbol, transactions: token1.transactions },
     { id: token2.id, name: token2.name, symbol: token2.symbol, transactions: token2.transactions },
   ]);
 
   await incrementTokensTxCount(mysql, ['token1', '00', 'token2']);
 
-  await expect(checkTokenTable(mysql, 2, token1.id, token1.symbol, token1.name, token1.transactions + 1)).resolves.toBe(true);
-  await expect(checkTokenTable(mysql, 2, token1.id, token1.symbol, token1.name, token1.transactions + 1)).resolves.toBe(true);
+  await expect(checkTokenTable(mysql, 3, token1.id, token1.symbol, token1.name, token1.transactions + 1)).resolves.toBe(true);
+  await expect(checkTokenTable(mysql, 3, token2.id, token2.symbol, token2.name, token2.transactions + 1)).resolves.toBe(true);
+  await expect(checkTokenTable(mysql, 3, htr.id, htr.symbol, htr.name, htr.transactions + 1)).resolves.toBe(true);
 });
