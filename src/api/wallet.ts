@@ -37,6 +37,7 @@ import { walletIdProxyHandler } from '@src/commons';
 import middy from '@middy/core';
 import cors from '@middy/http-cors';
 import Joi from 'joi';
+import createDefaultLogger from '@src/logger';
 
 const mysql = getDbConnection();
 
@@ -250,6 +251,7 @@ export const changeAuthXpub: APIGatewayProxyHandler = middy(async (event) => {
  * This lambda is called by API Gateway on POST /wallet
  */
 export const load: APIGatewayProxyHandler = middy(async (event) => {
+  const logger = createDefaultLogger();
   const eventBody = (function parseBody(body) {
     try {
       return JSON.parse(body);
@@ -349,8 +351,7 @@ export const load: APIGatewayProxyHandler = middy(async (event) => {
      */
     await invokeLoadWalletAsync(xpubkeyStr, maxGap);
   } catch (e) {
-    // eslint-disable-next-line
-    console.error('Error on lambda wallet invoke', e);
+    logger.error('Error on lambda wallet invoke', e);
 
     const newRetryCount = wallet.retryCount ? wallet.retryCount + 1 : 1;
     // update wallet status to 'error'
@@ -388,6 +389,7 @@ interface LoadResult {
  * This lambda is called async by another lambda, the one reponsible for the load wallet API
  */
 export const loadWallet: Handler<LoadEvent, LoadResult> = async (event) => {
+  const logger = createDefaultLogger();
   // Can't use a middleware on this event, so we should just check the source (added by the warmup plugin) as
   // our default middleware does
   if (event.source === 'serverless-plugin-warmup') {
@@ -428,8 +430,7 @@ export const loadWallet: Handler<LoadEvent, LoadResult> = async (event) => {
       xpubkey,
     };
   } catch (e) {
-    // eslint-disable-next-line
-    console.error('Erroed on loadWalletAsync: ', e);
+    logger.error('Erroed on loadWalletAsync: ', e);
 
     const wallet = await getWallet(mysql, walletId);
     const newRetryCount = wallet.retryCount ? wallet.retryCount + 1 : 1;

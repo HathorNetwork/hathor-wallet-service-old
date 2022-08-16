@@ -962,6 +962,9 @@ export const updateAddressTablesWithTx = async (
       const entry = {
         address,
         token_id: token,
+        // totalAmountSent is the sum of the value of all outputs of this token on the tx being sent to this address
+        // which means it is the "total_received" for this address
+        total_received: tokenBalance.totalAmountSent,
         // if it's < 0, there must be an entry already, so it will execute "ON DUPLICATE KEY UPDATE" instead of setting it to 0
         unlocked_balance: (tokenBalance.unlockedAmount < 0 ? 0 : tokenBalance.unlockedAmount),
         // this is never less than 0, as locked balance only changes when a tx is unlocked
@@ -976,7 +979,8 @@ export const updateAddressTablesWithTx = async (
         `INSERT INTO address_balance
                  SET ?
                   ON DUPLICATE KEY
-                            UPDATE unlocked_balance = unlocked_balance + ?,
+                            UPDATE total_received = total_received + ?,
+                                   unlocked_balance = unlocked_balance + ?,
                                    locked_balance = locked_balance + ?,
                                    transactions = transactions + 1,
                                    timelock_expires = CASE
@@ -986,7 +990,7 @@ export const updateAddressTablesWithTx = async (
                                                       END,
                                    unlocked_authorities = (unlocked_authorities | VALUES(unlocked_authorities)),
                                    locked_authorities = locked_authorities | VALUES(locked_authorities)`,
-        [entry, tokenBalance.unlockedAmount, tokenBalance.lockedAmount, address, token],
+        [entry, tokenBalance.totalAmountSent, tokenBalance.unlockedAmount, tokenBalance.lockedAmount, address, token],
       );
 
       // if we're removing any of the authorities, we need to refresh the authority columns. Unlike the values,
@@ -1256,6 +1260,7 @@ export const getWalletBalances = async (mysql: ServerlessMysql, walletId: string
 
   const results: DbSelectResult = await mysql.query(query, params);
   for (const result of results) {
+    const totalAmount = result.total_received as number;
     const unlockedBalance = result.unlocked_balance as number;
     const lockedBalance = result.locked_balance as number;
     const unlockedAuthorities = new Authorities(result.unlocked_authorities as number);
@@ -1264,7 +1269,7 @@ export const getWalletBalances = async (mysql: ServerlessMysql, walletId: string
 
     const balance = new WalletTokenBalance(
       new TokenInfo(result.token_id as string, result.name as string, result.symbol as string),
-      new Balance(unlockedBalance, lockedBalance, timelockExpires, unlockedAuthorities, lockedAuthorities),
+      new Balance(totalAmount, unlockedBalance, lockedBalance, timelockExpires, unlockedAuthorities, lockedAuthorities),
       result.transactions as number,
     );
     balances.push(balance);
@@ -1323,12 +1328,12 @@ export const getWalletTxHistory = async (
 ): Promise<TxTokenBalance[]> => {
   const history: TxTokenBalance[] = [];
   const results: DbSelectResult = await mysql.query(`
-    SELECT wallet_tx_history.balance AS balance, 
-           wallet_tx_history.timestamp AS timestamp, 
-           wallet_tx_history.token_id AS token_id, 
-           wallet_tx_history.tx_id AS tx_id, 
-           wallet_tx_history.voided AS voided, 
-           wallet_tx_history.wallet_id AS wallet_id, 
+    SELECT wallet_tx_history.balance AS balance,
+           wallet_tx_history.timestamp AS timestamp,
+           wallet_tx_history.token_id AS token_id,
+           wallet_tx_history.tx_id AS tx_id,
+           wallet_tx_history.voided AS voided,
+           wallet_tx_history.wallet_id AS wallet_id,
            transaction.version AS version
       FROM wallet_tx_history
 LEFT OUTER JOIN transaction ON transaction.tx_id = wallet_tx_history.tx_id
@@ -2022,7 +2027,7 @@ export const rebuildAddressBalancesFromUtxos = async (
   }
   // first we need to store the transactions count before deleting
   const oldAddressTokenTransactions: DbSelectResult = await mysql.query(
-    `SELECT \`address\`, \`token_id\` AS tokenId, \`transactions\`
+    `SELECT \`address\`, \`token_id\` AS tokenId, \`transactions\`, \`total_received\` as \`totalReceived\`
        FROM \`address_balance\`
       WHERE \`address\` IN (?)`,
     [addresses],
@@ -2103,26 +2108,26 @@ export const rebuildAddressBalancesFromUtxos = async (
    `, [addresses]);
 
   const addressTransactionCount: StringMap<number> = await getAffectedAddressTxCountFromTxList(mysql, txList);
-  const finalTxCount = oldAddressTokenTransactions.map(({ address, tokenId, transactions }) => {
-    const diff = addressTransactionCount[`${address}_${tokenId}`] || 0;
+  const addressTotalReceived: StringMap<number> = await getAffectedAddressTotalReceivedFromTxList(mysql, txList);
 
-    return [address, tokenId, transactions as number - diff];
+  const finalValues = oldAddressTokenTransactions.map(({ address, tokenId, transactions, totalReceived }) => {
+    const diffTransactions = addressTransactionCount[`${address}_${tokenId}`] || 0;
+    const diffTotalReceived = addressTotalReceived[`${address}_${tokenId}`] || 0;
+
+    return [transactions as number - diffTransactions, totalReceived as number - diffTotalReceived, address, tokenId];
   });
 
   // update address balances with the correct amount of transactions
   // We have to run multiple updates because we don't want to insert new rows to the table (which would be done
   // if we used the INSERT ... ON CONFLICT syntax)
-  for (const addressTokenTx of finalTxCount) {
+  for (const item of finalValues) {
     await mysql.query(`
-      UPDATE \`address_balance\` 
-         SET \`transactions\` = ?
+      UPDATE \`address_balance\`
+        SET \`transactions\` = ?,
+            \`total_received\` = ?
        WHERE \`address\` = ?
          AND \`token_id\` = ?
-    `, [
-      addressTokenTx[2],
-      addressTokenTx[0],
-      addressTokenTx[1],
-    ]);
+    `, item);
   }
 };
 
@@ -2436,7 +2441,7 @@ export const getExpiredTimelocksUtxos = async (
   const results: DbSelectResult = await mysql.query(`
     SELECT *
       FROM tx_output
-     WHERE locked = TRUE 
+     WHERE locked = TRUE
        AND timelock IS NOT NULL
        AND timelock < ?
   `, [now]);
@@ -2522,7 +2527,7 @@ export const getAffectedAddressTxCountFromTxList = async (
 ): Promise<StringMap<number>> => {
   const results: DbSelectResult = await mysql.query(`
     SELECT address, COUNT(DISTINCT(tx_id)) AS txCount, token_id as tokenId
-      FROM address_tx_history 
+      FROM address_tx_history
      WHERE tx_id IN (?)
        AND voided = TRUE
   GROUP BY address, token_id
@@ -2539,4 +2544,36 @@ export const getAffectedAddressTxCountFromTxList = async (
   }, {});
 
   return addressTransactions as StringMap<number>;
+};
+
+/**
+ * Get the affected total_received for each address/token pair given a list of transactions
+ *
+ * @param mysql - Database connection
+ * @param txList - A list of affected transactions
+
+ * @returns {Promise<StringMap<number>>} A Map with address_tokenId as key and the affected total_received as values
+ */
+export const getAffectedAddressTotalReceivedFromTxList = async (
+  mysql: ServerlessMysql,
+  txList: string[],
+): Promise<StringMap<number>> => {
+  const results: DbSelectResult = await mysql.query(`
+    SELECT address, token_id as tokenId, SUM(value) as total
+     FROM tx_output
+     WHERE tx_id IN (?) AND voided = TRUE
+     GROUP BY address, token_id
+  `, [txList]);
+
+  const addressTotalReceivedMap = results.reduce((acc, result) => {
+    const address = result.address as string;
+    const total = result.total as number;
+    const tokenId = result.tokenId as string;
+
+    acc[`${address}_${tokenId}`] = total;
+
+    return acc;
+  }, {});
+
+  return addressTotalReceivedMap as StringMap<number>;
 };

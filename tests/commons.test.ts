@@ -78,11 +78,11 @@ test('markLockedOutputs and getAddressBalanceMap', () => {
     createOutput(2, 11, 'address2', 'token1'),
   ];
   const map1 = new TokenBalanceMap();
-  map1.set('token1', new Balance(-10, 0));
-  map1.set('token2', new Balance(-7, 0));
-  map1.set('token3', new Balance(2, 0));
+  map1.set('token1', new Balance(5, -10, 0));
+  map1.set('token2', new Balance(0, -7, 0));
+  map1.set('token3', new Balance(2, 2, 0));
   const map2 = new TokenBalanceMap();
-  map2.set('token1', new Balance(8, 0));
+  map2.set('token1', new Balance(11, 8, 0));
   const expectedAddrMap = {
     address1: map1,
     address2: map2,
@@ -108,7 +108,7 @@ test('markLockedOutputs and getAddressBalanceMap', () => {
   expect(tx.outputs[2].locked).toBe(true);
 
   // check balance
-  map2.set('token1', new Balance(-3, 11, now + 1));
+  map2.set('token1', new Balance(11, -3, 11, now + 1));
   const addrMap2 = getAddressBalanceMap(tx.inputs, tx.outputs);
   expect(addrMap2).toStrictEqual(expectedAddrMap);
 
@@ -123,7 +123,7 @@ test('markLockedOutputs and getAddressBalanceMap', () => {
   }
   const addrMap3 = getAddressBalanceMap(tx.inputs, tx.outputs);
   const map3 = new TokenBalanceMap();
-  map3.set('token1', new Balance(0, 100));
+  map3.set('token1', new Balance(100, 0, 100));
   const expectedAddrMap2 = {
     address1: map3,
   };
@@ -139,8 +139,8 @@ test('markLockedOutputs and getAddressBalanceMap', () => {
     createOutput(1, 0b10, 'address1', 'token2', 1000, true, 129),
   ];
   const map4 = new TokenBalanceMap();
-  map4.set('token1', new Balance(0, 0, null));
-  map4.set('token2', new Balance(0, 0, 1000, new Authorities([-1, 0]), new Authorities([1, 0])));
+  map4.set('token1', new Balance(0, 0, 0, null));
+  map4.set('token2', new Balance(0, 0, 0, 1000, new Authorities([-1, 0]), new Authorities([1, 0])));
   const expectedAddrMap4 = {
     address1: map4,
   };
@@ -151,19 +151,19 @@ test('markLockedOutputs and getAddressBalanceMap', () => {
 test('getWalletBalanceMap', () => {
   expect.hasAssertions();
   const mapAddress1 = new TokenBalanceMap();
-  mapAddress1.set('token1', new Balance(-10, 0));
-  mapAddress1.set('token2', new Balance(-7, 0));
-  mapAddress1.set('token3', new Balance(2, 0));
+  mapAddress1.set('token1', new Balance(1, -10, 0));
+  mapAddress1.set('token2', new Balance(0, -7, 0));
+  mapAddress1.set('token3', new Balance(27, 2, 0));
   const mapAddress2 = new TokenBalanceMap();
-  mapAddress2.set('token1', new Balance(8, 0));
+  mapAddress2.set('token1', new Balance(10, 8, 0));
   const mapAddress3 = new TokenBalanceMap();
-  mapAddress3.set('token2', new Balance(2, 0));
-  mapAddress3.set('token3', new Balance(6, 0));
+  mapAddress3.set('token2', new Balance(4, 2, 0));
+  mapAddress3.set('token3', new Balance(12, 6, 0));
   const mapAddress4 = new TokenBalanceMap();
-  mapAddress4.set('token1', new Balance(2, 0));
-  mapAddress4.set('token2', new Balance(9, 1, 500));
+  mapAddress4.set('token1', new Balance(10, 2, 0));
+  mapAddress4.set('token2', new Balance(14, 9, 1, 500));
   const mapAddress5 = new TokenBalanceMap();
-  mapAddress5.set('token1', new Balance(11, 0));
+  mapAddress5.set('token1', new Balance(20, 11, 0));
   const addressBalanceMap = {
     address1: mapAddress1,
     address2: mapAddress2,
@@ -178,12 +178,12 @@ test('getWalletBalanceMap', () => {
     address3: { walletId: 'wallet2', xpubkey: 'xpubkey2', authXpubkey: 'authxpubkey2', maxGap: 5 },
   };
   const mapWallet1 = new TokenBalanceMap();
-  mapWallet1.set('token1', new Balance(0, 0));
-  mapWallet1.set('token2', new Balance(2, 1, 500));
-  mapWallet1.set('token3', new Balance(2, 0));
+  mapWallet1.set('token1', new Balance(21, 0, 0));
+  mapWallet1.set('token2', new Balance(14, 2, 1, 500));
+  mapWallet1.set('token3', new Balance(27, 2, 0));
   const mapWallet2 = new TokenBalanceMap();
-  mapWallet2.set('token2', new Balance(2, 0));
-  mapWallet2.set('token3', new Balance(6, 0));
+  mapWallet2.set('token2', new Balance(4, 2, 0));
+  mapWallet2.set('token3', new Balance(12, 6, 0));
   const expectedWalletBalanceMap = {
     wallet1: mapWallet1,
     wallet2: mapWallet2,
@@ -236,7 +236,7 @@ test('unlockUtxos', async () => {
   }]);
 
   await addToAddressBalanceTable(mysql, [
-    [addr, token, 0, 2 * reward + 5000, now, 5, 0, 0b10],
+    [addr, token, 0, 2 * reward + 5000, now, 5, 0, 0b10, 4 * reward + 5000],
   ]);
 
   await addToWalletBalanceTable(mysql, [{
@@ -353,7 +353,7 @@ test('unlockTimelockedUtxos', async () => {
   }]);
 
   await addToAddressBalanceTable(mysql, [
-    [addr, token, 0, 5000, now, 3, 0, 0b10],
+    [addr, token, 0, 5000, now, 3, 0, 0b10, 10000],
   ]);
 
   await addToWalletBalanceTable(mysql, [{

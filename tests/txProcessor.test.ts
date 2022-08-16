@@ -82,7 +82,7 @@ test('spend "locked" utxo', async () => {
   ]);
 
   await addToAddressBalanceTable(mysql, [
-    [addr, token, 0, 2500, timelock, 1, 0, 0],
+    [addr, token, 0, 2500, timelock, 1, 0, 0, 2500],
   ]);
 
   await addToWalletBalanceTable(mysql, [{
@@ -269,7 +269,7 @@ test('txProcessor should ignore NFT outputs', async () => {
   ]);
 
   await addToAddressBalanceTable(mysql, [
-    [addr, '00', 41, 0, null, 1, 0, 0],
+    [addr, '00', 41, 0, null, 1, 0, 0, 41],
   ]);
 
   await addToAddressTxHistoryTable(mysql, [
@@ -392,7 +392,7 @@ test('receive token creation tx', async () => {
     ],
   ]);
   await addToAddressBalanceTable(mysql, [[tokenCreationTx.inputs[0].decoded.address,
-    tokenCreationTx.inputs[0].token, tokenCreationTx.inputs[0].value, 0, null, 1, 0, 0]]);
+    tokenCreationTx.inputs[0].token, tokenCreationTx.inputs[0].value, 0, null, 1, 0, 0, tokenCreationTx.inputs[0].value]]);
 
   // receive event
   const evt = JSON.parse(JSON.stringify(eventTemplate));
@@ -452,7 +452,7 @@ test('onHandleVoidedTxRequest', async () => {
   ]);
 
   await addToAddressBalanceTable(mysql, [
-    [addr, token, 2500, 0, null, 1, 0, 0],
+    [addr, token, 2500, 0, null, 1, 0, 0, 2500],
   ]);
 
   await addToAddressTxHistoryTable(mysql, [

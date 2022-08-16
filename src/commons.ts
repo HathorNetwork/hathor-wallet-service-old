@@ -267,7 +267,7 @@ export const getWalletBalances = async (
 /**
  * Updates the wallet-lib constants if needed.
  *
- * @returns A promise that resolves when the wallet-lib constants have been set.
+ * @returns {Promise<void>} A promise that resolves when the wallet-lib constants have been set.
  */
 export const maybeRefreshWalletConstants = async (mysql: ServerlessMysql): Promise<void> => {
   const lastVersionData: FullNodeVersionData = await getVersionData(mysql);
@@ -573,13 +573,13 @@ export const walletIdProxyHandler = (handler: WalletProxyHandler): APIGatewayPro
   }
 );
 
-export const prepareOutputs = (outputs: TxOutput[], txId: string): TxOutputWithIndex[] => {
+export const prepareOutputs = (outputs: TxOutput[], txId: string, logger: Logger): TxOutputWithIndex[] => {
   const preparedOutputs: [number, TxOutputWithIndex[]] = outputs.reduce(
     ([currIndex, newOutputs]: [number, TxOutputWithIndex[]], output: TxOutput): [number, TxOutputWithIndex[]] => {
       if (!output.decoded
           || output.decoded.type === null
           || output.decoded.type === undefined) {
-        console.warn(`Ignoring tx output with index ${currIndex} from tx ${txId} as script couldn't be decoded.`);
+        logger.warn(`Ignoring tx output with index ${currIndex} from tx ${txId} as script couldn't be decoded.`);
         return [currIndex + 1, newOutputs];
       }
 

@@ -49,11 +49,11 @@ test('onHandleOldVoidedTxs', async () => {
   ];
 
   const addressEntries = [
-    // address, tokenId, unlocked, locked, lockExpires, transactions, unlocked_authorities, locked_authorities
-    [ADDRESSES[0], '00', 0, 0, null, 1, 0, 0],
-    [ADDRESSES[1], '00', 0, 0, null, 1, 0, 0],
-    [ADDRESSES[2], '00', 0, 0, null, 1, 0, 0],
-    [ADDRESSES[3], '00', 0, 0, null, 1, 0, 0],
+    // address, tokenId, unlocked, locked, lockExpires, transactions, unlocked_authorities, locked_authorities, total_received
+    [ADDRESSES[0], '00', 0, 0, null, 1, 0, 0, 100],
+    [ADDRESSES[1], '00', 0, 0, null, 1, 0, 0, 200],
+    [ADDRESSES[2], '00', 0, 0, null, 1, 0, 0, 300],
+    [ADDRESSES[3], '00', 0, 0, null, 1, 0, 0, 400],
   ];
 
   await addToAddressBalanceTable(mysql, addressEntries);
