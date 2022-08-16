@@ -421,6 +421,7 @@ export const initWalletBalance = async (mysql: ServerlessMysql, walletId: string
   // need to receive the addresses, but the caller probably has this info already
   const results1: DbSelectResult = await mysql.query(
     `SELECT \`token_id\`,
+            SUM(\`total_received\`) AS \`total_received\`,
             SUM(\`unlocked_balance\`) AS \`unlocked_balance\`,
             SUM(\`locked_balance\`) AS \`locked_balance\`,
             MIN(\`timelock_expires\`) AS \`timelock_expires\`
@@ -459,6 +460,7 @@ export const initWalletBalance = async (mysql: ServerlessMysql, walletId: string
   if (balanceEntries.length > 0) {
     await mysql.query(
       `INSERT INTO \`wallet_balance\`(\`wallet_id\`, \`token_id\`,
+                                      \`total_received\`, \`total_received\`,
                                       \`unlocked_balance\`, \`locked_balance\`,
                                       \`timelock_expires\`, \`transactions\`)
             VALUES ?`,
@@ -495,6 +497,9 @@ export const updateWalletTablesWithTx = async (
       const entry = {
         wallet_id: walletId,
         token_id: token,
+        // totalAmountSent is the sum of the value of all outputs of this token on the tx being sent to this address
+        // which means it is the "total_received" for this wallet
+        total_received: tokenBalance.totalAmountSent,
         unlocked_balance: (tokenBalance.unlockedAmount < 0 ? 0 : tokenBalance.unlockedAmount),
         locked_balance: tokenBalance.lockedAmount,
         unlocked_authorities: tokenBalance.unlockedAuthorities.toUnsignedInteger(),
@@ -508,7 +513,8 @@ export const updateWalletTablesWithTx = async (
         `INSERT INTO wallet_balance
             SET ?
              ON DUPLICATE KEY
-         UPDATE unlocked_balance = unlocked_balance + ?,
+         UPDATE total_received = total_received + ?,
+                unlocked_balance = unlocked_balance + ?,
                 locked_balance = locked_balance + ?,
                 transactions = transactions + 1,
                 timelock_expires = CASE WHEN timelock_expires IS NULL THEN VALUES(timelock_expires)
@@ -517,7 +523,7 @@ export const updateWalletTablesWithTx = async (
                                    END,
                 unlocked_authorities = (unlocked_authorities | VALUES(unlocked_authorities)),
                 locked_authorities = locked_authorities | VALUES(locked_authorities)`,
-        [entry, tokenBalance.unlockedAmount, tokenBalance.lockedAmount, walletId, token],
+        [entry, tokenBalance.totalAmountSent, tokenBalance.unlockedAmount, tokenBalance.lockedAmount, walletId, token],
       );
 
       // same logic here as in the updateAddressTablesWithTx function
@@ -1256,7 +1262,7 @@ export const getWalletBalances = async (mysql: ServerlessMysql, walletId: string
   }
 
   const query = `
-    SELECT NULL AS total_received,
+    SELECT w.total_received AS total_received,
            w.unlocked_balance AS unlocked_balance,
            w.locked_balance AS locked_balance,
            w.unlocked_authorities AS unlocked_authorities,
