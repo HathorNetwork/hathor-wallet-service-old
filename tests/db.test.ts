@@ -1640,7 +1640,12 @@ test('rebuildAddressBalancesFromUtxos', async () => {
     { id: token1, name: 'token1', symbol: 'TKN1', transactions: 2 },
   ]);
 
-  await expect(checkTokenTable(mysql, 1, token1, 'TKN1', 'token1', 2)).resolves.toBe(true);
+  await expect(checkTokenTable(mysql, 1, [{
+    tokenId: token1,
+    tokenSymbol: 'TKN1',
+    tokenName: 'token1',
+    transactions: 2,
+  }])).resolves.toBe(true);
 
   // We are only using the txList parameter on `transactions` recalculation, so our balance
   // checks should include txId3 and txId4, but the transaction count should not.
@@ -1665,7 +1670,12 @@ test('rebuildAddressBalancesFromUtxos', async () => {
   expect(addressBalances[2].transactions).toStrictEqual(1);
   expect(addressBalances[2].tokenId).toStrictEqual('token2');
 
-  await expect(checkTokenTable(mysql, 1, token1, 'TKN1', 'token1', 0)).resolves.toBe(true);
+  await expect(checkTokenTable(mysql, 1, [{
+    tokenId: token1,
+    tokenSymbol: 'TKN1',
+    tokenName: 'token1',
+    transactions: 0,
+  }])).resolves.toBe(true);
 });
 
 test('markAddressTxHistoryAsVoided', async () => {
@@ -2148,7 +2158,20 @@ test('incrementTokensTxCount', async () => {
 
   await incrementTokensTxCount(mysql, ['token1', '00', 'token2']);
 
-  await expect(checkTokenTable(mysql, 3, token1.id, token1.symbol, token1.name, token1.transactions + 1)).resolves.toBe(true);
-  await expect(checkTokenTable(mysql, 3, token2.id, token2.symbol, token2.name, token2.transactions + 1)).resolves.toBe(true);
-  await expect(checkTokenTable(mysql, 3, htr.id, htr.symbol, htr.name, htr.transactions + 1)).resolves.toBe(true);
+  await expect(checkTokenTable(mysql, 3, [{
+    tokenId: token1.id,
+    tokenSymbol: token1.symbol,
+    tokenName: token1.name,
+    transactions: token1.transactions + 1,
+  }, {
+    tokenId: token2.id,
+    tokenSymbol: token2.symbol,
+    tokenName: token2.name,
+    transactions: token2.transactions + 1,
+  }, {
+    tokenId: htr.id,
+    tokenSymbol: htr.symbol,
+    tokenName: htr.name,
+    transactions: htr.transactions + 1,
+  }])).resolves.toBe(true);
 });
