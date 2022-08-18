@@ -16,6 +16,7 @@ import {
   unlockUtxos,
   unlockTimelockedUtxos,
   searchForLatestValidBlock,
+  getTokenListFromInputsAndOutputs,
   handleReorg,
   handleVoided,
   prepareOutputs,
@@ -34,6 +35,7 @@ import {
   storeTokenInformation,
   updateAddressTablesWithTx,
   updateWalletTablesWithTx,
+  incrementTokensTxCount,
   fetchTx,
   addMiner,
 } from '@src/db';
@@ -376,6 +378,11 @@ const _unsafeAddNewTx = async (_logger: Logger, tx: Transaction, now: number, bl
   logger.debug('Updating address_balance and address_tx_history tables', {
     addressBalanceMap,
   });
+
+  const tokenList: string[] = getTokenListFromInputsAndOutputs(tx.inputs, outputs);
+
+  // Update transaction count with the new tx
+  await incrementTokensTxCount(mysql, tokenList);
 
   // update address tables (address, address_balance, address_tx_history)
   await updateAddressTablesWithTx(mysql, txId, tx.timestamp, addressBalanceMap);

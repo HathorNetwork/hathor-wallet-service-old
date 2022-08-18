@@ -63,6 +63,7 @@ import {
   getTotalTransactions,
   getAvailableAuthorities,
   getAffectedAddressTxCountFromTxList,
+  incrementTokensTxCount,
 } from '@src/db';
 import {
   beginTransaction,
@@ -109,6 +110,7 @@ import {
   createOutput,
   createInput,
   countTxOutputTable,
+  checkTokenTable,
 } from '@tests/utils';
 import { AddressTxHistoryTableEntry } from '@tests/types';
 
@@ -917,8 +919,8 @@ test('getWalletBalances', async () => {
   }]);
 
   await addToTokenTable(mysql, [
-    { id: token1.id, name: token1.name, symbol: token1.symbol },
-    { id: token2.id, name: token2.name, symbol: token2.symbol },
+    { id: token1.id, name: token1.name, symbol: token1.symbol, transactions: 0 },
+    { id: token2.id, name: token2.name, symbol: token2.symbol, transactions: 0 },
   ]);
 
   // first test fetching all tokens
@@ -1633,6 +1635,18 @@ test('rebuildAddressBalancesFromUtxos', async () => {
 
   await addToAddressTxHistoryTable(mysql, txHistory);
 
+  // add to the token table
+  await addToTokenTable(mysql, [
+    { id: token1, name: 'token1', symbol: 'TKN1', transactions: 2 },
+  ]);
+
+  await expect(checkTokenTable(mysql, 1, [{
+    tokenId: token1,
+    tokenSymbol: 'TKN1',
+    tokenName: 'token1',
+    transactions: 2,
+  }])).resolves.toBe(true);
+
   // We are only using the txList parameter on `transactions` recalculation, so our balance
   // checks should include txId3 and txId4, but the transaction count should not.
   await rebuildAddressBalancesFromUtxos(mysql, [addr1, addr2], [txId3, txId4]);
@@ -1655,6 +1669,13 @@ test('rebuildAddressBalancesFromUtxos', async () => {
   expect(addressBalances[2].address).toStrictEqual(addr2);
   expect(addressBalances[2].transactions).toStrictEqual(1);
   expect(addressBalances[2].tokenId).toStrictEqual('token2');
+
+  await expect(checkTokenTable(mysql, 1, [{
+    tokenId: token1,
+    tokenSymbol: 'TKN1',
+    tokenName: 'token1',
+    transactions: 0,
+  }])).resolves.toBe(true);
 });
 
 test('markAddressTxHistoryAsVoided', async () => {
@@ -2120,4 +2141,37 @@ test('getAffectedAddressTxCountFromTxList', async () => {
 
   // We should get an empty object if no addresses have been affected:
   expect(await getAffectedAddressTxCountFromTxList(mysql, [txId2])).toStrictEqual({});
+});
+
+test('incrementTokensTxCount', async () => {
+  expect.hasAssertions();
+
+  const htr = new TokenInfo('00', 'Hathor', 'HTR', 5);
+  const token1 = new TokenInfo('token1', 'MyToken1', 'MT1', 10);
+  const token2 = new TokenInfo('token2', 'MyToken2', 'MT2', 15);
+
+  await addToTokenTable(mysql, [
+    { id: htr.id, name: htr.name, symbol: htr.symbol, transactions: htr.transactions },
+    { id: token1.id, name: token1.name, symbol: token1.symbol, transactions: token1.transactions },
+    { id: token2.id, name: token2.name, symbol: token2.symbol, transactions: token2.transactions },
+  ]);
+
+  await incrementTokensTxCount(mysql, ['token1', '00', 'token2']);
+
+  await expect(checkTokenTable(mysql, 3, [{
+    tokenId: token1.id,
+    tokenSymbol: token1.symbol,
+    tokenName: token1.name,
+    transactions: token1.transactions + 1,
+  }, {
+    tokenId: token2.id,
+    tokenSymbol: token2.symbol,
+    tokenName: token2.name,
+    transactions: token2.transactions + 1,
+  }, {
+    tokenId: htr.id,
+    tokenSymbol: htr.symbol,
+    tokenName: htr.name,
+    transactions: htr.transactions + 1,
+  }])).resolves.toBe(true);
 });

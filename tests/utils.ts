@@ -1,5 +1,6 @@
 import { APIGatewayProxyEvent } from 'aws-lambda';
 import { ServerlessMysql } from 'serverless-mysql';
+import { isEqual } from 'lodash';
 import {
   DbSelectResult,
   TxInput,
@@ -458,6 +459,71 @@ export const checkWalletBalanceTable = async (
   return true;
 };
 
+type Token = {
+  tokenId: string;
+  tokenSymbol: string;
+  tokenName: string;
+  transactions: number;
+}
+
+export const checkTokenTable = async (
+  mysql: ServerlessMysql,
+  totalResults: number,
+  entries: Token[],
+): Promise<boolean | Record<string, unknown>> => {
+  // first check the total number of rows in the table
+  let results: DbSelectResult = await mysql.query('SELECT * FROM `token`');
+  if (results.length !== totalResults) {
+    return {
+      error: 'checkTokenTable total results',
+      expected: totalResults,
+      received: results.length,
+      results,
+    };
+  }
+
+  if (totalResults === 0) return true;
+
+  // Fetch the exact entries
+  const query = `
+    SELECT id AS tokenId,
+           symbol AS tokenSymbol,
+           name AS tokenName,
+           transactions
+      FROM \`token\`
+     WHERE \`id\` IN (?)
+  `;
+  results = await mysql.query(
+    query,
+    [entries.map((token) => token.tokenId)],
+  );
+
+  const invalidResults = results.filter((token: Token) => {
+    const entry = entries.find(({ tokenId }) => tokenId === token.tokenId);
+
+    if (!entry) {
+      return true;
+    }
+
+    // token is a RowDataPacket, so just cast it to an object so we can
+    // compare it
+    if (!isEqual({ ...token }, entry)) {
+      return true;
+    }
+
+    return false;
+  });
+
+  if (invalidResults.length > 0) {
+    return {
+      error: 'checkTokenTable query',
+      params: entries,
+      invalidResults,
+    };
+  }
+  return true;
+};
+
 export const countTxOutputTable = async (
   mysql: ServerlessMysql,
 ): Promise<number> => {
@@ -623,10 +689,11 @@ export const addToTokenTable = async (
     entry.id,
     entry.name,
     entry.symbol,
+    entry.transactions,
   ]));
 
   await mysql.query(
-    'INSERT INTO `token`(`id`, `name`, `symbol`) VALUES ?',
+    'INSERT INTO `token`(`id`, `name`, `symbol`, `transactions`) VALUES ?',
     [payload],
   );
 };

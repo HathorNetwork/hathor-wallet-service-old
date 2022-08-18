@@ -102,10 +102,13 @@ export class TokenInfo {
 
   symbol: string;
 
-  constructor(id: string, name: string, symbol: string) {
+  transactions: number;
+
+  constructor(id: string, name: string, symbol: string, transactions?: number) {
     this.id = id;
     this.name = name;
     this.symbol = symbol;
+    this.transactions = transactions || 0;
 
     const hathorConfig = hathorLib.constants.HATHOR_TOKEN_CONFIG;
 
