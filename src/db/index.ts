@@ -1255,8 +1255,20 @@ export const getWalletBalances = async (mysql: ServerlessMysql, walletId: string
     params.push(tokenIds);
   }
 
-  // use LEFT JOIN as HTR token ('00') won't be on the token table, so INNER JOIN would never match it
-  const query = `SELECT * FROM (${subquery}) w LEFT JOIN token ON w.token_id = token.id;`;
+  const query = `
+    SELECT NULL AS total_received,
+           w.unlocked_balance AS unlocked_balance,
+           w.locked_balance AS locked_balance,
+           w.unlocked_authorities AS unlocked_authorities,
+           w.locked_authorities AS locked_authorities,
+           w.timelock_expires AS timelock_expires,
+           w.transactions AS transactions,
+           w.token_id AS token_id,
+           token.name AS name,
+           token.symbol AS symbol
+      FROM (${subquery}) w
+INNER JOIN token ON w.token_id = token.id
+  `;
 
   const results: DbSelectResult = await mysql.query(query, params);
   for (const result of results) {
@@ -2109,6 +2121,7 @@ export const rebuildAddressBalancesFromUtxos = async (
 
   const addressTransactionCount: StringMap<number> = await getAffectedAddressTxCountFromTxList(mysql, txList);
   const addressTotalReceived: StringMap<number> = await getAffectedAddressTotalReceivedFromTxList(mysql, txList);
+  const tokenTransactionCount: StringMap<number> = await getAffectedTokenTxCountFromTxList(mysql, txList);
 
   const finalValues = oldAddressTokenTransactions.map(({ address, tokenId, transactions, totalReceived }) => {
     const diffTransactions = addressTransactionCount[`${address}_${tokenId}`] || 0;
@@ -2128,6 +2141,15 @@ export const rebuildAddressBalancesFromUtxos = async (
        WHERE \`address\` = ?
          AND \`token_id\` = ?
     `, item);
+  }
+
+  // update token table with the correct amount of transactions
+  for (const token of Object.keys(tokenTransactionCount)) {
+    await mysql.query(`
+      UPDATE \`token\`
+        SET \`transactions\` = \`transactions\` - ?
+       WHERE \`id\` = ?
+    `, [tokenTransactionCount[token], token]);
   }
 };
 
@@ -2547,6 +2569,39 @@ export const getAffectedAddressTxCountFromTxList = async (
 };
 
 /**
+ * Get the number of affected transactions for each token from the address_tx_history table
+ * given a list of transactions
+ *
+ * @param mysql - Database connection
+ * @param txList - A list of affected transactions to get the token tx count
+
+ * @returns A Map with tokenId as key and the transaction count as values
+ */
+export const getAffectedTokenTxCountFromTxList = async (
+  mysql: ServerlessMysql,
+  txList: string[],
+): Promise<StringMap<number>> => {
+  const results: DbSelectResult = await mysql.query(`
+    SELECT token_id AS tokenId, COUNT(DISTINCT(tx_id)) AS txCount
+      FROM address_tx_history
+     WHERE tx_id IN (?)
+       AND voided = TRUE
+  GROUP BY token_id
+  `, [txList]);
+
+  const tokenTransactions = results.reduce((acc, result) => {
+    const tokenId = result.tokenId as string;
+    const txCount = result.txCount as number;
+
+    acc[tokenId] = txCount;
+
+    return acc;
+  }, {});
+
+  return tokenTransactions as StringMap<number>;
+};
+
+/**
  * Get the affected total_received for each address/token pair given a list of transactions
  *
  * @param mysql - Database connection
@@ -2560,9 +2615,10 @@ export const getAffectedAddressTotalReceivedFromTxList = async (
 ): Promise<StringMap<number>> => {
   const results: DbSelectResult = await mysql.query(`
     SELECT address, token_id as tokenId, SUM(value) as total
-     FROM tx_output
-     WHERE tx_id IN (?) AND voided = TRUE
-     GROUP BY address, token_id
+      FROM tx_output
+     WHERE tx_id IN (?)
+       AND voided = TRUE
+  GROUP BY address, token_id
   `, [txList]);
 
   const addressTotalReceivedMap = results.reduce((acc, result) => {
@@ -2576,4 +2632,21 @@ export const getAffectedAddressTotalReceivedFromTxList = async (
   }, {});
 
   return addressTotalReceivedMap as StringMap<number>;
+};
+
+/**
+ * Increment a list of tokens transactions count
+ *
+ * @param mysql - Database connection
+ * @param tokenList - The list of tokens to increment
+ */
+export const incrementTokensTxCount = async (
+  mysql: ServerlessMysql,
+  tokenList: string[],
+): Promise<void> => {
+  await mysql.query(`
+    UPDATE \`token\`
+       SET \`transactions\` = \`transactions\` + 1
+     WHERE \`id\` IN (?)
+  `, [tokenList]);
 };

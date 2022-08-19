@@ -56,6 +56,9 @@ module.exports = (sequelize, DataTypes) => {
     }, {
       name: 'address_tx_history_timestamp_idx',
       fields: ['timestamp'],
+    }, {
+      name: 'address_tx_history_voided_idx',
+      fields: ['voided'],
     }],
   });
   return AddressTxHistory;

@@ -192,6 +192,27 @@ export const getAddressBalanceMap = (
 };
 
 /**
+ * Gets a list of tokens from a list of inputs and outputs
+ *
+ * @param inputs - The transaction inputs
+ * @param outputs - The transaction outputs
+ * @returns A list of tokens present in the inputs and outputs
+ */
+export const getTokenListFromInputsAndOutputs = (inputs: TxInput[], outputs: TxOutputWithIndex[]): string[] => {
+  const tokenIds = new Set<string>([]);
+
+  for (const input of inputs) {
+    tokenIds.add(input.token);
+  }
+
+  for (const output of outputs) {
+    tokenIds.add(output.token);
+  }
+
+  return [...tokenIds];
+};
+
+/**
  * Get the map of token balances for each wallet.
  *
  * @remarks
