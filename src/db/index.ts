@@ -455,12 +455,20 @@ export const initWalletBalance = async (mysql: ServerlessMysql, walletId: string
     const row2 = results2[i];
     assert.strictEqual(row1.token_id, row2.token_id);
     assert.strictEqual(<number>row1.unlocked_balance + <number>row1.locked_balance, row2.balance);
-    balanceEntries.push([walletId, row1.token_id, row1.unlocked_balance, row1.locked_balance, row1.timelock_expires, row2.transactions]);
+    balanceEntries.push([
+      walletId,
+      row1.token_id,
+      row1.total_received,
+      row1.unlocked_balance,
+      row1.locked_balance,
+      row1.timelock_expires,
+      row2.transactions,
+    ]);
   }
   if (balanceEntries.length > 0) {
     await mysql.query(
       `INSERT INTO \`wallet_balance\`(\`wallet_id\`, \`token_id\`,
-                                      \`total_received\`, \`total_received\`,
+                                      \`total_received\`,
                                       \`unlocked_balance\`, \`locked_balance\`,
                                       \`timelock_expires\`, \`transactions\`)
             VALUES ?`,
