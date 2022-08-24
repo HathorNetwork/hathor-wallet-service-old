@@ -37,6 +37,7 @@ module.exports = (sequelize, DataTypes) => {
     total_received: {
       type: DataTypes.BIGINT.UNSIGNED,
       allowNull: false,
+      defaultValue: 0,
     },
     unlocked_balance: {
       type: DataTypes.BIGINT.UNSIGNED,
