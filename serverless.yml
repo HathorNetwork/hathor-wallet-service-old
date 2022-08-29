@@ -64,7 +64,7 @@ resources:
 
 provider:
   name: aws
-  runtime: nodejs12.x
+  runtime: nodejs16.x
   lambdaHashingVersion: 20201221
   # In MB. This is the memory allocated for the Lambdas, they cannot use more than this
   # and will break if they try.
