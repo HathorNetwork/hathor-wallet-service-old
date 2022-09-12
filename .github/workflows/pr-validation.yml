@@ -12,7 +12,7 @@ jobs:
     timeout-minutes: 20
     strategy:
       matrix:
-        node-version: [14.x]
+        node-version: [16.x]
     services:
       mysql:
         # We are using this image because the official one didn't
