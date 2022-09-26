@@ -2,6 +2,7 @@ name: PR Validation
 on:
   pull_request:
     types: [ready_for_review, synchronize]
+    branches: [master, dev]
     paths-ignore:
       - '**.md'
   push:
@@ -80,3 +81,7 @@ jobs:
           WS_DOMAIN: ws.ci.wallet-service.hathor.network
           EXPLORER_SERVICE_LAMBDA_ENDPOINT: https://lambda.eu-central-1.amazonaws.com
           WALLET_SERVICE_LAMBDA_ENDPOINT: https://lambda.eu-central-1.amazonaws.com
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          verbose: true
