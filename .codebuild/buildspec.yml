@@ -101,6 +101,10 @@ phases:
           done
 
           make migrate;
+          if [ $? -ne 0 ]; then
+            echo "Dev migration failed"
+            exit 1
+          fi
           make deploy-lambdas-dev-testnet;
         fi
       - |
@@ -111,6 +115,10 @@ phases:
           done
 
           make migrate;
+          if [ $? -ne 0 ]; then
+            echo "Testnet migration failed"
+            exit 1
+          fi
           make deploy-lambdas-testnet;
         fi
       - |
@@ -121,6 +129,10 @@ phases:
           done
 
           make migrate;
+          if [ $? -ne 0 ]; then
+            echo "Mainnet migration failed"
+            exit 1
+          fi
           make deploy-lambdas-mainnet;
         fi
 
