@@ -94,7 +94,7 @@ phases:
   build:
     commands:
       - |
-        set -e
+        set -e;
         if expr "${GIT_REF_TO_DEPLOY}" : "dev" >/dev/null; then
           # Gets all env vars with `dev_` prefix and re-exports them without the prefix
           for var in "${!dev_@}"; do
@@ -105,7 +105,7 @@ phases:
           make deploy-lambdas-dev-testnet;
         fi
       - |
-        set -e
+        set -e;
         if expr "${GIT_REF_TO_DEPLOY}" : "master" >/dev/null; then
           # Gets all env vars with `testnet_` prefix and re-exports them without the prefix
           for var in "${!testnet_@}"; do
@@ -116,7 +116,7 @@ phases:
           make deploy-lambdas-testnet;
         fi
       - |
-        set -e
+        set -e;
         if expr "${GIT_REF_TO_DEPLOY}" : "v.*" >/dev/null; then
           # Gets all env vars with `mainnet_` prefix and re-exports them without the prefix
           for var in "${!mainnet_@}"; do
@@ -127,7 +127,7 @@ phases:
           make deploy-lambdas-mainnet;
         fi
       - |
-        set -e
+        set -e;
         if expr "${GIT_REF_TO_DEPLOY}" : "codebuild-debug" >/dev/null; then
           echo "CODEBUILD-DEBUG"
           make migrate;
@@ -138,7 +138,7 @@ phases:
   post_build:
     commands:
       - |
-        set -e
+        set -e;
         if [ $CODEBUILD_BUILD_SUCCEEDING -ne 1 ]; then
           echo "Build phase failed, exiting"
           exit 1
