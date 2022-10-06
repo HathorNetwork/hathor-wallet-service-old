@@ -126,5 +126,8 @@ phases:
       - |
         if expr "${GIT_REF_TO_DEPLOY}" : "codebuild-debug" >/dev/null; then
           echo "CODEBUILD-DEBUG"
+          make migrate;
+
+          exit 1
         fi
 
