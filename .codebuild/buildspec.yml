@@ -129,10 +129,11 @@ phases:
           echo "CODEBUILD-DEBUG"
           make migrate;
 
+          if [$? -ne 0]; then
+            exit 1
+          fi
           echo $?
           echo "Worked even though the migrate failed"
-
-          exit 1
         fi
   pre_build:
     commands:
