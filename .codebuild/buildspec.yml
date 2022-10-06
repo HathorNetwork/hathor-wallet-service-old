@@ -130,13 +130,10 @@ phases:
         set -e
         if expr "${GIT_REF_TO_DEPLOY}" : "codebuild-debug" >/dev/null; then
           echo "CODEBUILD-DEBUG"
-          # make migrate;
+          make migrate;
 
-          # if [ $? -ne 0 ]; then
-          # exit 1
-          # fi
-          # echo $?
-          # echo "Worked even though the migrate failed"
+          echo $?
+          echo "Worked even though the migrate failed"
         fi
   post_build:
     commands:
