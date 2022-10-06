@@ -128,6 +128,11 @@ phases:
           echo "CODEBUILD-DEBUG"
           make migrate;
 
+          echo "Worked even though the migrate failed"
+
           exit 1
         fi
-
+  pre_build:
+    commands:
+      # This file is created in another CodeBuild specification that runs before this and is not commited to this repo.
+      - export GIT_REF_TO_DEPLOY=$(cat git_ref_to_deploy)
