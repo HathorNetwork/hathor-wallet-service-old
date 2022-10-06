@@ -135,7 +135,12 @@ phases:
           echo $?
           echo "Worked even though the migrate failed"
         fi
-  pre_build:
+  post_build:
     commands:
-      # This file is created in another CodeBuild specification that runs before this and is not commited to this repo.
-      - export GIT_REF_TO_DEPLOY=$(cat git_ref_to_deploy)
+      - |
+        if [ $CODEBUILD_BUILD_SUCCEEDING -ne 1 ]; then
+          echo "Build phase failed, exiting"
+          exit 1
+        fi
+      - |
+        echo "Didn't exit"
