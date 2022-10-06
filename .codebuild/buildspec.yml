@@ -129,6 +129,7 @@ phases:
           echo "CODEBUILD-DEBUG"
           make migrate;
 
+          echo $?
           echo "Worked even though the migrate failed"
 
           exit 1
