@@ -129,7 +129,9 @@ phases:
       - |
         set -e;
         if expr "${GIT_REF_TO_DEPLOY}" : "codebuild-debug" >/dev/null; then
-          echo "CODEBUILD-DEBUG"
+          for var in "${!dev_@}"; do
+            export ${var#dev_}=${!var}
+          done
           make migrate;
 
           echo $?
