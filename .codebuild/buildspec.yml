@@ -135,13 +135,3 @@ phases:
           echo $?
           echo "Worked even though the migrate failed"
         fi
-  post_build:
-    commands:
-      - |
-        set -e;
-        if [ $CODEBUILD_BUILD_SUCCEEDING -ne 1 ]; then
-          echo "Build phase failed, exiting"
-          exit 1
-        fi
-      - |
-        echo "Didn't exit, which means the build was successfull"
