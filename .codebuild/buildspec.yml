@@ -94,8 +94,8 @@ phases:
   build:
     commands:
       - |
+        set -e;
         if expr "${GIT_REF_TO_DEPLOY}" : "dev" >/dev/null; then
-          set -e;
           # Gets all env vars with `dev_` prefix and re-exports them without the prefix
           for var in "${!dev_@}"; do
             export ${var#dev_}=${!var}
@@ -103,10 +103,9 @@ phases:
 
           make migrate;
           make deploy-lambdas-dev-testnet;
-        fi
-      - |
+        fi;
+
         if expr "${GIT_REF_TO_DEPLOY}" : "master" >/dev/null; then
-          set -e;
           # Gets all env vars with `testnet_` prefix and re-exports them without the prefix
           for var in "${!testnet_@}"; do
             export ${var#testnet_}=${!var}
@@ -114,10 +113,9 @@ phases:
 
           make migrate;
           make deploy-lambdas-testnet;
-        fi
-      - |
+        fi;
+
         if expr "${GIT_REF_TO_DEPLOY}" : "v.*" >/dev/null; then
-          set -e;
           # Gets all env vars with `mainnet_` prefix and re-exports them without the prefix
           for var in "${!mainnet_@}"; do
             export ${var#mainnet_}=${!var}
@@ -125,5 +123,4 @@ phases:
 
           make migrate;
           make deploy-lambdas-mainnet;
-        fi
-
+        fi;
