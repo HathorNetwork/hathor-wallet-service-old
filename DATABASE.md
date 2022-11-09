@@ -144,7 +144,7 @@ CREATE TABLE `transaction` (
 
 CREATE TABLE `push_devices` (
   `device_id` varchar(256) NOT NULL,
-  `push_provider` enum('ios','android') NOT NULL DEFAULT 'android',
+  `push_provider` enum('ios','android') NOT NULL,
   `wallet_id` varchar(64) NOT NULL,
   `enable_push` tinyint(1) NOT NULL DEFAULT '0',
   `enable_show_amounts` tinyint(1) NOT NULL DEFAULT '0',
