@@ -2,7 +2,7 @@
 
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
-  async up (queryInterface, Sequelize) {
+  async up(queryInterface, Sequelize) {
     await queryInterface.createTable('push_devices', {
       device_id: {
         type: Sequelize.STRING(256),
@@ -12,7 +12,6 @@ module.exports = {
       push_provider: {
         type: Sequelize.ENUM(['ios', 'android']),
         allowNull: false,
-        defaultValue: 'android',
       },
       wallet_id: {
         type: Sequelize.STRING(64),
@@ -44,7 +43,7 @@ module.exports = {
       },
     });
   },
-  async down(queryInterface, Sequelize) {
+  async down(queryInterface) {
     await queryInterface.dropTable('push_devices');
-  }
+  },
 };
