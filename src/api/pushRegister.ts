@@ -59,6 +59,8 @@ export const register: APIGatewayProxyHandler = middy(walletIdProxyHandler(async
   // TODO: remove duplications
   // NOTE: call unregisterDevice
 
+  // TODO: registrar no serverless e testar chamada
+
   return {
     statusCode: 200,
     body: JSON.stringify({ success: true }),
