@@ -448,3 +448,14 @@ functions:
     warmup:
       walletWarmer:
         enabled: false
+  pushRegister:
+    handler: src/api/pushRegister.register
+    events:
+      - http:
+          path: push/register
+          method: post
+          cors: true
+          authorizer: ${self:custom.authorizer.walletBearer}
+    warmup:
+      walletWarmer:
+        enabled: false
