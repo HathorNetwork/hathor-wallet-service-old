@@ -672,3 +672,13 @@ export interface Miner {
   lastBlock: string;
   count: number;
 }
+
+type iOSPushProvider = 'ios';
+type AndroidPushProvider = 'android';
+
+export interface PushRegister {
+  pushProvider: iOSPushProvider | AndroidPushProvider,
+  deviceId: string,
+  enablePush?: boolean,
+  enableShowAmounts?: boolean
+}
