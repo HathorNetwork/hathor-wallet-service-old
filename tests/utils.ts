@@ -68,11 +68,13 @@ export const cleanDatabase = async (mysql: ServerlessMysql): Promise<void> => {
     'wallet_balance',
     'wallet_tx_history',
     'miner',
+    'push_devices',
   ];
-
+  await mysql.query('SET FOREIGN_KEY_CHECKS = 0');
   for (const table of TABLES) {
     await mysql.query(`DELETE FROM ${table}`);
   }
+  await mysql.query('SET FOREIGN_KEY_CHECKS = 1');
 };
 
 export const createOutput = (index: number, value: number, address: string, token = '00', timelock: number = null, locked = false, tokenData = 0, spentBy = null): TxOutputWithIndex => (
@@ -899,4 +901,21 @@ export const getAuthData = (now: number): any => {
     firstAddress,
     timestamp: now,
   };
+};
+
+export const checkPushDevicesTable = async (
+  mysql: ServerlessMysql,
+  totalResults: number,
+): Promise<boolean | Record<string, unknown>> => {
+  const results: DbSelectResult = await mysql.query('SELECT * FROM `push_devices`');
+  if (results.length !== totalResults) {
+    return {
+      error: 'checkPushDevicesTable total results',
+      expected: totalResults,
+      received: results.length,
+      results,
+    };
+  }
+
+  return true;
 };

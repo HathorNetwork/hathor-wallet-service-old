@@ -5,6 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+/* eslint-disable camelcase */
 import { strict as assert } from 'assert';
 import { ServerlessMysql } from 'serverless-mysql';
 import { get } from 'lodash';
@@ -2663,4 +2664,30 @@ export const incrementTokensTxCount = async (
        SET \`transactions\` = \`transactions\` + 1
      WHERE \`id\` IN (?)
   `, [tokenList]);
+};
+
+/**
+ * Register a device to a wallet for push notification.
+ *
+ * @param mysql - Database connection
+ * @param input - Input of push device register
+ */
+export const registerPushDevice = async (
+  mysql: ServerlessMysql,
+  input: {
+    deviceId: string,
+    walletId: string,
+    pushProvider: string,
+    enablePush: boolean,
+    enableShowAmounts: boolean,
+    enableOnlyNewTx: boolean,
+  },
+) : Promise<void> => {
+  await mysql.query(
+    `
+    INSERT INTO \`push_devices\` (device_id, wallet_id, push_provider, enable_push, enable_show_amounts, enable_only_new_tx)
+    VALUES (?, ?, ?, ?, ?, ?)
+    ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP`,
+    [input.deviceId, input.walletId, input.pushProvider, input.enablePush, input.enableShowAmounts, input.enableOnlyNewTx],
+  );
 };
