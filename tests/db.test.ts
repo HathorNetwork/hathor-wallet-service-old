@@ -65,6 +65,7 @@ import {
   getAffectedAddressTxCountFromTxList,
   incrementTokensTxCount,
   registerPushDevice,
+  existsPushDevice,
 } from '@src/db';
 import {
   beginTransaction,
@@ -2176,6 +2177,39 @@ test('incrementTokensTxCount', async () => {
     tokenName: htr.name,
     transactions: htr.transactions + 1,
   }])).resolves.toBe(true);
+});
+
+test('existsPushDevice', async () => {
+  expect.hasAssertions();
+
+  const walletId = 'wallet1';
+  const deviceId = 'device1';
+  const pushProvider = 'android';
+  const enablePush = true;
+  const enableShowAmounts = false;
+  const enableOnlyNewTx = false;
+
+  await createWallet(mysql, walletId, XPUBKEY, AUTH_XPUBKEY, 5);
+
+  let existsResult = await existsPushDevice(mysql, deviceId, walletId);
+
+  // there is no device registered to a wallet at this stage
+  expect(existsResult).toBe(false);
+
+  // register the device to a wallet
+  await registerPushDevice(mysql, {
+    walletId,
+    deviceId,
+    pushProvider,
+    enablePush,
+    enableShowAmounts,
+    enableOnlyNewTx,
+  });
+
+  existsResult = await existsPushDevice(mysql, deviceId, walletId);
+
+  // there is a device registered to a wallet
+  expect(existsResult).toBe(true);
 });
 
 test('registerPushDevice', async () => {
