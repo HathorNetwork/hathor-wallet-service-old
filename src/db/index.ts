@@ -2713,3 +2713,30 @@ export const registerPushDevice = async (
     [input.deviceId, input.walletId, input.pushProvider, input.enablePush, input.enableShowAmounts, input.enableOnlyNewTx],
   );
 };
+
+/**
+ * Update existing push device given a wallet.
+ *
+ * @param mysql - Database connection
+ * @param input - Input of push device register
+ * @param deviceId - The device to verify existence
+ * @param walletId - The wallet linked to device
+ */
+export const updatePushDevice = async (
+  mysql: ServerlessMysql,
+  input: {
+    deviceId: string,
+    walletId: string,
+    enablePush: boolean,
+    enableShowAmounts: boolean,
+    enableOnlyNewTx: boolean,
+  },
+) : Promise<void> => {
+  await mysql.query(
+    `
+    UPDATE \`push_devices\`
+    SET enable_push = ?, enable_show_amounts = ?, enable_only_new_tx = ?
+    WHERE device_id = ? AND wallet_id = ?`,
+    [input.enablePush, input.enableShowAmounts, input.enableOnlyNewTx, input.deviceId, input.walletId],
+  );
+};
