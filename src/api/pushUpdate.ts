@@ -8,13 +8,13 @@
 import { APIGatewayProxyHandler } from 'aws-lambda';
 import { ApiError } from '@src/api/errors';
 import { closeDbAndGetError, warmupMiddleware } from '@src/api/utils';
-import { registerPushDevice } from '@src/db';
+import { existsPushDevice, updatePushDevice } from '@src/db';
 import { getDbConnection } from '@src/utils';
 import { walletIdProxyHandler } from '@src/commons';
 import middy from '@middy/core';
 import cors from '@middy/http-cors';
 import Joi from 'joi';
-import { PushRegister } from '@src/types';
+import { PushUpdate } from '@src/types';
 
 const mysql = getDbConnection();
 
@@ -45,11 +45,16 @@ export const update: APIGatewayProxyHandler = middy(walletIdProxyHandler(async (
     return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, { details });
   }
 
-  const body: PushRegister = value;
-  await registerPushDevice(mysql, {
+  const body: PushUpdate = value;
+
+  const deviceExists = await existsPushDevice(mysql, body.deviceId, walletId);
+  if (!deviceExists) {
+    return closeDbAndGetError(mysql, ApiError.DEVICE_NOT_FOUNT);
+  }
+
+  await updatePushDevice(mysql, {
     walletId,
     deviceId: body.deviceId,
-    pushProvider: body.pushProvider,
     enablePush: body.enablePush,
     enableShowAmounts: body.enableShowAmounts,
     enableOnlyNewTx: false,
