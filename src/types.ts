@@ -682,3 +682,9 @@ export interface PushRegister {
   enablePush?: boolean,
   enableShowAmounts?: boolean
 }
+
+export interface PushUpdate {
+  deviceId: string,
+  enablePush?: boolean,
+  enableShowAmounts?: boolean
+}
