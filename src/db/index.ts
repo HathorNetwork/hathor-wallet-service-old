@@ -2667,6 +2667,28 @@ export const incrementTokensTxCount = async (
 };
 
 /**
+ * Verify the existence of a device registered for a given wallet.
+ *
+ * @param mysql - Database connection
+ * @param input - Input of push device register
+ * @param deviceId - The device to verify existence
+ * @param walletId - The wallet linked to device
+ */
+export const existsPushDevice = async (
+  mysql: ServerlessMysql,
+  deviceId: string,
+  walletId: string,
+) : Promise<boolean> => {
+  const [{ count }] = await mysql.query(
+    `
+    SELECT COUNT(1) as \`count\` FROM \`push_devices\` pd WHERE device_id = ? AND wallet_id = ?`,
+    [deviceId, walletId],
+  ) as unknown as Array<{count}>;
+
+  return count > 0;
+};
+
+/**
  * Register a device to a wallet for push notification.
  *
  * @param mysql - Database connection
