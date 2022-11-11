@@ -906,8 +906,16 @@ export const getAuthData = (now: number): any => {
 export const checkPushDevicesTable = async (
   mysql: ServerlessMysql,
   totalResults: number,
+  filter: {
+    deviceId: string,
+    walletId: string,
+    pushProvider: string,
+    enablePush: boolean,
+    enableShowAmounts: boolean,
+    enableOnlyNewTx: boolean,
+  },
 ): Promise<boolean | Record<string, unknown>> => {
-  const results: DbSelectResult = await mysql.query('SELECT * FROM `push_devices`');
+  let results: DbSelectResult = await mysql.query('SELECT * FROM `push_devices`');
   if (results.length !== totalResults) {
     return {
       error: 'checkPushDevicesTable total results',
@@ -917,5 +925,35 @@ export const checkPushDevicesTable = async (
     };
   }
 
+  if (totalResults === 0) return true;
+
+  // now fetch the exact entry
+  const baseQuery = `
+    SELECT *
+      FROM \`push_devices\`
+    WHERE \`wallet_id\` = ?
+      AND \`device_id\` = ?
+      AND \`push_provider\` = ?
+      AND \`enable_push\` = ?
+      AND \`enable_show_amounts\` = ?
+      AND \`enable_only_new_tx\` = ?
+      `;
+
+  results = await mysql.query(baseQuery, [
+    filter.walletId,
+    filter.deviceId,
+    filter.pushProvider,
+    filter.enablePush,
+    filter.enableShowAmounts,
+    filter.enableOnlyNewTx,
+  ]);
+
+  if (results.length !== 1) {
+    return {
+      error: 'checkPushDevicesTable query',
+      params: { ...filter },
+      results,
+    };
+  }
   return true;
 };
