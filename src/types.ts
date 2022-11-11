@@ -688,3 +688,7 @@ export interface PushUpdate {
   enablePush?: boolean,
   enableShowAmounts?: boolean
 }
+
+export interface PushDelete {
+  deviceId: string,
+}
