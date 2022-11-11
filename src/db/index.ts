@@ -2729,14 +2729,13 @@ export const updatePushDevice = async (
     walletId: string,
     enablePush: boolean,
     enableShowAmounts: boolean,
-    enableOnlyNewTx: boolean,
   },
 ) : Promise<void> => {
   await mysql.query(
     `
     UPDATE \`push_devices\`
-    SET enable_push = ?, enable_show_amounts = ?, enable_only_new_tx = ?
+    SET enable_push = ?, enable_show_amounts = ?
     WHERE device_id = ? AND wallet_id = ?`,
-    [input.enablePush, input.enableShowAmounts, input.enableOnlyNewTx, input.deviceId, input.walletId],
+    [input.enablePush, input.enableShowAmounts, input.deviceId, input.walletId],
   );
 };
