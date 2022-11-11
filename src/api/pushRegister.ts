@@ -15,6 +15,7 @@ import middy from '@middy/core';
 import cors from '@middy/http-cors';
 import Joi from 'joi';
 import { PushRegister } from '@src/types';
+import _ from 'lodash';
 
 const mysql = getDbConnection();
 
@@ -36,7 +37,6 @@ export const register: APIGatewayProxyHandler = middy(walletIdProxyHandler(async
     convert: true, // We need to convert as parameters are sent on the QueryString
   });
 
-  // TODO: validate with tulio if the solution can be that or must follow strictly the design.
   if (error) {
     const details = error.details.map((err) => ({
       message: err.message,
@@ -45,6 +45,9 @@ export const register: APIGatewayProxyHandler = middy(walletIdProxyHandler(async
 
     return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, { details });
   }
+
+  // TODO: remove duplications
+  // NOTE: call unregisterDevice
 
   const body: PushRegister = value;
   await registerPushDevice(mysql, {
@@ -55,11 +58,6 @@ export const register: APIGatewayProxyHandler = middy(walletIdProxyHandler(async
     enableShowAmounts: body.enableShowAmounts,
     enableOnlyNewTx: false,
   });
-
-  // TODO: remove duplications
-  // NOTE: call unregisterDevice
-
-  // TODO: registrar no serverless e testar chamada
 
   return {
     statusCode: 200,
