@@ -33,7 +33,6 @@ export const unregister: APIGatewayProxyHandler = middy(walletIdProxyHandler(asy
     convert: true, // We need to convert as parameters are sent on the QueryString
   });
 
-  // TODO: validate with tulio if the solution can be that or must follow strictly the design.
   if (error) {
     const details = error.details.map((err) => ({
       message: err.message,
@@ -45,8 +44,6 @@ export const unregister: APIGatewayProxyHandler = middy(walletIdProxyHandler(asy
 
   const body: PushDelete = value;
   await unregisterPushDevice(mysql, body.deviceId, walletId);
-
-  // TODO: registrar no serverless e testar chamada
 
   return {
     statusCode: 200,
