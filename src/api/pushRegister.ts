@@ -8,7 +8,7 @@
 import { APIGatewayProxyHandler } from 'aws-lambda';
 import { ApiError } from '@src/api/errors';
 import { closeDbAndGetError, warmupMiddleware } from '@src/api/utils';
-import { registerPushDevice } from '@src/db';
+import { removeAllPushDeviceByDeviceId, registerPushDevice } from '@src/db';
 import { getDbConnection } from '@src/utils';
 import { walletIdProxyHandler } from '@src/commons';
 import middy from '@middy/core';
@@ -45,18 +45,16 @@ export const register: APIGatewayProxyHandler = middy(walletIdProxyHandler(async
 
     return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, { details });
   }
-
-  // TODO: remove duplications
-  // NOTE: call unregisterDevice
-
   const body: PushRegister = value;
+
+  await removeAllPushDeviceByDeviceId(mysql, body.deviceId);
+
   await registerPushDevice(mysql, {
     walletId,
     deviceId: body.deviceId,
     pushProvider: body.pushProvider,
     enablePush: body.enablePush,
     enableShowAmounts: body.enableShowAmounts,
-    enableOnlyNewTx: false,
   });
 
   return {
