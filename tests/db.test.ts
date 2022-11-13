@@ -65,6 +65,7 @@ import {
   getAffectedAddressTxCountFromTxList,
   incrementTokensTxCount,
   registerPushDevice,
+  removeAllPushDeviceByDeviceId,
   existsPushDevice,
   updatePushDevice,
 } from '@src/db';
@@ -2188,7 +2189,6 @@ test('existsPushDevice', async () => {
   const pushProvider = 'android';
   const enablePush = true;
   const enableShowAmounts = false;
-  const enableOnlyNewTx = false;
 
   await createWallet(mysql, walletId, XPUBKEY, AUTH_XPUBKEY, 5);
 
@@ -2204,7 +2204,6 @@ test('existsPushDevice', async () => {
     pushProvider,
     enablePush,
     enableShowAmounts,
-    enableOnlyNewTx,
   });
 
   existsResult = await existsPushDevice(mysql, deviceId, walletId);
@@ -2221,7 +2220,6 @@ test('registerPushDevice', async () => {
   const pushProvider = 'android';
   const enablePush = true;
   const enableShowAmounts = false;
-  const enableOnlyNewTx = false;
 
   await createWallet(mysql, walletId, XPUBKEY, AUTH_XPUBKEY, 5);
 
@@ -2231,7 +2229,6 @@ test('registerPushDevice', async () => {
     pushProvider,
     enablePush,
     enableShowAmounts,
-    enableOnlyNewTx,
   });
 
   await expect(checkPushDevicesTable(mysql, 1, {
@@ -2240,7 +2237,6 @@ test('registerPushDevice', async () => {
     pushProvider,
     enablePush,
     enableShowAmounts,
-    enableOnlyNewTx,
   })).resolves.toBe(true);
 });
 
@@ -2251,7 +2247,6 @@ test('updatePushDevice', async () => {
   const deviceId = 'device1';
   const pushProvider = 'android';
   const enableShowAmounts = false;
-  const enableOnlyNewTx = false;
 
   await createWallet(mysql, walletId, XPUBKEY, AUTH_XPUBKEY, 5);
 
@@ -2261,7 +2256,6 @@ test('updatePushDevice', async () => {
     pushProvider,
     enablePush: false,
     enableShowAmounts,
-    enableOnlyNewTx,
   });
 
   await updatePushDevice(mysql, {
@@ -2269,7 +2263,6 @@ test('updatePushDevice', async () => {
     deviceId,
     enablePush: true,
     enableShowAmounts,
-    enableOnlyNewTx,
   });
 
   await expect(checkPushDevicesTable(mysql, 1, {
@@ -2278,6 +2271,31 @@ test('updatePushDevice', async () => {
     pushProvider,
     enablePush: true,
     enableShowAmounts,
-    enableOnlyNewTx,
   })).resolves.toBe(true);
+});
+
+test('removeAllPushDeviceByDeviceId', async () => {
+  expect.hasAssertions();
+
+  const walletId = 'wallet1';
+  const deviceId = 'device1';
+  const pushProvider = 'android';
+  const enablePush = true;
+  const enableShowAmounts = false;
+
+  // NOTE: Because deviceId is a primary key in push_devices table
+  // it is not possible to register more than one device with the same deviceId.
+  await createWallet(mysql, walletId, XPUBKEY, AUTH_XPUBKEY, 5);
+  await registerPushDevice(mysql, {
+    walletId,
+    deviceId,
+    pushProvider,
+    enablePush,
+    enableShowAmounts,
+  });
+  await expect(checkPushDevicesTable(mysql, 1)).resolves.toBe(true);
+
+  // remove all push device registered
+  await removeAllPushDeviceByDeviceId(mysql, deviceId);
+  await expect(checkPushDevicesTable(mysql, 0)).resolves.toBe(true);
 });
