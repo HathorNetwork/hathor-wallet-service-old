@@ -906,13 +906,12 @@ export const getAuthData = (now: number): any => {
 export const checkPushDevicesTable = async (
   mysql: ServerlessMysql,
   totalResults: number,
-  filter: {
+  filter?: {
     deviceId: string,
     walletId: string,
     pushProvider: string,
     enablePush: boolean,
     enableShowAmounts: boolean,
-    enableOnlyNewTx: boolean,
   },
 ): Promise<boolean | Record<string, unknown>> => {
   let results: DbSelectResult = await mysql.query('SELECT * FROM `push_devices`');
@@ -926,6 +925,7 @@ export const checkPushDevicesTable = async (
   }
 
   if (totalResults === 0) return true;
+  if (!filter) return true;
 
   // now fetch the exact entry
   const baseQuery = `
@@ -936,7 +936,6 @@ export const checkPushDevicesTable = async (
       AND \`push_provider\` = ?
       AND \`enable_push\` = ?
       AND \`enable_show_amounts\` = ?
-      AND \`enable_only_new_tx\` = ?
       `;
 
   results = await mysql.query(baseQuery, [
@@ -945,7 +944,6 @@ export const checkPushDevicesTable = async (
     filter.pushProvider,
     filter.enablePush,
     filter.enableShowAmounts,
-    filter.enableOnlyNewTx,
   ]);
 
   if (results.length !== 1) {

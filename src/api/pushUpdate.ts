@@ -25,7 +25,7 @@ const bodySchema = Joi.object({
 });
 
 /*
- * Update a device to recive push notification.
+ * Update a device to receive push notification.
  *
  * This lambda is called by API Gateway on POST /push/register
  */
@@ -35,7 +35,6 @@ export const update: APIGatewayProxyHandler = middy(walletIdProxyHandler(async (
     convert: true, // We need to convert as parameters are sent on the QueryString
   });
 
-  // TODO: validate with tulio if the solution can be that or must follow strictly the design.
   if (error) {
     const details = error.details.map((err) => ({
       message: err.message,
@@ -49,7 +48,7 @@ export const update: APIGatewayProxyHandler = middy(walletIdProxyHandler(async (
 
   const deviceExists = await existsPushDevice(mysql, body.deviceId, walletId);
   if (!deviceExists) {
-    return closeDbAndGetError(mysql, ApiError.DEVICE_NOT_FOUNT);
+    return closeDbAndGetError(mysql, ApiError.DEVICE_NOT_FOUND);
   }
 
   await updatePushDevice(mysql, {
@@ -57,13 +56,7 @@ export const update: APIGatewayProxyHandler = middy(walletIdProxyHandler(async (
     deviceId: body.deviceId,
     enablePush: body.enablePush,
     enableShowAmounts: body.enableShowAmounts,
-    enableOnlyNewTx: false,
   });
-
-  // TODO: remove duplications
-  // NOTE: call unregisterDevice
-
-  // TODO: registrar no serverless e testar chamada
 
   return {
     statusCode: 200,

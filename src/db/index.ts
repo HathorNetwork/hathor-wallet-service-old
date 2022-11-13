@@ -2702,15 +2702,29 @@ export const registerPushDevice = async (
     pushProvider: string,
     enablePush: boolean,
     enableShowAmounts: boolean,
-    enableOnlyNewTx: boolean,
   },
 ) : Promise<void> => {
   await mysql.query(
     `
-    INSERT INTO \`push_devices\` (device_id, wallet_id, push_provider, enable_push, enable_show_amounts, enable_only_new_tx)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT INTO \`push_devices\` (device_id, wallet_id, push_provider, enable_push, enable_show_amounts)
+    VALUES (?, ?, ?, ?, ?)
     ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP`,
-    [input.deviceId, input.walletId, input.pushProvider, input.enablePush, input.enableShowAmounts, input.enableOnlyNewTx],
+    [input.deviceId, input.walletId, input.pushProvider, input.enablePush, input.enableShowAmounts],
+  );
+};
+
+/**
+ * Remove any record of push notification device given a device ID.
+ *
+ * @param mysql - Database connection
+ * @param deviceId - The device ID
+ */
+export const removeAllPushDeviceByDeviceId = async (mysql: ServerlessMysql, deviceId: string): Promise<void> => {
+  await mysql.query(
+    `
+    DELETE FROM \`push_devices\`
+    WHERE device_id = ?
+    `, [deviceId],
   );
 };
 
@@ -2729,15 +2743,14 @@ export const updatePushDevice = async (
     walletId: string,
     enablePush: boolean,
     enableShowAmounts: boolean,
-    enableOnlyNewTx: boolean,
   },
 ) : Promise<void> => {
   await mysql.query(
     `
     UPDATE \`push_devices\`
-    SET enable_push = ?, enable_show_amounts = ?, enable_only_new_tx = ?
+    SET enable_push = ?, enable_show_amounts = ?
     WHERE device_id = ? AND wallet_id = ?`,
-    [input.enablePush, input.enableShowAmounts, input.enableOnlyNewTx, input.deviceId, input.walletId],
+    [input.enablePush, input.enableShowAmounts, input.deviceId, input.walletId],
   );
 };
 

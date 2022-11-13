@@ -8,25 +8,26 @@
 import { APIGatewayProxyHandler } from 'aws-lambda';
 import { ApiError } from '@src/api/errors';
 import { closeDbAndGetError, warmupMiddleware } from '@src/api/utils';
-import { registerPushDevice } from '@src/db';
+import { removeAllPushDeviceByDeviceId, registerPushDevice } from '@src/db';
 import { getDbConnection } from '@src/utils';
 import { walletIdProxyHandler } from '@src/commons';
 import middy from '@middy/core';
 import cors from '@middy/http-cors';
 import Joi from 'joi';
 import { PushRegister } from '@src/types';
+import _ from 'lodash';
 
 const mysql = getDbConnection();
 
 const bodySchema = Joi.object({
-  pushProvider: Joi.string().allow('android').allow('ios').required(),
+  pushProvider: Joi.string().pattern(new RegExp('^(?:android|ios)$')).required(),
   deviceId: Joi.string().max(256).required(),
   enablePush: Joi.boolean().optional(),
   enableShowAmounts: Joi.boolean().optional(),
 });
 
 /*
- * Register a device to recive push notification.
+ * Register a device to receive push notification.
  *
  * This lambda is called by API Gateway on POST /push/register
  */
@@ -36,7 +37,6 @@ export const register: APIGatewayProxyHandler = middy(walletIdProxyHandler(async
     convert: true, // We need to convert as parameters are sent on the QueryString
   });
 
-  // TODO: validate with tulio if the solution can be that or must follow strictly the design.
   if (error) {
     const details = error.details.map((err) => ({
       message: err.message,
@@ -45,21 +45,17 @@ export const register: APIGatewayProxyHandler = middy(walletIdProxyHandler(async
 
     return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, { details });
   }
-
   const body: PushRegister = value;
+
+  await removeAllPushDeviceByDeviceId(mysql, body.deviceId);
+
   await registerPushDevice(mysql, {
     walletId,
     deviceId: body.deviceId,
     pushProvider: body.pushProvider,
     enablePush: body.enablePush,
     enableShowAmounts: body.enableShowAmounts,
-    enableOnlyNewTx: false,
   });
-
-  // TODO: remove duplications
-  // NOTE: call unregisterDevice
-
-  // TODO: registrar no serverless e testar chamada
 
   return {
     statusCode: 200,
