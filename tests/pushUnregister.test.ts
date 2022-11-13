@@ -76,6 +76,35 @@ test('update push device given a wallet', async () => {
     pushProvider,
     enablePush: true,
     enableShowAmounts,
-    enableOnlyNewTx,
   })).resolves.toBe(true);
+});
+
+describe('statusCode:400', () => {
+  it('should validate deviceId', async () => {
+    expect.hasAssertions();
+    const deviceId = (new Array(257)).fill('x').join('');
+
+    await addToWalletTable(mysql, [{
+      id: 'my-wallet',
+      xpubkey: 'xpubkey',
+      authXpubkey: 'auth_xpubkey',
+      status: 'ready',
+      maxGap: 5,
+      createdAt: 10000,
+      readyAt: 10001,
+    }]);
+
+    const event = makeGatewayEventWithAuthorizer('my-wallet', null, {
+      deviceId,
+      pushProvider: 'android',
+      enablePush: true,
+      enableShowAmounts: false,
+    });
+
+    const result = await unregister(event, null, null) as APIGatewayProxyResult;
+    const returnBody = JSON.parse(result.body as string);
+
+    expect(result.statusCode).toStrictEqual(400);
+    expect(returnBody.success).toStrictEqual(false);
+  });
 });
