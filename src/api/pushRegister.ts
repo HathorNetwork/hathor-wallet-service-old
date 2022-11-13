@@ -27,7 +27,7 @@ const bodySchema = Joi.object({
 });
 
 /*
- * Register a device to recive push notification.
+ * Register a device to receive push notification.
  *
  * This lambda is called by API Gateway on POST /push/register
  */
