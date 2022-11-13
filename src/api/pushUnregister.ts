@@ -23,7 +23,7 @@ const bodySchema = Joi.object({
 });
 
 /*
- * Unregister a device to recive push notification.
+ * Unregister a device to receive push notification.
  *
  * This lambda is called by API Gateway on POST /push/unregister
  */
