@@ -20,7 +20,7 @@ import _ from 'lodash';
 const mysql = getDbConnection();
 
 const bodySchema = Joi.object({
-  pushProvider: Joi.string().allow('android').allow('ios').required(),
+  pushProvider: Joi.string().pattern(new RegExp('^(?:android|ios)$')).required(),
   deviceId: Joi.string().max(256).required(),
   enablePush: Joi.boolean().optional(),
   enableShowAmounts: Joi.boolean().optional(),

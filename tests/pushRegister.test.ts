@@ -45,3 +45,61 @@ test('register a device for push notification', async () => {
   expect(result.statusCode).toStrictEqual(200);
   expect(returnBody.success).toStrictEqual(true);
 });
+
+describe('statusCode:400', () => {
+  it('should validate provider', async () => {
+    expect.hasAssertions();
+    const pushProvider = 'not-supported-provider';
+
+    await addToWalletTable(mysql, [{
+      id: 'my-wallet',
+      xpubkey: 'xpubkey',
+      authXpubkey: 'auth_xpubkey',
+      status: 'ready',
+      maxGap: 5,
+      createdAt: 10000,
+      readyAt: 10001,
+    }]);
+
+    const event = makeGatewayEventWithAuthorizer('my-wallet', null, {
+      deviceId: 'device1',
+      pushProvider,
+      enablePush: true,
+      enableShowAmounts: false,
+    });
+
+    const result = await register(event, null, null) as APIGatewayProxyResult;
+    const returnBody = JSON.parse(result.body as string);
+
+    expect(result.statusCode).toStrictEqual(400);
+    expect(returnBody.success).toStrictEqual(false);
+  });
+
+  it('should validate deviceId', async () => {
+    expect.hasAssertions();
+    const deviceId = (new Array(257)).fill('x').join('');
+
+    await addToWalletTable(mysql, [{
+      id: 'my-wallet',
+      xpubkey: 'xpubkey',
+      authXpubkey: 'auth_xpubkey',
+      status: 'ready',
+      maxGap: 5,
+      createdAt: 10000,
+      readyAt: 10001,
+    }]);
+
+    const event = makeGatewayEventWithAuthorizer('my-wallet', null, {
+      deviceId,
+      pushProvider: 'android',
+      enablePush: true,
+      enableShowAmounts: false,
+    });
+
+    const result = await register(event, null, null) as APIGatewayProxyResult;
+    const returnBody = JSON.parse(result.body as string);
+
+    expect(result.statusCode).toStrictEqual(400);
+    expect(returnBody.success).toStrictEqual(false);
+  });
+});
