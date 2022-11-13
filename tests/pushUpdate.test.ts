@@ -98,3 +98,32 @@ describe('statusCode:400', () => {
     expect(returnBody.success).toStrictEqual(false);
   });
 });
+
+describe('statusCode:404', () => {
+  it('should validate deviceId existence', async () => {
+    expect.hasAssertions();
+    const deviceId = 'device-not-registered';
+
+    await addToWalletTable(mysql, [{
+      id: 'my-wallet',
+      xpubkey: 'xpubkey',
+      authXpubkey: 'auth_xpubkey',
+      status: 'ready',
+      maxGap: 5,
+      createdAt: 10000,
+      readyAt: 10001,
+    }]);
+
+    const event = makeGatewayEventWithAuthorizer('my-wallet', null, {
+      deviceId,
+      enablePush: false,
+      enableShowAmounts: false,
+    });
+
+    const result = await update(event, null, null) as APIGatewayProxyResult;
+    const returnBody = JSON.parse(result.body as string);
+
+    expect(result.statusCode).toStrictEqual(404);
+    expect(returnBody.success).toStrictEqual(false);
+  });
+});
