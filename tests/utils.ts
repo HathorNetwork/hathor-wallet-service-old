@@ -906,7 +906,7 @@ export const getAuthData = (now: number): any => {
 export const checkPushDevicesTable = async (
   mysql: ServerlessMysql,
   totalResults: number,
-  filter: {
+  filter?: {
     deviceId: string,
     walletId: string,
     pushProvider: string,
@@ -925,6 +925,7 @@ export const checkPushDevicesTable = async (
   }
 
   if (totalResults === 0) return true;
+  if (!filter) return true;
 
   // now fetch the exact entry
   const baseQuery = `
