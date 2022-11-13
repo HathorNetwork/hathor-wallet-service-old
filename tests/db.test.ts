@@ -2309,7 +2309,6 @@ test('unregisterPushDevice', async () => {
   const pushProvider = 'android';
   const enablePush = false;
   const enableShowAmounts = false;
-  const enableOnlyNewTx = false;
 
   await createWallet(mysql, walletId, XPUBKEY, AUTH_XPUBKEY, 5);
 
@@ -2319,7 +2318,6 @@ test('unregisterPushDevice', async () => {
     pushProvider,
     enablePush,
     enableShowAmounts,
-    enableOnlyNewTx,
   });
 
   await expect(checkPushDevicesTable(mysql, 1, {
@@ -2328,7 +2326,6 @@ test('unregisterPushDevice', async () => {
     pushProvider,
     enablePush,
     enableShowAmounts,
-    enableOnlyNewTx,
   })).resolves.toBe(true);
 
   await unregisterPushDevice(mysql, deviceId, walletId);

@@ -41,14 +41,12 @@ test('update push device given a wallet', async () => {
   const pushProvider = 'android';
   const enablePush = true;
   const enableShowAmounts = false;
-  const enableOnlyNewTx = false;
   await registerPushDevice(mysql, {
     walletId,
     deviceId,
     pushProvider,
     enablePush,
     enableShowAmounts,
-    enableOnlyNewTx,
   });
 
   await expect(checkPushDevicesTable(mysql, 1, {
@@ -57,7 +55,6 @@ test('update push device given a wallet', async () => {
     pushProvider,
     enablePush: true,
     enableShowAmounts,
-    enableOnlyNewTx,
   })).resolves.toBe(true);
 
   const event = makeGatewayEventWithAuthorizer(walletId, null, {
