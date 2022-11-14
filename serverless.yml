@@ -481,3 +481,14 @@ functions:
     warmup:
       walletWarmer:
         enabled: false
+  getTxById:
+    handler: src/api/txById.get
+    events:
+      - http:
+          path: wallet/getTxById
+          method: get
+          cors: true
+          authorizer: ${self:custom.authorizer.walletBearer}
+    warmup:
+      walletWarmer:
+        enabled: false
