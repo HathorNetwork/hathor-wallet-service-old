@@ -32,7 +32,7 @@ class TxByIdInputValidator {
 }
 
 /*
- * Get a transaction by it's ID.
+ * Get a transaction by its ID.
  *
  * This lambda is called by API Gateway on GET /wallet/getTxById
  */
