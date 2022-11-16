@@ -92,9 +92,3 @@ test('XPUBKEY, AUTH_XPUBKEY and ADDRESSES should be derived from TEST_SEED', asy
   const addresses = Object.keys(hathorLib.walletUtils.getAddresses(derivedXpub, 0, 17));
   expect(addresses).toStrictEqual(ADDRESSES);
 });
-
-test('pushProviderRegexPattern', () => {
-  expect.hasAssertions();
-
-  expect(pushProviderRegexPattern()).toStrictEqual(/^(?:ios|android)$/);
-});
