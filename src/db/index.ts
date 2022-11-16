@@ -5,7 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/* eslint-disable camelcase */
 import { strict as assert } from 'assert';
 import { ServerlessMysql } from 'serverless-mysql';
 import { get } from 'lodash';
