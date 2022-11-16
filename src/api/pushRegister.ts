@@ -18,12 +18,22 @@ import { PushRegister } from '@src/types';
 
 const mysql = getDbConnection();
 
-const bodySchema = Joi.object({
-  pushProvider: Joi.string().pattern(new RegExp('^(?:android|ios)$')).required(),
-  deviceId: Joi.string().max(256).required(),
-  enablePush: Joi.boolean().optional(),
-  enableShowAmounts: Joi.boolean().optional(),
-});
+class PushRegisterInputValidator {
+  static readonly #bodySchema = Joi.object({
+    pushProvider: Joi.string().pattern(new RegExp('^(?:android|ios)$')).required(),
+    deviceId: Joi.string().max(256).required(),
+    enablePush: Joi.boolean().optional(),
+    enableShowAmounts: Joi.boolean().optional(),
+  });
+
+  static validate(payload: unknown): Joi.ValidationResult<PushRegister> {
+    const { value, error } = PushRegisterInputValidator.#bodySchema.validate(payload, {
+      abortEarly: false, // We want it to return all the errors not only the first
+      convert: true, // We need to convert as parameters are sent on the QueryString
+    });
+    return { value: { enablePush: false, enableShowAmounts: false, ...value }, error };
+  }
+}
 
 /*
  * Register a device to receive push notification.
@@ -31,10 +41,7 @@ const bodySchema = Joi.object({
  * This lambda is called by API Gateway on POST /push/register
  */
 export const register: APIGatewayProxyHandler = middy(walletIdProxyHandler(async (walletId, event) => {
-  const { value, error } = bodySchema.validate(event.body, {
-    abortEarly: false, // We want it to return all the errors not only the first
-    convert: true, // We need to convert as parameters are sent on the QueryString
-  });
+  const { value: body, error } = PushRegisterInputValidator.validate(event.body);
 
   if (error) {
     const details = error.details.map((err) => ({
@@ -44,7 +51,6 @@ export const register: APIGatewayProxyHandler = middy(walletIdProxyHandler(async
 
     return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, { details });
   }
-  const body: PushRegister = value;
 
   await removeAllPushDeviceByDeviceId(mysql, body.deviceId);
 
