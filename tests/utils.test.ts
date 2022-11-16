@@ -1,4 +1,4 @@
-import { CustomStorage, arrayShuffle, sha256d, isTxVoided } from '@src/utils';
+import { CustomStorage, arrayShuffle, sha256d, isTxVoided, pushProviderRegexPattern } from '@src/utils';
 import hathorLib from '@hathor/wallet-lib';
 import * as Fullnode from '@src/fullnode';
 import { TEST_SEED, XPUBKEY, AUTH_XPUBKEY, ADDRESSES } from '@tests/utils';
@@ -91,4 +91,10 @@ test('XPUBKEY, AUTH_XPUBKEY and ADDRESSES should be derived from TEST_SEED', asy
   const derivedXpub = hathorLib.walletUtils.xpubDeriveChild(xpubkey, 0);
   const addresses = Object.keys(hathorLib.walletUtils.getAddresses(derivedXpub, 0, 17));
   expect(addresses).toStrictEqual(ADDRESSES);
+});
+
+test('pushProviderRegexPattern', () => {
+  expect.hasAssertions();
+
+  expect(pushProviderRegexPattern()).toStrictEqual(/^(?:ios|android)$/);
 });

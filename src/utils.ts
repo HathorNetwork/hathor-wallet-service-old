@@ -15,6 +15,7 @@ import * as bitcoinMessage from 'bitcoinjs-message';
 import * as ecc from 'tiny-secp256k1';
 import BIP32Factory from 'bip32';
 import { Logger } from 'winston';
+import { PushProvider } from '@src/types';
 
 const bip32 = BIP32Factory(ecc);
 
@@ -356,4 +357,10 @@ export const getAddressFromXpub = (xpubkey: string): string => {
     pubkey: node.publicKey,
     network: hathorNetwork,
   }).address;
+};
+
+export const pushProviderRegexPattern = (): RegExp => {
+  const entries = Object.values(PushProvider);
+  const options = entries.join('|');
+  return new RegExp(`^(?:${options})$`);
 };
