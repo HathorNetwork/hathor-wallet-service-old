@@ -84,17 +84,32 @@ export const getTxsFromDBResult = (results: DbSelectResult): Tx[] => {
   const transactions = [];
 
   for (const result of results) {
-    const tx: Tx = {
-      txId: result.tx_id as string,
-      timestamp: result.timestamp as number,
-      version: result.version as number,
-      voided: result.voided === 1,
-      height: result.height as number,
-      weight: result.weight as number,
-    };
+    const tx: Tx = _mapTxRecord2Tx(result);
 
     transactions.push(tx);
   }
 
   return transactions;
 };
+
+/**
+ * Receive a DbSelectResult with one record and transform it in a Tx
+ *
+ * @param results
+ * @returns Tx converted from DbSelectResult
+ */
+export const getTxFromDBResult = (result: DbSelectResult): Tx => {
+  const { 0: row } = result;
+  return _mapTxRecord2Tx(row);
+};
+
+const _mapTxRecord2Tx = (record: Record<string, unknown>): Tx => (
+  {
+    txId: record.tx_id as string,
+    timestamp: record.timestamp as number,
+    version: record.version as number,
+    voided: record.voided === 1,
+    height: record.height as number,
+    weight: record.weight as number,
+  }
+);

@@ -49,6 +49,7 @@ import {
 } from '@src/utils';
 import {
   getWalletFromDbEntry,
+  getTxFromDBResult,
   getTxsFromDBResult,
 } from '@src/db/utils';
 
@@ -2773,4 +2774,31 @@ export const unregisterPushDevice = async (
     WHERE device_id = ? AND wallet_id = ?`,
     [deviceId, walletId],
   );
+};
+
+/**
+ * Get a transaction by its ID.
+ *
+ * @param mysql - Database connection
+ * @param txId - A transaction ID
+
+ * @returns A transaction if found, return null otherwise
+ */
+export const getTransactionById = async (
+  mysql: ServerlessMysql,
+  txId: string,
+): Promise<Tx|null> => {
+  const result: DbSelectResult = await mysql.query(
+    `SELECT *
+       FROM \`transaction\`
+      WHERE \`tx_id\` = ?
+        AND \`voided\` = FALSE`,
+    [txId],
+  );
+
+  if (!result.length) {
+    return null;
+  }
+
+  return getTxFromDBResult(result);
 };
