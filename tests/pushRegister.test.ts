@@ -100,6 +100,40 @@ describe('statusCode:200', () => {
     expect(result.statusCode).toStrictEqual(200);
     expect(returnBody.success).toStrictEqual(true);
   });
+
+  it('should register even if alredy exists (idempotency proof)', async () => {
+    expect.hasAssertions();
+
+    await addToWalletTable(mysql, [{
+      id: 'my-wallet',
+      xpubkey: 'xpubkey',
+      authXpubkey: 'auth_xpubkey',
+      status: 'ready',
+      maxGap: 5,
+      createdAt: 10000,
+      readyAt: 10001,
+    }]);
+
+    const payload = {
+      deviceId: 'device1',
+      pushProvider: 'android',
+      enablePush: true,
+      enableShowAmounts: false,
+    };
+    const event = makeGatewayEventWithAuthorizer('my-wallet', null, payload);
+
+    let result = await register(event, null, null) as APIGatewayProxyResult;
+    let returnBody = JSON.parse(result.body as string);
+
+    expect(result.statusCode).toStrictEqual(200);
+    expect(returnBody.success).toStrictEqual(true);
+
+    result = await register(event, null, null) as APIGatewayProxyResult;
+    returnBody = JSON.parse(result.body as string);
+
+    expect(result.statusCode).toStrictEqual(200);
+    expect(returnBody.success).toStrictEqual(true);
+  });
 });
 
 describe('statusCode:400', () => {
@@ -129,6 +163,7 @@ describe('statusCode:400', () => {
 
     expect(result.statusCode).toStrictEqual(400);
     expect(returnBody.success).toStrictEqual(false);
+    expect(returnBody.error).toStrictEqual('invalid-payload');
   });
 
   it('should validate deviceId', async () => {
@@ -157,5 +192,6 @@ describe('statusCode:400', () => {
 
     expect(result.statusCode).toStrictEqual(400);
     expect(returnBody.success).toStrictEqual(false);
+    expect(returnBody.error).toStrictEqual('invalid-payload');
   });
 });
