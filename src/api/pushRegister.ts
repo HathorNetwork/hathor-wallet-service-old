@@ -7,9 +7,9 @@
 
 import { APIGatewayProxyHandler } from 'aws-lambda';
 import { ApiError } from '@src/api/errors';
-import { closeDbAndGetError, warmupMiddleware } from '@src/api/utils';
+import { closeDbAndGetError, warmupMiddleware, pushProviderRegexPattern } from '@src/api/utils';
 import { removeAllPushDevicesByDeviceId, registerPushDevice, existsWallet } from '@src/db';
-import { getDbConnection, pushProviderRegexPattern } from '@src/utils';
+import { getDbConnection } from '@src/utils';
 import { walletIdProxyHandler } from '@src/commons';
 import middy from '@middy/core';
 import cors from '@middy/http-cors';
