@@ -66,6 +66,7 @@ import {
   incrementTokensTxCount,
   registerPushDevice,
   removeAllPushDevicesByDeviceId,
+  existsWallet,
 } from '@src/db';
 import {
   beginTransaction,
@@ -2244,4 +2245,20 @@ test('removeAllPushDeviceByDeviceId', async () => {
   // remove all push device registered
   await removeAllPushDevicesByDeviceId(mysql, deviceId_1);
   await expect(checkPushDevicesTable(mysql, 1)).resolves.toBe(true);
+});
+
+test('existsWallet', async () => {
+  expect.hasAssertions();
+
+  // wallet do not exists yet
+  const walletId = 'wallet1';
+  let exists = await existsWallet(mysql, walletId);
+
+  expect(exists).toBe(false);
+
+  // wallet exists
+  await createWallet(mysql, walletId, XPUBKEY, AUTH_XPUBKEY, 5);
+  exists = await existsWallet(mysql, walletId);
+
+  expect(exists).toBe(true);
 });

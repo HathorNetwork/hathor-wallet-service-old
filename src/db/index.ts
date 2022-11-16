@@ -2704,3 +2704,22 @@ export const removeAllPushDevicesByDeviceId = async (mysql: ServerlessMysql, dev
     `, [deviceId],
   );
 };
+
+/**
+ * Verify the existence of a wallet by its ID.
+ *
+ * @param mysql - Database connection
+ * @param walletId - The wallet linked to device
+ */
+export const existsWallet = async (
+  mysql: ServerlessMysql,
+  deviceId: string,
+) : Promise<boolean> => {
+  const [{ count }] = await mysql.query(
+    `
+    SELECT COUNT(1) as \`count\` FROM \`wallet\` pd WHERE id= ?`,
+    [deviceId],
+  ) as unknown as Array<{count}>;
+
+  return count > 0;
+};
