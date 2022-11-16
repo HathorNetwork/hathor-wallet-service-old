@@ -19,7 +19,7 @@ import { PushRegister } from '@src/types';
 const mysql = getDbConnection();
 
 class PushRegisterInputValidator {
-  static #bodySchema = Joi.object({
+  static readonly bodySchema = Joi.object({
     pushProvider: Joi.string().pattern(pushProviderRegexPattern()).required(),
     deviceId: Joi.string().max(256).required(),
     enablePush: Joi.boolean().optional(),
@@ -27,7 +27,7 @@ class PushRegisterInputValidator {
   });
 
   static validate(payload: unknown): ValidationResult<PushRegister> {
-    const { value, error } = PushRegisterInputValidator.#bodySchema.validate(payload, {
+    const { value, error } = PushRegisterInputValidator.bodySchema.validate(payload, {
       abortEarly: false, // We want it to return all the errors not only the first
       convert: true, // We need to convert as parameters are sent on the QueryString
     });
