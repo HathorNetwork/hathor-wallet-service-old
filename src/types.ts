@@ -692,3 +692,7 @@ export interface PushUpdate {
 export interface PushDelete {
   deviceId: string,
 }
+
+export interface TxById {
+  txId: string,
+}
