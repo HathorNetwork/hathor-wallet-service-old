@@ -8,7 +8,7 @@
 import { APIGatewayProxyHandler } from 'aws-lambda';
 import { ApiError } from '@src/api/errors';
 import { closeDbAndGetError, warmupMiddleware } from '@src/api/utils';
-import { removeAllPushDeviceByDeviceId, registerPushDevice } from '@src/db';
+import { removeAllPushDevicesByDeviceId, registerPushDevice } from '@src/db';
 import { getDbConnection } from '@src/utils';
 import { walletIdProxyHandler } from '@src/commons';
 import middy from '@middy/core';
@@ -52,7 +52,7 @@ export const register: APIGatewayProxyHandler = middy(walletIdProxyHandler(async
     return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, { details });
   }
 
-  await removeAllPushDeviceByDeviceId(mysql, body.deviceId);
+  await removeAllPushDevicesByDeviceId(mysql, body.deviceId);
 
   await registerPushDevice(mysql, {
     walletId,

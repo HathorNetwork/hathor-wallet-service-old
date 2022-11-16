@@ -2696,7 +2696,7 @@ export const registerPushDevice = async (
  * @param mysql - Database connection
  * @param deviceId - The device ID
  */
-export const removeAllPushDeviceByDeviceId = async (mysql: ServerlessMysql, deviceId: string): Promise<void> => {
+export const removeAllPushDevicesByDeviceId = async (mysql: ServerlessMysql, deviceId: string): Promise<void> => {
   await mysql.query(
     `
     DELETE FROM \`push_devices\`
