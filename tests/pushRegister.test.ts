@@ -195,3 +195,23 @@ describe('statusCode:400', () => {
     expect(returnBody.error).toStrictEqual('invalid-payload');
   });
 });
+
+describe('statusCode:404', () => {
+  it('should validate wallet existence', async () => {
+    expect.hasAssertions();
+
+    const event = makeGatewayEventWithAuthorizer('my-wallet', null, {
+      deviceId: 'device1',
+      pushProvider: 'android',
+      enablePush: true,
+      enableShowAmounts: false,
+    });
+
+    const result = await register(event, null, null) as APIGatewayProxyResult;
+    const returnBody = JSON.parse(result.body as string);
+
+    expect(result.statusCode).toStrictEqual(404);
+    expect(returnBody.success).toStrictEqual(false);
+    expect(returnBody.error).toStrictEqual('wallet-not-found');
+  });
+});
