@@ -69,6 +69,7 @@ import {
   existsPushDevice,
   updatePushDevice,
   unregisterPushDevice,
+  getTransactionById,
 } from '@src/db';
 import {
   beginTransaction,
@@ -2329,4 +2330,28 @@ test('unregisterPushDevice', async () => {
   })).resolves.toBe(true);
 
   await unregisterPushDevice(mysql, deviceId, walletId);
+});
+
+describe('getTransactionById', () => {
+  it('should return a transaction when there is a record', async () => {
+    expect.hasAssertions();
+
+    await addOrUpdateTx(mysql, 'txId1', 1, 2, 3, 65.4321);
+    const tx = await getTransactionById(mysql, 'txId1');
+
+    expect(tx.txId).toStrictEqual('txId1');
+    expect(tx.height).toStrictEqual(1);
+    expect(tx.timestamp).toStrictEqual(2);
+    expect(tx.version).toStrictEqual(3);
+    expect(tx.weight).toStrictEqual(65.4321);
+    expect(tx.voided).toStrictEqual(false);
+  });
+
+  it('should return null when there is no record', async () => {
+    expect.hasAssertions();
+
+    const tx = await getTransactionById(mysql, 'txId1');
+
+    expect(tx).toBeNull();
+  });
 });
