@@ -358,9 +358,3 @@ export const getAddressFromXpub = (xpubkey: string): string => {
     network: hathorNetwork,
   }).address;
 };
-
-export const pushProviderRegexPattern = (): RegExp => {
-  const entries = Object.values(PushProvider);
-  const options = entries.join('|');
-  return new RegExp(`^(?:${options})$`);
-};
