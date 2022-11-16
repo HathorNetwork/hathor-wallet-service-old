@@ -15,7 +15,6 @@ import middy from '@middy/core';
 import cors from '@middy/http-cors';
 import Joi from 'joi';
 import { PushRegister } from '@src/types';
-import _ from 'lodash';
 
 const mysql = getDbConnection();
 
