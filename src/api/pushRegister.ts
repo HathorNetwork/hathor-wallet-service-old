@@ -13,20 +13,20 @@ import { getDbConnection, pushProviderRegexPattern } from '@src/utils';
 import { walletIdProxyHandler } from '@src/commons';
 import middy from '@middy/core';
 import cors from '@middy/http-cors';
-import Joi from 'joi';
+import Joi, { ValidationResult } from 'joi';
 import { PushRegister } from '@src/types';
 
 const mysql = getDbConnection();
 
 class PushRegisterInputValidator {
-  static readonly #bodySchema = Joi.object({
+  static #bodySchema = Joi.object({
     pushProvider: Joi.string().pattern(pushProviderRegexPattern()).required(),
     deviceId: Joi.string().max(256).required(),
     enablePush: Joi.boolean().optional(),
     enableShowAmounts: Joi.boolean().optional(),
   });
 
-  static validate(payload: unknown): Joi.ValidationResult<PushRegister> {
+  static validate(payload: unknown): ValidationResult<PushRegister> {
     const { value, error } = PushRegisterInputValidator.#bodySchema.validate(payload, {
       abortEarly: false, // We want it to return all the errors not only the first
       convert: true, // We need to convert as parameters are sent on the QueryString
