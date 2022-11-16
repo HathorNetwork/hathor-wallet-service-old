@@ -15,7 +15,6 @@ import * as bitcoinMessage from 'bitcoinjs-message';
 import * as ecc from 'tiny-secp256k1';
 import BIP32Factory from 'bip32';
 import { Logger } from 'winston';
-import { PushProvider } from '@src/types';
 
 const bip32 = BIP32Factory(ecc);
 
