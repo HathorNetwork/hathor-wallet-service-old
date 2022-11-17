@@ -1,4 +1,4 @@
-import { CustomStorage, arrayShuffle, sha256d, isTxVoided, pushProviderRegexPattern } from '@src/utils';
+import { CustomStorage, arrayShuffle, sha256d, isTxVoided } from '@src/utils';
 import hathorLib from '@hathor/wallet-lib';
 import * as Fullnode from '@src/fullnode';
 import { TEST_SEED, XPUBKEY, AUTH_XPUBKEY, ADDRESSES } from '@tests/utils';
