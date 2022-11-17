@@ -2816,11 +2816,15 @@ export const getPushDevice = async (
   mysql: ServerlessMysql,
   walletId: string,
   deviceId: string,
-) : Promise<PushDevice> => {
+) : Promise<PushDevice|null> => {
   const [pushDevice] = await mysql.query(
     'SELECT * FROM `push_devices` WHERE wallet_id = ? AND device_id = ?',
     [walletId, deviceId],
   ) as Array<{wallet_id, device_id, push_provider, enable_push, enable_show_amounts}>;
+
+  if (!pushDevice) {
+    return null;
+  }
 
   return {
     walletId: pushDevice.wallet_id,

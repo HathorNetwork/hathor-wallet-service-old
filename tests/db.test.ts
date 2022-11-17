@@ -2358,33 +2358,59 @@ describe('getTransactionById', () => {
   });
 });
 
-test('getPushDevice', async () => {
-  expect.hasAssertions();
+describe('getPushDevice', () => {
+  it('should return PushDevice type object when device found', async () => {
+    expect.hasAssertions();
 
-  const walletId = 'wallet1';
-  const deviceId = 'device1';
-  const pushProvider = 'android';
-  const enablePush = true;
-  const enableShowAmounts = false;
+    const walletId = 'wallet1';
+    const deviceId = 'device1';
+    const pushProvider = 'android';
+    const enablePush = true;
+    const enableShowAmounts = false;
 
-  await createWallet(mysql, walletId, XPUBKEY, AUTH_XPUBKEY, 5);
+    await createWallet(mysql, walletId, XPUBKEY, AUTH_XPUBKEY, 5);
 
-  await registerPushDevice(mysql, {
-    walletId,
-    deviceId,
-    pushProvider,
-    enablePush,
-    enableShowAmounts,
+    await registerPushDevice(mysql, {
+      walletId,
+      deviceId,
+      pushProvider,
+      enablePush,
+      enableShowAmounts,
+    });
+
+    const result = await getPushDevice(mysql, walletId, deviceId);
+
+    const expected = {
+      walletId,
+      deviceId,
+      pushProvider,
+      enablePush,
+      enableShowAmounts,
+    } as PushDevice;
+    expect(result).toStrictEqual(expected);
   });
 
-  const result = await getPushDevice(mysql, walletId, deviceId);
+  it('should return null when device not found', async () => {
+    expect.hasAssertions();
 
-  const expected = {
-    walletId,
-    deviceId,
-    pushProvider,
-    enablePush,
-    enableShowAmounts,
-  } as PushDevice;
-  expect(result).toStrictEqual(expected);
+    const walletId = 'wallet1';
+    const deviceId = 'device1';
+
+    await createWallet(mysql, walletId, XPUBKEY, AUTH_XPUBKEY, 5);
+
+    const result = await getPushDevice(mysql, walletId, deviceId);
+
+    expect(result).toBeNull();
+  });
+
+  it('should return null when wallet not found', async () => {
+    expect.hasAssertions();
+
+    const walletId = 'wallet1';
+    const deviceId = 'device1';
+
+    const result = await getPushDevice(mysql, walletId, deviceId);
+
+    expect(result).toBeNull();
+  });
 });
