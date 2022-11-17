@@ -696,3 +696,10 @@ export interface PushDelete {
 export interface TxById {
   txId: string,
 }
+
+export interface SendNotificationToDevice {
+  deviceId: string,
+  title: string,
+  description: string,
+  metadata: Record<string, unknown>,
+}
