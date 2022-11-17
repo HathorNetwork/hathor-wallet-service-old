@@ -70,6 +70,7 @@ import {
   updatePushDevice,
   unregisterPushDevice,
   getTransactionById,
+  getPushDevice,
 } from '@src/db';
 import {
   beginTransaction,
@@ -85,6 +86,7 @@ import {
   FullNodeVersionData,
   Tx,
   DbTxOutput,
+  PushDevice,
 } from '@src/types';
 import {
   closeDbConnection,
@@ -2354,4 +2356,35 @@ describe('getTransactionById', () => {
 
     expect(tx).toBeNull();
   });
+});
+
+test('getPushDevice', async () => {
+  expect.hasAssertions();
+
+  const walletId = 'wallet1';
+  const deviceId = 'device1';
+  const pushProvider = 'android';
+  const enablePush = true;
+  const enableShowAmounts = false;
+
+  await createWallet(mysql, walletId, XPUBKEY, AUTH_XPUBKEY, 5);
+
+  await registerPushDevice(mysql, {
+    walletId,
+    deviceId,
+    pushProvider,
+    enablePush,
+    enableShowAmounts,
+  });
+
+  const result = await getPushDevice(mysql, walletId, deviceId);
+
+  const expected = {
+    walletId,
+    deviceId,
+    pushProvider,
+    enablePush,
+    enableShowAmounts,
+  } as PushDevice;
+  expect(result).toStrictEqual(expected);
 });

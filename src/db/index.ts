@@ -39,6 +39,7 @@ import {
   AddressTotalBalance,
   IFilterTxOutput,
   Miner,
+  PushDevice,
 } from '@src/types';
 import {
   getUnixTimestamp,
@@ -2801,4 +2802,31 @@ export const getTransactionById = async (
   }
 
   return getTxFromDBResult(result);
+};
+
+/**
+ * Get registered push device by deviceId given a wallet.
+ *
+ * @param mysql - Database connection
+ * @param input - Input of push device register
+ * @param walletId - The wallet linked to device
+ * @param deviceId - The device to verify existence
+ */
+export const getPushDevice = async (
+  mysql: ServerlessMysql,
+  walletId: string,
+  deviceId: string,
+) : Promise<PushDevice> => {
+  const [pushDevice] = await mysql.query(
+    'SELECT * FROM `push_devices` WHERE wallet_id = ? AND device_id = ?',
+    [walletId, deviceId],
+  ) as Array<{wallet_id, device_id, push_provider, enable_push, enable_show_amounts}>;
+
+  return {
+    walletId: pushDevice.wallet_id,
+    deviceId: pushDevice.device_id,
+    pushProvider: pushDevice.push_provider,
+    enablePush: !!pushDevice.enable_push,
+    enableShowAmounts: !!pushDevice.enable_show_amounts,
+  } as PushDevice;
 };

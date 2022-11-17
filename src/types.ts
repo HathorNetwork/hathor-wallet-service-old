@@ -703,3 +703,11 @@ export interface SendNotificationToDevice {
   description: string,
   metadata: Record<string, unknown>,
 }
+
+export interface PushDevice {
+  walletId: string,
+  deviceId: string,
+  pushProvider: iOSPushProvider | AndroidPushProvider,
+  enablePush: boolean,
+  enableShowAmounts: boolean
+}
