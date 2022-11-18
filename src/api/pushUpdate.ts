@@ -68,5 +68,4 @@ export const update: APIGatewayProxyHandler = middy(walletIdProxyHandler(async (
     body: JSON.stringify({ success: true }),
   };
 }))
-  .use(cors())
-  .use(warmupMiddleware());
+  .use(cors());
