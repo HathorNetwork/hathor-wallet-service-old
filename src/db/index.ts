@@ -2754,7 +2754,6 @@ export const updatePushDevice = async (
  * Unregister push device for a given wallet.
  *
  * @param mysql - Database connection
- * @param input - Input of push device register
  * @param deviceId - The device to unregister
  * @param walletId - The wallet linked to device
  */
