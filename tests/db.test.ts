@@ -2241,38 +2241,98 @@ test('registerPushDevice', async () => {
   })).resolves.toBe(true);
 });
 
-test('updatePushDevice', async () => {
-  expect.hasAssertions();
+describe('updatePushDevice', () => {
+  it('should update pushDevice when register exists', async () => {
+    expect.hasAssertions();
 
-  const walletId = 'wallet1';
-  const deviceId = 'device1';
-  const pushProvider = 'android';
-  const enableShowAmounts = false;
+    const walletId = 'wallet1';
+    const deviceId = 'device1';
+    const pushProvider = 'android';
+    const enableShowAmounts = false;
 
-  await createWallet(mysql, walletId, XPUBKEY, AUTH_XPUBKEY, 5);
+    await createWallet(mysql, walletId, XPUBKEY, AUTH_XPUBKEY, 5);
 
-  await registerPushDevice(mysql, {
-    walletId,
-    deviceId,
-    pushProvider,
-    enablePush: false,
-    enableShowAmounts,
+    await registerPushDevice(mysql, {
+      walletId,
+      deviceId,
+      pushProvider,
+      enablePush: false,
+      enableShowAmounts,
+    });
+
+    await updatePushDevice(mysql, {
+      walletId,
+      deviceId,
+      enablePush: true,
+      enableShowAmounts,
+    });
+
+    await expect(checkPushDevicesTable(mysql, 1, {
+      walletId,
+      deviceId,
+      pushProvider,
+      enablePush: true,
+      enableShowAmounts,
+    })).resolves.toBe(true);
   });
 
-  await updatePushDevice(mysql, {
-    walletId,
-    deviceId,
-    enablePush: true,
-    enableShowAmounts,
+  it('should update pushDevice when more than 1 wallet is related', async () => {
+    expect.hasAssertions();
+
+    const deviceToUpdate = 'device1';
+    const walletId = 'wallet1';
+    const pushProvider = 'android';
+    const enableShowAmounts = false;
+
+    await createWallet(mysql, walletId, XPUBKEY, AUTH_XPUBKEY, 5);
+
+    const devicesToAdd = [deviceToUpdate, 'device2'];
+    devicesToAdd.forEach(async (eachDevice) => {
+      await registerPushDevice(mysql, {
+        walletId,
+        deviceId: eachDevice,
+        pushProvider,
+        enablePush: false,
+        enableShowAmounts,
+      });
+    });
+    await expect(checkPushDevicesTable(mysql, devicesToAdd.length)).resolves.toBe(true);
+
+    await updatePushDevice(mysql, {
+      walletId,
+      deviceId: deviceToUpdate,
+      enablePush: true,
+      enableShowAmounts,
+    });
+
+    await expect(checkPushDevicesTable(mysql, 1, {
+      walletId,
+      deviceId: deviceToUpdate,
+      pushProvider,
+      enablePush: true,
+      enableShowAmounts,
+    })).resolves.toBe(true);
   });
 
-  await expect(checkPushDevicesTable(mysql, 1, {
-    walletId,
-    deviceId,
-    pushProvider,
-    enablePush: true,
-    enableShowAmounts,
-  })).resolves.toBe(true);
+  it('should run update successfuly even when there is no device registered', async () => {
+    expect.hasAssertions();
+
+    const deviceId = 'device1';
+    const walletId = 'wallet1';
+    const enablePush = true;
+    const enableShowAmounts = false;
+
+    await createWallet(mysql, walletId, XPUBKEY, AUTH_XPUBKEY, 5);
+
+    await updatePushDevice(mysql, {
+      walletId,
+      deviceId,
+      enablePush,
+      enableShowAmounts,
+    });
+
+    await expect(checkPushDevicesTable(mysql, 0)).resolves.toBe(true);
+  });
 });
 
 test('removeAllPushDeviceByDeviceId', async () => {
