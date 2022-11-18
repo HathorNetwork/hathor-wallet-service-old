@@ -13,18 +13,18 @@ import { getDbConnection } from '@src/utils';
 import { walletIdProxyHandler } from '@src/commons';
 import middy from '@middy/core';
 import cors from '@middy/http-cors';
-import Joi from 'joi';
+import Joi, { ValidationError } from 'joi';
 import { TxById } from '@src/types';
 
 const mysql = getDbConnection();
 
 class TxByIdInputValidator {
-  static #bodySchema = Joi.object({
+  static readonly bodySchema = Joi.object({
     txId: Joi.string().required(),
   });
 
-  static validate(payload): Joi.ValidationResult<TxById> {
-    return TxByIdInputValidator.#bodySchema.validate(payload, {
+  static validate(payload): { value: TxById, error: ValidationError } {
+    return TxByIdInputValidator.bodySchema.validate(payload, {
       abortEarly: false, // We want it to return all the errors not only the first
       convert: true, // We need to convert as parameters are sent on the QueryString
     });
