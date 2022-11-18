@@ -6,6 +6,7 @@ import {
   addToWalletTable,
   makeGatewayEventWithAuthorizer,
   cleanDatabase,
+  checkPushDevicesTable,
 } from '@tests/utils';
 import { APIGatewayProxyResult } from 'aws-lambda';
 
@@ -72,6 +73,15 @@ describe('statusCode:200', () => {
 
     expect(result.statusCode).toStrictEqual(200);
     expect(returnBody.success).toStrictEqual(true);
+    await expect(
+      checkPushDevicesTable(mysql, 1, {
+        walletId: 'my-wallet',
+        deviceId: 'device1',
+        pushProvider: 'android',
+        enablePush: false,
+        enableShowAmounts: false,
+      }),
+    ).resolves.toBe(true);
   });
 
   it('should have default value for enableShowAmounts', async () => {
@@ -99,6 +109,15 @@ describe('statusCode:200', () => {
 
     expect(result.statusCode).toStrictEqual(200);
     expect(returnBody.success).toStrictEqual(true);
+    await expect(
+      checkPushDevicesTable(mysql, 1, {
+        walletId: 'my-wallet',
+        deviceId: 'device1',
+        pushProvider: 'android',
+        enablePush: true,
+        enableShowAmounts: false,
+      }),
+    ).resolves.toBe(true);
   });
 
   it('should register even if alredy exists (idempotency proof)', async () => {
