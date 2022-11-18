@@ -2805,21 +2805,18 @@ export const getTransactionById = async (
 };
 
 /**
- * Get registered push device by deviceId given a wallet.
+ * Get registered push device by deviceId.
  *
  * @param mysql - Database connection
- * @param input - Input of push device register
- * @param walletId - The wallet linked to device
  * @param deviceId - The device to verify existence
  */
 export const getPushDevice = async (
   mysql: ServerlessMysql,
-  walletId: string,
   deviceId: string,
 ) : Promise<PushDevice|null> => {
   const [pushDevice] = await mysql.query(
-    'SELECT * FROM `push_devices` WHERE wallet_id = ? AND device_id = ?',
-    [walletId, deviceId],
+    'SELECT * FROM `push_devices` WHERE device_id = ?',
+    [deviceId],
   ) as Array<{wallet_id, device_id, push_provider, enable_push, enable_show_amounts}>;
 
   if (!pushDevice) {

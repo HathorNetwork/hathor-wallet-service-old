@@ -2378,7 +2378,7 @@ describe('getPushDevice', () => {
       enableShowAmounts,
     });
 
-    const result = await getPushDevice(mysql, walletId, deviceId);
+    const result = await getPushDevice(mysql, deviceId);
 
     const expected = {
       walletId,
@@ -2398,7 +2398,7 @@ describe('getPushDevice', () => {
 
     await createWallet(mysql, walletId, XPUBKEY, AUTH_XPUBKEY, 5);
 
-    const result = await getPushDevice(mysql, walletId, deviceId);
+    const result = await getPushDevice(mysql, deviceId);
 
     expect(result).toBeNull();
   });
@@ -2409,7 +2409,7 @@ describe('getPushDevice', () => {
     const walletId = 'wallet1';
     const deviceId = 'device1';
 
-    const result = await getPushDevice(mysql, walletId, deviceId);
+    const result = await getPushDevice(mysql, deviceId);
 
     expect(result).toBeNull();
   });
