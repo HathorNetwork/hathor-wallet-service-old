@@ -673,11 +673,13 @@ export interface Miner {
   count: number;
 }
 
-type iOSPushProvider = 'ios';
-type AndroidPushProvider = 'android';
+export enum PushProvider {
+  IOS = 'ios',
+  ANDROID = 'android'
+}
 
 export interface PushRegister {
-  pushProvider: iOSPushProvider | AndroidPushProvider,
+  pushProvider: PushProvider,
   deviceId: string,
   enablePush?: boolean,
   enableShowAmounts?: boolean
