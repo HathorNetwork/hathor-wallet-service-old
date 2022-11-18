@@ -2713,12 +2713,12 @@ export const removeAllPushDevicesByDeviceId = async (mysql: ServerlessMysql, dev
  */
 export const existsWallet = async (
   mysql: ServerlessMysql,
-  deviceId: string,
+  walletId: string,
 ) : Promise<boolean> => {
   const [{ count }] = await mysql.query(
     `
     SELECT COUNT(1) as \`count\` FROM \`wallet\` pd WHERE id= ?`,
-    [deviceId],
+    [walletId],
   ) as unknown as Array<{count}>;
 
   return count > 0;
