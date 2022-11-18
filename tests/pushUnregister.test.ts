@@ -21,7 +21,7 @@ afterAll(async () => {
   await closeDbConnection(mysql);
 });
 
-test('update push device given a wallet', async () => {
+test('unregister push device given a wallet', async () => {
   expect.hasAssertions();
 
   // register a wallet
