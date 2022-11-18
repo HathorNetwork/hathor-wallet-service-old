@@ -7,7 +7,7 @@
 
 import { APIGatewayProxyHandler } from 'aws-lambda';
 import { ApiError } from '@src/api/errors';
-import { closeDbAndGetError, warmupMiddleware } from '@src/api/utils';
+import { closeDbAndGetError } from '@src/api/utils';
 import { existsPushDevice, updatePushDevice } from '@src/db';
 import { getDbConnection } from '@src/utils';
 import { walletIdProxyHandler } from '@src/commons';
