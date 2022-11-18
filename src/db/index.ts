@@ -2751,7 +2751,6 @@ export const updatePushDevice = async (
 };
 
 /**
-<<<<<<< HEAD
  * Unregister push device for a given wallet.
  *
  * @param mysql - Database connection
@@ -2770,7 +2769,9 @@ export const unregisterPushDevice = async (
     WHERE device_id = ? AND wallet_id = ?`,
     [deviceId, walletId],
   );
-=======
+};
+
+/**
 * Verify the existence of a wallet by its ID.
 *
 * @param mysql - Database connection
@@ -2787,5 +2788,4 @@ export const existsWallet = async (
   ) as unknown as Array<{count}>;
 
   return count > 0;
->>>>>>> feat/add-push-update-function
 };

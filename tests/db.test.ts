@@ -67,12 +67,9 @@ import {
   registerPushDevice,
   existsPushDevice,
   updatePushDevice,
-<<<<<<< HEAD
   unregisterPushDevice,
-=======
   removeAllPushDevicesByDeviceId,
   existsWallet,
->>>>>>> feat/add-push-update-function
 } from '@src/db';
 import {
   beginTransaction,
