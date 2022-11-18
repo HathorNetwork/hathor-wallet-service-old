@@ -5,15 +5,13 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { APIGatewayProxyHandler } from 'aws-lambda';
-import { ApiError } from '@src/api/errors';
-import { closeDbAndGetError, warmupMiddleware } from '@src/api/utils';
-import { getDbConnection } from '@src/utils';
-import { walletIdProxyHandler } from '@src/commons';
-import middy from '@middy/core';
-import cors from '@middy/http-cors';
+import { Handler } from 'aws-lambda';
+import { closeDbConnection, getDbConnection } from '@src/utils';
 import Joi, { ValidationError } from 'joi';
 import { SendNotificationToDevice } from '@src/types';
+import { getPushDevice } from '@src/db';
+import createDefaultLogger from '@src/logger';
+import { PushNotificationUtils } from '@src/utils/pushnotification.utils';
 
 const mysql = getDbConnection();
 
@@ -38,7 +36,13 @@ class PushSendNotificationToDeviceInputValidator {
  *
  * This lambda is called by API Gateway on POST /push/register
  */
-export const send: APIGatewayProxyHandler = middy(walletIdProxyHandler(async (walletId, event) => {
+export const send: Handler<{ body: unknown }, { success: boolean, message?: string }> = async (event, context) => {
+  const logger = createDefaultLogger();
+  // Logs the request id on every line, so we can see all logs from a request
+  logger.defaultMeta = {
+    requestId: context.awsRequestId,
+  };
+
   const { value: body, error } = PushSendNotificationToDeviceInputValidator.validate(event.body);
 
   if (error) {
@@ -47,17 +51,33 @@ export const send: APIGatewayProxyHandler = middy(walletIdProxyHandler(async (wa
       path: err.path,
     }));
 
-    return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, { details });
+    closeDbConnection(mysql);
+    logger.error('Invalid payload.', { details });
+    return { success: false, message: `Failed due to invalid payload. See details: ${details}.` };
   }
 
-  // TODO: get provider from push_devices
+  const pushDevice = await getPushDevice(mysql, body.deviceId);
 
-  // TODO: call sendToFCM
+  if (!pushDevice) {
+    closeDbConnection(mysql);
+    logger.error('[ALERT] Device not found.', {
+      deviceId: body.deviceId,
+    });
+    return { success: false, message: 'Failed due to device not found.' };
+  }
+
+  if (pushDevice.pushProvider === 'android') {
+    PushNotificationUtils.sendToFcm(body);
+  } else {
+    closeDbConnection(mysql);
+    logger.error('[ALERT] Provider invalid.', {
+      deviceId: body.deviceId,
+      pushProvider: pushDevice.pushProvider,
+    });
+    return { success: false, message: 'Failed due to invalid provider.' };
+  }
 
   return {
-    statusCode: 200,
-    body: JSON.stringify({ success: true }),
+    success: true,
   };
-}))
-  .use(cors())
-  .use(warmupMiddleware());
+};
