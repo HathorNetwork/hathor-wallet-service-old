@@ -2388,32 +2388,85 @@ test('existsWallet', async () => {
   expect(exists).toBe(true);
 });
 
-test('unregisterPushDevice', async () => {
-  expect.hasAssertions();
+describe('unregisterPushDevice', () => {
+  it('should unregister device', async () => {
+    expect.hasAssertions();
 
-  const walletId = 'wallet1';
-  const deviceId = 'device1';
-  const pushProvider = 'android';
-  const enablePush = false;
-  const enableShowAmounts = false;
+    const walletId = 'wallet1';
+    const deviceId = 'device1';
+    const pushProvider = 'android';
+    const enablePush = false;
+    const enableShowAmounts = false;
 
-  await createWallet(mysql, walletId, XPUBKEY, AUTH_XPUBKEY, 5);
+    await createWallet(mysql, walletId, XPUBKEY, AUTH_XPUBKEY, 5);
 
-  await registerPushDevice(mysql, {
-    walletId,
-    deviceId,
-    pushProvider,
-    enablePush,
-    enableShowAmounts,
+    await registerPushDevice(mysql, {
+      walletId,
+      deviceId,
+      pushProvider,
+      enablePush,
+      enableShowAmounts,
+    });
+
+    await expect(checkPushDevicesTable(mysql, 1, {
+      walletId,
+      deviceId,
+      pushProvider,
+      enablePush,
+      enableShowAmounts,
+    })).resolves.toBe(true);
+
+    await unregisterPushDevice(mysql, deviceId, walletId);
+
+    await expect(checkPushDevicesTable(mysql, 0)).resolves.toBe(true);
   });
 
-  await expect(checkPushDevicesTable(mysql, 1, {
-    walletId,
-    deviceId,
-    pushProvider,
-    enablePush,
-    enableShowAmounts,
-  })).resolves.toBe(true);
+  it('should unregister the right device in face of many', async () => {
+    expect.hasAssertions();
 
-  await unregisterPushDevice(mysql, deviceId, walletId);
+    const pushProvider = 'android';
+    const enablePush = false;
+    const enableShowAmounts = false;
+    const deviceToUnregister = 'device1';
+    const deviceToRemain = 'device2';
+    const devicesToAdd = [deviceToUnregister, deviceToRemain];
+
+    const walletId = 'wallet1';
+    await createWallet(mysql, walletId, XPUBKEY, AUTH_XPUBKEY, 5);
+
+    devicesToAdd.forEach(async (eachDevice) => {
+      await registerPushDevice(mysql, {
+        walletId,
+        deviceId: eachDevice,
+        pushProvider,
+        enablePush,
+        enableShowAmounts,
+      });
+    });
+    await expect(checkPushDevicesTable(mysql, 2)).resolves.toBe(true);
+
+    await unregisterPushDevice(mysql, deviceToUnregister, walletId);
+
+    await expect(checkPushDevicesTable(mysql, 1)).resolves.toBe(true);
+    await expect(checkPushDevicesTable(mysql, 1, {
+      walletId,
+      deviceId: deviceToRemain,
+      pushProvider,
+      enablePush,
+      enableShowAmounts,
+    })).resolves.toBe(true);
+  });
+
+  it('should succeed even when no device exists', async () => {
+    expect.hasAssertions();
+
+    const deviceId = 'device-not-exists';
+    const walletId = 'wallet-not-exist';
+
+    await expect(checkPushDevicesTable(mysql, 0)).resolves.toBe(true);
+
+    await unregisterPushDevice(mysql, deviceId, walletId);
+
+    await expect(checkPushDevicesTable(mysql, 0)).resolves.toBe(true);
+  });
 });
