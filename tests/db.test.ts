@@ -65,9 +65,10 @@ import {
   getAffectedAddressTxCountFromTxList,
   incrementTokensTxCount,
   registerPushDevice,
-  removeAllPushDeviceByDeviceId,
   existsPushDevice,
   updatePushDevice,
+  removeAllPushDevicesByDeviceId,
+  existsWallet,
 } from '@src/db';
 import {
   beginTransaction,
@@ -2278,7 +2279,10 @@ test('removeAllPushDeviceByDeviceId', async () => {
   expect.hasAssertions();
 
   const walletId = 'wallet1';
-  const deviceId = 'device1';
+  // eslint-disable-next-line @typescript-eslint/naming-convention, camelcase
+  const deviceId_1 = 'device_1';
+  // eslint-disable-next-line @typescript-eslint/naming-convention, camelcase
+  const deviceId_2 = 'device_2';
   const pushProvider = 'android';
   const enablePush = true;
   const enableShowAmounts = false;
@@ -2288,14 +2292,37 @@ test('removeAllPushDeviceByDeviceId', async () => {
   await createWallet(mysql, walletId, XPUBKEY, AUTH_XPUBKEY, 5);
   await registerPushDevice(mysql, {
     walletId,
-    deviceId,
+    deviceId: deviceId_1,
     pushProvider,
     enablePush,
     enableShowAmounts,
   });
-  await expect(checkPushDevicesTable(mysql, 1)).resolves.toBe(true);
+  await registerPushDevice(mysql, {
+    walletId,
+    deviceId: deviceId_2,
+    pushProvider,
+    enablePush,
+    enableShowAmounts,
+  });
+  await expect(checkPushDevicesTable(mysql, 2)).resolves.toBe(true);
 
   // remove all push device registered
-  await removeAllPushDeviceByDeviceId(mysql, deviceId);
-  await expect(checkPushDevicesTable(mysql, 0)).resolves.toBe(true);
+  await removeAllPushDevicesByDeviceId(mysql, deviceId_1);
+  await expect(checkPushDevicesTable(mysql, 1)).resolves.toBe(true);
+});
+
+test('existsWallet', async () => {
+  expect.hasAssertions();
+
+  // wallet do not exists yet
+  const walletId = 'wallet1';
+  let exists = await existsWallet(mysql, walletId);
+
+  expect(exists).toBe(false);
+
+  // wallet exists
+  await createWallet(mysql, walletId, XPUBKEY, AUTH_XPUBKEY, 5);
+  exists = await existsWallet(mysql, walletId);
+
+  expect(exists).toBe(true);
 });
