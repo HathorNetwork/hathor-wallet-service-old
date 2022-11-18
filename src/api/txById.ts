@@ -18,13 +18,13 @@ import { TxById } from '@src/types';
 
 const mysql = getDbConnection();
 
-class TxByIdInputValidator {
+class TxByIdValidator {
   static readonly bodySchema = Joi.object({
     txId: Joi.string().required(),
   });
 
   static validate(payload): { value: TxById, error: ValidationError } {
-    return TxByIdInputValidator.bodySchema.validate(payload, {
+    return TxByIdValidator.bodySchema.validate(payload, {
       abortEarly: false, // We want it to return all the errors not only the first
       convert: true, // We need to convert as parameters are sent on the QueryString
     });
@@ -37,7 +37,7 @@ class TxByIdInputValidator {
  * This lambda is called by API Gateway on GET /wallet/getTxById
  */
 export const get: APIGatewayProxyHandler = middy(walletIdProxyHandler(async (walletId, event) => {
-  const { value: body, error } = TxByIdInputValidator.validate(event.body);
+  const { value: body, error } = TxByIdValidator.validate(event.body);
 
   if (error) {
     const details = error.details.map((err) => ({
