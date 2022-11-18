@@ -5,7 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/* eslint-disable camelcase */
 import { strict as assert } from 'assert';
 import { ServerlessMysql } from 'serverless-mysql';
 import { get } from 'lodash';
@@ -2670,7 +2669,6 @@ export const incrementTokensTxCount = async (
  * Verify the existence of a device registered for a given wallet.
  *
  * @param mysql - Database connection
- * @param input - Input of push device register
  * @param deviceId - The device to verify existence
  * @param walletId - The wallet linked to device
  */
@@ -2719,7 +2717,7 @@ export const registerPushDevice = async (
  * @param mysql - Database connection
  * @param deviceId - The device ID
  */
-export const removeAllPushDeviceByDeviceId = async (mysql: ServerlessMysql, deviceId: string): Promise<void> => {
+export const removeAllPushDevicesByDeviceId = async (mysql: ServerlessMysql, deviceId: string): Promise<void> => {
   await mysql.query(
     `
     DELETE FROM \`push_devices\`
@@ -2733,8 +2731,6 @@ export const removeAllPushDeviceByDeviceId = async (mysql: ServerlessMysql, devi
  *
  * @param mysql - Database connection
  * @param input - Input of push device register
- * @param deviceId - The device to verify existence
- * @param walletId - The wallet linked to device
  */
 export const updatePushDevice = async (
   mysql: ServerlessMysql,
@@ -2755,6 +2751,7 @@ export const updatePushDevice = async (
 };
 
 /**
+<<<<<<< HEAD
  * Unregister push device for a given wallet.
  *
  * @param mysql - Database connection
@@ -2773,4 +2770,22 @@ export const unregisterPushDevice = async (
     WHERE device_id = ? AND wallet_id = ?`,
     [deviceId, walletId],
   );
+=======
+* Verify the existence of a wallet by its ID.
+*
+* @param mysql - Database connection
+* @param walletId - The wallet linked to device
+*/
+export const existsWallet = async (
+  mysql: ServerlessMysql,
+  walletId: string,
+) : Promise<boolean> => {
+  const [{ count }] = await mysql.query(
+    `
+    SELECT COUNT(1) as \`count\` FROM \`wallet\` pd WHERE id= ?`,
+    [walletId],
+  ) as unknown as Array<{count}>;
+
+  return count > 0;
+>>>>>>> feat/add-push-update-function
 };

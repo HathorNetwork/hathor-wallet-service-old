@@ -7,24 +7,33 @@
 
 import { APIGatewayProxyHandler } from 'aws-lambda';
 import { ApiError } from '@src/api/errors';
-import { closeDbAndGetError, warmupMiddleware } from '@src/api/utils';
-import { removeAllPushDeviceByDeviceId, registerPushDevice } from '@src/db';
+import { closeDbAndGetError, warmupMiddleware, pushProviderRegexPattern } from '@src/api/utils';
+import { removeAllPushDevicesByDeviceId, registerPushDevice, existsWallet } from '@src/db';
 import { getDbConnection } from '@src/utils';
 import { walletIdProxyHandler } from '@src/commons';
 import middy from '@middy/core';
 import cors from '@middy/http-cors';
-import Joi from 'joi';
+import Joi, { ValidationError } from 'joi';
 import { PushRegister } from '@src/types';
-import _ from 'lodash';
 
 const mysql = getDbConnection();
 
-const bodySchema = Joi.object({
-  pushProvider: Joi.string().pattern(new RegExp('^(?:android|ios)$')).required(),
-  deviceId: Joi.string().max(256).required(),
-  enablePush: Joi.boolean().optional(),
-  enableShowAmounts: Joi.boolean().optional(),
-});
+class PushRegisterInputValidator {
+  static readonly bodySchema = Joi.object({
+    pushProvider: Joi.string().pattern(pushProviderRegexPattern()).required(),
+    deviceId: Joi.string().max(256).required(),
+    enablePush: Joi.boolean().optional(),
+    enableShowAmounts: Joi.boolean().optional(),
+  });
+
+  static validate(payload: unknown): { value: PushRegister, error: ValidationError } {
+    const { value, error } = PushRegisterInputValidator.bodySchema.validate(payload, {
+      abortEarly: false, // We want it to return all the errors not only the first
+      convert: true, // We need to convert as parameters are sent on the QueryString
+    });
+    return { value: { enablePush: false, enableShowAmounts: false, ...value }, error };
+  }
+}
 
 /*
  * Register a device to receive push notification.
@@ -32,10 +41,7 @@ const bodySchema = Joi.object({
  * This lambda is called by API Gateway on POST /push/register
  */
 export const register: APIGatewayProxyHandler = middy(walletIdProxyHandler(async (walletId, event) => {
-  const { value, error } = bodySchema.validate(event.body, {
-    abortEarly: false, // We want it to return all the errors not only the first
-    convert: true, // We need to convert as parameters are sent on the QueryString
-  });
+  const { value: body, error } = PushRegisterInputValidator.validate(event.body);
 
   if (error) {
     const details = error.details.map((err) => ({
@@ -45,9 +51,13 @@ export const register: APIGatewayProxyHandler = middy(walletIdProxyHandler(async
 
     return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, { details });
   }
-  const body: PushRegister = value;
 
-  await removeAllPushDeviceByDeviceId(mysql, body.deviceId);
+  const walletExists = await existsWallet(mysql, walletId);
+  if (!walletExists) {
+    return closeDbAndGetError(mysql, ApiError.WALLET_NOT_FOUND);
+  }
+
+  await removeAllPushDevicesByDeviceId(mysql, body.deviceId);
 
   await registerPushDevice(mysql, {
     walletId,
