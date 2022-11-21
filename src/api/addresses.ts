@@ -15,6 +15,7 @@ import {
   getWallet,
   getWalletAddresses,
 } from '@src/db';
+import { AddressInfo } from '@src/types';
 import { closeDbConnection, getDbConnection } from '@src/utils';
 import { walletIdProxyHandler } from '@src/commons';
 import middy from '@middy/core';
@@ -22,28 +23,32 @@ import cors from '@middy/http-cors';
 
 const mysql = getDbConnection();
 
-const querySchema = Joi.object({
-  filterAddresses: Joi.array()
-    .items(Joi.string().alphanum())
+const checkMineBodySchema = Joi.object({
+  addresses: Joi.array()
+    .items(Joi.string().regex(/^[A-HJ-NP-Za-km-z1-9]*$/).min(34).max(34))
     .min(1)
-    .optional(),
+    .max(255)
+    .required(),
 });
 
 /*
- * Get the addresses of a wallet
+ * Check if a list of addresses belong to the caller wallet
  *
- * This lambda is called by API Gateway on GET /addresses
+ * This lambda is called by API Gateway on POST /addresses/check_mine
  */
-export const get: APIGatewayProxyHandler = middy(walletIdProxyHandler(async (walletId, event) => {
+export const checkMine: APIGatewayProxyHandler = middy(walletIdProxyHandler(async (walletId, event) => {
   const status = await getWallet(mysql, walletId);
-  const multiQueryString = event.multiValueQueryStringParameters || {};
-  const filterAddresses = multiQueryString.filterAddresses;
+  const eventBody = (function parseBody(body) {
+    try {
+      return JSON.parse(body);
+    } catch (e) {
+      return null;
+    }
+  }(event.body));
 
-  const { value, error } = querySchema.validate({
-    filterAddresses,
-  }, {
-    abortEarly: false, // We want it to return all the errors not only the first
-    convert: true, // We need to convert as parameters are sent on the QueryString
+  const { value, error } = checkMineBodySchema.validate(eventBody, {
+    abortEarly: false,
+    convert: false,
   });
 
   if (error) {
@@ -55,6 +60,8 @@ export const get: APIGatewayProxyHandler = middy(walletIdProxyHandler(async (wal
     return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, { details });
   }
 
+  // If the wallet is not started or ready, we can skip the query on the address table
+
   if (!status) {
     return closeDbAndGetError(mysql, ApiError.WALLET_NOT_FOUND);
   }
@@ -62,7 +69,43 @@ export const get: APIGatewayProxyHandler = middy(walletIdProxyHandler(async (wal
     return closeDbAndGetError(mysql, ApiError.WALLET_NOT_READY);
   }
 
-  const addresses = await getWalletAddresses(mysql, walletId, value.filterAddresses);
+  const sentAddresses = value.addresses;
+  const dbWalletAddresses: AddressInfo[] = await getWalletAddresses(mysql, walletId, sentAddresses);
+  const walletAddresses: string[] = dbWalletAddresses.map(({ address }) => address);
+
+  await closeDbConnection(mysql);
+
+  const addressBelongMap = sentAddresses.reduce((acc: {string: boolean}, address: string) => {
+    acc[address] = walletAddresses.includes(address);
+
+    return acc;
+  }, {});
+
+  return {
+    statusCode: 200,
+    body: JSON.stringify({
+      success: true,
+      addresses: addressBelongMap,
+    }),
+  };
+})).use(cors());
+
+/*
+ * Get the addresses of a wallet
+ *
+ * This lambda is called by API Gateway on GET /addresses
+ */
+export const get: APIGatewayProxyHandler = middy(walletIdProxyHandler(async (walletId) => {
+  const status = await getWallet(mysql, walletId);
+
+  if (!status) {
+    return closeDbAndGetError(mysql, ApiError.WALLET_NOT_FOUND);
+  }
+  if (!status.readyAt) {
+    return closeDbAndGetError(mysql, ApiError.WALLET_NOT_READY);
+  }
+
+  const addresses = await getWalletAddresses(mysql, walletId);
 
   await closeDbConnection(mysql);
 
