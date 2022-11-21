@@ -38,6 +38,15 @@ const checkMineBodySchema = Joi.object({
  */
 export const checkMine: APIGatewayProxyHandler = middy(walletIdProxyHandler(async (walletId, event) => {
   const status = await getWallet(mysql, walletId);
+
+  // If the wallet is not started or ready, we can skip the query on the address table
+  if (!status) {
+    return closeDbAndGetError(mysql, ApiError.WALLET_NOT_FOUND);
+  }
+  if (!status.readyAt) {
+    return closeDbAndGetError(mysql, ApiError.WALLET_NOT_READY);
+  }
+
   const eventBody = (function parseBody(body) {
     try {
       return JSON.parse(body);
@@ -60,23 +69,14 @@ export const checkMine: APIGatewayProxyHandler = middy(walletIdProxyHandler(asyn
     return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, { details });
   }
 
-  // If the wallet is not started or ready, we can skip the query on the address table
-
-  if (!status) {
-    return closeDbAndGetError(mysql, ApiError.WALLET_NOT_FOUND);
-  }
-  if (!status.readyAt) {
-    return closeDbAndGetError(mysql, ApiError.WALLET_NOT_READY);
-  }
-
   const sentAddresses = value.addresses;
   const dbWalletAddresses: AddressInfo[] = await getWalletAddresses(mysql, walletId, sentAddresses);
-  const walletAddresses: string[] = dbWalletAddresses.map(({ address }) => address);
+  const walletAddresses: Set<string> = dbWalletAddresses.reduce((acc, { address }) => acc.add(address), new Set([]));
 
   await closeDbConnection(mysql);
 
   const addressBelongMap = sentAddresses.reduce((acc: {string: boolean}, address: string) => {
-    acc[address] = walletAddresses.includes(address);
+    acc[address] = walletAddresses.has(address);
 
     return acc;
   }, {});
