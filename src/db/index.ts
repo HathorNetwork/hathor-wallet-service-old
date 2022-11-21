@@ -38,6 +38,7 @@ import {
   AddressTotalBalance,
   IFilterTxOutput,
   Miner,
+  TxByIdResponse,
 } from '@src/types';
 import {
   getUnixTimestamp,
@@ -45,6 +46,7 @@ import {
   getAddressPath,
   xpubDeriveChild,
   getAddresses,
+  isTxVoided,
 } from '@src/utils';
 import {
   getWalletFromDbEntry,
@@ -2776,26 +2778,49 @@ export const unregisterPushDevice = async (
  *
  * @param mysql - Database connection
  * @param txId - A transaction ID
-
+ * @param walletId - The wallet related to the transaction
  * @returns A transaction if found, return null otherwise
  */
 export const getTransactionById = async (
   mysql: ServerlessMysql,
   txId: string,
-): Promise<Tx|null> => {
-  const result: DbSelectResult = await mysql.query(
-    `SELECT *
-       FROM \`transaction\`
-      WHERE \`tx_id\` = ?
-        AND \`voided\` = FALSE`,
-    [txId],
-  );
+  walletId: string,
+): Promise<TxByIdResponse[]> => {
+  const result = await mysql.query(`
+    SELECT
+      transaction.tx_id AS tx_id,
+      transaction.timestamp AS timestamp,
+      transaction.version AS version,
+      transaction.voided AS voided,
+      transaction.height AS height,
+      transaction.weight AS weight,
+      wallet_tx_history.balance AS balance,
+      wallet_tx_history.token_id AS token_id,
+      wallet_tx_history.wallet_id AS wallet_id
+    FROM wallet_tx_history
+    INNER JOIN transaction ON transaction.tx_id = wallet_tx_history.tx_id
+    WHERE transaction.tx_id = ?
+      AND transaction.voided = FALSE
+      AND wallet_tx_history.wallet_id = ?`,
+  [txId, walletId]) as Array<{tx_id, timestamp, version, voided, height, weight, balance, token_id, wallet_id}>;
 
-  if (!result.length) {
-    return null;
-  }
+  const txTokens = [];
+  result.forEach((eachTxToken) => {
+    const txToken = {
+      txId: eachTxToken.tx_id,
+      timestamp: eachTxToken.timestamp,
+      version: eachTxToken.version,
+      voided: !!eachTxToken.voided,
+      height: eachTxToken.height,
+      weight: eachTxToken.weight,
+      balance: eachTxToken.balance,
+      tokenId: eachTxToken.token_id,
+      walletId: eachTxToken.wallet_id,
+    } as TxByIdResponse;
+    txTokens.push(txToken);
+  });
 
-  return getTxFromDBResult(result);
+  return txTokens;
 };
 
 /**

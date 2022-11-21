@@ -695,6 +695,18 @@ export interface PushDelete {
   deviceId: string,
 }
 
-export interface TxById {
+export interface TxByIdRequest {
   txId: string,
+}
+
+export interface TxByIdResponse {
+  txId: string;
+  timestamp: number;
+  version: number;
+  voided: boolean;
+  height?: number | null;
+  weight: number;
+  balance: Balance;
+  tokenId: string;
+  walletId: string;
 }

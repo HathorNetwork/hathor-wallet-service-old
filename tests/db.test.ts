@@ -86,6 +86,7 @@ import {
   FullNodeVersionData,
   Tx,
   DbTxOutput,
+  TxByIdQueryResult,
 } from '@src/types';
 import {
   closeDbConnection,
@@ -2473,25 +2474,66 @@ describe('unregisterPushDevice', () => {
 });
 
 describe('getTransactionById', () => {
-  it('should return a transaction when there is a record', async () => {
+  it('should return a tx their tokens and balances', async () => {
     expect.hasAssertions();
 
-    await addOrUpdateTx(mysql, 'txId1', 1, 2, 3, 65.4321);
-    const tx = await getTransactionById(mysql, 'txId1');
+    const txId1 = 'txId1';
+    const walletId1 = 'wallet1';
+    const addr1 = 'addr1';
+    const token1 = 'token1';
+    const token2 = 'token2';
+    const timestamp1 = 10;
+    const height1 = 1;
+    const version1 = 3;
+    const weight1 = 65.4321;
 
-    expect(tx.txId).toStrictEqual('txId1');
-    expect(tx.height).toStrictEqual(1);
-    expect(tx.timestamp).toStrictEqual(2);
-    expect(tx.version).toStrictEqual(3);
-    expect(tx.weight).toStrictEqual(65.4321);
-    expect(tx.voided).toStrictEqual(false);
+    await createWallet(mysql, walletId1, XPUBKEY, AUTH_XPUBKEY, 5);
+    await addOrUpdateTx(mysql, txId1, height1, timestamp1, version1, weight1);
+
+    const entries = [
+      { address: addr1, txId: txId1, tokenId: token1, balance: 10, timestamp: timestamp1 },
+      { address: addr1, txId: txId1, tokenId: token2, balance: 7, timestamp: timestamp1 },
+    ];
+    await addToAddressTxHistoryTable(mysql, entries);
+    await initWalletTxHistory(mysql, walletId1, [addr1]);
+
+    const txTokens = await getTransactionById(mysql, txId1, walletId1);
+
+    const [firstToken] = txTokens.filter((eachToken) => eachToken.tokenId === 'token1');
+    const [secondToken] = txTokens.filter((eachToken) => eachToken.tokenId === 'token2');
+
+    expect(firstToken).toStrictEqual({
+      balance: 10,
+      height: height1,
+      timestamp: timestamp1,
+      tokenId: token1,
+      txId: txId1,
+      version: version1,
+      voided: false,
+      walletId: walletId1,
+      weight: weight1,
+    });
+    expect(secondToken).toStrictEqual({
+      balance: 7,
+      height: height1,
+      timestamp: timestamp1,
+      tokenId: token2,
+      txId: txId1,
+      version: version1,
+      voided: false,
+      walletId: walletId1,
+      weight: weight1,
+    });
   });
 
   it('should return null when there is no record', async () => {
     expect.hasAssertions();
 
-    const tx = await getTransactionById(mysql, 'txId1');
+    const txId = 'txId1';
+    const walletId = 'wallet1';
 
-    expect(tx).toBeNull();
+    const txTokens = await getTransactionById(mysql, txId, walletId);
+
+    expect(txTokens).toHaveLength(0);
   });
 });
