@@ -7,20 +7,30 @@
 
 import { APIGatewayProxyHandler } from 'aws-lambda';
 import { ApiError } from '@src/api/errors';
-import { closeDbAndGetError, warmupMiddleware } from '@src/api/utils';
+import { closeDbAndGetError } from '@src/api/utils';
 import { unregisterPushDevice } from '@src/db';
 import { getDbConnection } from '@src/utils';
 import { walletIdProxyHandler } from '@src/commons';
 import middy from '@middy/core';
 import cors from '@middy/http-cors';
-import Joi from 'joi';
+import Joi, { ValidationError } from 'joi';
 import { PushDelete } from '@src/types';
 
 const mysql = getDbConnection();
 
-const bodySchema = Joi.object({
-  deviceId: Joi.string().max(256).required(),
-});
+class PushUpdateUnregisterValidator {
+  static readonly bodySchema = Joi.object({
+    deviceId: Joi.string().max(256).required(),
+  });
+
+  static validate(payload: unknown): { value: PushDelete, error: ValidationError } {
+    const { value, error } = PushUpdateUnregisterValidator.bodySchema.validate(payload, {
+      abortEarly: false, // We want it to return all the errors not only the first
+      convert: true, // We need to convert as parameters are sent on the QueryString
+    });
+    return { value: { enablePush: false, enableShowAmounts: false, ...value }, error };
+  }
+}
 
 /*
  * Unregister a device to receive push notification.
@@ -28,10 +38,7 @@ const bodySchema = Joi.object({
  * This lambda is called by API Gateway on POST /push/unregister
  */
 export const unregister: APIGatewayProxyHandler = middy(walletIdProxyHandler(async (walletId, event) => {
-  const { value, error } = bodySchema.validate(event.body, {
-    abortEarly: false, // We want it to return all the errors not only the first
-    convert: true, // We need to convert as parameters are sent on the QueryString
-  });
+  const { value: body, error } = PushUpdateUnregisterValidator.validate(event.body);
 
   if (error) {
     const details = error.details.map((err) => ({
@@ -42,7 +49,6 @@ export const unregister: APIGatewayProxyHandler = middy(walletIdProxyHandler(asy
     return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, { details });
   }
 
-  const body: PushDelete = value;
   await unregisterPushDevice(mysql, body.deviceId, walletId);
 
   return {
@@ -50,5 +56,4 @@ export const unregister: APIGatewayProxyHandler = middy(walletIdProxyHandler(asy
     body: JSON.stringify({ success: true }),
   };
 }))
-  .use(cors())
-  .use(warmupMiddleware());
+  .use(cors());

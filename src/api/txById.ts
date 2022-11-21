@@ -13,18 +13,18 @@ import { getDbConnection } from '@src/utils';
 import { walletIdProxyHandler } from '@src/commons';
 import middy from '@middy/core';
 import cors from '@middy/http-cors';
-import Joi from 'joi';
-import { TxById } from '@src/types';
+import Joi, { ValidationError } from 'joi';
+import { TxByIdRequest } from '@src/types';
 
 const mysql = getDbConnection();
 
-class TxByIdInputValidator {
-  static #bodySchema = Joi.object({
+class TxByIdValidator {
+  static readonly bodySchema = Joi.object({
     txId: Joi.string().required(),
   });
 
-  static validate(payload): Joi.ValidationResult<TxById> {
-    return TxByIdInputValidator.#bodySchema.validate(payload, {
+  static validate(payload): { value: TxByIdRequest, error: ValidationError } {
+    return TxByIdValidator.bodySchema.validate(payload, {
       abortEarly: false, // We want it to return all the errors not only the first
       convert: true, // We need to convert as parameters are sent on the QueryString
     });
@@ -37,7 +37,7 @@ class TxByIdInputValidator {
  * This lambda is called by API Gateway on GET /wallet/getTxById
  */
 export const get: APIGatewayProxyHandler = middy(walletIdProxyHandler(async (walletId, event) => {
-  const { value: body, error } = TxByIdInputValidator.validate(event.body);
+  const { value: body, error } = TxByIdValidator.validate(event.body);
 
   if (error) {
     const details = error.details.map((err) => ({
@@ -48,14 +48,14 @@ export const get: APIGatewayProxyHandler = middy(walletIdProxyHandler(async (wal
     return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, { details });
   }
 
-  const tx = await getTransactionById(mysql, body.txId);
-  if (!tx) {
+  const txTokens = await getTransactionById(mysql, body.txId, walletId);
+  if (!txTokens.length) {
     return closeDbAndGetError(mysql, ApiError.TX_NOT_FOUND);
   }
 
   return {
     statusCode: 200,
-    body: JSON.stringify({ success: true, tx }),
+    body: JSON.stringify({ success: true, tx: txTokens }),
   };
 }))
   .use(cors())

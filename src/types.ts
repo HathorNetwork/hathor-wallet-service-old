@@ -673,11 +673,13 @@ export interface Miner {
   count: number;
 }
 
-type iOSPushProvider = 'ios';
-type AndroidPushProvider = 'android';
+export enum PushProvider {
+  IOS = 'ios',
+  ANDROID = 'android'
+}
 
 export interface PushRegister {
-  pushProvider: iOSPushProvider | AndroidPushProvider,
+  pushProvider: PushProvider,
   deviceId: string,
   enablePush?: boolean,
   enableShowAmounts?: boolean
@@ -693,8 +695,20 @@ export interface PushDelete {
   deviceId: string,
 }
 
-export interface TxById {
+export interface TxByIdRequest {
   txId: string,
+}
+
+export interface TxByIdResponse {
+  txId: string;
+  timestamp: number;
+  version: number;
+  voided: boolean;
+  height?: number | null;
+  weight: number;
+  balance: Balance;
+  tokenId: string;
+  walletId: string;
 }
 
 export interface SendNotificationToDevice {
@@ -707,7 +721,7 @@ export interface SendNotificationToDevice {
 export interface PushDevice {
   walletId: string,
   deviceId: string,
-  pushProvider: iOSPushProvider | AndroidPushProvider,
+  pushProvider: PushProvider,
   enablePush: boolean,
   enableShowAmounts: boolean
 }

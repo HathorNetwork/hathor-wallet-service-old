@@ -4,8 +4,6 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-
-/* eslint-disable camelcase */
 import { strict as assert } from 'assert';
 import { ServerlessMysql } from 'serverless-mysql';
 import { get } from 'lodash';
@@ -40,6 +38,7 @@ import {
   IFilterTxOutput,
   Miner,
   PushDevice,
+  TxByIdResponse,
 } from '@src/types';
 import {
   getUnixTimestamp,
@@ -47,6 +46,7 @@ import {
   getAddressPath,
   xpubDeriveChild,
   getAddresses,
+  isTxVoided,
 } from '@src/utils';
 import {
   getWalletFromDbEntry,
@@ -2672,7 +2672,6 @@ export const incrementTokensTxCount = async (
  * Verify the existence of a device registered for a given wallet.
  *
  * @param mysql - Database connection
- * @param input - Input of push device register
  * @param deviceId - The device to verify existence
  * @param walletId - The wallet linked to device
  */
@@ -2721,7 +2720,7 @@ export const registerPushDevice = async (
  * @param mysql - Database connection
  * @param deviceId - The device ID
  */
-export const removeAllPushDeviceByDeviceId = async (mysql: ServerlessMysql, deviceId: string): Promise<void> => {
+export const removeAllPushDevicesByDeviceId = async (mysql: ServerlessMysql, deviceId: string): Promise<void> => {
   await mysql.query(
     `
     DELETE FROM \`push_devices\`
@@ -2735,8 +2734,6 @@ export const removeAllPushDeviceByDeviceId = async (mysql: ServerlessMysql, devi
  *
  * @param mysql - Database connection
  * @param input - Input of push device register
- * @param deviceId - The device to verify existence
- * @param walletId - The wallet linked to device
  */
 export const updatePushDevice = async (
   mysql: ServerlessMysql,
@@ -2760,7 +2757,6 @@ export const updatePushDevice = async (
  * Unregister push device for a given wallet.
  *
  * @param mysql - Database connection
- * @param input - Input of push device register
  * @param deviceId - The device to unregister
  * @param walletId - The wallet linked to device
  */
@@ -2782,26 +2778,68 @@ export const unregisterPushDevice = async (
  *
  * @param mysql - Database connection
  * @param txId - A transaction ID
-
+ * @param walletId - The wallet related to the transaction
  * @returns A transaction if found, return null otherwise
  */
 export const getTransactionById = async (
   mysql: ServerlessMysql,
   txId: string,
-): Promise<Tx|null> => {
-  const result: DbSelectResult = await mysql.query(
-    `SELECT *
-       FROM \`transaction\`
-      WHERE \`tx_id\` = ?
-        AND \`voided\` = FALSE`,
-    [txId],
-  );
+  walletId: string,
+): Promise<TxByIdResponse[]> => {
+  const result = await mysql.query(`
+    SELECT
+      transaction.tx_id AS tx_id,
+      transaction.timestamp AS timestamp,
+      transaction.version AS version,
+      transaction.voided AS voided,
+      transaction.height AS height,
+      transaction.weight AS weight,
+      wallet_tx_history.balance AS balance,
+      wallet_tx_history.token_id AS token_id,
+      wallet_tx_history.wallet_id AS wallet_id
+    FROM wallet_tx_history
+    INNER JOIN transaction ON transaction.tx_id = wallet_tx_history.tx_id
+    WHERE transaction.tx_id = ?
+      AND transaction.voided = FALSE
+      AND wallet_tx_history.wallet_id = ?`,
+  [txId, walletId]) as Array<{tx_id, timestamp, version, voided, height, weight, balance, token_id, wallet_id}>;
 
-  if (!result.length) {
-    return null;
-  }
+  const txTokens = [];
+  result.forEach((eachTxToken) => {
+    const txToken = {
+      txId: eachTxToken.tx_id,
+      timestamp: eachTxToken.timestamp,
+      version: eachTxToken.version,
+      voided: !!eachTxToken.voided,
+      height: eachTxToken.height,
+      weight: eachTxToken.weight,
+      balance: eachTxToken.balance,
+      tokenId: eachTxToken.token_id,
+      walletId: eachTxToken.wallet_id,
+    } as TxByIdResponse;
+    txTokens.push(txToken);
+  });
 
-  return getTxFromDBResult(result);
+  return txTokens;
+};
+
+/**
+* Verify the existence of a wallet by its ID.
+*
+* @param mysql - Database connection
+* @param walletId - The wallet linked to device
+*/
+export const existsWallet = async (
+  mysql: ServerlessMysql,
+  walletId: string,
+) : Promise<boolean> => {
+  const [{ count }] = await mysql.query(
+    `
+    SELECT COUNT(1) as \`count\` FROM \`wallet\` pd WHERE id= ?`,
+    [walletId],
+  ) as unknown as Array<{count}>;
+
+  return count > 0;
 };
 
 /**

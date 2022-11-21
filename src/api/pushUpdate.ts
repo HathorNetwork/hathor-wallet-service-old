@@ -7,22 +7,32 @@
 
 import { APIGatewayProxyHandler } from 'aws-lambda';
 import { ApiError } from '@src/api/errors';
-import { closeDbAndGetError, warmupMiddleware } from '@src/api/utils';
+import { closeDbAndGetError } from '@src/api/utils';
 import { existsPushDevice, updatePushDevice } from '@src/db';
 import { getDbConnection } from '@src/utils';
 import { walletIdProxyHandler } from '@src/commons';
 import middy from '@middy/core';
 import cors from '@middy/http-cors';
-import Joi from 'joi';
+import Joi, { ValidationError } from 'joi';
 import { PushUpdate } from '@src/types';
 
 const mysql = getDbConnection();
 
-const bodySchema = Joi.object({
-  deviceId: Joi.string().max(256).required(),
-  enablePush: Joi.boolean().optional(),
-  enableShowAmounts: Joi.boolean().optional(),
-});
+class PushUpdateInputValidator {
+  static readonly bodySchema = Joi.object({
+    deviceId: Joi.string().max(256).required(),
+    enablePush: Joi.boolean().optional(),
+    enableShowAmounts: Joi.boolean().optional(),
+  });
+
+  static validate(payload: unknown): { value: PushUpdate, error: ValidationError } {
+    const { value, error } = PushUpdateInputValidator.bodySchema.validate(payload, {
+      abortEarly: false, // We want it to return all the errors not only the first
+      convert: true, // We need to convert as parameters are sent on the QueryString
+    });
+    return { value: { enablePush: false, enableShowAmounts: false, ...value }, error };
+  }
+}
 
 /*
  * Update a device to receive push notification.
@@ -30,10 +40,7 @@ const bodySchema = Joi.object({
  * This lambda is called by API Gateway on POST /push/register
  */
 export const update: APIGatewayProxyHandler = middy(walletIdProxyHandler(async (walletId, event) => {
-  const { value, error } = bodySchema.validate(event.body, {
-    abortEarly: false, // We want it to return all the errors not only the first
-    convert: true, // We need to convert as parameters are sent on the QueryString
-  });
+  const { value: body, error } = PushUpdateInputValidator.validate(event.body);
 
   if (error) {
     const details = error.details.map((err) => ({
@@ -43,8 +50,6 @@ export const update: APIGatewayProxyHandler = middy(walletIdProxyHandler(async (
 
     return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, { details });
   }
-
-  const body: PushUpdate = value;
 
   const deviceExists = await existsPushDevice(mysql, body.deviceId, walletId);
   if (!deviceExists) {
@@ -63,5 +68,4 @@ export const update: APIGatewayProxyHandler = middy(walletIdProxyHandler(async (
     body: JSON.stringify({ success: true }),
   };
 }))
-  .use(cors())
-  .use(warmupMiddleware());
+  .use(cors());
