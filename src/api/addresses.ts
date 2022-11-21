@@ -23,7 +23,7 @@ import cors from '@middy/http-cors';
 const mysql = getDbConnection();
 
 const querySchema = Joi.object({
-  addresses: Joi.array()
+  filterAddresses: Joi.array()
     .items(Joi.string().alphanum())
     .min(1)
     .optional(),
@@ -40,7 +40,7 @@ export const get: APIGatewayProxyHandler = middy(walletIdProxyHandler(async (wal
   const filterAddresses = multiQueryString.filterAddresses;
 
   const { value, error } = querySchema.validate({
-    addresses: filterAddresses,
+    filterAddresses,
   }, {
     abortEarly: false, // We want it to return all the errors not only the first
     convert: true, // We need to convert as parameters are sent on the QueryString
@@ -62,7 +62,7 @@ export const get: APIGatewayProxyHandler = middy(walletIdProxyHandler(async (wal
     return closeDbAndGetError(mysql, ApiError.WALLET_NOT_READY);
   }
 
-  const addresses = await getWalletAddresses(mysql, walletId, value.addresses);
+  const addresses = await getWalletAddresses(mysql, walletId, value.filterAddresses);
 
   await closeDbConnection(mysql);
 
