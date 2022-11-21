@@ -14,7 +14,7 @@ import { walletIdProxyHandler } from '@src/commons';
 import middy from '@middy/core';
 import cors from '@middy/http-cors';
 import Joi, { ValidationError } from 'joi';
-import { TxById } from '@src/types';
+import { TxByIdRequest } from '@src/types';
 
 const mysql = getDbConnection();
 
@@ -23,7 +23,7 @@ class TxByIdValidator {
     txId: Joi.string().required(),
   });
 
-  static validate(payload): { value: TxById, error: ValidationError } {
+  static validate(payload): { value: TxByIdRequest, error: ValidationError } {
     return TxByIdValidator.bodySchema.validate(payload, {
       abortEarly: false, // We want it to return all the errors not only the first
       convert: true, // We need to convert as parameters are sent on the QueryString
@@ -48,14 +48,14 @@ export const get: APIGatewayProxyHandler = middy(walletIdProxyHandler(async (wal
     return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, { details });
   }
 
-  const tx = await getTransactionById(mysql, body.txId);
-  if (!tx) {
+  const txTokens = await getTransactionById(mysql, body.txId, walletId);
+  if (!txTokens.length) {
     return closeDbAndGetError(mysql, ApiError.TX_NOT_FOUND);
   }
 
   return {
     statusCode: 200,
-    body: JSON.stringify({ success: true, tx }),
+    body: JSON.stringify({ success: true, tx: txTokens }),
   };
 }))
   .use(cors())

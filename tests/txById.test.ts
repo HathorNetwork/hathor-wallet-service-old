@@ -2,13 +2,15 @@ import {
   get,
 } from '@src/api/txById';
 import { closeDbConnection, getDbConnection } from '@src/utils';
-import { addOrUpdateTx } from '@src/db';
+import { addOrUpdateTx, createWallet, initWalletTxHistory } from '@src/db';
 import {
   makeGatewayEventWithAuthorizer,
   cleanDatabase,
+  XPUBKEY,
+  AUTH_XPUBKEY,
+  addToAddressTxHistoryTable,
 } from '@tests/utils';
 import { APIGatewayProxyResult } from 'aws-lambda';
-import exp from 'constants';
 
 const mysql = getDbConnection();
 
@@ -22,14 +24,28 @@ afterAll(async () => {
 
 test('get a transaction given its ID', async () => {
   expect.hasAssertions();
-  const txId = 'tx1';
+  const txId1 = 'txId1';
+  const walletId1 = 'wallet1';
+  const addr1 = 'addr1';
+  const token1 = 'token1';
+  const token2 = 'token2';
+  const timestamp1 = 10;
+  const height1 = 1;
+  const version1 = 3;
+  const weight1 = 65.4321;
 
-  await addOrUpdateTx(mysql, txId, 1, 2, 3, 65.4321);
-  // register a wallet
-  const walletId = 'wallet1';
+  await createWallet(mysql, walletId1, XPUBKEY, AUTH_XPUBKEY, 5);
+  await addOrUpdateTx(mysql, txId1, height1, timestamp1, version1, weight1);
 
-  const event = makeGatewayEventWithAuthorizer(walletId, null, {
-    txId,
+  const entries = [
+    { address: addr1, txId: txId1, tokenId: token1, balance: 10, timestamp: timestamp1 },
+    { address: addr1, txId: txId1, tokenId: token2, balance: 7, timestamp: timestamp1 },
+  ];
+  await addToAddressTxHistoryTable(mysql, entries);
+  await initWalletTxHistory(mysql, walletId1, [addr1]);
+
+  const event = makeGatewayEventWithAuthorizer(walletId1, null, {
+    txId: txId1,
   });
 
   const result = await get(event, null, null) as APIGatewayProxyResult;
@@ -37,14 +53,7 @@ test('get a transaction given its ID', async () => {
 
   expect(result.statusCode).toStrictEqual(200);
   expect(returnBody.success).toStrictEqual(true);
-  expect(returnBody.tx).toStrictEqual({
-    txId,
-    height: 1,
-    timestamp: 2,
-    version: 3,
-    voided: false,
-    weight: 65.4321,
-  });
+  expect(returnBody.tx).toHaveLength(2);
 });
 
 describe('statusCode:400', () => {

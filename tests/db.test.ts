@@ -86,7 +86,6 @@ import {
   FullNodeVersionData,
   Tx,
   DbTxOutput,
-  TxByIdQueryResult,
 } from '@src/types';
 import {
   closeDbConnection,
