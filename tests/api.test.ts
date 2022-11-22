@@ -1,6 +1,6 @@
 import { APIGatewayProxyHandler, APIGatewayProxyResult } from 'aws-lambda';
 
-import { get as addressesGet } from '@src/api/addresses';
+import { get as addressesGet, checkMine } from '@src/api/addresses';
 import { get as newAddressesGet } from '@src/api/newAddresses';
 import { get as balancesGet } from '@src/api/balances';
 import { get as txHistoryGet } from '@src/api/txhistory';
@@ -151,6 +151,84 @@ test('GET /addresses', async () => {
   expect(returnBody.addresses).toHaveLength(2);
   expect(returnBody.addresses).toContainEqual({ address: ADDRESSES[0], index: 0, transactions: 0 });
   expect(returnBody.addresses).toContainEqual({ address: ADDRESSES[1], index: 1, transactions: 0 });
+});
+
+test('GET /addresses/check_mine', async () => {
+  expect.hasAssertions();
+
+  await addToWalletTable(mysql, [{
+    id: 'my-wallet',
+    xpubkey: 'xpubkey',
+    authXpubkey: 'auth_xpubkey',
+    status: 'ready',
+    maxGap: 5,
+    createdAt: 10000,
+    readyAt: 10001,
+  }]);
+
+  await addToAddressTable(mysql, [
+    { address: ADDRESSES[0], index: 0, walletId: 'my-wallet', transactions: 0 },
+    { address: ADDRESSES[1], index: 1, walletId: 'my-wallet', transactions: 0 },
+    { address: ADDRESSES[2], index: 3, walletId: 'my-wallet', transactions: 0 },
+    { address: ADDRESSES[3], index: 3, walletId: 'my-wallet', transactions: 0 },
+  ]);
+
+  // wallet not ready
+  await _testWalletNotReady(checkMine);
+
+  await _testCORSHeaders(checkMine, 'my-wallet', {});
+
+  // success case
+
+  let event = makeGatewayEventWithAuthorizer('my-wallet', {}, JSON.stringify({
+    addresses: [
+      ADDRESSES[0],
+      ADDRESSES[1],
+      ADDRESSES[8],
+    ],
+  }));
+  let result = await checkMine(event, null, null) as APIGatewayProxyResult;
+  let returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(true);
+  expect(Object.keys(returnBody.addresses)).toHaveLength(3);
+  expect(returnBody.addresses).toStrictEqual({
+    [ADDRESSES[0]]: true,
+    [ADDRESSES[1]]: true,
+    [ADDRESSES[8]]: false,
+  });
+
+  // validation error, addresses shouldn't be empty
+
+  event = makeGatewayEventWithAuthorizer('my-wallet', {}, JSON.stringify({
+    addresses: [],
+  }));
+  result = await checkMine(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+  expect(returnBody.details).toHaveLength(1);
+  expect(returnBody.details[0].message).toStrictEqual('"addresses" must contain at least 1 items');
+
+  // validation error, invalid address
+
+  event = makeGatewayEventWithAuthorizer('my-wallet', {}, JSON.stringify({
+    addresses: [
+      'invalid-address',
+    ],
+  }));
+  result = await checkMine(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+  expect(returnBody.details).toHaveLength(2);
+  expect(returnBody.details[0].message).toStrictEqual('"addresses[0]" with value "invalid-address" fails to match the required pattern: /^[A-HJ-NP-Za-km-z1-9]*$/');
+  expect(returnBody.details[1].message).toStrictEqual('"addresses[0]" length must be at least 34 characters long');
 });
 
 test('GET /addresses/new', async () => {
