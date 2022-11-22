@@ -173,6 +173,9 @@ test('GET /addresses/check_mine', async () => {
     { address: ADDRESSES[3], index: 3, walletId: 'my-wallet', transactions: 0 },
   ]);
 
+  // missing wallet
+  await _testMissingWallet(newAddressesGet, 'some-wallet');
+
   // wallet not ready
   await _testWalletNotReady(checkMine);
 
