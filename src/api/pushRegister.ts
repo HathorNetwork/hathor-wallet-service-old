@@ -22,16 +22,15 @@ class PushRegisterInputValidator {
   static readonly bodySchema = Joi.object({
     pushProvider: Joi.string().pattern(pushProviderRegexPattern()).required(),
     deviceId: Joi.string().max(256).required(),
-    enablePush: Joi.boolean().optional(),
-    enableShowAmounts: Joi.boolean().optional(),
+    enablePush: Joi.boolean().default(false).optional(),
+    enableShowAmounts: Joi.boolean().default(false).optional(),
   });
 
   static validate(payload: unknown): { value: PushRegister, error: ValidationError } {
-    const { value, error } = PushRegisterInputValidator.bodySchema.validate(payload, {
+    return PushRegisterInputValidator.bodySchema.validate(payload, {
       abortEarly: false, // We want it to return all the errors not only the first
       convert: true, // We need to convert as parameters are sent on the QueryString
-    });
-    return { value: { enablePush: false, enableShowAmounts: false, ...value }, error };
+    }) as { value: PushRegister, error: ValidationError };
   }
 }
 
