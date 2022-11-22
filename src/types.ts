@@ -715,7 +715,7 @@ export interface SendNotificationToDevice {
   deviceId: string,
   title: string,
   description: string,
-  metadata: Record<string, unknown>,
+  metadata: Record<string, string>,
 }
 
 export interface PushDevice {
