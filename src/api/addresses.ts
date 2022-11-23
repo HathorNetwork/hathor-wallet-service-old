@@ -43,6 +43,7 @@ export const checkMine: APIGatewayProxyHandler = middy(walletIdProxyHandler(asyn
   if (!status) {
     return closeDbAndGetError(mysql, ApiError.WALLET_NOT_FOUND);
   }
+
   if (!status.readyAt) {
     return closeDbAndGetError(mysql, ApiError.WALLET_NOT_READY);
   }

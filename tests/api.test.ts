@@ -202,6 +202,18 @@ test('GET /addresses/check_mine', async () => {
     [ADDRESSES[8]]: false,
   });
 
+  // validation error, invalid json
+
+  event = makeGatewayEventWithAuthorizer('my-wallet', {}, 'invalid-json');
+  result = await checkMine(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.INVALID_PAYLOAD);
+  expect(returnBody.details).toHaveLength(1);
+  expect(returnBody.details[0].message).toStrictEqual('"value" must be of type object');
+
   // validation error, addresses shouldn't be empty
 
   event = makeGatewayEventWithAuthorizer('my-wallet', {}, JSON.stringify({
