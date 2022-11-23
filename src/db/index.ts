@@ -2699,9 +2699,12 @@ export const registerPushDevice = async (
 export const removeAllPushDevicesByDeviceId = async (mysql: ServerlessMysql, deviceId: string): Promise<void> => {
   await mysql.query(
     `
-    DELETE FROM \`push_devices\`
-    WHERE device_id = ?
-    `, [deviceId],
+    DELETE
+      FROM \`push_devices\`
+    WHERE
+      device_id = ?
+    `,
+    [deviceId],
   );
 };
 
@@ -2715,11 +2718,13 @@ export const existsWallet = async (
   mysql: ServerlessMysql,
   walletId: string,
 ) : Promise<boolean> => {
-  const [{ count }] = await mysql.query(
+  const [{ count }] = (await mysql.query(
     `
-    SELECT COUNT(1) as \`count\` FROM \`wallet\` pd WHERE id= ?`,
+    SELECT COUNT(1) as \`count\`
+      FROM \`wallet\` pd
+    WHERE id= ?`,
     [walletId],
-  ) as unknown as Array<{count}>;
+  )) as unknown as Array<{ count }>;
 
   return count > 0;
 };
