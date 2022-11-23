@@ -2765,7 +2765,8 @@ export const unregisterPushDevice = async (
   await mysql.query(
     `
     DELETE FROM \`push_devices\`
-    WHERE device_id = ? AND wallet_id = ?`,
+    WHERE device_id = ?
+      AND wallet_id = ?`,
     [deviceId, walletId],
   );
 };
