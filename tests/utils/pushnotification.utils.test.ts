@@ -7,6 +7,7 @@ jest.mock('firebase-admin', () => {
   const mockMulticast = jest.fn(() => Promise.resolve({ failureCount: 0 }));
   const mockMessaging = { sendMulticast: mockMulticast };
   return {
+    credential: { cert: jest.fn() },
     messaging: jest.fn(() => mockMessaging),
     initializeApp: jest.fn(),
   };
@@ -85,19 +86,19 @@ describe('pushnotification.utils', () => {
 
     it('should return fail when multicast has failure', async () => {
       expect.hasAssertions();
+
       spyOnSendMulticast.mockImplementation(() => Promise.resolve({
-        failureCount: 1,
-        successCount: 0,
         responses: [
           {
             success: false,
-            messageId: undefined,
             error: {
-              code: 'messaging/unspecified',
-              message: 'unspecified error',
+              code: 'messaging/invalid-argument',
+              message: 'The registration token is not a valid FCM registration token',
             },
           },
         ],
+        successCount: 0,
+        failureCount: 1,
       } as BatchResponse));
 
       const deviceId = 'device1';
@@ -119,18 +120,17 @@ describe('pushnotification.utils', () => {
     it('should return fail with invalid-device-id when multicast fails with not-registered', async () => {
       expect.hasAssertions();
       spyOnSendMulticast.mockImplementation(() => Promise.resolve({
-        failureCount: 1,
-        successCount: 0,
         responses: [
           {
             success: false,
-            messageId: undefined,
             error: {
-              code: 'messaging/unregistered',
-              message: 'unregistered',
+              code: 'messaging/registration-token-not-registered',
+              message: 'Requested entity was not found.',
             },
           },
         ],
+        successCount: 0,
+        failureCount: 1,
       } as BatchResponse));
 
       const deviceId = 'device1';
