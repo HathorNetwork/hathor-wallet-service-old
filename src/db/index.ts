@@ -2879,7 +2879,10 @@ export const getPushDevice = async (
   deviceId: string,
 ) : Promise<PushDevice|null> => {
   const [pushDevice] = await mysql.query(
-    'SELECT * FROM `push_devices` WHERE device_id = ?',
+    `
+    SELECT *
+      FROM \`push_devices\`
+    WHERE device_id = ?`,
     [deviceId],
   ) as Array<{wallet_id, device_id, push_provider, enable_push, enable_show_amounts}>;
 
