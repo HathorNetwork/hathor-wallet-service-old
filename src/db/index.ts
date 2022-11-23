@@ -38,6 +38,7 @@ import {
   IFilterTxOutput,
   Miner,
   TxByIdResponse,
+  TxByIdToken,
 } from '@src/types';
 import {
   getUnixTimestamp,
@@ -2778,13 +2779,13 @@ export const unregisterPushDevice = async (
  * @param mysql - Database connection
  * @param txId - A transaction ID
  * @param walletId - The wallet related to the transaction
- * @returns A transaction if found, return null otherwise
+ * @returns A a list of tokens for a transaction if found, return an empty list otherwise
  */
 export const getTransactionById = async (
   mysql: ServerlessMysql,
   txId: string,
   walletId: string,
-): Promise<TxByIdResponse[]> => {
+): Promise<TxByIdToken[]> => {
   const result = await mysql.query(`
     SELECT
       transaction.tx_id AS tx_id,
@@ -2795,13 +2796,15 @@ export const getTransactionById = async (
       transaction.weight AS weight,
       wallet_tx_history.balance AS balance,
       wallet_tx_history.token_id AS token_id,
-      wallet_tx_history.wallet_id AS wallet_id
+      token.name AS name,
+      token.symbol AS symbol
     FROM wallet_tx_history
     INNER JOIN transaction ON transaction.tx_id = wallet_tx_history.tx_id
+    INNER JOIN token ON wallet_tx_history.token_id = token.id
     WHERE transaction.tx_id = ?
       AND transaction.voided = FALSE
       AND wallet_tx_history.wallet_id = ?`,
-  [txId, walletId]) as Array<{tx_id, timestamp, version, voided, height, weight, balance, token_id, wallet_id}>;
+  [txId, walletId]) as Array<{tx_id, timestamp, version, voided, height, weight, balance, token_id, name, symbol }>;
 
   const txTokens = [];
   result.forEach((eachTxToken) => {
@@ -2814,8 +2817,9 @@ export const getTransactionById = async (
       weight: eachTxToken.weight,
       balance: eachTxToken.balance,
       tokenId: eachTxToken.token_id,
-      walletId: eachTxToken.wallet_id,
-    } as TxByIdResponse;
+      tokenName: eachTxToken.name,
+      tokenSymbol: eachTxToken.symbol,
+    } as TxByIdToken;
     txTokens.push(txToken);
   });
 
