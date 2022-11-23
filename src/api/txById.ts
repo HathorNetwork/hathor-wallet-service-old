@@ -27,7 +27,7 @@ class TxByIdValidator {
     return TxByIdValidator.bodySchema.validate(payload, {
       abortEarly: false, // We want it to return all the errors not only the first
       convert: true, // We need to convert as parameters are sent on the QueryString
-    });
+    }) as { value: TxByIdRequest, error: ValidationError };
   }
 }
 
@@ -55,7 +55,7 @@ export const get: APIGatewayProxyHandler = middy(walletIdProxyHandler(async (wal
 
   return {
     statusCode: 200,
-    body: JSON.stringify({ success: true, tx: txTokens }),
+    body: JSON.stringify({ success: true, txTokens }),
   };
 }))
   .use(cors())
