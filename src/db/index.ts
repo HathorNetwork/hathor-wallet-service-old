@@ -2682,7 +2682,10 @@ export const existsPushDevice = async (
 ) : Promise<boolean> => {
   const [{ count }] = await mysql.query(
     `
-    SELECT COUNT(1) as \`count\` FROM \`push_devices\` pd WHERE device_id = ? AND wallet_id = ?`,
+    SELECT COUNT(1) as \`count\`
+      FROM \`push_devices\` pd
+    WHERE device_id = ?
+      AND wallet_id = ?`,
     [deviceId, walletId],
   ) as unknown as Array<{count}>;
 
@@ -2723,9 +2726,12 @@ export const registerPushDevice = async (
 export const removeAllPushDevicesByDeviceId = async (mysql: ServerlessMysql, deviceId: string): Promise<void> => {
   await mysql.query(
     `
-    DELETE FROM \`push_devices\`
-    WHERE device_id = ?
-    `, [deviceId],
+    DELETE
+      FROM \`push_devices\`
+    WHERE
+      device_id = ?
+    `,
+    [deviceId],
   );
 };
 
@@ -2747,8 +2753,10 @@ export const updatePushDevice = async (
   await mysql.query(
     `
     UPDATE \`push_devices\`
-    SET enable_push = ?, enable_show_amounts = ?
-    WHERE device_id = ? AND wallet_id = ?`,
+      SET enable_push = ?,
+      enable_show_amounts = ?
+    WHERE device_id = ?
+      AND wallet_id = ?`,
     [input.enablePush, input.enableShowAmounts, input.deviceId, input.walletId],
   );
 };
@@ -2767,8 +2775,10 @@ export const unregisterPushDevice = async (
 ) : Promise<void> => {
   await mysql.query(
     `
-    DELETE FROM \`push_devices\`
-    WHERE device_id = ? AND wallet_id = ?`,
+    DELETE
+      FROM \`push_devices\`
+    WHERE device_id = ?
+      AND wallet_id = ?`,
     [deviceId, walletId],
   );
 };
@@ -2836,13 +2846,13 @@ export const existsWallet = async (
   mysql: ServerlessMysql,
   walletId: string,
 ) : Promise<boolean> => {
-  const [{ count }] = await mysql.query(
+  const [{ count }] = (await mysql.query(
     `
     SELECT COUNT(1) as \`count\`
       FROM \`wallet\` pd
     WHERE id= ?`,
     [walletId],
-  ) as unknown as Array<{count}>;
+  )) as unknown as Array<{ count }>;
 
   return count > 0;
 };
