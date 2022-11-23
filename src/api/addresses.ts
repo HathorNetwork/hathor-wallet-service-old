@@ -25,6 +25,7 @@ const mysql = getDbConnection();
 
 const checkMineBodySchema = Joi.object({
   addresses: Joi.array()
+    // Validate that addresses are a base58 string and exactly 34 in length
     .items(Joi.string().regex(/^[A-HJ-NP-Za-km-z1-9]*$/).min(34).max(34))
     .min(1)
     .max(512) // max number of addresses in a tx (256 outputs and 256 inputs)
