@@ -2281,13 +2281,14 @@ describe('updatePushDevice', () => {
     expect.hasAssertions();
 
     const deviceToUpdate = 'device1';
+    const deviceToKeep = 'device2';
     const walletId = 'wallet1';
     const pushProvider = 'android';
     const enableShowAmounts = false;
 
     await createWallet(mysql, walletId, XPUBKEY, AUTH_XPUBKEY, 5);
 
-    const devicesToAdd = [deviceToUpdate, 'device2'];
+    const devicesToAdd = [deviceToUpdate, deviceToKeep];
     devicesToAdd.forEach(async (eachDevice) => {
       await registerPushDevice(mysql, {
         walletId,
@@ -2311,6 +2312,14 @@ describe('updatePushDevice', () => {
       deviceId: deviceToUpdate,
       pushProvider,
       enablePush: true,
+      enableShowAmounts,
+    })).resolves.toBe(true);
+
+    await expect(checkPushDevicesTable(mysql, 1, {
+      walletId,
+      deviceId: deviceToKeep,
+      pushProvider,
+      enablePush: false,
       enableShowAmounts,
     })).resolves.toBe(true);
   });
