@@ -4,8 +4,13 @@ import { SendNotificationToDevice } from '@src/types';
 const SEND_NOTIFICATION_LAMBDA_ENDPOINT = process.env.SEND_NOTIFICATION_LAMBDA_ENDPOINT;
 const SEND_NOTIFICATION_FUNCTION_NAME = `hathor-wallet-service-${process.env.STAGE}-sendNotificationToDevice`;
 
+export enum PushNotificationError {
+  INVALID_DEVICE_ID = 'invalid-device-id',
+  UNKNOWN = 'unknown',
+}
+
 export class PushNotificationUtils {
-  static sendToFcm(_notification: SendNotificationToDevice): Promise<void> {
+  static sendToFcm(_notification: SendNotificationToDevice): Promise<{ success: boolean, errorMessage?: string }> {
     return Promise.race([]);
   }
 
