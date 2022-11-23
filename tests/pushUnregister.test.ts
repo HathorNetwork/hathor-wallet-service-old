@@ -10,6 +10,7 @@ import {
   checkPushDevicesTable,
 } from '@tests/utils';
 import { APIGatewayProxyResult } from 'aws-lambda';
+import { ApiError } from '@src/api/errors';
 
 const mysql = getDbConnection();
 
@@ -232,5 +233,6 @@ describe('statusCode:400', () => {
 
     expect(result.statusCode).toStrictEqual(400);
     expect(returnBody.success).toStrictEqual(false);
+    expect(returnBody.error).toStrictEqual(ApiError.INVALID_PAYLOAD);
   });
 });
