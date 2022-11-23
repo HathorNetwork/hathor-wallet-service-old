@@ -2838,7 +2838,9 @@ export const existsWallet = async (
 ) : Promise<boolean> => {
   const [{ count }] = await mysql.query(
     `
-    SELECT COUNT(1) as \`count\` FROM \`wallet\` pd WHERE id= ?`,
+    SELECT COUNT(1) as \`count\`
+      FROM \`wallet\` pd
+    WHERE id= ?`,
     [walletId],
   ) as unknown as Array<{count}>;
 
