@@ -1,22 +1,27 @@
 import { Lambda } from 'aws-sdk';
 import { SendNotificationToDevice } from '@src/types';
-import { initializeApp, messaging } from 'firebase-admin';
+import { credential, initializeApp, messaging, ServiceAccount } from 'firebase-admin';
 import { MulticastMessage } from 'firebase-admin/messaging';
+import serviceAccount from '@src/utils/fcm.config.json';
 
 const SEND_NOTIFICATION_LAMBDA_ENDPOINT = process.env.SEND_NOTIFICATION_LAMBDA_ENDPOINT;
 const SEND_NOTIFICATION_FUNCTION_NAME = `hathor-wallet-service-${process.env.STAGE}-sendNotificationToDevice`;
+const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID;
 
-initializeApp();
+initializeApp({
+  credential: credential.cert(serviceAccount as ServiceAccount),
+  projectId: FIREBASE_PROJECT_ID,
+});
 
 export class PushNotificationUtils {
-  public static async sendToFcm(_notification: SendNotificationToDevice): Promise<{ success: boolean, errorMessage?: string }> {
+  public static async sendToFcm(notification: SendNotificationToDevice): Promise<{ success: boolean, errorMessage?: string }> {
     const message: MulticastMessage = {
-      tokens: [_notification.deviceId],
+      tokens: [notification.deviceId],
       notification: {
-        title: _notification.title,
-        body: _notification.description,
+        title: notification.title,
+        body: notification.description,
       },
-      data: _notification.metadata,
+      data: notification.metadata,
     };
     const multicastResult = await messaging().sendMulticast(message);
 
@@ -25,7 +30,7 @@ export class PushNotificationUtils {
     }
 
     const { 0: { error } } = multicastResult.responses;
-    if (/unregistered/.test(error?.code || '')) {
+    if (/token-not-registered/.test(error?.code || '')) {
       return { success: false, errorMessage: 'invalid-device-id' };
     }
 
