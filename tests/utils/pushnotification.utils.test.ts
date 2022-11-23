@@ -1,4 +1,4 @@
-import { PushNotificationUtils } from '@src/utils/pushnotification.utils';
+import { PushNotificationUtils, PushNotificationError } from '@src/utils/pushnotification.utils';
 import { SendNotificationToDevice } from '@src/types';
 import { messaging } from 'firebase-admin';
 import { BatchResponse } from 'firebase-admin/messaging';
@@ -114,7 +114,7 @@ describe('pushnotification.utils', () => {
       } as SendNotificationToDevice;
 
       const result = await PushNotificationUtils.sendToFcm(notification);
-      expect(result).toStrictEqual({ success: false, errorMessage: 'unknown' });
+      expect(result).toStrictEqual({ success: false, errorMessage: PushNotificationError.UNKNOWN });
     });
 
     it('should return fail with invalid-device-id when multicast fails with not-registered', async () => {
@@ -146,7 +146,7 @@ describe('pushnotification.utils', () => {
       } as SendNotificationToDevice;
 
       const result = await PushNotificationUtils.sendToFcm(notification);
-      expect(result).toStrictEqual({ success: false, errorMessage: 'invalid-device-id' });
+      expect(result).toStrictEqual({ success: false, errorMessage: PushNotificationError.INVALID_DEVICE_ID });
     });
   });
 });

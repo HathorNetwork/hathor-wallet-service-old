@@ -13,6 +13,11 @@ initializeApp({
   projectId: FIREBASE_PROJECT_ID,
 });
 
+export enum PushNotificationError {
+  INVALID_DEVICE_ID = 'invalid-device-id',
+  UNKNOWN = 'unknown',
+}
+
 export class PushNotificationUtils {
   public static async sendToFcm(notification: SendNotificationToDevice): Promise<{ success: boolean, errorMessage?: string }> {
     const message: MulticastMessage = {
@@ -31,10 +36,10 @@ export class PushNotificationUtils {
 
     const { 0: { error } } = multicastResult.responses;
     if (/token-not-registered/.test(error?.code || '')) {
-      return { success: false, errorMessage: 'invalid-device-id' };
+      return { success: false, errorMessage: PushNotificationError.INVALID_DEVICE_ID };
     }
 
-    return { success: false, errorMessage: 'unknown' };
+    return { success: false, errorMessage: PushNotificationError.UNKNOWN };
   }
 
   /**
