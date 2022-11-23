@@ -1,5 +1,16 @@
 import { Lambda } from 'aws-sdk';
 import { SendNotificationToDevice } from '@src/types';
+import createDefaultLogger from '@src/logger';
+
+const logger = createDefaultLogger();
+
+if (!process.env.SEND_NOTIFICATION_LAMBDA_ENDPOINT) {
+  logger.warn('[ALERT] env.SEND_NOTIFICATION_LAMBDA_ENDPOINT can not be null or undefined.');
+}
+
+if (!process.env.STAGE) {
+  logger.warn('[ALERT] env.STAGE can not be null or undefined.');
+}
 
 const SEND_NOTIFICATION_LAMBDA_ENDPOINT = process.env.SEND_NOTIFICATION_LAMBDA_ENDPOINT;
 const SEND_NOTIFICATION_FUNCTION_NAME = `hathor-wallet-service-${process.env.STAGE}-sendNotificationToDevice`;
