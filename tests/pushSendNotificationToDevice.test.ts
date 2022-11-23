@@ -1,30 +1,10 @@
-const logger = {
-  debug: jest.fn(),
-  log: jest.fn(),
-  error: jest.fn(),
-};
-
-// IMPORTANT First mock winston
-jest.mock('winston', () => ({
-  format: {
-    colorize: jest.fn(),
-    combine: jest.fn(),
-    label: jest.fn(),
-    timestamp: jest.fn(),
-    printf: jest.fn(),
-    json: jest.fn(),
-  },
-  createLogger: jest.fn().mockReturnValue(logger),
-  transports: {
-    Console: jest.fn(),
-  },
-}));
-
+import { logger } from './winston.mock'; // most be the first to import
 import {
   send,
 } from '@src/api/pushSendNotificationToDevice';
 import {
   PushNotificationUtils,
+  PushNotificationError,
 } from '@src/utils/pushnotification.utils';
 import {
   register,
@@ -34,6 +14,7 @@ import {
   addToWalletTable,
   makeGatewayEventWithAuthorizer,
   cleanDatabase,
+  checkPushDevicesTable,
 } from '@tests/utils';
 import { APIGatewayProxyResult, Context } from 'aws-lambda';
 
@@ -54,6 +35,9 @@ afterAll(async () => {
 
 test('send push notification to the right provider', async () => {
   expect.hasAssertions();
+  spyOnSendToFcm.mockImplementation(() => Promise.resolve({
+    success: true,
+  }));
 
   await addToWalletTable(mysql, [{
     id: 'my-wallet',
@@ -123,6 +107,55 @@ test('should complete even without metadata', async () => {
 
   expect(result.success).toStrictEqual(true);
   expect(spyOnSendToFcm).toHaveBeenCalledTimes(1);
+});
+
+test('should unregister device when invalid device id', async () => {
+  expect.hasAssertions();
+  spyOnSendToFcm.mockImplementation(() => Promise.resolve({
+    success: false,
+    errorMessage: PushNotificationError.INVALID_DEVICE_ID,
+  }));
+
+  await addToWalletTable(mysql, [{
+    id: 'my-wallet',
+    xpubkey: 'xpubkey',
+    authXpubkey: 'auth_xpubkey',
+    status: 'ready',
+    maxGap: 5,
+    createdAt: 10000,
+    readyAt: 10001,
+  }]);
+
+  const event = makeGatewayEventWithAuthorizer('my-wallet', null, {
+    deviceId: 'device1',
+    pushProvider: 'android',
+    enablePush: true,
+    enableShowAmounts: false,
+  });
+  await register(event, null, null) as APIGatewayProxyResult;
+  await expect(
+    checkPushDevicesTable(mysql, 1),
+  ).resolves.toBe(true);
+
+  const validPayload = {
+    deviceId: 'device1',
+    title: 'You have a new transaction',
+    description: '5HTR was sent to my-wallet',
+    metadata: {
+      firstMetadata: 'firstMetadata',
+    },
+  };
+  const sendEvent = { body: validPayload };
+  const sendContext = { awsRequestId: '123' } as Context;
+
+  const result = await send(sendEvent, sendContext, null) as { success: boolean, message?: string };
+
+  expect(result.success).toStrictEqual(false);
+  expect(result.message).toStrictEqual('Failed due to invalid device id.');
+  expect(spyOnSendToFcm).toHaveBeenCalledTimes(1);
+  await expect(
+    checkPushDevicesTable(mysql, 0),
+  ).resolves.toBe(true);
 });
 
 describe('validation', () => {
