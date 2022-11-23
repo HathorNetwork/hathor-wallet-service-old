@@ -699,7 +699,7 @@ export interface TxByIdRequest {
   txId: string,
 }
 
-export interface TxByIdResponse {
+export interface TxByIdToken {
   txId: string;
   timestamp: number;
   version: number;
@@ -709,6 +709,8 @@ export interface TxByIdResponse {
   balance: Balance;
   tokenId: string;
   walletId: string;
+  tokenName: string;
+  tokenSymbol: string;
 }
 
 export interface SendNotificationToDevice {
