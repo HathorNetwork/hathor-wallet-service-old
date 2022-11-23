@@ -170,7 +170,7 @@ test('GET /addresses/check_mine', async () => {
     { address: ADDRESSES[0], index: 0, walletId: 'my-wallet', transactions: 0 },
     { address: ADDRESSES[1], index: 1, walletId: 'my-wallet', transactions: 0 },
     { address: ADDRESSES[2], index: 3, walletId: 'my-wallet', transactions: 0 },
-    { address: ADDRESSES[3], index: 3, walletId: 'my-wallet', transactions: 0 },
+    { address: ADDRESSES[3], index: 4, walletId: 'my-wallet', transactions: 0 },
   ]);
 
   // missing wallet
