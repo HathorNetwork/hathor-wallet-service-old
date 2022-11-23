@@ -2763,14 +2763,23 @@ export const updatePushDevice = async (
 export const unregisterPushDevice = async (
   mysql: ServerlessMysql,
   deviceId: string,
-  walletId: string,
+  walletId?: string,
 ) : Promise<void> => {
-  await mysql.query(
-    `
-    DELETE FROM \`push_devices\`
-    WHERE device_id = ? AND wallet_id = ?`,
-    [deviceId, walletId],
-  );
+  if (walletId) {
+    await mysql.query(
+      `
+      DELETE FROM \`push_devices\`
+      WHERE device_id = ? AND wallet_id = ?`,
+      [deviceId, walletId],
+    );
+  } else {
+    await mysql.query(
+      `
+      DELETE FROM \`push_devices\`
+      WHERE device_id = ?`,
+      [deviceId],
+    );
+  }
 };
 
 /**

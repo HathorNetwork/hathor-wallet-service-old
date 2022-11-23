@@ -8,10 +8,11 @@
 import { Handler } from 'aws-lambda';
 import { closeDbConnection, getDbConnection } from '@src/utils';
 import Joi, { ValidationError } from 'joi';
-import { SendNotificationToDevice } from '@src/types';
+import { SendNotificationToDevice, PushProvider } from '@src/types';
 import { getPushDevice } from '@src/db';
 import createDefaultLogger from '@src/logger';
-import { PushNotificationUtils } from '@src/utils/pushnotification.utils';
+import { PushNotificationUtils, PushNotificationError } from '@src/utils/pushnotification.utils';
+import { unregisterPushDevice } from '@src/db';
 
 const mysql = getDbConnection();
 
@@ -27,7 +28,7 @@ class PushSendNotificationToDeviceInputValidator {
     return PushSendNotificationToDeviceInputValidator.bodySchema.validate(payload, {
       abortEarly: false, // We want it to return all the errors not only the first
       convert: true, // We need to convert as parameters are sent on the QueryString
-    });
+    }) as { value: SendNotificationToDevice, error: ValidationError };
   }
 }
 
@@ -66,15 +67,19 @@ export const send: Handler<{ body: unknown }, { success: boolean, message?: stri
     return { success: false, message: 'Failed due to device not found.' };
   }
 
-  if (pushDevice.pushProvider === 'android') {
-    PushNotificationUtils.sendToFcm(body);
-  } else {
+  if (pushDevice.pushProvider !== PushProvider.ANDROID) {
     closeDbConnection(mysql);
     logger.error('[ALERT] Provider invalid.', {
       deviceId: body.deviceId,
       pushProvider: pushDevice.pushProvider,
     });
     return { success: false, message: 'Failed due to invalid provider.' };
+  }
+
+  const result = await PushNotificationUtils.sendToFcm(body);
+  if (result.errorMessage === PushNotificationError.INVALID_DEVICE_ID) {
+    await unregisterPushDevice(mysql, body.deviceId);
+    return { success: false, message: 'Failed due to invalid device id.' };
   }
 
   return {
