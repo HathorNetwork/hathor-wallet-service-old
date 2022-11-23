@@ -2523,7 +2523,7 @@ describe('getTransactionById', () => {
     });
   });
 
-  it('should return null when there is no record', async () => {
+  it('should return empty list when there is no record', async () => {
     expect.hasAssertions();
 
     const txId = 'txId1';
