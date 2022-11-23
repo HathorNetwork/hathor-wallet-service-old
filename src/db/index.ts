@@ -39,6 +39,7 @@ import {
   Miner,
   PushDevice,
   TxByIdResponse,
+  TxByIdToken,
 } from '@src/types';
 import {
   getUnixTimestamp,
@@ -2682,7 +2683,10 @@ export const existsPushDevice = async (
 ) : Promise<boolean> => {
   const [{ count }] = await mysql.query(
     `
-    SELECT COUNT(1) as \`count\` FROM \`push_devices\` pd WHERE device_id = ? AND wallet_id = ?`,
+    SELECT COUNT(1) as \`count\`
+      FROM \`push_devices\` pd
+    WHERE device_id = ?
+      AND wallet_id = ?`,
     [deviceId, walletId],
   ) as unknown as Array<{count}>;
 
@@ -2723,9 +2727,12 @@ export const registerPushDevice = async (
 export const removeAllPushDevicesByDeviceId = async (mysql: ServerlessMysql, deviceId: string): Promise<void> => {
   await mysql.query(
     `
-    DELETE FROM \`push_devices\`
-    WHERE device_id = ?
-    `, [deviceId],
+    DELETE
+      FROM \`push_devices\`
+    WHERE
+      device_id = ?
+    `,
+    [deviceId],
   );
 };
 
@@ -2747,8 +2754,10 @@ export const updatePushDevice = async (
   await mysql.query(
     `
     UPDATE \`push_devices\`
-    SET enable_push = ?, enable_show_amounts = ?
-    WHERE device_id = ? AND wallet_id = ?`,
+      SET enable_push = ?,
+      enable_show_amounts = ?
+    WHERE device_id = ?
+      AND wallet_id = ?`,
     [input.enablePush, input.enableShowAmounts, input.deviceId, input.walletId],
   );
 };
@@ -2768,14 +2777,17 @@ export const unregisterPushDevice = async (
   if (walletId) {
     await mysql.query(
       `
-      DELETE FROM \`push_devices\`
-      WHERE device_id = ? AND wallet_id = ?`,
+      DELETE
+        FROM \`push_devices\`
+      WHERE device_id = ?
+        AND wallet_id = ?`,
       [deviceId, walletId],
     );
   } else {
     await mysql.query(
       `
-      DELETE FROM \`push_devices\`
+      DELETE
+        FROM \`push_devices\`
       WHERE device_id = ?`,
       [deviceId],
     );
@@ -2788,13 +2800,13 @@ export const unregisterPushDevice = async (
  * @param mysql - Database connection
  * @param txId - A transaction ID
  * @param walletId - The wallet related to the transaction
- * @returns A transaction if found, return null otherwise
+ * @returns A a list of tokens for a transaction if found, return an empty list otherwise
  */
 export const getTransactionById = async (
   mysql: ServerlessMysql,
   txId: string,
   walletId: string,
-): Promise<TxByIdResponse[]> => {
+): Promise<TxByIdToken[]> => {
   const result = await mysql.query(`
     SELECT
       transaction.tx_id AS tx_id,
@@ -2805,13 +2817,15 @@ export const getTransactionById = async (
       transaction.weight AS weight,
       wallet_tx_history.balance AS balance,
       wallet_tx_history.token_id AS token_id,
-      wallet_tx_history.wallet_id AS wallet_id
+      token.name AS name,
+      token.symbol AS symbol
     FROM wallet_tx_history
     INNER JOIN transaction ON transaction.tx_id = wallet_tx_history.tx_id
+    INNER JOIN token ON wallet_tx_history.token_id = token.id
     WHERE transaction.tx_id = ?
       AND transaction.voided = FALSE
       AND wallet_tx_history.wallet_id = ?`,
-  [txId, walletId]) as Array<{tx_id, timestamp, version, voided, height, weight, balance, token_id, wallet_id}>;
+  [txId, walletId]) as Array<{tx_id, timestamp, version, voided, height, weight, balance, token_id, name, symbol }>;
 
   const txTokens = [];
   result.forEach((eachTxToken) => {
@@ -2824,8 +2838,9 @@ export const getTransactionById = async (
       weight: eachTxToken.weight,
       balance: eachTxToken.balance,
       tokenId: eachTxToken.token_id,
-      walletId: eachTxToken.wallet_id,
-    } as TxByIdResponse;
+      tokenName: eachTxToken.name,
+      tokenSymbol: eachTxToken.symbol,
+    } as TxByIdToken;
     txTokens.push(txToken);
   });
 
@@ -2842,11 +2857,13 @@ export const existsWallet = async (
   mysql: ServerlessMysql,
   walletId: string,
 ) : Promise<boolean> => {
-  const [{ count }] = await mysql.query(
+  const [{ count }] = (await mysql.query(
     `
-    SELECT COUNT(1) as \`count\` FROM \`wallet\` pd WHERE id= ?`,
+    SELECT COUNT(1) as \`count\`
+      FROM \`wallet\` pd
+    WHERE id= ?`,
     [walletId],
-  ) as unknown as Array<{count}>;
+  )) as unknown as Array<{ count }>;
 
   return count > 0;
 };

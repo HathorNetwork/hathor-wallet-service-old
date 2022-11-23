@@ -2284,13 +2284,14 @@ describe('updatePushDevice', () => {
     expect.hasAssertions();
 
     const deviceToUpdate = 'device1';
+    const deviceToKeep = 'device2';
     const walletId = 'wallet1';
     const pushProvider = 'android';
     const enableShowAmounts = false;
 
     await createWallet(mysql, walletId, XPUBKEY, AUTH_XPUBKEY, 5);
 
-    const devicesToAdd = [deviceToUpdate, 'device2'];
+    const devicesToAdd = [deviceToUpdate, deviceToKeep];
     devicesToAdd.forEach(async (eachDevice) => {
       await registerPushDevice(mysql, {
         walletId,
@@ -2314,6 +2315,14 @@ describe('updatePushDevice', () => {
       deviceId: deviceToUpdate,
       pushProvider,
       enablePush: true,
+      enableShowAmounts,
+    })).resolves.toBe(true);
+
+    await expect(checkPushDevicesTable(mysql, 1, {
+      walletId,
+      deviceId: deviceToKeep,
+      pushProvider,
+      enablePush: false,
       enableShowAmounts,
     })).resolves.toBe(true);
   });
@@ -2343,10 +2352,8 @@ test('removeAllPushDeviceByDeviceId', async () => {
   expect.hasAssertions();
 
   const walletId = 'wallet1';
-  // eslint-disable-next-line @typescript-eslint/naming-convention, camelcase
-  const deviceId_1 = 'device_1';
-  // eslint-disable-next-line @typescript-eslint/naming-convention, camelcase
-  const deviceId_2 = 'device_2';
+  const deviceIdOne = 'device_1';
+  const deviceIdTwo = 'device_2';
   const pushProvider = 'android';
   const enablePush = true;
   const enableShowAmounts = false;
@@ -2356,14 +2363,14 @@ test('removeAllPushDeviceByDeviceId', async () => {
   await createWallet(mysql, walletId, XPUBKEY, AUTH_XPUBKEY, 5);
   await registerPushDevice(mysql, {
     walletId,
-    deviceId: deviceId_1,
+    deviceId: deviceIdOne,
     pushProvider,
     enablePush,
     enableShowAmounts,
   });
   await registerPushDevice(mysql, {
     walletId,
-    deviceId: deviceId_2,
+    deviceId: deviceIdTwo,
     pushProvider,
     enablePush,
     enableShowAmounts,
@@ -2371,7 +2378,7 @@ test('removeAllPushDeviceByDeviceId', async () => {
   await expect(checkPushDevicesTable(mysql, 2)).resolves.toBe(true);
 
   // remove all push device registered
-  await removeAllPushDevicesByDeviceId(mysql, deviceId_1);
+  await removeAllPushDevicesByDeviceId(mysql, deviceIdOne);
   await expect(checkPushDevicesTable(mysql, 1)).resolves.toBe(true);
 });
 
@@ -2559,7 +2566,7 @@ describe('getTransactionById', () => {
     });
   });
 
-  it('should return null when there is no record', async () => {
+  it('should return empty list when there is no record', async () => {
     expect.hasAssertions();
 
     const txId = 'txId1';

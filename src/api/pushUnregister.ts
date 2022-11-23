@@ -24,11 +24,10 @@ class PushUpdateUnregisterValidator {
   });
 
   static validate(payload: unknown): { value: PushDelete, error: ValidationError } {
-    const { value, error } = PushUpdateUnregisterValidator.bodySchema.validate(payload, {
+    return PushUpdateUnregisterValidator.bodySchema.validate(payload, {
       abortEarly: false, // We want it to return all the errors not only the first
       convert: true, // We need to convert as parameters are sent on the QueryString
-    });
-    return { value: { enablePush: false, enableShowAmounts: false, ...value }, error };
+    }) as { value: PushDelete, error: ValidationError };
   }
 }
 

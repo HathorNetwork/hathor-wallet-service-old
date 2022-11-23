@@ -8,6 +8,7 @@ import {
   cleanDatabase,
   checkPushDevicesTable,
 } from '@tests/utils';
+import { ApiError } from '@src/api/errors';
 import { APIGatewayProxyResult } from 'aws-lambda';
 
 const mysql = getDbConnection();
@@ -182,7 +183,7 @@ describe('statusCode:400', () => {
 
     expect(result.statusCode).toStrictEqual(400);
     expect(returnBody.success).toStrictEqual(false);
-    expect(returnBody.error).toStrictEqual('invalid-payload');
+    expect(returnBody.error).toStrictEqual(ApiError.INVALID_PAYLOAD);
   });
 
   it('should validate deviceId', async () => {
@@ -211,7 +212,7 @@ describe('statusCode:400', () => {
 
     expect(result.statusCode).toStrictEqual(400);
     expect(returnBody.success).toStrictEqual(false);
-    expect(returnBody.error).toStrictEqual('invalid-payload');
+    expect(returnBody.error).toStrictEqual(ApiError.INVALID_PAYLOAD);
   });
 });
 
@@ -231,6 +232,6 @@ describe('statusCode:404', () => {
 
     expect(result.statusCode).toStrictEqual(404);
     expect(returnBody.success).toStrictEqual(false);
-    expect(returnBody.error).toStrictEqual('wallet-not-found');
+    expect(returnBody.error).toStrictEqual(ApiError.WALLET_NOT_FOUND);
   });
 });
