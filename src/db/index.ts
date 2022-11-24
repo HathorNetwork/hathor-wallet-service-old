@@ -2681,8 +2681,8 @@ export const existsPushDevice = async (
     `
     SELECT COUNT(1) as \`count\`
       FROM \`push_devices\` pd
-    WHERE device_id = ?
-      AND wallet_id = ?`,
+     WHERE device_id = ?
+       AND wallet_id = ?`,
     [deviceId, walletId],
   ) as unknown as Array<{count}>;
 
@@ -2707,9 +2707,16 @@ export const registerPushDevice = async (
 ) : Promise<void> => {
   await mysql.query(
     `
-    INSERT INTO \`push_devices\` (device_id, wallet_id, push_provider, enable_push, enable_show_amounts)
+    INSERT
+      INTO \`push_devices\` (
+           device_id
+         , wallet_id
+         , push_provider
+         , enable_push
+         , enable_show_amounts)
     VALUES (?, ?, ?, ?, ?)
-    ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP`,
+        ON DUPLICATE KEY UPDATE
+           updated_at = CURRENT_TIMESTAMP`,
     [input.deviceId, input.walletId, input.pushProvider, input.enablePush, input.enableShowAmounts],
   );
 };
@@ -2723,10 +2730,10 @@ export const registerPushDevice = async (
 export const removeAllPushDevicesByDeviceId = async (mysql: ServerlessMysql, deviceId: string): Promise<void> => {
   await mysql.query(
     `
-    DELETE
-      FROM \`push_devices\`
-    WHERE
-      device_id = ?
+     DELETE
+       FROM \`push_devices\`
+      WHERE
+  device_id = ?
     `,
     [deviceId],
   );
@@ -2750,10 +2757,10 @@ export const updatePushDevice = async (
   await mysql.query(
     `
     UPDATE \`push_devices\`
-      SET enable_push = ?,
-      enable_show_amounts = ?
-    WHERE device_id = ?
-      AND wallet_id = ?`,
+       SET enable_push = ?
+         , enable_show_amounts = ?
+     WHERE device_id = ?
+       AND wallet_id = ?`,
     [input.enablePush, input.enableShowAmounts, input.deviceId, input.walletId],
   );
 };
@@ -2794,7 +2801,7 @@ export const existsWallet = async (
     `
     SELECT COUNT(1) as \`count\`
       FROM \`wallet\` pd
-    WHERE id= ?`,
+     WHERE id= ?`,
     [walletId],
   )) as unknown as Array<{ count }>;
 
