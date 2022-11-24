@@ -2520,8 +2520,8 @@ describe('getTransactionById', () => {
     const txId1 = 'txId1';
     const walletId1 = 'wallet1';
     const addr1 = 'addr1';
-    const token1 = 'token1';
-    const token2 = 'token2';
+    const token1 = { id: 'token1', name: 'Token 1', symbol: 'T1' };
+    const token2 = { id: 'token2', name: 'Token 2', symbol: 'T2' };
     const timestamp1 = 10;
     const height1 = 1;
     const version1 = 3;
@@ -2530,9 +2530,13 @@ describe('getTransactionById', () => {
     await createWallet(mysql, walletId1, XPUBKEY, AUTH_XPUBKEY, 5);
     await addOrUpdateTx(mysql, txId1, height1, timestamp1, version1, weight1);
 
+    await addToTokenTable(mysql, [
+      { id: token1.id, name: token1.name, symbol: token1.symbol, transactions: 0 },
+      { id: token2.id, name: token2.name, symbol: token2.symbol, transactions: 0 },
+    ]);
     const entries = [
-      { address: addr1, txId: txId1, tokenId: token1, balance: 10, timestamp: timestamp1 },
-      { address: addr1, txId: txId1, tokenId: token2, balance: 7, timestamp: timestamp1 },
+      { address: addr1, txId: txId1, tokenId: token1.id, balance: 10, timestamp: timestamp1 },
+      { address: addr1, txId: txId1, tokenId: token2.id, balance: 7, timestamp: timestamp1 },
     ];
     await addToAddressTxHistoryTable(mysql, entries);
     await initWalletTxHistory(mysql, walletId1, [addr1]);
@@ -2546,22 +2550,24 @@ describe('getTransactionById', () => {
       balance: 10,
       height: height1,
       timestamp: timestamp1,
-      tokenId: token1,
+      tokenId: token1.id,
+      tokenName: token1.name,
+      tokenSymbol: token1.symbol,
       txId: txId1,
       version: version1,
       voided: false,
-      walletId: walletId1,
       weight: weight1,
     });
     expect(secondToken).toStrictEqual({
       balance: 7,
       height: height1,
       timestamp: timestamp1,
-      tokenId: token2,
+      tokenId: token2.id,
+      tokenName: token2.name,
+      tokenSymbol: token2.symbol,
       txId: txId1,
       version: version1,
       voided: false,
-      walletId: walletId1,
       weight: weight1,
     });
   });

@@ -38,7 +38,6 @@ import {
   IFilterTxOutput,
   Miner,
   PushDevice,
-  TxByIdResponse,
   TxByIdToken,
 } from '@src/types';
 import {
