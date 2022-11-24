@@ -2781,8 +2781,8 @@ export const unregisterPushDevice = async (
     `
     DELETE
       FROM \`push_devices\`
-    WHERE device_id = ?
-      AND wallet_id = ?`,
+     WHERE device_id = ?
+       AND wallet_id = ?`,
     [deviceId, walletId],
   );
 };
