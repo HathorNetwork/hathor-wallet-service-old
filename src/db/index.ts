@@ -37,7 +37,6 @@ import {
   AddressTotalBalance,
   IFilterTxOutput,
   Miner,
-  TxByIdResponse,
   TxByIdToken,
 } from '@src/types';
 import {
