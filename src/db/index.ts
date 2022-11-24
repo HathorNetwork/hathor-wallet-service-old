@@ -2684,8 +2684,8 @@ export const existsPushDevice = async (
     `
     SELECT COUNT(1) as \`count\`
       FROM \`push_devices\` pd
-    WHERE device_id = ?
-      AND wallet_id = ?`,
+     WHERE device_id = ?
+       AND wallet_id = ?`,
     [deviceId, walletId],
   ) as unknown as Array<{count}>;
 
@@ -2710,9 +2710,16 @@ export const registerPushDevice = async (
 ) : Promise<void> => {
   await mysql.query(
     `
-    INSERT INTO \`push_devices\` (device_id, wallet_id, push_provider, enable_push, enable_show_amounts)
+    INSERT
+      INTO \`push_devices\` (
+           device_id
+         , wallet_id
+         , push_provider
+         , enable_push
+         , enable_show_amounts)
     VALUES (?, ?, ?, ?, ?)
-    ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP`,
+        ON DUPLICATE KEY UPDATE
+           updated_at = CURRENT_TIMESTAMP`,
     [input.deviceId, input.walletId, input.pushProvider, input.enablePush, input.enableShowAmounts],
   );
 };
@@ -2726,10 +2733,10 @@ export const registerPushDevice = async (
 export const removeAllPushDevicesByDeviceId = async (mysql: ServerlessMysql, deviceId: string): Promise<void> => {
   await mysql.query(
     `
-    DELETE
-      FROM \`push_devices\`
-    WHERE
-      device_id = ?
+     DELETE
+       FROM \`push_devices\`
+      WHERE
+  device_id = ?
     `,
     [deviceId],
   );
@@ -2753,10 +2760,10 @@ export const updatePushDevice = async (
   await mysql.query(
     `
     UPDATE \`push_devices\`
-      SET enable_push = ?,
-      enable_show_amounts = ?
-    WHERE device_id = ?
-      AND wallet_id = ?`,
+       SET enable_push = ?
+         , enable_show_amounts = ?
+     WHERE device_id = ?
+       AND wallet_id = ?`,
     [input.enablePush, input.enableShowAmounts, input.deviceId, input.walletId],
   );
 };
@@ -2778,8 +2785,8 @@ export const unregisterPushDevice = async (
       `
       DELETE
         FROM \`push_devices\`
-      WHERE device_id = ?
-        AND wallet_id = ?`,
+       WHERE device_id = ?
+         AND wallet_id = ?`,
       [deviceId, walletId],
     );
   } else {
@@ -2787,7 +2794,7 @@ export const unregisterPushDevice = async (
       `
       DELETE
         FROM \`push_devices\`
-      WHERE device_id = ?`,
+       WHERE device_id = ?`,
       [deviceId],
     );
   }
@@ -2807,23 +2814,23 @@ export const getTransactionById = async (
   walletId: string,
 ): Promise<TxByIdToken[]> => {
   const result = await mysql.query(`
-    SELECT
-      transaction.tx_id AS tx_id,
-      transaction.timestamp AS timestamp,
-      transaction.version AS version,
-      transaction.voided AS voided,
-      transaction.height AS height,
-      transaction.weight AS weight,
-      wallet_tx_history.balance AS balance,
-      wallet_tx_history.token_id AS token_id,
-      token.name AS name,
-      token.symbol AS symbol
-    FROM wallet_tx_history
-    INNER JOIN transaction ON transaction.tx_id = wallet_tx_history.tx_id
-    INNER JOIN token ON wallet_tx_history.token_id = token.id
-    WHERE transaction.tx_id = ?
-      AND transaction.voided = FALSE
-      AND wallet_tx_history.wallet_id = ?`,
+       SELECT
+              transaction.tx_id AS tx_id
+            , transaction.timestamp AS timestamp
+            , transaction.version AS version
+            , transaction.voided AS voided
+            , transaction.height AS height
+            , transaction.weight AS weight
+            , wallet_tx_history.balance AS balance
+            , wallet_tx_history.token_id AS token_id
+            , token.name AS name
+            , token.symbol AS symbol
+         FROM wallet_tx_history
+   INNER JOIN transaction ON transaction.tx_id = wallet_tx_history.tx_id
+   INNER JOIN token ON wallet_tx_history.token_id = token.id
+        WHERE transaction.tx_id = ?
+          AND transaction.voided = FALSE
+          AND wallet_tx_history.wallet_id = ?`,
   [txId, walletId]) as Array<{tx_id, timestamp, version, voided, height, weight, balance, token_id, name, symbol }>;
 
   const txTokens = [];
@@ -2860,7 +2867,7 @@ export const existsWallet = async (
     `
     SELECT COUNT(1) as \`count\`
       FROM \`wallet\` pd
-    WHERE id= ?`,
+     WHERE id= ?`,
     [walletId],
   )) as unknown as Array<{ count }>;
 
