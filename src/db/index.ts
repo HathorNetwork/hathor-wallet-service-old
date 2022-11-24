@@ -2803,23 +2803,23 @@ export const getTransactionById = async (
   walletId: string,
 ): Promise<TxByIdToken[]> => {
   const result = await mysql.query(`
-    SELECT
-      transaction.tx_id AS tx_id,
-      transaction.timestamp AS timestamp,
-      transaction.version AS version,
-      transaction.voided AS voided,
-      transaction.height AS height,
-      transaction.weight AS weight,
-      wallet_tx_history.balance AS balance,
-      wallet_tx_history.token_id AS token_id,
-      token.name AS name,
-      token.symbol AS symbol
-    FROM wallet_tx_history
-    INNER JOIN transaction ON transaction.tx_id = wallet_tx_history.tx_id
-    INNER JOIN token ON wallet_tx_history.token_id = token.id
-    WHERE transaction.tx_id = ?
-      AND transaction.voided = FALSE
-      AND wallet_tx_history.wallet_id = ?`,
+       SELECT
+              transaction.tx_id AS tx_id
+            , transaction.timestamp AS timestamp
+            , transaction.version AS version
+            , transaction.voided AS voided
+            , transaction.height AS height
+            , transaction.weight AS weight
+            , wallet_tx_history.balance AS balance
+            , wallet_tx_history.token_id AS token_id
+            , token.name AS name
+            , token.symbol AS symbol
+         FROM wallet_tx_history
+   INNER JOIN transaction ON transaction.tx_id = wallet_tx_history.tx_id
+   INNER JOIN token ON wallet_tx_history.token_id = token.id
+        WHERE transaction.tx_id = ?
+          AND transaction.voided = FALSE
+          AND wallet_tx_history.wallet_id = ?`,
   [txId, walletId]) as Array<{tx_id, timestamp, version, voided, height, weight, balance, token_id, name, symbol }>;
 
   const txTokens = [];
