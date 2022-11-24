@@ -2888,7 +2888,7 @@ export const getPushDevice = async (
     `
     SELECT *
       FROM \`push_devices\`
-    WHERE device_id = ?`,
+     WHERE device_id = ?`,
     [deviceId],
   ) as Array<{wallet_id, device_id, push_provider, enable_push, enable_show_amounts}>;
 
