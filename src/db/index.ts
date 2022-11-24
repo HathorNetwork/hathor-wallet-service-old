@@ -2681,8 +2681,8 @@ export const existsPushDevice = async (
     `
     SELECT COUNT(1) as \`count\`
       FROM \`push_devices\` pd
-    WHERE device_id = ?
-      AND wallet_id = ?`,
+     WHERE device_id = ?
+       AND wallet_id = ?`,
     [deviceId, walletId],
   ) as unknown as Array<{count}>;
 
@@ -2757,10 +2757,10 @@ export const updatePushDevice = async (
   await mysql.query(
     `
     UPDATE \`push_devices\`
-      SET enable_push = ?,
-      enable_show_amounts = ?
-    WHERE device_id = ?
-      AND wallet_id = ?`,
+       SET enable_push = ?
+         , enable_show_amounts = ?
+     WHERE device_id = ?
+       AND wallet_id = ?`,
     [input.enablePush, input.enableShowAmounts, input.deviceId, input.walletId],
   );
 };
