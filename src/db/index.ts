@@ -40,6 +40,8 @@ import {
   PushDevice,
   TxByIdToken,
   PushDeviceSettings,
+  WalletBalance,
+  Transaction,
 } from '@src/types';
 import {
   getUnixTimestamp,
@@ -54,6 +56,7 @@ import {
   getTxFromDBResult,
   getTxsFromDBResult,
 } from '@src/db/utils';
+import { getAddressBalanceMap } from '@src/commons';
 
 const BLOCK_VERSION = [
   constants.BLOCK_VERSION,
@@ -2926,6 +2929,7 @@ export const getPushDeviceSettingsList = async (
       FROM \`push_devices\`
      WHERE wallet_id in (?)`,
     [walletIdList],
+  // eslint-disable-next-line camelcase
   ) as Array<{wallet_id, device_id, enable_push, enable_show_amounts}>;
 
   const pushDeviceSettignsList = pushDeviceSettingsResult.map((each) => ({
@@ -2937,3 +2941,37 @@ export const getPushDeviceSettingsList = async (
 
   return pushDeviceSettignsList;
 };
+
+export const getWalletBalancesForTx = async (mysql: ServerlessMysql, tx: Transaction): Promise<WalletBalance[]> {
+  const addressBalanceMap: StringMap<TokenBalanceMap> = getAddressBalanceMap(tx.inputs, tx.outputs);
+  const addressWalletMap: StringMap<Wallet> = await getAddressWalletInfo(mysql, Object.keys(addressBalanceMap));
+
+  // Create a new map focused on the walletId and storing its balance variation from this tx
+  const walletsMap: StringMap<WalletBalance> = {};
+
+  // Iterates all the addresses to populate the map's data
+  for (const addressObj of addressWalletMap) {
+  // Create a new walletId entry if it does not exist
+    if (!walletsMap[addressObj.wallet_id]) {
+      walletsMap[addressObj.wallet_id] = {
+        txId: tx.tx_id,
+        walletId: addressObj.wallet_id,
+        addresses: [],
+        walletBalanceForTx: new TokenBalanceMap(),
+      }
+    }
+    const walletData = walletsMap[addressObj.wallet_id];
+
+    // Add this address to the wallet's affected addresses list
+    walletData.addresses.push(addressObj.address);
+
+    // Merge the balance of this address with the total balance of the wallet
+    TokenBalanceMap.merge(walletData.walletBalanceForTx, addressBalanceMap[addressObj.address]);
+  }
+
+  // Sort by the tokens with the most balance
+
+  // Possibly convert each walletsMap[n].walletBalanceForTx to a pure JSON object here
+
+  return [...walletsMap];
+}
