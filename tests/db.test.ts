@@ -2820,7 +2820,7 @@ describe('getPushDeviceSettingsList', () => {
     const loadWallet = (eachDevice) => createWallet(mysql, eachDevice.walletId, XPUBKEY, AUTH_XPUBKEY, 5);
     await devicesToLoad.forEach(loadWallet);
 
-    // regiter devices
+    // register devices
     const loadDevice = (eachDevice) => registerPushDevice(mysql, {
       walletId: eachDevice.walletId,
       deviceId: eachDevice.deviceId,
