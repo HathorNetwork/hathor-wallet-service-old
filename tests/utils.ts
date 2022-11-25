@@ -931,11 +931,11 @@ export const checkPushDevicesTable = async (
   const baseQuery = `
     SELECT *
       FROM \`push_devices\`
-    WHERE \`wallet_id\` = ?
-      AND \`device_id\` = ?
-      AND \`push_provider\` = ?
-      AND \`enable_push\` = ?
-      AND \`enable_show_amounts\` = ?
+     WHERE \`wallet_id\` = ?
+       AND \`device_id\` = ?
+       AND \`push_provider\` = ?
+       AND \`enable_push\` = ?
+       AND \`enable_show_amounts\` = ?
       `;
 
   results = await mysql.query(baseQuery, [
