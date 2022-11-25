@@ -2827,6 +2827,7 @@ export const getTransactionById = async (
         WHERE transaction.tx_id = ?
           AND transaction.voided = FALSE
           AND wallet_tx_history.wallet_id = ?`,
+  // eslint-disable-next-line camelcase
   [txId, walletId]) as Array<{tx_id, timestamp, version, voided, height, weight, balance, token_id, name, symbol }>;
 
   const txTokens = [];
