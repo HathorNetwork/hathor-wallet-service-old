@@ -672,3 +672,25 @@ export interface Miner {
   lastBlock: string;
   count: number;
 }
+
+export enum PushProvider {
+  IOS = 'ios',
+  ANDROID = 'android'
+}
+
+export interface PushRegister {
+  pushProvider: PushProvider,
+  deviceId: string,
+  enablePush?: boolean,
+  enableShowAmounts?: boolean
+}
+
+export interface PushUpdate {
+  deviceId: string,
+  enablePush?: boolean,
+  enableShowAmounts?: boolean
+}
+
+export interface PushDelete {
+  deviceId: string,
+}

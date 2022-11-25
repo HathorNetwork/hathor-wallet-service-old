@@ -459,3 +459,36 @@ functions:
     warmup:
       walletWarmer:
         enabled: false
+  pushRegister:
+    handler: src/api/pushRegister.register
+    events:
+      - http:
+          path: push/register
+          method: post
+          cors: true
+          authorizer: ${self:custom.authorizer.walletBearer}
+    warmup:
+      walletWarmer:
+        enabled: false
+  pushUpdate:
+    handler: src/api/pushUpdate.update
+    events:
+      - http:
+          path: push/update
+          method: put
+          cors: true
+          authorizer: ${self:custom.authorizer.walletBearer}
+    warmup:
+      walletWarmer:
+        enabled: false
+  pushUnregister:
+    handler: src/api/pushUnregister.unregister
+    events:
+      - http:
+          path: push/unregister
+          method: delete
+          cors: true
+          authorizer: ${self:custom.authorizer.walletBearer}
+    warmup:
+      walletWarmer:
+        enabled: false
