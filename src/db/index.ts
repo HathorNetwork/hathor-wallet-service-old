@@ -2919,12 +2919,12 @@ export const getPushDeviceSettingsList = async (
 ) : Promise<PushDeviceSettings[]> => {
   const pushDeviceSettingsResult = await mysql.query(
     `
-    SELECT wallet_id,
-      device_id,
-      enable_push,
-      enable_show_amounts
-    FROM \`push_devices\`
-    WHERE wallet_id in (?)`,
+    SELECT wallet_id
+         , device_id
+         , enable_push
+         , enable_show_amounts
+      FROM \`push_devices\`
+     WHERE wallet_id in (?)`,
     [walletIdList],
   ) as Array<{wallet_id, device_id, enable_push, enable_show_amounts}>;
 
