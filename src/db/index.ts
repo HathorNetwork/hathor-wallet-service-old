@@ -2766,6 +2766,28 @@ export const updatePushDevice = async (
 };
 
 /**
+ * Unregister push device for a given wallet.
+ *
+ * @param mysql - Database connection
+ * @param deviceId - The device to unregister
+ * @param walletId - The wallet linked to device
+ */
+export const unregisterPushDevice = async (
+  mysql: ServerlessMysql,
+  deviceId: string,
+  walletId: string,
+) : Promise<void> => {
+  await mysql.query(
+    `
+    DELETE
+      FROM \`push_devices\`
+     WHERE device_id = ?
+       AND wallet_id = ?`,
+    [deviceId, walletId],
+  );
+};
+
+/**
 * Verify the existence of a wallet by its ID.
 *
 * @param mysql - Database connection
