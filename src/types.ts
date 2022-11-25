@@ -729,3 +729,10 @@ export interface PushDevice {
 }
 
 export type PushDeviceSettings = Omit<PushDevice, 'pushProvider'>;
+
+export interface WalletBalance {
+  txId: string,
+  walletId: string,
+  addresses: string[],
+  walletBalanceForTx: TokenBalanceMap,
+}
