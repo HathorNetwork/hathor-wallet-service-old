@@ -2856,7 +2856,7 @@ export const existsWallet = async (
     `
     SELECT COUNT(1) as \`count\`
       FROM \`wallet\` pd
-     WHERE id= ?`,
+     WHERE id = ?`,
     [walletId],
   )) as unknown as Array<{ count }>;
 
