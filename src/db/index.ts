@@ -2666,6 +2666,30 @@ export const incrementTokensTxCount = async (
 };
 
 /**
+ * Verify the existence of a device registered for a given wallet.
+ *
+ * @param mysql - Database connection
+ * @param deviceId - The device to verify existence
+ * @param walletId - The wallet linked to device
+ */
+export const existsPushDevice = async (
+  mysql: ServerlessMysql,
+  deviceId: string,
+  walletId: string,
+) : Promise<boolean> => {
+  const [{ count }] = await mysql.query(
+    `
+    SELECT COUNT(1) as \`count\`
+      FROM \`push_devices\` pd
+     WHERE device_id = ?
+       AND wallet_id = ?`,
+    [deviceId, walletId],
+  ) as unknown as Array<{count}>;
+
+  return count > 0;
+};
+
+/**
  * Register a device to a wallet for push notification.
  *
  * @param mysql - Database connection
@@ -2716,11 +2740,59 @@ export const removeAllPushDevicesByDeviceId = async (mysql: ServerlessMysql, dev
 };
 
 /**
- * Verify the existence of a wallet by its ID.
+ * Update existing push device given a wallet.
  *
  * @param mysql - Database connection
+ * @param input - Input of push device register
+ */
+export const updatePushDevice = async (
+  mysql: ServerlessMysql,
+  input: {
+    deviceId: string,
+    walletId: string,
+    enablePush: boolean,
+    enableShowAmounts: boolean,
+  },
+) : Promise<void> => {
+  await mysql.query(
+    `
+    UPDATE \`push_devices\`
+       SET enable_push = ?
+         , enable_show_amounts = ?
+     WHERE device_id = ?
+       AND wallet_id = ?`,
+    [input.enablePush, input.enableShowAmounts, input.deviceId, input.walletId],
+  );
+};
+
+/**
+ * Unregister push device for a given wallet.
+ *
+ * @param mysql - Database connection
+ * @param deviceId - The device to unregister
  * @param walletId - The wallet linked to device
  */
+export const unregisterPushDevice = async (
+  mysql: ServerlessMysql,
+  deviceId: string,
+  walletId: string,
+) : Promise<void> => {
+  await mysql.query(
+    `
+    DELETE
+      FROM \`push_devices\`
+     WHERE device_id = ?
+       AND wallet_id = ?`,
+    [deviceId, walletId],
+  );
+};
+
+/**
+* Verify the existence of a wallet by its ID.
+*
+* @param mysql - Database connection
+* @param walletId - The wallet linked to device
+*/
 export const existsWallet = async (
   mysql: ServerlessMysql,
   walletId: string,

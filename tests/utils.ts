@@ -915,7 +915,7 @@ export const checkPushDevicesTable = async (
   },
 ): Promise<boolean | Record<string, unknown>> => {
   let results: DbSelectResult = await mysql.query('SELECT * FROM `push_devices`');
-  if (results.length !== totalResults) {
+  if (!filter && results.length !== totalResults) {
     return {
       error: 'checkPushDevicesTable total results',
       expected: totalResults,
@@ -945,6 +945,15 @@ export const checkPushDevicesTable = async (
     filter.enablePush,
     filter.enableShowAmounts,
   ]);
+
+  if (results.length !== totalResults) {
+    return {
+      error: 'checkPushDevicesTable total results after filter',
+      expected: totalResults,
+      received: results.length,
+      results,
+    };
+  }
 
   if (results.length !== 1) {
     return {

@@ -42,6 +42,7 @@ export const STATUS_CODE_TABLE = {
   [ApiError.ADDRESS_NOT_IN_WALLET]: 400,
   [ApiError.WALLET_MAX_RETRIES]: 400,
   [ApiError.TOKEN_NOT_FOUND]: 404,
+  [ApiError.DEVICE_NOT_FOUND]: 404,
 };
 
 /**
