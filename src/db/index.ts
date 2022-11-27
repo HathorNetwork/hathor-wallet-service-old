@@ -2942,36 +2942,50 @@ export const getPushDeviceSettingsList = async (
   return pushDeviceSettignsList;
 };
 
+/**
+ * Get a list of wallet balance per token by informed transaction.
+ * 
+ * @param mysql 
+ * @param tx - The transaction to get related wallets and their token balances
+ * @returns 
+ */
 export const getWalletBalancesForTx = async (mysql: ServerlessMysql, tx: Transaction): Promise<WalletBalance[]> {
   const addressBalanceMap: StringMap<TokenBalanceMap> = getAddressBalanceMap(tx.inputs, tx.outputs);
+  // return only wallets that were started
   const addressWalletMap: StringMap<Wallet> = await getAddressWalletInfo(mysql, Object.keys(addressBalanceMap));
 
   // Create a new map focused on the walletId and storing its balance variation from this tx
   const walletsMap: StringMap<WalletBalance> = {};
 
   // Iterates all the addresses to populate the map's data
-  for (const addressObj of addressWalletMap) {
-  // Create a new walletId entry if it does not exist
-    if (!walletsMap[addressObj.wallet_id]) {
-      walletsMap[addressObj.wallet_id] = {
+  for (const [address, wallet] of iterator(addressWalletMap)) {
+    // Create a new walletId entry if it does not exist
+    if (!walletsMap[wallet.walletId]) {
+      walletsMap[wallet.walletId] = {
         txId: tx.tx_id,
-        walletId: addressObj.wallet_id,
+        walletId: wallet.walletId,
         addresses: [],
         walletBalanceForTx: new TokenBalanceMap(),
       }
     }
-    const walletData = walletsMap[addressObj.wallet_id];
+    const walletData = walletsMap[wallet.walletId];
 
     // Add this address to the wallet's affected addresses list
-    walletData.addresses.push(addressObj.address);
+    walletData.addresses.push(address);
 
     // Merge the balance of this address with the total balance of the wallet
-    TokenBalanceMap.merge(walletData.walletBalanceForTx, addressBalanceMap[addressObj.address]);
+    const mergedBalance = TokenBalanceMap.merge(walletData.walletBalanceForTx, addressBalanceMap[address]);
+    walletData.walletBalanceForTx = mergedBalance;
   }
 
   // Sort by the tokens with the most balance
 
   // Possibly convert each walletsMap[n].walletBalanceForTx to a pure JSON object here
 
+  // clone the walletsmap?
   return [...walletsMap];
 }
+
+const iterator = (stringMap: StringMap<Wallet>): [string, Wallet][] => {
+  return Object.entries(stringMap);
+};
