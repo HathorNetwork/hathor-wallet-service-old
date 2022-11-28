@@ -168,3 +168,5 @@ export class FromWalletBalanceMapToWalletBalanceValueList {
     return walletBalanceResultList;
   }
 }
+
+export const stringMapIterator = (stringMap: StringMap<unknown>): [string, unknown][] => (Object.entries(stringMap));

@@ -56,6 +56,7 @@ import {
   getWalletFromDbEntry,
   getTxsFromDBResult,
   FromWalletBalanceMapToWalletBalanceValueList,
+  stringMapIterator,
 } from '@src/db/utils';
 import { getAddressBalanceMap } from '@src/commons';
 
@@ -2959,7 +2960,8 @@ export const getWalletBalancesForTx = async (mysql: ServerlessMysql, tx: Transac
   const walletsMap: StringMap<WalletBalance> = {};
 
   // Iterates all the addresses to populate the map's data
-  for (const [address, wallet] of iterator(addressWalletMap)) {
+  const addressWalletEntries = stringMapIterator(addressWalletMap) as [string, Wallet][];
+  for (const [address, wallet] of addressWalletEntries) {
     // Create a new walletId entry if it does not exist
     if (!walletsMap[wallet.walletId]) {
       walletsMap[wallet.walletId] = {
@@ -2981,5 +2983,3 @@ export const getWalletBalancesForTx = async (mysql: ServerlessMysql, tx: Transac
 
   return FromWalletBalanceMapToWalletBalanceValueList.convert(walletsMap);
 };
-
-const iterator = (stringMap: StringMap<Wallet>): [string, Wallet][] => (Object.entries(stringMap));
