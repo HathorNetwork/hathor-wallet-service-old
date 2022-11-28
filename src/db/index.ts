@@ -55,8 +55,7 @@ import {
 import {
   getWalletFromDbEntry,
   getTxsFromDBResult,
-  FromTokenBalanceMapToBalanceValueList,
-  sortBalanceValueByAbsTotal,
+  FromWalletBalanceMapToWalletBalanceResultList,
 } from '@src/db/utils';
 import { getAddressBalanceMap } from '@src/commons';
 
@@ -2980,21 +2979,7 @@ export const getWalletBalancesForTx = async (mysql: ServerlessMysql, tx: Transac
     walletData.walletBalanceForTx = mergedBalance;
   }
 
-  // convert to obj
-  const wallets: WalletBalanceResult[] = [];
-  for (const wallet of Object.values(walletsMap)) {
-    // Sort by the tokens with the most balance
-    const sortedBalanceList = FromTokenBalanceMapToBalanceValueList
-      .convert(wallet.walletBalanceForTx)
-      .sort(sortBalanceValueByAbsTotal);
-    wallets.push({
-      addresses: wallet.addresses,
-      txId: wallet.txId,
-      walletId: wallet.walletId,
-      walletBalanceForTx: sortedBalanceList,
-    });
-  }
-  return wallets;
+  return FromWalletBalanceMapToWalletBalanceResultList.convert(walletsMap);
 };
 
 const iterator = (stringMap: StringMap<Wallet>): [string, Wallet][] => (Object.entries(stringMap));

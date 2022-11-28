@@ -5,9 +5,20 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+/* eslint-disable max-classes-per-file */
 import { ServerlessMysql } from 'serverless-mysql';
 import { getWalletId } from '@src/utils';
-import { WalletStatus, Wallet, Tx, DbSelectResult, TokenBalanceMap, BalanceValue } from '@src/types';
+import {
+  WalletStatus,
+  Wallet,
+  Tx,
+  DbSelectResult,
+  TokenBalanceMap,
+  BalanceValue,
+  WalletBalanceResult,
+  StringMap,
+  WalletBalance,
+} from "@src/types";
 
 /**
  * Begins a transaction on the current connection
@@ -135,3 +146,23 @@ export const sortBalanceValueByAbsTotal = (balanceA: BalanceValue, balanceB: Bal
   if (Math.abs(balanceA.total) - Math.abs(balanceB.total) >= 0) return -1;
   return 0;
 };
+
+export class FromWalletBalanceMapToWalletBalanceResultList {
+  static convert(walletBalanceMap: StringMap<WalletBalance>): WalletBalanceResult[] {
+    const wallets: WalletBalanceResult[] = [];
+    for (const wallet of Object.values(walletBalanceMap)) {
+      // Sort by the tokens with the most balance
+      const sortedBalanceList = FromTokenBalanceMapToBalanceValueList
+        .convert(wallet.walletBalanceForTx)
+        .sort(sortBalanceValueByAbsTotal);
+      wallets.push({
+        addresses: wallet.addresses,
+        txId: wallet.txId,
+        walletId: wallet.walletId,
+        walletBalanceForTx: sortedBalanceList,
+      });
+    }
+
+    return wallets;
+  }
+}
