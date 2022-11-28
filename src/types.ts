@@ -736,3 +736,10 @@ export interface WalletBalance {
   addresses: string[],
   walletBalanceForTx: TokenBalanceMap,
 }
+
+export interface WalletBalanceResult {
+  txId: string,
+  walletId: string,
+  addresses: string[],
+  walletBalanceForTx: StringMap<Balance>,
+}

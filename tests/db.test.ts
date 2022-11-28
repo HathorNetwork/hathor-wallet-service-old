@@ -73,6 +73,7 @@ import {
   removeAllPushDevicesByDeviceId,
   existsWallet,
   getPushDeviceSettingsList,
+  getWalletBalancesForTx,
 } from '@src/db';
 import {
   beginTransaction,
@@ -89,7 +90,11 @@ import {
   Tx,
   DbTxOutput,
   PushDevice,
-  PushProvider, 
+  PushProvider,
+  Transaction,
+  TxInput,
+  TxOutput,
+  Balance,
 } from '@src/types';
 import {
   closeDbConnection,
@@ -2845,4 +2850,228 @@ describe('getPushDeviceSettingsList', () => {
     }));
     expect(result).toStrictEqual(expectedPushDeviceSettigsList);
   });
+});
+
+describe('getWalletBalancesForTx', () => {
+  it('should return an empty list when tx has no started wallet', async () => {
+    expect.hasAssertions();
+
+    // create a wallet
+    const wallet1 = {
+      id: 'wallet1',
+    };
+    await createWallet(mysql, wallet1.id, XPUBKEY, AUTH_XPUBKEY, 5);
+
+    const addr1 = 'addr1';
+    const addr2 = 'addr2';
+
+    // add a transaction
+    const tx1 = {
+      id: 'txId1',
+      height: 1,
+      timestamp: 10,
+      version: 3,
+      weight: 65.4321,
+    };
+    await addOrUpdateTx(mysql, tx1.id, tx1.height, tx1.timestamp, tx1.version, tx1.weight);
+
+    // instantiate a token
+    const token1 = {
+      id: 'token1',
+      name: 'Token 1',
+      symbol: 'T1',
+    };
+
+    // transaction base
+    const utxos = [
+      { index: 0, value: 5, address: addr1, tokenId: token1.id, locked: false, timelock: null, tokenData: 0, spentBy: null },
+      { index: 1, value: 5, address: addr2, tokenId: token1.id, locked: false, timelock: null, tokenData: 0, spentBy: null },
+    ];
+
+    // instantiate outputs
+    const outputs = utxos.map((utxo) => createOutput(
+      utxo.index,
+      utxo.value,
+      utxo.address,
+      utxo.tokenId,
+      utxo.timelock,
+      utxo.locked,
+      utxo.tokenData,
+    ));
+    await addUtxos(mysql, tx1.id, outputs);
+
+    // instantiate inputs
+    const input = createInput(
+      utxos[0].value,
+      utxos[0].address,
+      tx1.id,
+      utxos[0].index,
+      utxos[0].tokenId,
+      utxos[0].timelock,
+      utxos[0].tokenData,
+    ) as TxInput;
+    await updateTxOutputSpentBy(mysql, [input], tx1.id);
+
+    const tx = {
+      tx_id: tx1.id,
+      nonce: 10,
+      timestamp: tx1.timestamp,
+      version: tx1.version,
+      weight: tx1.weight,
+      parents: [],
+      inputs: [input],
+      outputs: [outputs[1] as TxOutput],
+      height: tx1.height,
+      token_name: token1.name,
+      token_symbol: token1.symbol,
+    } as Transaction;
+    const result = await getWalletBalancesForTx(mysql, tx);
+
+    expect(result).toStrictEqual([]);
+  });
+
+  it('should return a list of WalletBalance when tx has a started wallet', async () => {
+    expect.hasAssertions();
+
+    // create a wallet
+    const wallet1 = {
+      id: 'wallet1',
+    };
+    await createWallet(mysql, wallet1.id, XPUBKEY, AUTH_XPUBKEY, 5);
+
+    // register an andress to started wallet
+    const addr1 = 'addr1';
+    await addToAddressTable(mysql, [
+      { address: addr1, index: 0, walletId: wallet1.id, transactions: 0 },
+    ]);
+    // address without started wallet
+    const addr2 = 'addr2';
+
+    // add a transaction
+    const tx1 = {
+      id: 'txId1',
+      height: 1,
+      timestamp: 10,
+      version: 3,
+      weight: 65.4321,
+    };
+    await addOrUpdateTx(mysql, tx1.id, tx1.height, tx1.timestamp, tx1.version, tx1.weight);
+
+    // instantiate a token
+    const token1 = {
+      id: 'token1',
+      name: 'Token 1',
+      symbol: 'T1',
+    };
+
+    // instantiate token balance
+    const balanceToken1 = {
+      unlocked: 5,
+      locked: 0,
+      lockExpires: null,
+      transactions: 1,
+      unlockedAuthorities: new Authorities(0b01),
+      lockedAuthorities: 0,
+    };
+
+    // update wallet state by tx1
+    const walletBalanceMap1 = {
+      [wallet1.id]: TokenBalanceMap.fromStringMap({
+        [token1.id]: balanceToken1,
+      }),
+    };
+    await updateWalletTablesWithTx(mysql, tx1.id, tx1.timestamp, walletBalanceMap1);
+
+    await expect(checkWalletBalanceTable(
+      mysql,
+      1,
+      wallet1.id,
+      token1.id,
+      balanceToken1.unlocked,
+      balanceToken1.locked,
+      balanceToken1.lockExpires,
+      balanceToken1.transactions,
+      0b01,
+      balanceToken1.lockedAuthorities,
+    )).resolves.toBe(true);
+    await expect(checkWalletTxHistoryTable(
+      mysql,
+      1,
+      wallet1.id,
+      token1.id,
+      tx1.id,
+      balanceToken1.unlocked,
+      tx1.timestamp,
+    )).resolves.toBe(true);
+
+    // transaction base
+    const utxos = [
+      { index: 0, value: 5, address: addr1, tokenId: token1.id, locked: false, timelock: null, tokenData: 0, spentBy: null },
+      { index: 1, value: 5, address: addr2, tokenId: token1.id, locked: false, timelock: null, tokenData: 0, spentBy: null },
+    ];
+
+    // instantiate outputs
+    const outputs = utxos.map((utxo) => createOutput(
+      utxo.index,
+      utxo.value,
+      utxo.address,
+      utxo.tokenId,
+      utxo.timelock,
+      utxo.locked,
+      utxo.tokenData,
+    ));
+    await addUtxos(mysql, tx1.id, outputs);
+
+    // instantiate inputs
+    const input = createInput(
+      utxos[0].value,
+      utxos[0].address,
+      tx1.id,
+      utxos[0].index,
+      utxos[0].tokenId,
+      utxos[0].timelock,
+      utxos[0].tokenData,
+    ) as TxInput;
+    await updateTxOutputSpentBy(mysql, [input], tx1.id);
+
+    const tx = {
+      tx_id: tx1.id,
+      nonce: 10,
+      timestamp: tx1.timestamp,
+      version: tx1.version,
+      weight: tx1.weight,
+      parents: [],
+      inputs: [input],
+      outputs: [outputs[1] as TxOutput],
+      height: tx1.height,
+      token_name: token1.name,
+      token_symbol: token1.symbol,
+    } as Transaction;
+    const result = await getWalletBalancesForTx(mysql, tx);
+
+    expect(result).toStrictEqual([{
+      walletId: 'wallet1',
+      addresses: [
+        'addr1',
+      ],
+      txId: 'txId1',
+      walletBalanceForTx: {
+        token1: {
+          lockExpires: null,
+          lockedAmount: 0,
+          lockedAuthorities: {
+            melt: false,
+            mint: false,
+          },
+          totalAmountSent: 0,
+          unlockedAmount: -5,
+          unlockedAuthorities: {
+            melt: false,
+            mint: false,
+          },
+        },
+      },
+    }]);
+  });
+  it.todo('shouls the list of WalletBallance be sorted by token balance');
 });

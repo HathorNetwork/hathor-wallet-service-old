@@ -42,6 +42,7 @@ import {
   PushDeviceSettings,
   WalletBalance,
   Transaction,
+  WalletBalanceResult,
 } from '@src/types';
 import {
   getUnixTimestamp,
@@ -2944,12 +2945,12 @@ export const getPushDeviceSettingsList = async (
 
 /**
  * Get a list of wallet balance per token by informed transaction.
- * 
- * @param mysql 
+ *
+ * @param mysql
  * @param tx - The transaction to get related wallets and their token balances
- * @returns 
+ * @returns
  */
-export const getWalletBalancesForTx = async (mysql: ServerlessMysql, tx: Transaction): Promise<WalletBalance[]> {
+export const getWalletBalancesForTx = async (mysql: ServerlessMysql, tx: Transaction): Promise<WalletBalanceResult[]> => {
   const addressBalanceMap: StringMap<TokenBalanceMap> = getAddressBalanceMap(tx.inputs, tx.outputs);
   // return only wallets that were started
   const addressWalletMap: StringMap<Wallet> = await getAddressWalletInfo(mysql, Object.keys(addressBalanceMap));
@@ -2966,7 +2967,7 @@ export const getWalletBalancesForTx = async (mysql: ServerlessMysql, tx: Transac
         walletId: wallet.walletId,
         addresses: [],
         walletBalanceForTx: new TokenBalanceMap(),
-      }
+      };
     }
     const walletData = walletsMap[wallet.walletId];
 
@@ -2983,9 +2984,18 @@ export const getWalletBalancesForTx = async (mysql: ServerlessMysql, tx: Transac
   // Possibly convert each walletsMap[n].walletBalanceForTx to a pure JSON object here
 
   // clone the walletsmap?
-  return [...walletsMap];
-}
 
-const iterator = (stringMap: StringMap<Wallet>): [string, Wallet][] => {
-  return Object.entries(stringMap);
+  // convert to obj
+  const wallets: WalletBalanceResult[] = [];
+  for (const wallet of Object.values(walletsMap)) {
+    wallets.push({
+      addresses: wallet.addresses,
+      txId: wallet.txId,
+      walletId: wallet.walletId,
+      walletBalanceForTx: Object.fromEntries(Object.entries(wallet.walletBalanceForTx.map)),
+    });
+  }
+  return wallets;
 };
+
+const iterator = (stringMap: StringMap<Wallet>): [string, Wallet][] => (Object.entries(stringMap));
