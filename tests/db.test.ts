@@ -2955,6 +2955,7 @@ describe('getWalletBalancesForTx', () => {
       version: 3,
       weight: 65.4321,
     };
+    // The persistence is not necessary, but used for state consistency
     await addOrUpdateTx(mysql, tx1.id, tx1.height, tx1.timestamp, tx1.version, tx1.weight);
 
     // instantiate a token
@@ -2981,28 +2982,6 @@ describe('getWalletBalancesForTx', () => {
       }),
     };
     await updateWalletTablesWithTx(mysql, tx1.id, tx1.timestamp, walletBalanceMap1);
-
-    await expect(checkWalletBalanceTable(
-      mysql,
-      1,
-      wallet1.id,
-      token1.id,
-      balanceToken1.unlocked,
-      balanceToken1.locked,
-      balanceToken1.lockExpires,
-      balanceToken1.transactions,
-      0b01,
-      balanceToken1.lockedAuthorities,
-    )).resolves.toBe(true);
-    await expect(checkWalletTxHistoryTable(
-      mysql,
-      1,
-      wallet1.id,
-      token1.id,
-      tx1.id,
-      balanceToken1.unlocked,
-      tx1.timestamp,
-    )).resolves.toBe(true);
 
     // transaction base
     const utxos = [
