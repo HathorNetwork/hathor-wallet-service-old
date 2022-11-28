@@ -51,12 +51,11 @@ import {
   getAddressPath,
   xpubDeriveChild,
   getAddresses,
-  isTxVoided,
 } from '@src/utils';
 import {
   getWalletFromDbEntry,
-  getTxFromDBResult,
   getTxsFromDBResult,
+  FromTokenBalanceMapToBalanceValueList,
 } from '@src/db/utils';
 import { getAddressBalanceMap } from '@src/commons';
 
@@ -2984,17 +2983,7 @@ export const getWalletBalancesForTx = async (mysql: ServerlessMysql, tx: Transac
   const wallets: WalletBalanceResult[] = [];
   for (const wallet of Object.values(walletsMap)) {
     // Sort by the tokens with the most balance
-    const entryBalances = Object.entries(wallet.walletBalanceForTx.map);
-    const arrBalances = entryBalances.map((entry) => ({
-      tokenId: entry[0],
-      lockedAmount: entry[1].lockedAmount,
-      lockedAuthorities: entry[1].lockedAuthorities.toJSON(),
-      lockExpires: entry[1].lockExpires,
-      unlockedAmount: entry[1].unlockedAmount,
-      unlockedAuthorities: entry[1].unlockedAuthorities.toJSON(),
-      totalAmountSent: entry[1].totalAmountSent,
-      total: entry[1].total(),
-    } as BalanceValue));
+    const arrBalances = FromTokenBalanceMapToBalanceValueList.convert(wallet.walletBalanceForTx);
     arrBalances.sort(
       (balanceA: BalanceValue, balanceB: BalanceValue): number => {
         if (Math.abs(balanceA.total) - Math.abs(balanceB.total) >= 0) return -1;

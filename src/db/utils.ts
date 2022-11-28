@@ -7,7 +7,7 @@
 
 import { ServerlessMysql } from 'serverless-mysql';
 import { getWalletId } from '@src/utils';
-import { WalletStatus, Wallet, Tx, DbSelectResult } from '@src/types';
+import { WalletStatus, Wallet, Tx, DbSelectResult, TokenBalanceMap, BalanceValue } from '@src/types';
 
 /**
  * Begins a transaction on the current connection
@@ -113,3 +113,20 @@ const _mapTxRecord2Tx = (record: Record<string, unknown>): Tx => (
     weight: record.weight as number,
   }
 );
+
+export class FromTokenBalanceMapToBalanceValueList {
+  static convert(tokenBalanceMap: TokenBalanceMap): BalanceValue[] {
+    const entryBalances = Object.entries(tokenBalanceMap.map);
+    const balances = entryBalances.map((entry) => ({
+      tokenId: entry[0],
+      lockedAmount: entry[1].lockedAmount,
+      lockedAuthorities: entry[1].lockedAuthorities.toJSON(),
+      lockExpires: entry[1].lockExpires,
+      unlockedAmount: entry[1].unlockedAmount,
+      unlockedAuthorities: entry[1].unlockedAuthorities.toJSON(),
+      totalAmountSent: entry[1].totalAmountSent,
+      total: entry[1].total(),
+    } as BalanceValue));
+    return balances;
+  }
+}
