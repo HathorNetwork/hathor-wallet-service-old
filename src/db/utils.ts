@@ -15,7 +15,7 @@ import {
   DbSelectResult,
   TokenBalanceMap,
   BalanceValue,
-  WalletBalanceResult,
+  WalletBalanceValue,
   StringMap,
   WalletBalance,
 } from "@src/types";
@@ -147,11 +147,11 @@ export const sortBalanceValueByAbsTotal = (balanceA: BalanceValue, balanceB: Bal
   return 0;
 };
 
-export class FromWalletBalanceMapToWalletBalanceResultList {
-  static convert(walletBalanceMap: StringMap<WalletBalance>): WalletBalanceResult[] {
+export class FromWalletBalanceMapToWalletBalanceValueList {
+  static convert(walletBalanceMap: StringMap<WalletBalance>): WalletBalanceValue[] {
     const walletBalanceList = Object.values(walletBalanceMap);
 
-    const walletBalanceResultList: WalletBalanceResult[] = [];
+    const walletBalanceResultList: WalletBalanceValue[] = [];
     for (const walletBalance of walletBalanceList) {
       const sortedTokenBalanceList = FromTokenBalanceMapToBalanceValueList
         .convert(walletBalance.walletBalanceForTx)

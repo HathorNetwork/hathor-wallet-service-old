@@ -748,7 +748,7 @@ export interface WalletBalance {
   walletBalanceForTx: TokenBalanceMap,
 }
 
-export interface WalletBalanceResult {
+export interface WalletBalanceValue {
   txId: string,
   walletId: string,
   addresses: string[],

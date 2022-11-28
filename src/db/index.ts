@@ -42,7 +42,7 @@ import {
   PushDeviceSettings,
   WalletBalance,
   Transaction,
-  WalletBalanceResult,
+  WalletBalanceValue,
   BalanceValue,
 } from '@src/types';
 import {
@@ -55,7 +55,7 @@ import {
 import {
   getWalletFromDbEntry,
   getTxsFromDBResult,
-  FromWalletBalanceMapToWalletBalanceResultList,
+  FromWalletBalanceMapToWalletBalanceValueList,
 } from '@src/db/utils';
 import { getAddressBalanceMap } from '@src/commons';
 
@@ -2950,7 +2950,7 @@ export const getPushDeviceSettingsList = async (
  * @param tx - The transaction to get related wallets and their token balances
  * @returns
  */
-export const getWalletBalancesForTx = async (mysql: ServerlessMysql, tx: Transaction): Promise<WalletBalanceResult[]> => {
+export const getWalletBalancesForTx = async (mysql: ServerlessMysql, tx: Transaction): Promise<WalletBalanceValue[]> => {
   const addressBalanceMap: StringMap<TokenBalanceMap> = getAddressBalanceMap(tx.inputs, tx.outputs);
   // return only wallets that were started
   const addressWalletMap: StringMap<Wallet> = await getAddressWalletInfo(mysql, Object.keys(addressBalanceMap));
@@ -2979,7 +2979,7 @@ export const getWalletBalancesForTx = async (mysql: ServerlessMysql, tx: Transac
     walletData.walletBalanceForTx = mergedBalance;
   }
 
-  return FromWalletBalanceMapToWalletBalanceResultList.convert(walletsMap);
+  return FromWalletBalanceMapToWalletBalanceValueList.convert(walletsMap);
 };
 
 const iterator = (stringMap: StringMap<Wallet>): [string, Wallet][] => (Object.entries(stringMap));
