@@ -3069,6 +3069,7 @@ describe('getWalletBalancesForTx', () => {
             melt: false,
             mint: false,
           },
+          total: -5,
         },
       },
     }]);

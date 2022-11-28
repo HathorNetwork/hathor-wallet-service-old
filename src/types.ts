@@ -331,6 +331,16 @@ export class Balance {
   }
 }
 
+export type BalanceValue = {
+  totalAmountSent: number;
+  lockedAmount: number;
+  unlockedAmount: number;
+  lockedAuthorities: Record<string, unknown>;
+  unlockedAuthorities: Record<string, unknown>;
+  lockExpires: number | null;
+  total: number;
+}
+
 export class WalletTokenBalance {
   token: TokenInfo;
 

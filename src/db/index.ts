@@ -43,6 +43,7 @@ import {
   WalletBalance,
   Transaction,
   WalletBalanceResult,
+  BalanceValue,
 } from '@src/types';
 import {
   getUnixTimestamp,
@@ -2979,20 +2980,35 @@ export const getWalletBalancesForTx = async (mysql: ServerlessMysql, tx: Transac
     walletData.walletBalanceForTx = mergedBalance;
   }
 
-  // Sort by the tokens with the most balance
-
-  // Possibly convert each walletsMap[n].walletBalanceForTx to a pure JSON object here
-
-  // clone the walletsmap?
-
   // convert to obj
   const wallets: WalletBalanceResult[] = [];
   for (const wallet of Object.values(walletsMap)) {
+    // Sort by the tokens with the most balance
+    const balances = Object.entries(wallet.walletBalanceForTx.map);
+    const balancesObj = balances.map((entry) => ([
+      entry[0],
+      {
+        lockedAmount: entry[1].lockedAmount,
+        lockedAuthorities: entry[1].lockedAuthorities.toJSON(),
+        lockExpires: entry[1].lockExpires,
+        unlockedAmount: entry[1].unlockedAmount,
+        unlockedAuthorities: entry[1].unlockedAuthorities.toJSON(),
+        totalAmountSent: entry[1].totalAmountSent,
+        total: entry[1].total(),
+      } as BalanceValue,
+    ]));
+    balancesObj.sort(
+      (entryA: [string, BalanceValue], entryB: [string, BalanceValue]): number => {
+        if (entryA[1].total - entryB[1].total >= 0) return 1;
+        return 0;
+      },
+    );
+
     wallets.push({
       addresses: wallet.addresses,
       txId: wallet.txId,
       walletId: wallet.walletId,
-      walletBalanceForTx: Object.fromEntries(Object.entries(wallet.walletBalanceForTx.map)),
+      walletBalanceForTx: Object.fromEntries(balancesObj),
     });
   }
   return wallets;
