@@ -332,6 +332,7 @@ export class Balance {
 }
 
 export type BalanceValue = {
+  tokenId: string,
   totalAmountSent: number;
   lockedAmount: number;
   unlockedAmount: number;
@@ -751,5 +752,5 @@ export interface WalletBalanceResult {
   txId: string,
   walletId: string,
   addresses: string[],
-  walletBalanceForTx: StringMap<Balance>,
+  walletBalanceForTx: BalanceValue[],
 }
