@@ -149,20 +149,22 @@ export const sortBalanceValueByAbsTotal = (balanceA: BalanceValue, balanceB: Bal
 
 export class FromWalletBalanceMapToWalletBalanceResultList {
   static convert(walletBalanceMap: StringMap<WalletBalance>): WalletBalanceResult[] {
-    const wallets: WalletBalanceResult[] = [];
-    for (const wallet of Object.values(walletBalanceMap)) {
-      // Sort by the tokens with the most balance
-      const sortedBalanceList = FromTokenBalanceMapToBalanceValueList
-        .convert(wallet.walletBalanceForTx)
+    const walletBalanceList = Object.values(walletBalanceMap);
+
+    const walletBalanceResultList: WalletBalanceResult[] = [];
+    for (const walletBalance of walletBalanceList) {
+      const sortedTokenBalanceList = FromTokenBalanceMapToBalanceValueList
+        .convert(walletBalance.walletBalanceForTx)
         .sort(sortBalanceValueByAbsTotal);
-      wallets.push({
-        addresses: wallet.addresses,
-        txId: wallet.txId,
-        walletId: wallet.walletId,
-        walletBalanceForTx: sortedBalanceList,
+
+      walletBalanceResultList.push({
+        addresses: walletBalance.addresses,
+        txId: walletBalance.txId,
+        walletId: walletBalance.walletId,
+        walletBalanceForTx: sortedTokenBalanceList,
       });
     }
 
-    return wallets;
+    return walletBalanceResultList;
   }
 }
