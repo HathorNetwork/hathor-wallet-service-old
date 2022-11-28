@@ -2984,22 +2984,20 @@ export const getWalletBalancesForTx = async (mysql: ServerlessMysql, tx: Transac
   const wallets: WalletBalanceResult[] = [];
   for (const wallet of Object.values(walletsMap)) {
     // Sort by the tokens with the most balance
-    const balances = Object.entries(wallet.walletBalanceForTx.map);
-    const balancesObj = balances.map((entry) => ([
-      entry[0],
-      {
-        lockedAmount: entry[1].lockedAmount,
-        lockedAuthorities: entry[1].lockedAuthorities.toJSON(),
-        lockExpires: entry[1].lockExpires,
-        unlockedAmount: entry[1].unlockedAmount,
-        unlockedAuthorities: entry[1].unlockedAuthorities.toJSON(),
-        totalAmountSent: entry[1].totalAmountSent,
-        total: entry[1].total(),
-      } as BalanceValue,
-    ]));
-    balancesObj.sort(
-      (entryA: [string, BalanceValue], entryB: [string, BalanceValue]): number => {
-        if (entryA[1].total - entryB[1].total >= 0) return 1;
+    const entryBalances = Object.entries(wallet.walletBalanceForTx.map);
+    const arrBalances = entryBalances.map((entry) => ({
+      tokenId: entry[0],
+      lockedAmount: entry[1].lockedAmount,
+      lockedAuthorities: entry[1].lockedAuthorities.toJSON(),
+      lockExpires: entry[1].lockExpires,
+      unlockedAmount: entry[1].unlockedAmount,
+      unlockedAuthorities: entry[1].unlockedAuthorities.toJSON(),
+      totalAmountSent: entry[1].totalAmountSent,
+      total: entry[1].total(),
+    } as BalanceValue));
+    arrBalances.sort(
+      (balanceA: BalanceValue, balanceB: BalanceValue): number => {
+        if (Math.abs(balanceA.total) - Math.abs(balanceB.total) >= 0) return -1;
         return 0;
       },
     );
@@ -3008,7 +3006,7 @@ export const getWalletBalancesForTx = async (mysql: ServerlessMysql, tx: Transac
       addresses: wallet.addresses,
       txId: wallet.txId,
       walletId: wallet.walletId,
-      walletBalanceForTx: Object.fromEntries(balancesObj),
+      walletBalanceForTx: arrBalances,
     });
   }
   return wallets;
