@@ -72,6 +72,7 @@ import {
   getPushDevice,
   removeAllPushDevicesByDeviceId,
   existsWallet,
+  getPushDeviceSettingsList,
 } from '@src/db';
 import {
   beginTransaction,
@@ -88,6 +89,7 @@ import {
   Tx,
   DbTxOutput,
   PushDevice,
+  PushProvider, 
 } from '@src/types';
 import {
   closeDbConnection,
@@ -2638,5 +2640,212 @@ describe('getPushDevice', () => {
     const result = await getPushDevice(mysql, deviceId);
 
     expect(result).toBeNull();
+  });
+});
+
+describe('getPushDeviceSettingsList', () => {
+  it('should return an empty list when no device settings are found', async () => {
+    expect.hasAssertions();
+
+    // arrange variables
+    const deviceCandidates = [
+      {
+        walletId: 'wallet1',
+        deviceId: 'device1',
+        pushProvider: PushProvider.ANDROID,
+        enablePush: true,
+        enableShowAmounts: true,
+      },
+      {
+        walletId: 'wallet2',
+        deviceId: 'device2',
+        pushProvider: PushProvider.ANDROID,
+        enablePush: false,
+        enableShowAmounts: true,
+      },
+      {
+        walletId: 'wallet3',
+        deviceId: 'device3',
+        pushProvider: PushProvider.ANDROID,
+        enablePush: true,
+        enableShowAmounts: false,
+      },
+      {
+        walletId: 'wallet4',
+        deviceId: 'device4',
+        pushProvider: PushProvider.ANDROID,
+        enablePush: false,
+        enableShowAmounts: false,
+      },
+    ];
+
+    // devices to load on database
+    const devicesToLoad = deviceCandidates.filter((each) => each.enablePush === true);
+    // devices to not load on database, they will be used on query
+    const devicesToNotLoad = deviceCandidates.filter((each) => each.enablePush === false);
+
+    // register wallets that will not be queried
+    const loadWallet = (eachDevice) => createWallet(mysql, eachDevice.walletId, XPUBKEY, AUTH_XPUBKEY, 5);
+    await devicesToLoad.forEach(loadWallet);
+
+    // register devices related to the loaded wallets
+    const loadDevice = (eachDevice) => registerPushDevice(mysql, {
+      walletId: eachDevice.walletId,
+      deviceId: eachDevice.deviceId,
+      pushProvider: eachDevice.pushProvider,
+      enablePush: eachDevice.enablePush,
+      enableShowAmounts: eachDevice.enableShowAmounts,
+    });
+    await devicesToLoad.forEach(loadDevice);
+
+    // get settings querying only devices not loaded on database, resulting on empty list
+    const notRegisteredWalletIdList = devicesToNotLoad.map((each) => each.walletId);
+    const result = await getPushDeviceSettingsList(mysql, notRegisteredWalletIdList);
+
+    // assert settings
+    expect(result).toStrictEqual([]);
+  });
+
+  it('should return a list of seetings even when some wallet ids are not found', async () => {
+    expect.hasAssertions();
+
+    // arrange variables
+    const deviceCandidates = [
+      {
+        walletId: 'wallet1',
+        deviceId: 'device1',
+        pushProvider: PushProvider.ANDROID,
+        enablePush: true,
+        enableShowAmounts: true,
+      },
+      {
+        walletId: 'wallet2',
+        deviceId: 'device2',
+        pushProvider: PushProvider.ANDROID,
+        enablePush: false,
+        enableShowAmounts: true,
+      },
+      {
+        walletId: 'wallet3',
+        deviceId: 'device3',
+        pushProvider: PushProvider.ANDROID,
+        enablePush: true,
+        enableShowAmounts: false,
+      },
+      {
+        walletId: 'wallet4',
+        deviceId: 'device4',
+        pushProvider: PushProvider.ANDROID,
+        enablePush: false,
+        enableShowAmounts: false,
+      },
+    ];
+
+    // devices to load on database
+    const devicesToLoad = deviceCandidates.filter((each) => each.enablePush === true);
+    // devices to not load on database
+    const devicesToNotLoad = deviceCandidates.filter((each) => each.enablePush === false);
+
+    // register wallets to be used by registered devices
+    const loadWallet = (eachDevice) => createWallet(mysql, eachDevice.walletId, XPUBKEY, AUTH_XPUBKEY, 5);
+    await devicesToLoad.forEach(loadWallet);
+
+    // register devices related to the loaded wallets
+    const loadDevice = (eachDevice) => registerPushDevice(mysql, {
+      walletId: eachDevice.walletId,
+      deviceId: eachDevice.deviceId,
+      pushProvider: eachDevice.pushProvider,
+      enablePush: eachDevice.enablePush,
+      enableShowAmounts: eachDevice.enableShowAmounts,
+    });
+    await devicesToLoad.forEach(loadDevice);
+
+    // get settings, query be all wallets of deviceCandidates, some are loaded on database, some are not
+    const walletIdList = deviceCandidates.map((each) => each.walletId);
+    const result = await getPushDeviceSettingsList(mysql, walletIdList);
+
+    // assert settings, only devices with loaded wallets on database will be found
+    expect(result).toHaveLength(2);
+
+    // verify devices loaded, they should yield a not empty list, equal to the loaded devices
+    const expectedPushDeviceSettigsList = deviceCandidates
+      .filter((each) => each.enablePush === true)
+      .map((each) => ({
+        deviceId: each.deviceId,
+        walletId: each.walletId,
+        enablePush: each.enablePush,
+        enableShowAmounts: each.enableShowAmounts,
+      }));
+    expect(result).toStrictEqual(expectedPushDeviceSettigsList);
+
+    // verify devices not loaded, they should yield an empty list
+    const walletIdListForNotRegisteredDevices = devicesToNotLoad.map((each) => each.deviceId);
+    const resultNotRegisteredDevices = await getPushDeviceSettingsList(mysql, walletIdListForNotRegisteredDevices);
+    expect(resultNotRegisteredDevices).toStrictEqual([]);
+  });
+
+  it('should return a list of settings for all the wallet ids', async () => {
+    expect.hasAssertions();
+
+    // arrange variables
+    const devicesToLoad = [
+      {
+        walletId: 'wallet1',
+        deviceId: 'device1',
+        pushProvider: PushProvider.ANDROID,
+        enablePush: true,
+        enableShowAmounts: true,
+      },
+      {
+        walletId: 'wallet2',
+        deviceId: 'device2',
+        pushProvider: PushProvider.ANDROID,
+        enablePush: false,
+        enableShowAmounts: true,
+      },
+      {
+        walletId: 'wallet3',
+        deviceId: 'device3',
+        pushProvider: PushProvider.ANDROID,
+        enablePush: true,
+        enableShowAmounts: false,
+      },
+      {
+        walletId: 'wallet4',
+        deviceId: 'device4',
+        pushProvider: PushProvider.ANDROID,
+        enablePush: false,
+        enableShowAmounts: false,
+      },
+    ];
+
+    // register wallets, load all the wallets related to devicesToLoad
+    const loadWallet = (eachDevice) => createWallet(mysql, eachDevice.walletId, XPUBKEY, AUTH_XPUBKEY, 5);
+    await devicesToLoad.forEach(loadWallet);
+
+    // register devices, register all the devices
+    const loadDevice = (eachDevice) => registerPushDevice(mysql, {
+      walletId: eachDevice.walletId,
+      deviceId: eachDevice.deviceId,
+      pushProvider: eachDevice.pushProvider,
+      enablePush: eachDevice.enablePush,
+      enableShowAmounts: eachDevice.enableShowAmounts,
+    });
+    await devicesToLoad.forEach(loadDevice);
+
+    // get settings, get every device registered
+    const walletIdList = devicesToLoad.map((each) => each.walletId);
+    const result = await getPushDeviceSettingsList(mysql, walletIdList);
+
+    // assert settings
+    expect(result).toHaveLength(4);
+
+    const expectedPushDeviceSettigsList = devicesToLoad.map((each) => ({
+      deviceId: each.deviceId,
+      walletId: each.walletId,
+      enablePush: each.enablePush,
+      enableShowAmounts: each.enableShowAmounts,
+    }));
+    expect(result).toStrictEqual(expectedPushDeviceSettigsList);
   });
 });

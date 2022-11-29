@@ -727,3 +727,5 @@ export interface PushDevice {
   enablePush: boolean,
   enableShowAmounts: boolean
 }
+
+export type PushDeviceSettings = Omit<PushDevice, 'pushProvider'>;
