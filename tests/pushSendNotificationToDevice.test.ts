@@ -234,7 +234,7 @@ describe('alert', () => {
 
     expect(result.success).toStrictEqual(false);
     expect(result.message).not.toBeNull();
-    expect(spyOnLoggerError).toBeCalledWith('[ALERT] Device not found.', { deviceId: 'device1' });
+    expect(spyOnLoggerError).toHaveBeenCalledWith('[ALERT] Device not found.', { deviceId: 'device1' });
   });
 
   it('should alert when provider not implemented', async () => {
@@ -273,6 +273,6 @@ describe('alert', () => {
 
     expect(result.success).toStrictEqual(false);
     expect(result.message).not.toBeNull();
-    expect(spyOnLoggerError).toBeCalledWith('[ALERT] Provider invalid.', { deviceId: 'device1', pushProvider: 'ios' });
+    expect(spyOnLoggerError).toHaveBeenCalledWith('[ALERT] Provider invalid.', { deviceId: 'device1', pushProvider: 'ios' });
   });
 });
