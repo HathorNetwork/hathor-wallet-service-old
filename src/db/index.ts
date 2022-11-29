@@ -1191,16 +1191,23 @@ export const updateWalletLockedBalance = async (
  *
  * @param mysql - Database connection
  * @param walletId - Wallet id
+ * @param filterAddresses - Optional parameter to filter addresses from the list
  * @returns A list of addresses and their info (index and transactions)
  */
-export const getWalletAddresses = async (mysql: ServerlessMysql, walletId: string): Promise<AddressInfo[]> => {
+export const getWalletAddresses = async (mysql: ServerlessMysql, walletId: string, filterAddresses?: string[]): Promise<AddressInfo[]> => {
   const addresses: AddressInfo[] = [];
+  const subQuery = filterAddresses ? `
+    AND \`address\` IN (?)
+  ` : '';
+
   const results: DbSelectResult = await mysql.query(`
     SELECT *
       FROM \`address\`
      WHERE \`wallet_id\` = ?
+      ${subQuery}
   ORDER BY \`index\`
-       ASC`, walletId);
+       ASC`, [walletId, filterAddresses]);
+
   for (const result of results) {
     const address = {
       address: result.address as string,
@@ -2663,4 +2670,147 @@ export const incrementTokensTxCount = async (
        SET \`transactions\` = \`transactions\` + 1
      WHERE \`id\` IN (?)
   `, [tokenList]);
+};
+
+/**
+ * Verify the existence of a device registered for a given wallet.
+ *
+ * @param mysql - Database connection
+ * @param deviceId - The device to verify existence
+ * @param walletId - The wallet linked to device
+ */
+export const existsPushDevice = async (
+  mysql: ServerlessMysql,
+  deviceId: string,
+  walletId: string,
+) : Promise<boolean> => {
+  const [{ count }] = await mysql.query(
+    `
+    SELECT COUNT(1) as \`count\`
+      FROM \`push_devices\` pd
+     WHERE device_id = ?
+       AND wallet_id = ?`,
+    [deviceId, walletId],
+  ) as unknown as Array<{count}>;
+
+  return count > 0;
+};
+
+/**
+ * Register a device to a wallet for push notification.
+ *
+ * @param mysql - Database connection
+ * @param input - Input of push device register
+ */
+export const registerPushDevice = async (
+  mysql: ServerlessMysql,
+  input: {
+    deviceId: string,
+    walletId: string,
+    pushProvider: string,
+    enablePush: boolean,
+    enableShowAmounts: boolean,
+  },
+) : Promise<void> => {
+  await mysql.query(
+    `
+    INSERT
+      INTO \`push_devices\` (
+           device_id
+         , wallet_id
+         , push_provider
+         , enable_push
+         , enable_show_amounts)
+    VALUES (?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+           updated_at = CURRENT_TIMESTAMP`,
+    [input.deviceId, input.walletId, input.pushProvider, input.enablePush, input.enableShowAmounts],
+  );
+};
+
+/**
+ * Remove any record of push notification device given a device ID.
+ *
+ * @param mysql - Database connection
+ * @param deviceId - The device ID
+ */
+export const removeAllPushDevicesByDeviceId = async (mysql: ServerlessMysql, deviceId: string): Promise<void> => {
+  await mysql.query(
+    `
+     DELETE
+       FROM \`push_devices\`
+      WHERE
+  device_id = ?
+    `,
+    [deviceId],
+  );
+};
+
+/**
+ * Update existing push device given a wallet.
+ *
+ * @param mysql - Database connection
+ * @param input - Input of push device register
+ */
+export const updatePushDevice = async (
+  mysql: ServerlessMysql,
+  input: {
+    deviceId: string,
+    walletId: string,
+    enablePush: boolean,
+    enableShowAmounts: boolean,
+  },
+) : Promise<void> => {
+  await mysql.query(
+    `
+    UPDATE \`push_devices\`
+       SET enable_push = ?
+         , enable_show_amounts = ?
+     WHERE device_id = ?
+       AND wallet_id = ?`,
+    [input.enablePush, input.enableShowAmounts, input.deviceId, input.walletId],
+  );
+};
+
+/**
+ * Unregister push device for a given wallet.
+ *
+ * @param mysql - Database connection
+ * @param deviceId - The device to unregister
+ * @param walletId - The wallet linked to device
+ */
+export const unregisterPushDevice = async (
+  mysql: ServerlessMysql,
+  deviceId: string,
+  walletId: string,
+) : Promise<void> => {
+  await mysql.query(
+    `
+    DELETE
+      FROM \`push_devices\`
+     WHERE device_id = ?
+       AND wallet_id = ?`,
+    [deviceId, walletId],
+  );
+};
+
+/**
+* Verify the existence of a wallet by its ID.
+*
+* @param mysql - Database connection
+* @param walletId - The wallet linked to device
+*/
+export const existsWallet = async (
+  mysql: ServerlessMysql,
+  walletId: string,
+) : Promise<boolean> => {
+  const [{ count }] = (await mysql.query(
+    `
+    SELECT COUNT(1) as \`count\`
+      FROM \`wallet\` pd
+     WHERE id = ?`,
+    [walletId],
+  )) as unknown as Array<{ count }>;
+
+  return count > 0;
 };

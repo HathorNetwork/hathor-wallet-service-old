@@ -10,7 +10,7 @@ import { ServerlessMysql } from 'serverless-mysql';
 import middy from '@middy/core';
 
 import { ApiError } from '@src/api/errors';
-import { StringMap } from '@src/types';
+import { PushProvider, StringMap } from '@src/types';
 import { closeDbConnection } from '@src/utils';
 
 export const STATUS_CODE_TABLE = {
@@ -42,6 +42,7 @@ export const STATUS_CODE_TABLE = {
   [ApiError.ADDRESS_NOT_IN_WALLET]: 400,
   [ApiError.WALLET_MAX_RETRIES]: 400,
   [ApiError.TOKEN_NOT_FOUND]: 404,
+  [ApiError.DEVICE_NOT_FOUND]: 404,
 };
 
 /**
@@ -83,4 +84,10 @@ export const warmupMiddleware = (): middy.MiddlewareObj<APIGatewayProxyEvent, AP
   return {
     before: warmupBefore,
   };
+};
+
+export const pushProviderRegexPattern = (): RegExp => {
+  const entries = Object.values(PushProvider);
+  const options = entries.join('|');
+  return new RegExp(`^(?:${options})$`);
 };

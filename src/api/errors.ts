@@ -34,4 +34,5 @@ export enum ApiError {
   TOKEN_NOT_FOUND = 'token-not-found',
   FORBIDDEN = 'forbidden',
   UNAUTHORIZED = 'unauthorized',
+  DEVICE_NOT_FOUND = 'device-not-found',
 }

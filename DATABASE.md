@@ -142,6 +142,19 @@ CREATE TABLE `transaction` (
   PRIMARY KEY (`tx_id`)
 );
 
+CREATE TABLE `push_devices` (
+  `device_id` varchar(256) NOT NULL,
+  `push_provider` enum('ios','android') NOT NULL,
+  `wallet_id` varchar(64) NOT NULL,
+  `enable_push` tinyint(1) NOT NULL DEFAULT '0',
+  `enable_show_amounts` tinyint(1) NOT NULL DEFAULT '0',
+  `enable_only_new_tx` tinyint(1) NOT NULL DEFAULT '0',
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`device_id`),
+  KEY `wallet_id` (`wallet_id`),
+  CONSTRAINT `push_devices_ibfk_1` FOREIGN KEY (`wallet_id`) REFERENCES `wallet` (`id`)
+);
+
 CREATE INDEX transaction_version_idx USING HASH ON `transaction`(`version`);
 CREATE INDEX tx_output_heightlock_idx USING HASH ON `tx_output`(`heightlock`);
 CREATE INDEX tx_output_timelock_idx USING HASH ON `tx_output`(`timelock`);

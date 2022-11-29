@@ -68,11 +68,13 @@ export const cleanDatabase = async (mysql: ServerlessMysql): Promise<void> => {
     'wallet_balance',
     'wallet_tx_history',
     'miner',
+    'push_devices',
   ];
-
+  await mysql.query('SET FOREIGN_KEY_CHECKS = 0');
   for (const table of TABLES) {
     await mysql.query(`DELETE FROM ${table}`);
   }
+  await mysql.query('SET FOREIGN_KEY_CHECKS = 1');
 };
 
 export const createOutput = (index: number, value: number, address: string, token = '00', timelock: number = null, locked = false, tokenData = 0, spentBy = null): TxOutputWithIndex => (
@@ -899,4 +901,66 @@ export const getAuthData = (now: number): any => {
     firstAddress,
     timestamp: now,
   };
+};
+
+export const checkPushDevicesTable = async (
+  mysql: ServerlessMysql,
+  totalResults: number,
+  filter?: {
+    deviceId: string,
+    walletId: string,
+    pushProvider: string,
+    enablePush: boolean,
+    enableShowAmounts: boolean,
+  },
+): Promise<boolean | Record<string, unknown>> => {
+  let results: DbSelectResult = await mysql.query('SELECT * FROM `push_devices`');
+  if (!filter && results.length !== totalResults) {
+    return {
+      error: 'checkPushDevicesTable total results',
+      expected: totalResults,
+      received: results.length,
+      results,
+    };
+  }
+
+  if (totalResults === 0) return true;
+  if (!filter) return true;
+
+  // now fetch the exact entry
+  const baseQuery = `
+    SELECT *
+      FROM \`push_devices\`
+     WHERE \`wallet_id\` = ?
+       AND \`device_id\` = ?
+       AND \`push_provider\` = ?
+       AND \`enable_push\` = ?
+       AND \`enable_show_amounts\` = ?
+      `;
+
+  results = await mysql.query(baseQuery, [
+    filter.walletId,
+    filter.deviceId,
+    filter.pushProvider,
+    filter.enablePush,
+    filter.enableShowAmounts,
+  ]);
+
+  if (results.length !== totalResults) {
+    return {
+      error: 'checkPushDevicesTable total results after filter',
+      expected: totalResults,
+      received: results.length,
+      results,
+    };
+  }
+
+  if (results.length !== 1) {
+    return {
+      error: 'checkPushDevicesTable query',
+      params: { ...filter },
+      results,
+    };
+  }
+  return true;
 };
