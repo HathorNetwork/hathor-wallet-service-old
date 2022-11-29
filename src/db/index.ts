@@ -2802,7 +2802,7 @@ export const unregisterPushDevice = async (
  * @param mysql - Database connection
  * @param txId - A transaction ID
  * @param walletId - The wallet related to the transaction
- * @returns A a list of tokens for a transaction if found, return an empty list otherwise
+ * @returns A list of tokens for a transaction if found, return an empty list otherwise
  */
 export const getTransactionById = async (
   mysql: ServerlessMysql,
