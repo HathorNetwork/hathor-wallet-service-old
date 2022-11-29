@@ -1,4 +1,4 @@
-import { logger } from './winston.mock'; // most be the first to import
+import { logger } from '@tests/winston.mock'; // most be the first to import
 import {
   send,
 } from '@src/api/pushSendNotificationToDevice';
