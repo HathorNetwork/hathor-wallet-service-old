@@ -2,17 +2,21 @@ import { Lambda } from 'aws-sdk';
 import { SendNotificationToDevice } from '@src/types';
 import { credential, initializeApp, messaging, ServiceAccount } from 'firebase-admin';
 import { MulticastMessage } from 'firebase-admin/messaging';
-import serviceAccount from '@src/utils/fcm.config.json';
 import createDefaultLogger from '@src/logger';
+import serviceAccount from '@src/utils/fcm.config.json';
 
 const logger = createDefaultLogger();
 
+if (!serviceAccount) {
+  logger.error('[ALERT] serviceAccount was not loaded. Make sure the file src/utils/fcm.config.json is included in the build output.');
+}
+
 if (!process.env.SEND_NOTIFICATION_LAMBDA_ENDPOINT) {
-  logger.warn('[ALERT] env.SEND_NOTIFICATION_LAMBDA_ENDPOINT can not be null or undefined.');
+  logger.error('[ALERT] env.SEND_NOTIFICATION_LAMBDA_ENDPOINT can not be null or undefined.');
 }
 
 if (!process.env.STAGE) {
-  logger.warn('[ALERT] env.STAGE can not be null or undefined.');
+  logger.error('[ALERT] env.STAGE can not be null or undefined.');
 }
 
 const SEND_NOTIFICATION_LAMBDA_ENDPOINT = process.env.SEND_NOTIFICATION_LAMBDA_ENDPOINT;
