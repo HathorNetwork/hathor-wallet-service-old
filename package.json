@@ -40,7 +40,8 @@
     "source-map-support": "^0.5.19",
     "tiny-secp256k1": "^2.2.1",
     "uuid": "^8.3.0",
-    "winston": "^3.7.2"
+    "winston": "^3.7.2",
+    "firebase-admin": "^11.3.0"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.95",
@@ -56,7 +57,6 @@
     "eslint-plugin-import": "^2.23.3",
     "eslint-plugin-jest": "^23.13.2",
     "eslint-plugin-module-resolver": "^0.16.0",
-    "firebase-admin": "^11.3.0",
     "fork-ts-checker-webpack-plugin": "^3.0.1",
     "jest": "^27.0.6",
     "npm-run-all": "^4.1.5",
