@@ -712,3 +712,18 @@ export interface TxByIdToken {
   tokenName: string;
   tokenSymbol: string;
 }
+
+export interface SendNotificationToDevice {
+  deviceId: string,
+  title: string,
+  description: string,
+  metadata: Record<string, unknown>,
+}
+
+export interface PushDevice {
+  walletId: string,
+  deviceId: string,
+  pushProvider: PushProvider,
+  enablePush: boolean,
+  enableShowAmounts: boolean
+}

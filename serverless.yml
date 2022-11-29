@@ -503,3 +503,8 @@ functions:
     warmup:
       walletWarmer:
         enabled: false
+  sendNotificationToDevice:
+    handler: src/pushSendNotificationToDevice.send
+    warmup:
+      walletWarmer:
+        enabled: false
