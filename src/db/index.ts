@@ -39,6 +39,7 @@ import {
   Miner,
   PushDevice,
   TxByIdToken,
+  PushDeviceSettings,
 } from '@src/types';
 import {
   getUnixTimestamp,
@@ -2903,4 +2904,36 @@ export const getPushDevice = async (
     enablePush: !!pushDevice.enable_push,
     enableShowAmounts: !!pushDevice.enable_show_amounts,
   } as PushDevice;
+};
+
+/**
+ * Get a push device settings list given a list of wallet ids.
+ *
+ * @param mysql - Database connection
+ * @param walletIdList - A list of wallet ids
+ * @returns - a list of push device settings
+ */
+export const getPushDeviceSettingsList = async (
+  mysql: ServerlessMysql,
+  walletIdList: string[],
+) : Promise<PushDeviceSettings[]> => {
+  const pushDeviceSettingsResult = await mysql.query(
+    `
+    SELECT wallet_id
+         , device_id
+         , enable_push
+         , enable_show_amounts
+      FROM \`push_devices\`
+     WHERE wallet_id in (?)`,
+    [walletIdList],
+  ) as Array<{wallet_id, device_id, enable_push, enable_show_amounts}>;
+
+  const pushDeviceSettingsList = pushDeviceSettingsResult.map((each) => ({
+    walletId: each.wallet_id,
+    deviceId: each.device_id,
+    enablePush: !!each.enable_push,
+    enableShowAmounts: !!each.enable_show_amounts,
+  } as PushDeviceSettings));
+
+  return pushDeviceSettingsList;
 };
