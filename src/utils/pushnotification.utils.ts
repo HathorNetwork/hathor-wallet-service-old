@@ -5,11 +5,11 @@ import createDefaultLogger from '@src/logger';
 const logger = createDefaultLogger();
 
 if (!process.env.SEND_NOTIFICATION_LAMBDA_ENDPOINT) {
-  logger.warn('[ALERT] env.SEND_NOTIFICATION_LAMBDA_ENDPOINT can not be null or undefined.');
+  logger.error('[ALERT] env.SEND_NOTIFICATION_LAMBDA_ENDPOINT can not be null or undefined.');
 }
 
 if (!process.env.STAGE) {
-  logger.warn('[ALERT] env.STAGE can not be null or undefined.');
+  logger.error('[ALERT] env.STAGE can not be null or undefined.');
 }
 
 const SEND_NOTIFICATION_LAMBDA_ENDPOINT = process.env.SEND_NOTIFICATION_LAMBDA_ENDPOINT;
@@ -22,6 +22,7 @@ export enum PushNotificationError {
 
 export class PushNotificationUtils {
   static sendToFcm(_notification: SendNotificationToDevice): Promise<{ success: boolean, errorMessage?: string }> {
+    // NOTE: yet to be implemented
     return Promise.race([]);
   }
 
