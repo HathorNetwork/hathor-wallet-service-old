@@ -2644,7 +2644,6 @@ describe('getPushDevice', () => {
   it('should return null when wallet not found', async () => {
     expect.hasAssertions();
 
-    const walletId = 'wallet1';
     const deviceId = 'device1';
 
     const result = await getPushDevice(mysql, deviceId);
