@@ -2748,7 +2748,7 @@ describe('getPushDeviceSettingsList', () => {
     const loadWallet = (eachDevice) => createWallet(mysql, eachDevice.walletId, XPUBKEY, AUTH_XPUBKEY, 5);
     await devicesToLoad.forEach(loadWallet);
 
-    // regiter devices
+    // register devices
     const loadDevice = (eachDevice) => registerPushDevice(mysql, {
       walletId: eachDevice.walletId,
       deviceId: eachDevice.deviceId,
@@ -2765,7 +2765,7 @@ describe('getPushDeviceSettingsList', () => {
     // assert settings
     expect(result).toHaveLength(2);
 
-    // verify devices not loaded, they should yeild and empty list
+    // verify devices not loaded, they should yield an empty list
     const expectedPushDeviceSettigsList = deviceCandidates
       .filter((each) => each.enablePush === true)
       .map((each) => ({
