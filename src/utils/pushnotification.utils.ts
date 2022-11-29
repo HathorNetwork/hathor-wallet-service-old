@@ -54,6 +54,7 @@ export class PushNotificationUtils {
       return { success: false, errorMessage: PushNotificationError.INVALID_DEVICE_ID };
     }
 
+    logger.error('[ALERT] Error while calling sendMulticast(message) of Firebase Cloud Message.', { error });
     return { success: false, errorMessage: PushNotificationError.UNKNOWN };
   }
 
