@@ -1,3 +1,7 @@
+/* eslint-disable global-require */
+/* eslint-disable @typescript-eslint/no-var-requires */
+/* eslint-disable no-shadow */
+/* eslint-disable @typescript-eslint/naming-convention */
 // mocks should be imported first
 import { invokeMock, promiseMock } from '@tests/utils/aws-sdk.mock';
 import { logger } from '@tests/winston.mock';
