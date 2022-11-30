@@ -3,11 +3,14 @@
 /* eslint-disable no-shadow */
 /* eslint-disable @typescript-eslint/naming-convention */
 // mocks should be imported first
+import { fcmConfigMock } from '@tests/utils/fcm.config.json.mock';
+import { sendMulticastMock, messaging } from '@tests/utils/firebase-admin.mock';
 import { invokeMock, promiseMock } from '@tests/utils/aws-sdk.mock';
 import { logger } from '@tests/winston.mock';
-import { PushNotificationUtils } from '@src/utils/pushnotification.utils';
+import { PushNotificationUtils, PushNotificationError } from '@src/utils/pushnotification.utils';
 import { SendNotificationToDevice } from '@src/types';
 import { Lambda } from 'aws-sdk';
+import serviceAccount from '@src/utils/fcm.config.json';
 
 const spyOnLoggerError = jest.spyOn(logger, 'error');
 
@@ -17,10 +20,26 @@ describe('PushNotificationUtils', () => {
   beforeEach(() => {
     jest.resetModules();
     jest.restoreAllMocks();
+    process.env = {
+      ...initEnv,
+      SEND_NOTIFICATION_LAMBDA_ENDPOINT: 'endpoint',
+      STAGE: 'stage',
+      FIREBASE_PROJECT_ID: 'projectId',
+    };
   });
 
   afterEach(() => {
     process.env = initEnv;
+  });
+
+  describe('fcm.config.json', () => {
+    it('file not loaded', () => {
+      expect.hasAssertions();
+      fcmConfigMock.mockReset();
+
+      expect(serviceAccount).toBeUndefined();
+      expect(logger.error).toHaveBeenCalledWith('[ALERT] serviceAccount was not loaded. Make sure the file src/utils/fcm.config.json is included in the build output.');
+    });
   });
 
   describe('process.env', () => {
@@ -28,10 +47,7 @@ describe('PushNotificationUtils', () => {
       expect.hasAssertions();
 
       // load local env
-      const fakeEndpoint = '';
-      process.env.SEND_NOTIFICATION_LAMBDA_ENDPOINT = fakeEndpoint;
-      const fakeStage = 'test';
-      process.env.STAGE = fakeStage;
+      process.env.SEND_NOTIFICATION_LAMBDA_ENDPOINT = '';
 
       // reload module
       const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
@@ -43,32 +59,111 @@ describe('PushNotificationUtils', () => {
       expect.hasAssertions();
 
       // load local env
-      const fakeEndpoint = 'endpoint';
-      process.env.SEND_NOTIFICATION_LAMBDA_ENDPOINT = fakeEndpoint;
-      const fakeStage = '';
-      process.env.STAGE = fakeStage;
+      process.env.STAGE = '';
 
       // reload module
       const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
 
       expect(logger.error).toHaveBeenLastCalledWith('[ALERT] env.STAGE can not be null or undefined.');
     });
+
+    it('FIREBASE_PROJECT_ID', () => {
+      expect.hasAssertions();
+
+      // load local env
+      process.env.FIREBASE_PROJECT_ID = '';
+
+      // reload module
+      const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
+
+      expect(logger.error).toHaveBeenLastCalledWith('[ALERT] env.FIREBASE_PROJECT_ID can not be null or undefined.');
+    });
   });
 
-  it('sendToFcm(notification)', async () => {
-    expect.hasAssertions();
+  describe('sendToFcm(notification)', () => {
+    beforeEach(() => {
+      sendMulticastMock.mockReset();
+      messaging.mockImplementation(() => ({
+        sendMulticast: sendMulticastMock.mockReturnValue({
+          failureCount: 0,
+        }),
+      }));
+    });
 
-    const notification = {
-      deviceId: 'device1',
-      title: 'New transaction',
-      description: 'You recieved 1 HTR.',
-      metadata: {
-        txId: 'tx1',
-      },
-    } as SendNotificationToDevice;
-    const result = await PushNotificationUtils.sendToFcm(notification);
+    it('should return success true when succeed', async () => {
+      expect.hasAssertions();
 
-    expect(result).toStrictEqual({ success: true });
+      const notification = {
+        deviceId: 'device1',
+        title: 'New transaction',
+        description: 'You recieved 1 HTR.',
+        metadata: {
+          txId: 'tx1',
+        },
+      } as SendNotificationToDevice;
+      const result = await PushNotificationUtils.sendToFcm(notification);
+
+      expect(result).toStrictEqual({ success: true });
+    });
+
+    it('should return success false when deviceId is invalid', async () => {
+      expect.hasAssertions();
+
+      messaging.mockImplementation(() => ({
+        sendMulticast: sendMulticastMock.mockReturnValue({
+          responses: [
+            {
+              error: {
+                code: 'token-not-registered',
+              },
+            },
+          ],
+          failureCount: 1,
+        }),
+      }));
+
+      const notification = {
+        deviceId: 'device1',
+        title: 'New transaction',
+        description: 'You recieved 1 HTR.',
+        metadata: {
+          txId: 'tx1',
+        },
+      } as SendNotificationToDevice;
+      const result = await PushNotificationUtils.sendToFcm(notification);
+
+      expect(result).toStrictEqual({ success: false, errorMessage: PushNotificationError.INVALID_DEVICE_ID });
+    });
+
+    it('should return success false with unknown error when failure is not treated', async () => {
+      expect.hasAssertions();
+
+      messaging.mockImplementation(() => ({
+        sendMulticast: sendMulticastMock.mockReturnValue({
+          responses: [
+            {
+              error: {
+                code: 'any-other-code',
+              },
+            },
+          ],
+          failureCount: 1,
+        }),
+      }));
+
+      const notification = {
+        deviceId: 'device1',
+        title: 'New transaction',
+        description: 'You recieved 1 HTR.',
+        metadata: {
+          txId: 'tx1',
+        },
+      } as SendNotificationToDevice;
+      const result = await PushNotificationUtils.sendToFcm(notification);
+
+      expect(result).toStrictEqual({ success: false, errorMessage: PushNotificationError.UNKNOWN });
+      expect(logger.error).toHaveBeenLastCalledWith('[ALERT] Error while calling sendMulticast(message) of Firebase Cloud Message.', { error: { code: 'any-other-code' }});
+    });
   });
 
   describe('invokeSendNotificationHandlerLambda(notification)', () => {

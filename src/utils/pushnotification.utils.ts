@@ -19,6 +19,10 @@ if (!process.env.STAGE) {
   logger.error('[ALERT] env.STAGE can not be null or undefined.');
 }
 
+if (!process.env.FIREBASE_PROJECT_ID) {
+  logger.error('[ALERT] env.FIREBASE_PROJECT_ID can not be null or undefined.');
+}
+
 const SEND_NOTIFICATION_LAMBDA_ENDPOINT = process.env.SEND_NOTIFICATION_LAMBDA_ENDPOINT;
 const STAGE = process.env.STAGE;
 const SEND_NOTIFICATION_FUNCTION_NAME = `hathor-wallet-service-${STAGE}-sendNotificationToDevice`;
