@@ -861,6 +861,18 @@ test('getWalletAddresses', async () => {
     expect(i).toBe(address.index);
     expect(address.address).toBe(ADDRESSES[i]);
   }
+
+  // if we pass the filterAddresses optional parameter, we should receive just these
+  const filteredReturnedAddresses = await getWalletAddresses(mysql, walletId, [
+    ADDRESSES[0],
+    ADDRESSES[2],
+    ADDRESSES[3],
+  ]);
+
+  expect(filteredReturnedAddresses).toHaveLength(3);
+  expect(filteredReturnedAddresses[0].address).toBe(ADDRESSES[0]);
+  expect(filteredReturnedAddresses[1].address).toBe(ADDRESSES[2]);
+  expect(filteredReturnedAddresses[2].address).toBe(ADDRESSES[3]);
 });
 
 test('getWalletAddressDetail', async () => {
@@ -2634,7 +2646,6 @@ describe('getPushDevice', () => {
   it('should return null when wallet not found', async () => {
     expect.hasAssertions();
 
-    const walletId = 'wallet1';
     const deviceId = 'device1';
 
     const result = await getPushDevice(mysql, deviceId);

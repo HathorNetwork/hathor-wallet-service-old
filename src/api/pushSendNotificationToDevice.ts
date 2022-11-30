@@ -21,7 +21,9 @@ class PushSendNotificationToDeviceInputValidator {
     deviceId: Joi.string().max(256).required(),
     title: Joi.string().required(),
     description: Joi.string().required(),
-    metadata: Joi.object().optional(),
+    metadata: Joi.object({
+      txId: Joi.string().required(),
+    }).required(),
   });
 
   static validate(payload: unknown): { value: SendNotificationToDevice, error: ValidationError } {
@@ -37,7 +39,7 @@ class PushSendNotificationToDeviceInputValidator {
  *
  * This lambda is called by API Gateway on POST /push/register
  */
-export const send: Handler<{ body: unknown }, { success: boolean, message?: string }> = async (event, context) => {
+export const send: Handler<{ body: unknown }, { success: boolean, message?: string, details?: unknown }> = async (event, context) => {
   const logger = createDefaultLogger();
   // Logs the request id on every line, so we can see all logs from a request
   logger.defaultMeta = {
@@ -54,7 +56,7 @@ export const send: Handler<{ body: unknown }, { success: boolean, message?: stri
 
     closeDbConnection(mysql);
     logger.error('Invalid payload.', { details });
-    return { success: false, message: `Failed due to invalid payload. See details: ${details}.` };
+    return { success: false, message: 'Failed due to invalid payload, see details.', details };
   }
 
   const pushDevice = await getPushDevice(mysql, body.deviceId);

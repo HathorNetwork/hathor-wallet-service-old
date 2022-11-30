@@ -20,7 +20,8 @@ if (!process.env.STAGE) {
 }
 
 const SEND_NOTIFICATION_LAMBDA_ENDPOINT = process.env.SEND_NOTIFICATION_LAMBDA_ENDPOINT;
-const SEND_NOTIFICATION_FUNCTION_NAME = `hathor-wallet-service-${process.env.STAGE}-sendNotificationToDevice`;
+const STAGE = process.env.STAGE;
+const SEND_NOTIFICATION_FUNCTION_NAME = `hathor-wallet-service-${STAGE}-sendNotificationToDevice`;
 const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID;
 
 initializeApp({
@@ -62,6 +63,10 @@ export class PushNotificationUtils {
    * Invokes this application's own intermediary lambda `PushSendNotificationToDevice`.
    */
   static async invokeSendNotificationHandlerLambda(notification: SendNotificationToDevice): Promise<void> {
+    if (!SEND_NOTIFICATION_LAMBDA_ENDPOINT && !STAGE) {
+      throw new Error('Environment variables SEND_NOTIFICATION_LAMBDA_ENDPOINT and STAGE are not set.');
+    }
+
     const lambda = new Lambda({
       apiVersion: '2015-03-31',
       endpoint: SEND_NOTIFICATION_LAMBDA_ENDPOINT,

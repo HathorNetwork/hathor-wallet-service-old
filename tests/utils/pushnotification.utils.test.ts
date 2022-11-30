@@ -1,152 +1,180 @@
-import { PushNotificationUtils, PushNotificationError } from '@src/utils/pushnotification.utils';
+/* eslint-disable global-require */
+/* eslint-disable @typescript-eslint/no-var-requires */
+/* eslint-disable no-shadow */
+/* eslint-disable @typescript-eslint/naming-convention */
+// mocks should be imported first
+import { invokeMock, promiseMock } from '@tests/utils/aws-sdk.mock';
+import { logger } from '@tests/winston.mock';
+import { PushNotificationUtils } from '@src/utils/pushnotification.utils';
 import { SendNotificationToDevice } from '@src/types';
-import { messaging } from 'firebase-admin';
-import { BatchResponse } from 'firebase-admin/messaging';
+import { Lambda } from 'aws-sdk';
 
-jest.mock('firebase-admin', () => {
-  const mockMulticast = jest.fn(() => Promise.resolve({ failureCount: 0 }));
-  const mockMessaging = { sendMulticast: mockMulticast };
-  return {
-    credential: { cert: jest.fn() },
-    messaging: jest.fn(() => mockMessaging),
-    initializeApp: jest.fn(),
-  };
-});
+const spyOnLoggerError = jest.spyOn(logger, 'error');
 
-const spyOnSendMulticast = jest.spyOn(messaging(), 'sendMulticast');
+describe('PushNotificationUtils', () => {
+  const initEnv = process.env;
 
-describe('pushnotification.utils', () => {
-  describe('sendToFcm', () => {
-    beforeEach(() => {
-      spyOnSendMulticast.mockClear();
-    });
+  beforeEach(() => {
+    jest.resetModules();
+    jest.restoreAllMocks();
+  });
 
-    it('should call sendMulticast with general interface', async () => {
+  afterEach(() => {
+    process.env = initEnv;
+  });
+
+  describe('process.env', () => {
+    it('SEND_NOTIFICATION_LAMBDA_ENDPOINT', () => {
       expect.hasAssertions();
 
-      const deviceId = 'device1';
-      const title = 'New transaction';
-      const description = 'You have received 1 XYZ';
-      const txId = 'tx1';
+      // load local env
+      const fakeEndpoint = '';
+      process.env.SEND_NOTIFICATION_LAMBDA_ENDPOINT = fakeEndpoint;
+      const fakeStage = 'test';
+      process.env.STAGE = fakeStage;
 
-      const notification = {
-        deviceId,
-        title,
-        description,
-        metadata: { txId },
-      } as SendNotificationToDevice;
+      // reload module
+      const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
 
-      PushNotificationUtils.sendToFcm(notification);
+      expect(logger.error).toHaveBeenLastCalledWith('[ALERT] env.SEND_NOTIFICATION_LAMBDA_ENDPOINT can not be null or undefined.');
+    });
 
-      expect(spyOnSendMulticast).toHaveBeenCalledTimes(1);
-      expect(spyOnSendMulticast).toHaveBeenCalledWith({
-        tokens: [deviceId],
-        notification: {
-          title,
-          body: description,
-        },
-        data: {
-          txId,
-        },
+    it('STAGE', () => {
+      expect.hasAssertions();
+
+      // load local env
+      const fakeEndpoint = 'endpoint';
+      process.env.SEND_NOTIFICATION_LAMBDA_ENDPOINT = fakeEndpoint;
+      const fakeStage = '';
+      process.env.STAGE = fakeStage;
+
+      // reload module
+      const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
+
+      expect(logger.error).toHaveBeenLastCalledWith('[ALERT] env.STAGE can not be null or undefined.');
+    });
+  });
+
+  it('sendToFcm(notification)', async () => {
+    expect.hasAssertions();
+
+    const notification = {
+      deviceId: 'device1',
+      title: 'New transaction',
+      description: 'You recieved 1 HTR.',
+      metadata: {
+        txId: 'tx1',
+      },
+    } as SendNotificationToDevice;
+    const result = await PushNotificationUtils.sendToFcm(notification);
+
+    expect(result).toStrictEqual({ success: true });
+  });
+
+  describe('invokeSendNotificationHandlerLambda(notification)', () => {
+    beforeEach(() => {
+      promiseMock.mockReset();
+      // default mock return value
+      promiseMock.mockReturnValue({
+        StatusCode: 202,
       });
     });
 
-    it('should return success when multicast has no failure', async () => {
+    it('should call lambda with success', async () => {
       expect.hasAssertions();
-      spyOnSendMulticast.mockImplementation(() => Promise.resolve({
-        failureCount: 0,
-        successCount: 1,
-        responses: [
-          {
-            success: false,
-            messageId: undefined,
-            error: {
-              code: 'messaging/internal',
-              message: 'internal error',
-            },
-          },
-        ],
-      } as BatchResponse));
 
-      const deviceId = 'device1';
-      const title = 'New transaction';
-      const description = 'You have received 1 XYZ';
-      const txId = 'tx1';
+      // load local env
+      const fakeEndpoint = 'endpoint';
+      process.env.SEND_NOTIFICATION_LAMBDA_ENDPOINT = fakeEndpoint;
+      const fakeStage = 'test';
+      process.env.STAGE = fakeStage;
+
+      // reload module
+      const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
 
       const notification = {
-        deviceId,
-        title,
-        description,
-        metadata: { txId },
+        deviceId: 'device1',
+        title: 'New transaction',
+        description: 'You recieved 1 HTR.',
+        metadata: {
+          txId: 'tx1',
+        },
       } as SendNotificationToDevice;
 
-      const result = await PushNotificationUtils.sendToFcm(notification);
-      expect(result).toStrictEqual({ success: true });
+      const result = await PushNotificationUtils.invokeSendNotificationHandlerLambda(notification);
+
+      // a void method returns undefined
+      expect(result).toBeUndefined();
+
+      // assert Lambda constructor call
+      expect(Lambda).toHaveBeenCalledTimes(1);
+      expect(Lambda).toHaveBeenCalledWith({
+        apiVersion: '2015-03-31',
+        endpoint: fakeEndpoint,
+      });
+
+      // assert lambda invoke call
+      expect(invokeMock).toHaveBeenCalledTimes(1);
+      expect(invokeMock).toHaveBeenCalledWith({
+        FunctionName: `hathor-wallet-service-${fakeStage}-sendNotificationToDevice`,
+        InvocationType: 'Event',
+        Payload: JSON.stringify(notification),
+      });
     });
 
-    it('should return fail when multicast has failure', async () => {
+    it('should throw error when lambda invokation fails', async () => {
       expect.hasAssertions();
 
-      spyOnSendMulticast.mockImplementation(() => Promise.resolve({
-        responses: [
-          {
-            success: false,
-            error: {
-              code: 'messaging/invalid-argument',
-              message: 'The registration token is not a valid FCM registration token',
-            },
-          },
-        ],
-        successCount: 0,
-        failureCount: 1,
-      } as BatchResponse));
+      // load local env
+      const fakeEndpoint = 'endpoint';
+      process.env.SEND_NOTIFICATION_LAMBDA_ENDPOINT = fakeEndpoint;
+      const fakeStage = 'test';
+      process.env.STAGE = fakeStage;
 
-      const deviceId = 'device1';
-      const title = 'New transaction';
-      const description = 'You have received 1 XYZ';
-      const txId = 'tx1';
+      // reload module
+      const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
 
       const notification = {
-        deviceId,
-        title,
-        description,
-        metadata: { txId },
+        deviceId: 'device1',
+        title: 'New transaction',
+        description: 'You recieved 1 HTR.',
+        metadata: {
+          txId: 'tx1',
+        },
       } as SendNotificationToDevice;
 
-      const result = await PushNotificationUtils.sendToFcm(notification);
-      expect(result).toStrictEqual({ success: false, errorMessage: PushNotificationError.UNKNOWN });
+      // simulate a failing lambda invokation
+      promiseMock.mockReturnValue({
+        StatusCode: 500,
+      });
+
+      await expect(PushNotificationUtils.invokeSendNotificationHandlerLambda(notification))
+        .rejects.toThrow(`hathor-wallet-service-${fakeStage}-sendNotificationToDevice lambda invoke failed for device: ${notification.deviceId}`);
     });
 
-    it('should return fail with invalid-device-id when multicast fails with not-registered', async () => {
+    it('should throw error when env variables are not set', async () => {
       expect.hasAssertions();
-      spyOnSendMulticast.mockImplementation(() => Promise.resolve({
-        responses: [
-          {
-            success: false,
-            error: {
-              code: 'messaging/registration-token-not-registered',
-              message: 'Requested entity was not found.',
-            },
-          },
-        ],
-        successCount: 0,
-        failureCount: 1,
-      } as BatchResponse));
 
-      const deviceId = 'device1';
-      const title = 'New transaction';
-      const description = 'You have received 1 XYZ';
-      const txId = 'tx1';
+      // load local env
+      const fakeEndpoint = '';
+      process.env.SEND_NOTIFICATION_LAMBDA_ENDPOINT = fakeEndpoint;
+      const fakeStage = '';
+      process.env.STAGE = fakeStage;
+
+      // reload module
+      const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
 
       const notification = {
-        deviceId,
-        title,
-        description,
-        metadata: { txId },
+        deviceId: 'device1',
+        title: 'New transaction',
+        description: 'You recieved 1 HTR.',
+        metadata: {
+          txId: 'tx1',
+        },
       } as SendNotificationToDevice;
 
-      const result = await PushNotificationUtils.sendToFcm(notification);
-      expect(result).toStrictEqual({ success: false, errorMessage: PushNotificationError.INVALID_DEVICE_ID });
+      await expect(PushNotificationUtils.invokeSendNotificationHandlerLambda(notification))
+        .rejects.toThrow('Environment variables SEND_NOTIFICATION_LAMBDA_ENDPOINT and STAGE are not set.');
     });
   });
 });

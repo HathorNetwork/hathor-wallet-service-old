@@ -1195,16 +1195,23 @@ export const updateWalletLockedBalance = async (
  *
  * @param mysql - Database connection
  * @param walletId - Wallet id
+ * @param filterAddresses - Optional parameter to filter addresses from the list
  * @returns A list of addresses and their info (index and transactions)
  */
-export const getWalletAddresses = async (mysql: ServerlessMysql, walletId: string): Promise<AddressInfo[]> => {
+export const getWalletAddresses = async (mysql: ServerlessMysql, walletId: string, filterAddresses?: string[]): Promise<AddressInfo[]> => {
   const addresses: AddressInfo[] = [];
+  const subQuery = filterAddresses ? `
+    AND \`address\` IN (?)
+  ` : '';
+
   const results: DbSelectResult = await mysql.query(`
     SELECT *
       FROM \`address\`
      WHERE \`wallet_id\` = ?
+      ${subQuery}
   ORDER BY \`index\`
-       ASC`, walletId);
+       ASC`, [walletId, filterAddresses]);
+
   for (const result of results) {
     const address = {
       address: result.address as string,
@@ -2807,7 +2814,7 @@ export const unregisterPushDevice = async (
  * @param mysql - Database connection
  * @param txId - A transaction ID
  * @param walletId - The wallet related to the transaction
- * @returns A a list of tokens for a transaction if found, return an empty list otherwise
+ * @returns A list of tokens for a transaction if found, return an empty list otherwise
  */
 export const getTransactionById = async (
   mysql: ServerlessMysql,
@@ -2832,6 +2839,7 @@ export const getTransactionById = async (
         WHERE transaction.tx_id = ?
           AND transaction.voided = FALSE
           AND wallet_tx_history.wallet_id = ?`,
+  // eslint-disable-next-line camelcase
   [txId, walletId]) as Array<{tx_id, timestamp, version, voided, height, weight, balance, token_id, name, symbol }>;
 
   const txTokens = [];
@@ -2891,6 +2899,7 @@ export const getPushDevice = async (
       FROM \`push_devices\`
      WHERE device_id = ?`,
     [deviceId],
+  // eslint-disable-next-line camelcase
   ) as Array<{wallet_id, device_id, push_provider, enable_push, enable_show_amounts}>;
 
   if (!pushDevice) {
@@ -2926,6 +2935,7 @@ export const getPushDeviceSettingsList = async (
       FROM \`push_devices\`
      WHERE wallet_id in (?)`,
     [walletIdList],
+  // eslint-disable-next-line camelcase
   ) as Array<{wallet_id, device_id, enable_push, enable_show_amounts}>;
 
   const pushDeviceSettingsList = pushDeviceSettingsResult.map((each) => ({
