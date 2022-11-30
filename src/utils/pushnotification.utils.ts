@@ -13,7 +13,8 @@ if (!process.env.STAGE) {
 }
 
 const SEND_NOTIFICATION_LAMBDA_ENDPOINT = process.env.SEND_NOTIFICATION_LAMBDA_ENDPOINT;
-const SEND_NOTIFICATION_FUNCTION_NAME = `hathor-wallet-service-${process.env.STAGE}-sendNotificationToDevice`;
+const STAGE = process.env.STAGE;
+const SEND_NOTIFICATION_FUNCTION_NAME = `hathor-wallet-service-${STAGE}-sendNotificationToDevice`;
 
 export enum PushNotificationError {
   INVALID_DEVICE_ID = 'invalid-device-id',
@@ -23,13 +24,17 @@ export enum PushNotificationError {
 export class PushNotificationUtils {
   static sendToFcm(_notification: SendNotificationToDevice): Promise<{ success: boolean, errorMessage?: string }> {
     // NOTE: yet to be implemented
-    return Promise.race([]);
+    return Promise.resolve({ success: true });
   }
 
   /**
    * Invokes this application's own intermediary lambda `PushSendNotificationToDevice`.
    */
   static async invokeSendNotificationHandlerLambda(notification: SendNotificationToDevice): Promise<void> {
+    if (!SEND_NOTIFICATION_LAMBDA_ENDPOINT && !STAGE) {
+      throw new Error('Environment variables SEND_NOTIFICATION_LAMBDA_ENDPOINT and STAGE are not set.');
+    }
+
     const lambda = new Lambda({
       apiVersion: '2015-03-31',
       endpoint: SEND_NOTIFICATION_LAMBDA_ENDPOINT,
