@@ -55,7 +55,7 @@ import {
 import {
   getWalletFromDbEntry,
   getTxsFromDBResult,
-  FromWalletBalanceMapToWalletBalanceValueList,
+  WalletBalanceMapConverter,
   stringMapIterator,
 } from '@src/db/utils';
 import { getAddressBalanceMap } from '@src/commons';
@@ -2951,7 +2951,7 @@ export const getPushDeviceSettingsList = async (
  * @param tx - The transaction to get related wallets and their token balances
  * @returns
  */
-export const getWalletBalancesForTx = async (mysql: ServerlessMysql, tx: Transaction): Promise<WalletBalanceValue[]> => {
+export const getWalletBalancesForTx = async (mysql: ServerlessMysql, tx: Transaction): Promise<StringMap<WalletBalanceValue>> => {
   const addressBalanceMap: StringMap<TokenBalanceMap> = getAddressBalanceMap(tx.inputs, tx.outputs);
   // return only wallets that were started
   const addressWalletMap: StringMap<Wallet> = await getAddressWalletInfo(mysql, Object.keys(addressBalanceMap));
@@ -2981,5 +2981,5 @@ export const getWalletBalancesForTx = async (mysql: ServerlessMysql, tx: Transac
     walletData.walletBalanceForTx = mergedBalance;
   }
 
-  return FromWalletBalanceMapToWalletBalanceValueList.convert(walletsMap);
+  return WalletBalanceMapConverter.toValue(walletsMap);
 };
