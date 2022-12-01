@@ -1,4 +1,4 @@
-import { logger } from './winston.mock'; // most be the first to import
+import { logger } from '@tests/winston.mock'; // most be the first to import
 import {
   send,
 } from '@src/api/pushSendNotificationToDevice';
@@ -62,45 +62,10 @@ test('send push notification to the right provider', async () => {
     title: 'You have a new transaction',
     description: '5HTR was sent to my-wallet',
     metadata: {
-      firstMetadata: 'firstMetadata',
+      txId: '00e2597222154cf99bfef171e27374e7f35aa7448afae10c15e9f049b95a3e67',
     },
   };
   const sendEvent = { body: validPayload };
-  const sendContext = { awsRequestId: '123' } as Context;
-
-  const result = await send(sendEvent, sendContext, null) as { success: boolean, message?: string };
-
-  expect(result.success).toStrictEqual(true);
-  expect(spyOnSendToFcm).toHaveBeenCalledTimes(1);
-});
-
-test('should complete even without metadata', async () => {
-  expect.hasAssertions();
-
-  await addToWalletTable(mysql, [{
-    id: 'my-wallet',
-    xpubkey: 'xpubkey',
-    authXpubkey: 'auth_xpubkey',
-    status: 'ready',
-    maxGap: 5,
-    createdAt: 10000,
-    readyAt: 10001,
-  }]);
-
-  const event = makeGatewayEventWithAuthorizer('my-wallet', null, {
-    deviceId: 'device1',
-    pushProvider: 'android',
-    enablePush: true,
-    enableShowAmounts: false,
-  });
-  await register(event, null, null) as APIGatewayProxyResult;
-
-  const payloadWithoutMetadata = {
-    deviceId: 'device1',
-    title: 'You have a new transaction',
-    description: '5HTR was sent to my-wallet',
-  };
-  const sendEvent = { body: payloadWithoutMetadata };
   const sendContext = { awsRequestId: '123' } as Context;
 
   const result = await send(sendEvent, sendContext, null) as { success: boolean, message?: string };
@@ -142,7 +107,7 @@ test('should unregister device when invalid device id', async () => {
     title: 'You have a new transaction',
     description: '5HTR was sent to my-wallet',
     metadata: {
-      firstMetadata: 'firstMetadata',
+      txId: '00e2597222154cf99bfef171e27374e7f35aa7448afae10c15e9f049b95a3e67',
     },
   };
   const sendEvent = { body: validPayload };
@@ -168,7 +133,7 @@ describe('validation', () => {
       title: 'You have a new transaction',
       description: '5HTR was sent to my-wallet',
       metadata: {
-        firstMetadata: 'firstMetadata',
+        txId: '00e2597222154cf99bfef171e27374e7f35aa7448afae10c15e9f049b95a3e67',
       },
     };
     const sendEvent = { body: payloadWithInvalidDeviceId };
@@ -186,7 +151,7 @@ describe('validation', () => {
       deviceId: 'device1',
       description: '5HTR was sent to my-wallet',
       metadata: {
-        firstMetadata: 'firstMetadata',
+        txId: '00e2597222154cf99bfef171e27374e7f35aa7448afae10c15e9f049b95a3e67',
       },
     };
     const sendEvent = { body: payloadWithoutTitle };
@@ -204,10 +169,44 @@ describe('validation', () => {
       deviceId: 'device1',
       title: 'You have a new transaction',
       metadata: {
-        firstMetadata: 'firstMetadata',
+        txId: '00e2597222154cf99bfef171e27374e7f35aa7448afae10c15e9f049b95a3e67',
       },
     };
     const sendEvent = { body: payloadWithoutDescription };
+    const sendContext = { awsRequestId: '123' } as Context;
+
+    const result = await send(sendEvent, sendContext, null) as { success: boolean, message?: string };
+
+    expect(result.success).toStrictEqual(false);
+  });
+
+  it('should validate metadata', async () => {
+    expect.hasAssertions();
+
+    await addToWalletTable(mysql, [{
+      id: 'my-wallet',
+      xpubkey: 'xpubkey',
+      authXpubkey: 'auth_xpubkey',
+      status: 'ready',
+      maxGap: 5,
+      createdAt: 10000,
+      readyAt: 10001,
+    }]);
+
+    const event = makeGatewayEventWithAuthorizer('my-wallet', null, {
+      deviceId: 'device1',
+      pushProvider: 'android',
+      enablePush: true,
+      enableShowAmounts: false,
+    });
+    await register(event, null, null) as APIGatewayProxyResult;
+
+    const payloadWithoutMetadata = {
+      deviceId: 'device1',
+      title: 'You have a new transaction',
+      description: '5HTR was sent to my-wallet',
+    };
+    const sendEvent = { body: payloadWithoutMetadata };
     const sendContext = { awsRequestId: '123' } as Context;
 
     const result = await send(sendEvent, sendContext, null) as { success: boolean, message?: string };
@@ -225,7 +224,7 @@ describe('alert', () => {
       title: 'You have a new transaction',
       description: '5HTR was sent to my-wallet',
       metadata: {
-        firstMetadata: 'firstMetadata',
+        txId: '00e2597222154cf99bfef171e27374e7f35aa7448afae10c15e9f049b95a3e67',
       },
     };
     const sendEvent = { body: validPayload };
@@ -235,7 +234,7 @@ describe('alert', () => {
 
     expect(result.success).toStrictEqual(false);
     expect(result.message).not.toBeNull();
-    expect(spyOnLoggerError).toBeCalledWith('[ALERT] Device not found.', { deviceId: 'device1' });
+    expect(spyOnLoggerError).toHaveBeenCalledWith('[ALERT] Device not found.', { deviceId: 'device1' });
   });
 
   it('should alert when provider not implemented', async () => {
@@ -264,7 +263,7 @@ describe('alert', () => {
       title: 'You have a new transaction',
       description: '5HTR was sent to my-wallet',
       metadata: {
-        firstMetadata: 'firstMetadata',
+        txId: '00e2597222154cf99bfef171e27374e7f35aa7448afae10c15e9f049b95a3e67',
       },
     };
     const sendEvent = { body: validPayload };
@@ -274,6 +273,6 @@ describe('alert', () => {
 
     expect(result.success).toStrictEqual(false);
     expect(result.message).not.toBeNull();
-    expect(spyOnLoggerError).toBeCalledWith('[ALERT] Provider invalid.', { deviceId: 'device1', pushProvider: 'ios' });
+    expect(spyOnLoggerError).toHaveBeenCalledWith('[ALERT] Provider invalid.', { deviceId: 'device1', pushProvider: 'ios' });
   });
 });

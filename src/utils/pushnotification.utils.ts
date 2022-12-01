@@ -2,21 +2,30 @@ import { Lambda } from 'aws-sdk';
 import { SendNotificationToDevice } from '@src/types';
 import { credential, initializeApp, messaging, ServiceAccount } from 'firebase-admin';
 import { MulticastMessage } from 'firebase-admin/messaging';
-import serviceAccount from '@src/utils/fcm.config.json';
 import createDefaultLogger from '@src/logger';
+import serviceAccount from '@src/utils/fcm.config.json';
 
 const logger = createDefaultLogger();
 
+if (!serviceAccount) {
+  logger.error('[ALERT] serviceAccount was not loaded. Make sure the file src/utils/fcm.config.json is included in the build output.');
+}
+
 if (!process.env.SEND_NOTIFICATION_LAMBDA_ENDPOINT) {
-  logger.warn('[ALERT] env.SEND_NOTIFICATION_LAMBDA_ENDPOINT can not be null or undefined.');
+  logger.error('[ALERT] env.SEND_NOTIFICATION_LAMBDA_ENDPOINT can not be null or undefined.');
 }
 
 if (!process.env.STAGE) {
-  logger.warn('[ALERT] env.STAGE can not be null or undefined.');
+  logger.error('[ALERT] env.STAGE can not be null or undefined.');
+}
+
+if (!process.env.FIREBASE_PROJECT_ID) {
+  logger.error('[ALERT] env.FIREBASE_PROJECT_ID can not be null or undefined.');
 }
 
 const SEND_NOTIFICATION_LAMBDA_ENDPOINT = process.env.SEND_NOTIFICATION_LAMBDA_ENDPOINT;
-const SEND_NOTIFICATION_FUNCTION_NAME = `hathor-wallet-service-${process.env.STAGE}-sendNotificationToDevice`;
+const STAGE = process.env.STAGE;
+const SEND_NOTIFICATION_FUNCTION_NAME = `hathor-wallet-service-${STAGE}-sendNotificationToDevice`;
 const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID;
 
 initializeApp({
@@ -50,6 +59,7 @@ export class PushNotificationUtils {
       return { success: false, errorMessage: PushNotificationError.INVALID_DEVICE_ID };
     }
 
+    logger.error('[ALERT] Error while calling sendMulticast(message) of Firebase Cloud Message.', { error });
     return { success: false, errorMessage: PushNotificationError.UNKNOWN };
   }
 
@@ -57,6 +67,10 @@ export class PushNotificationUtils {
    * Invokes this application's own intermediary lambda `PushSendNotificationToDevice`.
    */
   static async invokeSendNotificationHandlerLambda(notification: SendNotificationToDevice): Promise<void> {
+    if (!SEND_NOTIFICATION_LAMBDA_ENDPOINT && !STAGE) {
+      throw new Error('Environment variables SEND_NOTIFICATION_LAMBDA_ENDPOINT and STAGE are not set.');
+    }
+
     const lambda = new Lambda({
       apiVersion: '2015-03-31',
       endpoint: SEND_NOTIFICATION_LAMBDA_ENDPOINT,

@@ -216,6 +216,17 @@ functions:
     warmup:
       walletWarmer:
         enabled: true
+  checkAddressMineApi:
+    handler: src/api/addresses.checkMine
+    events:
+      - http:
+          path: wallet/addresses/check_mine
+          method: post
+          cors: true
+          authorizer: ${self:custom.authorizer.walletBearer}
+    warmup:
+      walletWarmer:
+        enabled: false
   getAddressesApi:
     handler: src/api/addresses.get
     events:
