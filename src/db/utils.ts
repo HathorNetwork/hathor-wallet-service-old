@@ -147,25 +147,25 @@ export const sortBalanceValueByAbsTotal = (balanceA: BalanceValue, balanceB: Bal
   return 0;
 };
 
-export class FromWalletBalanceMapToWalletBalanceValueList {
-  static convert(walletBalanceMap: StringMap<WalletBalance>): WalletBalanceValue[] {
-    const walletBalanceList = Object.values(walletBalanceMap);
+export class WalletBalanceMapConverter {
+  static toValue(walletBalanceMap: StringMap<WalletBalance>): StringMap<WalletBalanceValue> {
+    const walletBalanceEntries = Object.entries(walletBalanceMap);
 
-    const walletBalanceResultList: WalletBalanceValue[] = [];
-    for (const walletBalance of walletBalanceList) {
+    const walletBalanceValueMap: StringMap<WalletBalanceValue> = {};
+    for (const [walletId, walletBalance] of walletBalanceEntries) {
       const sortedTokenBalanceList = FromTokenBalanceMapToBalanceValueList
         .convert(walletBalance.walletBalanceForTx)
         .sort(sortBalanceValueByAbsTotal);
 
-      walletBalanceResultList.push({
+      walletBalanceValueMap[walletId] = {
         addresses: walletBalance.addresses,
         txId: walletBalance.txId,
         walletId: walletBalance.walletId,
         walletBalanceForTx: sortedTokenBalanceList,
-      });
+      };
     }
 
-    return walletBalanceResultList;
+    return walletBalanceValueMap;
   }
 }
 

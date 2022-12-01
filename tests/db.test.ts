@@ -2927,7 +2927,7 @@ describe('getWalletBalancesForTx', () => {
     } as Transaction;
     const result = await getWalletBalancesForTx(mysql, tx);
 
-    expect(result).toStrictEqual([]);
+    expect(result).toStrictEqual({});
   });
 
   it('should return a list of WalletBalance when tx has a started wallet', async () => {
@@ -3028,31 +3028,33 @@ describe('getWalletBalancesForTx', () => {
     } as Transaction;
     const result = await getWalletBalancesForTx(mysql, tx);
 
-    expect(result).toStrictEqual([{
-      walletId: 'wallet1',
-      addresses: [
-        'addr1',
-      ],
-      txId: 'txId1',
-      walletBalanceForTx: [
-        {
-          tokenId: 'token1',
-          lockExpires: null,
-          lockedAmount: 0,
-          lockedAuthorities: {
-            melt: false,
-            mint: false,
+    expect(result).toStrictEqual({
+      wallet1: {
+        walletId: 'wallet1',
+        addresses: [
+          'addr1',
+        ],
+        txId: 'txId1',
+        walletBalanceForTx: [
+          {
+            tokenId: 'token1',
+            lockExpires: null,
+            lockedAmount: 0,
+            lockedAuthorities: {
+              melt: false,
+              mint: false,
+            },
+            totalAmountSent: 0,
+            unlockedAmount: -5,
+            unlockedAuthorities: {
+              melt: false,
+              mint: false,
+            },
+            total: -5,
           },
-          totalAmountSent: 0,
-          unlockedAmount: -5,
-          unlockedAuthorities: {
-            melt: false,
-            mint: false,
-          },
-          total: -5,
-        },
-      ],
-    }]);
+        ],
+      }
+    });
   });
 
   describe('should be sorted by absolute token balance', () => {
@@ -3176,47 +3178,49 @@ describe('getWalletBalancesForTx', () => {
       } as Transaction;
       const result = await getWalletBalancesForTx(mysql, tx);
 
-      expect(result).toStrictEqual([{
-        walletId: 'wallet1',
-        addresses: [
-          'addr1',
-        ],
-        txId: 'txId1',
-        walletBalanceForTx: [
-          {
-            tokenId: 'token2',
-            lockExpires: null,
-            lockedAmount: 0,
-            lockedAuthorities: {
-              melt: false,
-              mint: false,
+      expect(result).toStrictEqual({
+        wallet1: {
+          walletId: 'wallet1',
+          addresses: [
+            'addr1',
+          ],
+          txId: 'txId1',
+          walletBalanceForTx: [
+            {
+              tokenId: 'token2',
+              lockExpires: null,
+              lockedAmount: 0,
+              lockedAuthorities: {
+                melt: false,
+                mint: false,
+              },
+              total: -10,
+              totalAmountSent: 0,
+              unlockedAmount: -10,
+              unlockedAuthorities: {
+                melt: false,
+                mint: false,
+              },
             },
-            total: -10,
-            totalAmountSent: 0,
-            unlockedAmount: -10,
-            unlockedAuthorities: {
-              melt: false,
-              mint: false,
+            {
+              tokenId: 'token1',
+              lockExpires: null,
+              lockedAmount: 0,
+              lockedAuthorities: {
+                melt: false,
+                mint: false,
+              },
+              totalAmountSent: 0,
+              unlockedAmount: -5,
+              unlockedAuthorities: {
+                melt: false,
+                mint: false,
+              },
+              total: -5,
             },
-          },
-          {
-            tokenId: 'token1',
-            lockExpires: null,
-            lockedAmount: 0,
-            lockedAuthorities: {
-              melt: false,
-              mint: false,
-            },
-            totalAmountSent: 0,
-            unlockedAmount: -5,
-            unlockedAuthorities: {
-              melt: false,
-              mint: false,
-            },
-            total: -5,
-          },
-        ],
-      }]);
+          ],
+        }
+      });
     });
 
     it('receiving token', async () => {
@@ -3341,47 +3345,49 @@ describe('getWalletBalancesForTx', () => {
       } as Transaction;
       const result = await getWalletBalancesForTx(mysql, tx);
 
-      expect(result).toStrictEqual([{
-        walletId: 'wallet1',
-        addresses: [
-          'addr2',
-        ],
-        txId: 'txId1',
-        walletBalanceForTx: [
-          {
-            tokenId: 'token2',
-            lockExpires: null,
-            lockedAmount: 0,
-            lockedAuthorities: {
-              melt: false,
-              mint: false,
+      expect(result).toStrictEqual({
+        wallet1: {
+          walletId: 'wallet1',
+          addresses: [
+            'addr2',
+          ],
+          txId: 'txId1',
+          walletBalanceForTx: [
+            {
+              tokenId: 'token2',
+              lockExpires: null,
+              lockedAmount: 0,
+              lockedAuthorities: {
+                melt: false,
+                mint: false,
+              },
+              total: 10,
+              totalAmountSent: 10,
+              unlockedAmount: 10,
+              unlockedAuthorities: {
+                melt: false,
+                mint: false,
+              },
             },
-            total: 10,
-            totalAmountSent: 10,
-            unlockedAmount: 10,
-            unlockedAuthorities: {
-              melt: false,
-              mint: false,
+            {
+              tokenId: 'token1',
+              lockExpires: null,
+              lockedAmount: 0,
+              lockedAuthorities: {
+                melt: false,
+                mint: false,
+              },
+              totalAmountSent: 5,
+              unlockedAmount: 5,
+              unlockedAuthorities: {
+                melt: false,
+                mint: false,
+              },
+              total: 5,
             },
-          },
-          {
-            tokenId: 'token1',
-            lockExpires: null,
-            lockedAmount: 0,
-            lockedAuthorities: {
-              melt: false,
-              mint: false,
-            },
-            totalAmountSent: 5,
-            unlockedAmount: 5,
-            unlockedAuthorities: {
-              melt: false,
-              mint: false,
-            },
-            total: 5,
-          },
-        ],
-      }]);
+          ],
+        },
+      });
     });
   });
 });
