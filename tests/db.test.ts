@@ -89,7 +89,7 @@ import {
   Tx,
   DbTxOutput,
   PushDevice,
-  PushProvider, 
+  PushProvider,
 } from '@src/types';
 import {
   closeDbConnection,
