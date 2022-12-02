@@ -7,7 +7,7 @@
     "jest": "jest --runInBand --collectCoverage --detectOpenHandles --forceExit",
     "lint": "eslint src/ tests/ --ext .js,.jsx,.ts,.tsx src tests",
     "lint-fix": "eslint src/ tests/ --fix --ext .js,.jsx,.ts,.tsx src tests",
-    "check-types": "tsc --noemit",
+    "check-types": "tsc --noemit --skipLibCheck",
     "test": "run-s check-types lint jest",
     "offline": "./node_modules/.bin/sls offline --printOutput --noPrependStageInUrl"
   },
