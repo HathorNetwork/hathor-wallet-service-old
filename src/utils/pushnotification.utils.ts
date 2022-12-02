@@ -25,15 +25,21 @@ if (!process.env.FIREBASE_PROJECT_ID) {
   logger.error('[ALERT] env.FIREBASE_PROJECT_ID can not be null or undefined.');
 }
 
-function buildFunctionName(functionName: string): string {
+export function buildFunctionName(functionName: string): string {
   return `hathor-wallet-service-${process.env.STAGE}-${functionName}`;
 }
 
+export enum FunctionName {
+  SEND_NOTIFICATION_TO_DEVICE = 'sendNotificationToDevice',
+  ON_TX_PUSH_NOTIFICATION_REQUESTED = 'onTxPushNotificationRequested',
+}
+
+const STAGE = process.env.STAGE;
 const SEND_NOTIFICATION_LAMBDA_ENDPOINT = process.env.SEND_NOTIFICATION_LAMBDA_ENDPOINT;
-const SEND_NOTIFICATION_FUNCTION_NAME = buildFunctionName('sendNotificationToDevice');
 const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID;
 const ON_TX_PUSH_NOTIFICATION_REQUESTED_LAMBDA_ENDPOINT = process.env.ON_TX_PUSH_NOTIFICATION_REQUESTED_LAMBDA_ENDPOINT;
-const ON_TX_PUSH_NOTIFICATION_REQUESTED_FUNCTION_NAME = buildFunctionName('onTxPushNotificationRequested');
+const SEND_NOTIFICATION_FUNCTION_NAME = buildFunctionName(FunctionName.SEND_NOTIFICATION_TO_DEVICE);
+const ON_TX_PUSH_NOTIFICATION_REQUESTED_FUNCTION_NAME = buildFunctionName(FunctionName.ON_TX_PUSH_NOTIFICATION_REQUESTED);
 
 initializeApp({
   credential: credential.cert(serviceAccount as ServiceAccount),
