@@ -162,7 +162,7 @@ describe('PushNotificationUtils', () => {
       const result = await PushNotificationUtils.sendToFcm(notification);
 
       expect(result).toStrictEqual({ success: false, errorMessage: PushNotificationError.UNKNOWN });
-      expect(logger.error).toHaveBeenLastCalledWith('[ALERT] Error while calling sendMulticast(message) of Firebase Cloud Message.', { error: { code: 'any-other-code' }});
+      expect(logger.error).toHaveBeenLastCalledWith('[ALERT] Error while calling sendMulticast(message) of Firebase Cloud Message.', { error: { code: 'any-other-code' } });
     });
   });
 
