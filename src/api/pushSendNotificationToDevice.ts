@@ -9,10 +9,9 @@ import { Handler } from 'aws-lambda';
 import { closeDbConnection, getDbConnection } from '@src/utils';
 import Joi, { ValidationError } from 'joi';
 import { SendNotificationToDevice, PushProvider } from '@src/types';
-import { getPushDevice } from '@src/db';
+import { getPushDevice, unregisterPushDevice } from '@src/db';
 import createDefaultLogger from '@src/logger';
 import { PushNotificationUtils, PushNotificationError } from '@src/utils/pushnotification.utils';
-import { unregisterPushDevice } from '@src/db';
 
 const mysql = getDbConnection();
 
