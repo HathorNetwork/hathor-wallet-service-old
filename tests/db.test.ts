@@ -68,6 +68,8 @@ import {
   existsPushDevice,
   updatePushDevice,
   unregisterPushDevice,
+  getTransactionById,
+  getPushDevice,
   removeAllPushDevicesByDeviceId,
   existsWallet,
 } from '@src/db';
@@ -85,6 +87,7 @@ import {
   FullNodeVersionData,
   Tx,
   DbTxOutput,
+  PushDevice,
 } from '@src/types';
 import {
   closeDbConnection,
@@ -2361,10 +2364,8 @@ test('removeAllPushDeviceByDeviceId', async () => {
   expect.hasAssertions();
 
   const walletId = 'wallet1';
-  // eslint-disable-next-line @typescript-eslint/naming-convention, camelcase
-  const deviceId_1 = 'device_1';
-  // eslint-disable-next-line @typescript-eslint/naming-convention, camelcase
-  const deviceId_2 = 'device_2';
+  const deviceIdOne = 'device_1';
+  const deviceIdTwo = 'device_2';
   const pushProvider = 'android';
   const enablePush = true;
   const enableShowAmounts = false;
@@ -2374,14 +2375,14 @@ test('removeAllPushDeviceByDeviceId', async () => {
   await createWallet(mysql, walletId, XPUBKEY, AUTH_XPUBKEY, 5);
   await registerPushDevice(mysql, {
     walletId,
-    deviceId: deviceId_1,
+    deviceId: deviceIdOne,
     pushProvider,
     enablePush,
     enableShowAmounts,
   });
   await registerPushDevice(mysql, {
     walletId,
-    deviceId: deviceId_2,
+    deviceId: deviceIdTwo,
     pushProvider,
     enablePush,
     enableShowAmounts,
@@ -2389,7 +2390,7 @@ test('removeAllPushDeviceByDeviceId', async () => {
   await expect(checkPushDevicesTable(mysql, 2)).resolves.toBe(true);
 
   // remove all push device registered
-  await removeAllPushDevicesByDeviceId(mysql, deviceId_1);
+  await removeAllPushDevicesByDeviceId(mysql, deviceIdOne);
   await expect(checkPushDevicesTable(mysql, 1)).resolves.toBe(true);
 });
 
@@ -2489,5 +2490,164 @@ describe('unregisterPushDevice', () => {
     await unregisterPushDevice(mysql, deviceId, walletId);
 
     await expect(checkPushDevicesTable(mysql, 0)).resolves.toBe(true);
+  });
+
+  it('should unregister device when provided only the device id', async () => {
+    expect.hasAssertions();
+
+    const walletId = 'wallet1';
+    const deviceId = 'device1';
+    const pushProvider = 'android';
+    const enablePush = false;
+    const enableShowAmounts = false;
+
+    await createWallet(mysql, walletId, XPUBKEY, AUTH_XPUBKEY, 5);
+
+    await registerPushDevice(mysql, {
+      walletId,
+      deviceId,
+      pushProvider,
+      enablePush,
+      enableShowAmounts,
+    });
+
+    await expect(checkPushDevicesTable(mysql, 1, {
+      walletId,
+      deviceId,
+      pushProvider,
+      enablePush,
+      enableShowAmounts,
+    })).resolves.toBe(true);
+
+    await unregisterPushDevice(mysql, deviceId);
+
+    await expect(checkPushDevicesTable(mysql, 0)).resolves.toBe(true);
+  });
+});
+
+describe('getTransactionById', () => {
+  it('should return a tx their tokens and balances', async () => {
+    expect.hasAssertions();
+
+    const txId1 = 'txId1';
+    const walletId1 = 'wallet1';
+    const addr1 = 'addr1';
+    const token1 = { id: 'token1', name: 'Token 1', symbol: 'T1' };
+    const token2 = { id: 'token2', name: 'Token 2', symbol: 'T2' };
+    const timestamp1 = 10;
+    const height1 = 1;
+    const version1 = 3;
+    const weight1 = 65.4321;
+
+    await createWallet(mysql, walletId1, XPUBKEY, AUTH_XPUBKEY, 5);
+    await addOrUpdateTx(mysql, txId1, height1, timestamp1, version1, weight1);
+
+    await addToTokenTable(mysql, [
+      { id: token1.id, name: token1.name, symbol: token1.symbol, transactions: 0 },
+      { id: token2.id, name: token2.name, symbol: token2.symbol, transactions: 0 },
+    ]);
+    const entries = [
+      { address: addr1, txId: txId1, tokenId: token1.id, balance: 10, timestamp: timestamp1 },
+      { address: addr1, txId: txId1, tokenId: token2.id, balance: 7, timestamp: timestamp1 },
+    ];
+    await addToAddressTxHistoryTable(mysql, entries);
+    await initWalletTxHistory(mysql, walletId1, [addr1]);
+
+    const txTokens = await getTransactionById(mysql, txId1, walletId1);
+
+    const [firstToken] = txTokens.filter((eachToken) => eachToken.tokenId === 'token1');
+    const [secondToken] = txTokens.filter((eachToken) => eachToken.tokenId === 'token2');
+
+    expect(firstToken).toStrictEqual({
+      balance: 10,
+      height: height1,
+      timestamp: timestamp1,
+      tokenId: token1.id,
+      tokenName: token1.name,
+      tokenSymbol: token1.symbol,
+      txId: txId1,
+      version: version1,
+      voided: false,
+      weight: weight1,
+    });
+    expect(secondToken).toStrictEqual({
+      balance: 7,
+      height: height1,
+      timestamp: timestamp1,
+      tokenId: token2.id,
+      tokenName: token2.name,
+      tokenSymbol: token2.symbol,
+      txId: txId1,
+      version: version1,
+      voided: false,
+      weight: weight1,
+    });
+  });
+
+  it('should return empty list when there is no record', async () => {
+    expect.hasAssertions();
+
+    const txId = 'txId1';
+    const walletId = 'wallet1';
+
+    const txTokens = await getTransactionById(mysql, txId, walletId);
+
+    expect(txTokens).toHaveLength(0);
+  });
+});
+
+describe('getPushDevice', () => {
+  it('should return PushDevice type object when device found', async () => {
+    expect.hasAssertions();
+
+    const walletId = 'wallet1';
+    const deviceId = 'device1';
+    const pushProvider = 'android';
+    const enablePush = true;
+    const enableShowAmounts = false;
+
+    await createWallet(mysql, walletId, XPUBKEY, AUTH_XPUBKEY, 5);
+
+    await registerPushDevice(mysql, {
+      walletId,
+      deviceId,
+      pushProvider,
+      enablePush,
+      enableShowAmounts,
+    });
+
+    const result = await getPushDevice(mysql, deviceId);
+
+    const expected = {
+      walletId,
+      deviceId,
+      pushProvider,
+      enablePush,
+      enableShowAmounts,
+    } as PushDevice;
+    expect(result).toStrictEqual(expected);
+  });
+
+  it('should return null when device not found', async () => {
+    expect.hasAssertions();
+
+    const walletId = 'wallet1';
+    const deviceId = 'device1';
+
+    await createWallet(mysql, walletId, XPUBKEY, AUTH_XPUBKEY, 5);
+
+    const result = await getPushDevice(mysql, deviceId);
+
+    expect(result).toBeNull();
+  });
+
+  it('should return null when wallet not found', async () => {
+    expect.hasAssertions();
+
+    const deviceId = 'device1';
+
+    const result = await getPushDevice(mysql, deviceId);
+
+    expect(result).toBeNull();
   });
 });

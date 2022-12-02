@@ -35,4 +35,5 @@ export enum ApiError {
   FORBIDDEN = 'forbidden',
   UNAUTHORIZED = 'unauthorized',
   DEVICE_NOT_FOUND = 'device-not-found',
+  TX_NOT_FOUND = 'tx-not-found',
 }

@@ -4,7 +4,6 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-
 import { strict as assert } from 'assert';
 import { ServerlessMysql } from 'serverless-mysql';
 import { get } from 'lodash';
@@ -38,6 +37,8 @@ import {
   AddressTotalBalance,
   IFilterTxOutput,
   Miner,
+  PushDevice,
+  TxByIdToken,
 } from '@src/types';
 import {
   getUnixTimestamp,
@@ -45,9 +46,11 @@ import {
   getAddressPath,
   xpubDeriveChild,
   getAddresses,
+  isTxVoided,
 } from '@src/utils';
 import {
   getWalletFromDbEntry,
+  getTxFromDBResult,
   getTxsFromDBResult,
 } from '@src/db/utils';
 
@@ -2782,16 +2785,80 @@ export const updatePushDevice = async (
 export const unregisterPushDevice = async (
   mysql: ServerlessMysql,
   deviceId: string,
-  walletId: string,
+  walletId?: string,
 ) : Promise<void> => {
-  await mysql.query(
-    `
-    DELETE
-      FROM \`push_devices\`
-     WHERE device_id = ?
-       AND wallet_id = ?`,
-    [deviceId, walletId],
-  );
+  if (walletId) {
+    await mysql.query(
+      `
+      DELETE
+        FROM \`push_devices\`
+       WHERE device_id = ?
+         AND wallet_id = ?`,
+      [deviceId, walletId],
+    );
+  } else {
+    await mysql.query(
+      `
+      DELETE
+        FROM \`push_devices\`
+       WHERE device_id = ?`,
+      [deviceId],
+    );
+  }
+};
+
+/**
+ * Get a transaction by its ID.
+ *
+ * @param mysql - Database connection
+ * @param txId - A transaction ID
+ * @param walletId - The wallet related to the transaction
+ * @returns A list of tokens for a transaction if found, return an empty list otherwise
+ */
+export const getTransactionById = async (
+  mysql: ServerlessMysql,
+  txId: string,
+  walletId: string,
+): Promise<TxByIdToken[]> => {
+  const result = await mysql.query(`
+       SELECT
+              transaction.tx_id AS tx_id
+            , transaction.timestamp AS timestamp
+            , transaction.version AS version
+            , transaction.voided AS voided
+            , transaction.height AS height
+            , transaction.weight AS weight
+            , wallet_tx_history.balance AS balance
+            , wallet_tx_history.token_id AS token_id
+            , token.name AS name
+            , token.symbol AS symbol
+         FROM wallet_tx_history
+   INNER JOIN transaction ON transaction.tx_id = wallet_tx_history.tx_id
+   INNER JOIN token ON wallet_tx_history.token_id = token.id
+        WHERE transaction.tx_id = ?
+          AND transaction.voided = FALSE
+          AND wallet_tx_history.wallet_id = ?`,
+  // eslint-disable-next-line camelcase
+  [txId, walletId]) as Array<{tx_id, timestamp, version, voided, height, weight, balance, token_id, name, symbol }>;
+
+  const txTokens = [];
+  result.forEach((eachTxToken) => {
+    const txToken = {
+      txId: eachTxToken.tx_id,
+      timestamp: eachTxToken.timestamp,
+      version: eachTxToken.version,
+      voided: !!eachTxToken.voided,
+      height: eachTxToken.height,
+      weight: eachTxToken.weight,
+      balance: eachTxToken.balance,
+      tokenId: eachTxToken.token_id,
+      tokenName: eachTxToken.name,
+      tokenSymbol: eachTxToken.symbol,
+    } as TxByIdToken;
+    txTokens.push(txToken);
+  });
+
+  return txTokens;
 };
 
 /**
@@ -2813,4 +2880,36 @@ export const existsWallet = async (
   )) as unknown as Array<{ count }>;
 
   return count > 0;
+};
+
+/**
+ * Get registered push device by deviceId.
+ *
+ * @param mysql - Database connection
+ * @param deviceId - The device to verify existence
+ */
+export const getPushDevice = async (
+  mysql: ServerlessMysql,
+  deviceId: string,
+) : Promise<PushDevice|null> => {
+  const [pushDevice] = await mysql.query(
+    `
+    SELECT *
+      FROM \`push_devices\`
+    WHERE device_id = ?`,
+    [deviceId],
+  // eslint-disable-next-line camelcase
+  ) as Array<{wallet_id, device_id, push_provider, enable_push, enable_show_amounts}>;
+
+  if (!pushDevice) {
+    return null;
+  }
+
+  return {
+    walletId: pushDevice.wallet_id,
+    deviceId: pushDevice.device_id,
+    pushProvider: pushDevice.push_provider,
+    enablePush: !!pushDevice.enable_push,
+    enableShowAmounts: !!pushDevice.enable_show_amounts,
+  } as PushDevice;
 };

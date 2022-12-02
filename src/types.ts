@@ -694,3 +694,36 @@ export interface PushUpdate {
 export interface PushDelete {
   deviceId: string,
 }
+
+export interface TxByIdRequest {
+  txId: string,
+}
+
+export interface TxByIdToken {
+  txId: string;
+  timestamp: number;
+  version: number;
+  voided: boolean;
+  height?: number | null;
+  weight: number;
+  balance: Balance;
+  tokenId: string;
+  walletId: string;
+  tokenName: string;
+  tokenSymbol: string;
+}
+
+export interface SendNotificationToDevice {
+  deviceId: string,
+  title: string,
+  description: string,
+  metadata: Record<string, unknown>,
+}
+
+export interface PushDevice {
+  walletId: string,
+  deviceId: string,
+  pushProvider: PushProvider,
+  enablePush: boolean,
+  enableShowAmounts: boolean
+}
