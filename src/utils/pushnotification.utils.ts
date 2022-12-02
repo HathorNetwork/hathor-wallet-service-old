@@ -3,7 +3,9 @@ import { SendNotificationToDevice } from '@src/types';
 import { credential, initializeApp, messaging, ServiceAccount } from 'firebase-admin';
 import { MulticastMessage } from 'firebase-admin/messaging';
 import createDefaultLogger from '@src/logger';
-import serviceAccount from '@src/utils/fcm.config.json';
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const serviceAccount = require('@src/utils/fcm.config.json');
 
 const logger = createDefaultLogger();
 
