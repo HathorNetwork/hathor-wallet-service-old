@@ -20,6 +20,7 @@ rules:
   - 2
   - commonjs: true
     amd: true
+    ignore: ['.json$']
   max-len:
   - error
   - code: 150
