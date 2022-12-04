@@ -10,16 +10,12 @@ import { logger } from '@tests/winston.mock';
 import { PushNotificationUtils, PushNotificationError } from '@src/utils/pushnotification.utils';
 import { SendNotificationToDevice } from '@src/types';
 import { Lambda } from 'aws-sdk';
-import serviceAccount from '@src/utils/fcm.config.json';
-
-const spyOnLoggerError = jest.spyOn(logger, 'error');
 
 describe('PushNotificationUtils', () => {
   const initEnv = process.env;
 
   beforeEach(() => {
     jest.resetModules();
-    jest.restoreAllMocks();
     process.env = {
       ...initEnv,
       SEND_NOTIFICATION_LAMBDA_ENDPOINT: 'endpoint',
@@ -35,7 +31,14 @@ describe('PushNotificationUtils', () => {
   describe('fcm.config.json', () => {
     it('file not loaded', () => {
       expect.hasAssertions();
-      fcmConfigMock.mockReset();
+
+      // make json resolve to undefined
+      fcmConfigMock.mockReturnValue(undefined);
+
+      // reload json module
+      const serviceAccount = require('@src/utils/fcm.config.json');
+      // reload push notification utils
+      const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
 
       expect(serviceAccount).toBeUndefined();
       expect(logger.error).toHaveBeenCalledWith('[ALERT] serviceAccount was not loaded. Make sure the file src/utils/fcm.config.json is included in the build output.');
