@@ -504,7 +504,12 @@ functions:
       walletWarmer:
         enabled: false
   sendNotificationToDevice:
-    handler: src/pushSendNotificationToDevice.send
+    handler: src/api/pushSendNotificationToDevice.send
+    warmup:
+      walletWarmer:
+        enabled: false
+  txPushNotificationRequested:
+    handler: src/api/txPushNotificationRequested.handleRequest
     warmup:
       walletWarmer:
         enabled: false
