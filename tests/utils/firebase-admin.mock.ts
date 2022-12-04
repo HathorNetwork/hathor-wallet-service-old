@@ -1,7 +1,7 @@
 export const sendMulticastMock = jest.fn();
 export const messaging = jest.fn();
 
-jest.mock('firebase-admin', () => ({
+export default jest.mock('firebase-admin', () => ({
   credential: {
     cert: jest.fn(),
   },
