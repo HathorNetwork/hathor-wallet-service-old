@@ -18,7 +18,7 @@ import {
   WalletBalanceValue,
   StringMap,
   WalletBalance,
-} from "@src/types";
+} from '@src/types';
 
 /**
  * Begins a transaction on the current connection
