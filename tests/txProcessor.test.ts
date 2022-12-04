@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
+import firebaseMock from '@tests/utils/firebase-admin.mock';
 import hathorLib from '@hathor/wallet-lib';
 import eventTemplate from '@events/eventTemplate.json';
 import tokenCreationTx from '@events/tokenCreationTx.json';
@@ -40,6 +41,7 @@ beforeAll(async () => {
   jest.resetModules();
   process.env = { ...OLD_ENV };
   process.env.BLOCK_REWARD_LOCK = '1';
+  firebaseMock.resetAllMocks();
 });
 
 afterAll(async () => {
@@ -600,4 +602,9 @@ test('txProcessor should rollback the entire transaction if an error occurs on b
   await expect(checkAddressTable(mysql, 1, 'address1', null, null, 5)).resolves.toBe(true);
   // txId5 is locked, so our address balance will be 25600
   await expect(checkAddressBalanceTable(mysql, 1, 'address1', '00', blockReward * 4, blockReward, null, 5)).resolves.toBe(true);
+});
+
+describe('onNewTxRequest', () => {
+  it.todo('should invoke push notification when tx wallet is registered to receive notification');
+  it.todo('should emmit alert when push notification throws error');
 });
