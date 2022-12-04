@@ -40,9 +40,6 @@ import {
   PushDevice,
   TxByIdToken,
   PushDeviceSettings,
-  WalletBalance,
-  Transaction,
-  WalletBalanceValue,
 } from '@src/types';
 import {
   getUnixTimestamp,
@@ -54,10 +51,7 @@ import {
 import {
   getWalletFromDbEntry,
   getTxsFromDBResult,
-  WalletBalanceMapConverter,
-  stringMapIterator,
 } from '@src/db/utils';
-import { getAddressBalanceMap } from '@src/commons';
 
 const BLOCK_VERSION = [
   constants.BLOCK_VERSION,
@@ -2950,44 +2944,4 @@ export const getPushDeviceSettingsList = async (
   } as PushDeviceSettings));
 
   return pushDeviceSettignsList;
-};
-
-/**
- * Get a list of wallet balance per token by informed transaction.
- *
- * @param mysql
- * @param tx - The transaction to get related wallets and their token balances
- * @returns
- */
-export const getWalletBalancesForTx = async (mysql: ServerlessMysql, tx: Transaction): Promise<StringMap<WalletBalanceValue>> => {
-  const addressBalanceMap: StringMap<TokenBalanceMap> = getAddressBalanceMap(tx.inputs, tx.outputs);
-  // return only wallets that were started
-  const addressWalletMap: StringMap<Wallet> = await getAddressWalletInfo(mysql, Object.keys(addressBalanceMap));
-
-  // Create a new map focused on the walletId and storing its balance variation from this tx
-  const walletsMap: StringMap<WalletBalance> = {};
-
-  // Iterates all the addresses to populate the map's data
-  const addressWalletEntries = stringMapIterator(addressWalletMap) as [string, Wallet][];
-  for (const [address, wallet] of addressWalletEntries) {
-    // Create a new walletId entry if it does not exist
-    if (!walletsMap[wallet.walletId]) {
-      walletsMap[wallet.walletId] = {
-        txId: tx.tx_id,
-        walletId: wallet.walletId,
-        addresses: [],
-        walletBalanceForTx: new TokenBalanceMap(),
-      };
-    }
-    const walletData = walletsMap[wallet.walletId];
-
-    // Add this address to the wallet's affected addresses list
-    walletData.addresses.push(address);
-
-    // Merge the balance of this address with the total balance of the wallet
-    const mergedBalance = TokenBalanceMap.merge(walletData.walletBalanceForTx, addressBalanceMap[address]);
-    walletData.walletBalanceForTx = mergedBalance;
-  }
-
-  return WalletBalanceMapConverter.toValue(walletsMap);
 };
