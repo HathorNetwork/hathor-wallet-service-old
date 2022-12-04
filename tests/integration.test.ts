@@ -1,3 +1,4 @@
+import { initFirebaseAdminMock } from '@tests/utils/firebase-admin.mock';
 import eventTemplate from '@events/eventTemplate.json';
 import { loadWallet } from '@src/api/wallet';
 import { createWallet, getMinersList } from '@src/db';
@@ -23,6 +24,7 @@ import {
 
 const mysql = getDbConnection();
 
+initFirebaseAdminMock();
 const blockReward = 6400;
 const htrToken = '00';
 const walletId = getWalletId(XPUBKEY);
