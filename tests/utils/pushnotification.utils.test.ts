@@ -10,9 +10,6 @@ import { logger } from '@tests/winston.mock';
 import { PushNotificationUtils, PushNotificationError, buildFunctionName, FunctionName } from '@src/utils/pushnotification.utils';
 import { SendNotificationToDevice } from '@src/types';
 import { Lambda } from 'aws-sdk';
-import { buildWalletBalanceValueMap } from '@tests/utils';
-
-const spyOnLoggerError = jest.spyOn(logger, 'error');
 
 describe('PushNotificationUtils', () => {
   const initEnv = process.env;
@@ -37,6 +34,14 @@ describe('PushNotificationUtils', () => {
   describe('fcm.config.json', () => {
     it('file not loaded', () => {
       expect.hasAssertions();
+
+      // make json resolve to undefined
+      fcmConfigMock.mockReturnValue(undefined);
+
+      // reload json module
+      const serviceAccount = require('@src/utils/fcm.config.json');
+      // reload push notification utils
+      const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
 
       // make fcm.config.json file to resolve to undefined
       fcmConfigMock.mockImplementation(() => undefined);
