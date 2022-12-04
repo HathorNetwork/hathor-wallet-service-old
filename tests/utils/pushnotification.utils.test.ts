@@ -10,6 +10,7 @@ import { logger } from '@tests/winston.mock';
 import { PushNotificationUtils, PushNotificationError, buildFunctionName, FunctionName } from '@src/utils/pushnotification.utils';
 import { SendNotificationToDevice } from '@src/types';
 import { Lambda } from 'aws-sdk';
+import { buildWalletBalanceValueMap } from '@tests/utils';
 
 describe('PushNotificationUtils', () => {
   const initEnv = process.env;
@@ -333,7 +334,7 @@ describe('PushNotificationUtils', () => {
           walletMap,
         ),
       ).rejects.toMatchInlineSnapshot(
-        `[Error: hathor-wallet-service-stage-onTxPushNotificationRequested lambda invoke failed for wallets: wallet1]`,
+        '[Error: hathor-wallet-service-stage-onTxPushNotificationRequested lambda invoke failed for wallets: wallet1]',
       );
     });
   });
