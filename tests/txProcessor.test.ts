@@ -604,7 +604,3 @@ test('txProcessor should rollback the entire transaction if an error occurs on b
   await expect(checkAddressBalanceTable(mysql, 1, 'address1', '00', blockReward * 4, blockReward, null, 5)).resolves.toBe(true);
 });
 
-describe('onNewTxRequest', () => {
-  it.todo('should invoke push notification when tx wallet is registered to receive notification');
-  it.todo('should emmit alert when push notification throws error');
-});
