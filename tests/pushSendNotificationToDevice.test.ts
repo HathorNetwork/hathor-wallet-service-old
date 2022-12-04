@@ -1,4 +1,5 @@
 import { logger } from '@tests/winston.mock'; // most be the first to import
+import { initFirebaseAdminMock } from '@tests/utils/firebase-admin.mock';
 import {
   send,
 } from '@src/api/pushSendNotificationToDevice';
@@ -20,6 +21,7 @@ import { APIGatewayProxyResult, Context } from 'aws-lambda';
 
 const mysql = getDbConnection();
 
+initFirebaseAdminMock();
 const spyOnSendToFcm = jest.spyOn(PushNotificationUtils, 'sendToFcm');
 const spyOnLoggerError = jest.spyOn(logger, 'error');
 
