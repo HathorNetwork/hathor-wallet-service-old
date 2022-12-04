@@ -20,6 +20,7 @@ import {
   handleReorg,
   handleVoided,
   prepareOutputs,
+  getWalletBalancesForTx,
 } from '@src/commons';
 import { Logger } from 'winston';
 import {
@@ -38,7 +39,6 @@ import {
   incrementTokensTxCount,
   fetchTx,
   addMiner,
-  getWalletBalancesForTx,
 } from '@src/db';
 import {
   transactionDecorator,
