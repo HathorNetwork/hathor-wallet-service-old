@@ -6,7 +6,7 @@ import {
 import { handleRequest, pushNotificationMessage } from '@src/api/txPushNotificationRequested';
 import { StringMap, WalletBalanceValue, PushProvider, SendNotificationToDevice } from '@src/types';
 import { PushNotificationUtils } from '@src/utils/pushnotification.utils';
-import { registerPushDevice } from '@src/db'
+import { registerPushDevice } from '@src/db';
 import { Context } from 'aws-lambda';
 
 const mysql = getDbConnection();
