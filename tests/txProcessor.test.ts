@@ -603,4 +603,3 @@ test('txProcessor should rollback the entire transaction if an error occurs on b
   // txId5 is locked, so our address balance will be 25600
   await expect(checkAddressBalanceTable(mysql, 1, 'address1', '00', blockReward * 4, blockReward, null, 5)).resolves.toBe(true);
 });
-
