@@ -1,3 +1,4 @@
+import { initFirebaseAdminMock } from '@tests/utils/firebase-admin.mock';
 import { closeDbConnection, getDbConnection } from '@src/utils';
 import {
   addToWalletTable,
@@ -11,6 +12,7 @@ import { Context } from 'aws-lambda';
 
 const mysql = getDbConnection();
 
+initFirebaseAdminMock();
 const spyOnInvokeSendNotification = jest.spyOn(PushNotificationUtils, 'invokeSendNotificationHandlerLambda');
 
 beforeEach(async () => {
