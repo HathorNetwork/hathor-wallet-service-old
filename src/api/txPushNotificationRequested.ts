@@ -8,7 +8,7 @@
 import { Handler } from 'aws-lambda';
 import { closeDbConnection, getDbConnection } from '@src/utils';
 import Joi, { ValidationError } from 'joi';
-import { BalanceValue, SendNotificationToDevice, StringMap, WalletBalanceValue } from '@src/types';
+import { BalanceValue, LocalizeMetadataNotification, SendNotificationToDevice, StringMap, WalletBalanceValue } from '@src/types';
 import { getPushDeviceSettingsList } from '@src/db';
 import createDefaultLogger from '@src/logger';
 import { PushNotificationUtils } from '@src/utils/pushnotification.utils';
@@ -18,8 +18,13 @@ const mysql = getDbConnection();
 
 export const pushNotificationMessage = {
   newTransaction: {
-    title: 'New transaction received!',
-    genericDescription: 'There is a new transaction in your wallet.',
+    titleKey: 'new_transaction_received_title',
+    withoutTokens: {
+      descriptionKey: 'new_transaction_received_description_without_tokens',
+    },
+    withTokens: {
+      descriptionKey: 'new_transaction_received_description_with_tokens',
+    },
   },
   invalidPayload: 'Failed due to invalid payload error. See details.',
   deviceSettinsNotFound: 'Failed due to device settings not found.',
@@ -123,49 +128,51 @@ export const handleRequest: Handler<{ body: StringMap<WalletBalanceValue> }, { s
   };
 };
 
-const _assembleGenericMessage = (deviceId, txId): SendNotificationToDevice => ({
-  deviceId,
-  title: pushNotificationMessage.newTransaction.title,
-  description: pushNotificationMessage.newTransaction.genericDescription,
-  metadata: {
-    txId,
-  },
-} as SendNotificationToDevice);
+const _assembleGenericMessage = (deviceId, txId): SendNotificationToDevice => {
+  const localize = {
+    title_loc_key: pushNotificationMessage.newTransaction.titleKey,
+    body_loc_key: pushNotificationMessage.newTransaction.withoutTokens.descriptionKey,
+  } as LocalizeMetadataNotification;
+
+  return {
+    deviceId,
+    metadata: {
+      txId,
+      ...localize,
+    },
+  } as SendNotificationToDevice;
+};
 
 const _assembleSpecificMessage = (deviceId: string, txId: string, tokenBalanceList: BalanceValue[]): SendNotificationToDevice => {
-  const tokensCap = 2;
-  const isTokensUnderCap = tokenBalanceList.length <= 2;
+  const upperLimit = 2;
+  const isTokensOverLimit = tokenBalanceList.length > upperLimit;
 
-  const messageChunks = [];
-  for (const eachBalance of tokenBalanceList.slice(0, tokensCap)) {
+  const tokens = [];
+  for (const eachBalance of tokenBalanceList.slice(0, upperLimit)) {
     const amount = eachBalance.totalAmountSent;
     // TODO: change tokenId to tokenSymbol
     const tokenSymbol = eachBalance.tokenId;
-    messageChunks.push(`${amount} ${tokenSymbol}`);
+    tokens.push(`${amount} ${tokenSymbol}`);
   }
 
-  if (!isTokensUnderCap) {
-    const remainingTokens = tokenBalanceList.length - tokensCap;
-    messageChunks.push(_remainingTokenChunkMessage(remainingTokens));
+  if (isTokensOverLimit) {
+    const remainingTokens = tokenBalanceList.length - upperLimit;
+    tokens.push(remainingTokens.toString());
   }
 
-  const description = `You have received ${isTokensUnderCap ? messageChunks.join(' and ') : messageChunks.join(', ')}.`;
-  const notification = {
+  const localize = {
+    title_loc_key: pushNotificationMessage.newTransaction.titleKey,
+    body_loc_key: pushNotificationMessage.newTransaction.withoutTokens.descriptionKey,
+    body_loc_args: JSON.stringify(tokens),
+  } as LocalizeMetadataNotification;
+
+  return {
     deviceId,
-    title: pushNotificationMessage.newTransaction.title,
-    description,
     metadata: {
       txId,
+      ...localize,
     },
   } as SendNotificationToDevice;
-  return notification;
-};
-
-const _remainingTokenChunkMessage = (remainingTokens: number): string => {
-  const token = 'token';
-  const tokens = 'tokens';
-  const isSingular = remainingTokens === 1;
-  return `and ${remainingTokens} other ${isSingular ? token : tokens} on a new transaction`;
 };
 
 const _sendNotification = async (notification: SendNotificationToDevice, logger: Logger): Promise<void> => {

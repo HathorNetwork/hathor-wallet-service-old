@@ -726,9 +726,29 @@ export interface TxByIdToken {
 
 export interface SendNotificationToDevice {
   deviceId: string,
-  title: string,
-  description: string,
+  /**
+   * A string map used to send data in the notification message.
+   * @see LocalizeMetadataNotification
+   *
+   * @example
+   * {
+   *    "title_loc_key": "new_transaction_received_title",
+   *    "body_loc_key": "new_transaction_received_description_with_tokens",
+   *    "body_loc_args": "['13 HTR', '8 TNT', '2']"
+   * }
+   */
   metadata: Record<string, string>,
+}
+
+export type LocalizeMetadataNotification = {
+  // eslint-disable-next-line camelcase
+  title_loc_key: string,
+  // eslint-disable-next-line camelcase
+  title_loc_args: string,
+  // eslint-disable-next-line camelcase
+  body_loc_key: string,
+  // eslint-disable-next-line camelcase
+  body_loc_args: string,
 }
 
 export interface PushDevice {
