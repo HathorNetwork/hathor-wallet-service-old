@@ -7,7 +7,7 @@
     "jest": "jest --runInBand --collectCoverage --detectOpenHandles --forceExit",
     "lint": "eslint src/ tests/ --ext .js,.jsx,.ts,.tsx src tests",
     "lint-fix": "eslint src/ tests/ --fix --ext .js,.jsx,.ts,.tsx src tests",
-    "check-types": "tsc --noemit",
+    "check-types": "tsc --noemit --skipLibCheck",
     "test": "run-s check-types lint jest",
     "offline": "./node_modules/.bin/sls offline --printOutput --noPrependStageInUrl"
   },
@@ -28,6 +28,7 @@
     "bip32": "^3.0.1",
     "bitcoinjs-lib": "^6.0.1",
     "bitcoinjs-message": "^2.2.0",
+    "firebase-admin": "^11.3.0",
     "joi": "^17.4.0",
     "jsonwebtoken": "^8.5.1",
     "lodash": "^4.17.21",
@@ -70,7 +71,7 @@
     "sqlite3": "^5.0.2",
     "ts-jest": "^27.0.3",
     "ts-loader": "^5.3.3",
-    "typescript": "^3.9.5",
+    "typescript": "^4.9.3",
     "typescript-eslint": "0.0.1-alpha.0",
     "webpack": "^4.29.0",
     "webpack-node-externals": "^1.7.2"

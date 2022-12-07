@@ -20,3 +20,6 @@ coverage
 # open files
 *.swp
 *.swo
+
+# fcm account config
+**/fcm.config.json
