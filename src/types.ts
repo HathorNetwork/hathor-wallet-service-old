@@ -331,8 +331,9 @@ export class Balance {
   }
 }
 
-export type BalanceValue = {
+export type TokenBalanceValue = {
   tokenId: string,
+  tokenSymbol: string,
   totalAmountSent: number;
   lockedAmount: number;
   unlockedAmount: number;
@@ -772,5 +773,5 @@ export interface WalletBalanceValue {
   txId: string,
   walletId: string,
   addresses: string[],
-  walletBalanceForTx: BalanceValue[],
+  walletBalanceForTx: TokenBalanceValue[],
 }
