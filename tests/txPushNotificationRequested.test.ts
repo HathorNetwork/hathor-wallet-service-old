@@ -1,7 +1,9 @@
+import { initFirebaseAdminMock } from '@tests/utils/firebase-admin.mock';
 import { closeDbConnection, getDbConnection } from '@src/utils';
 import {
   addToWalletTable,
   cleanDatabase,
+  buildWallet,
 } from '@tests/utils';
 import { handleRequest, pushNotificationMessage } from '@src/api/txPushNotificationRequested';
 import { StringMap, WalletBalanceValue, PushProvider, SendNotificationToDevice } from '@src/types';
@@ -11,6 +13,7 @@ import { Context } from 'aws-lambda';
 
 const mysql = getDbConnection();
 
+initFirebaseAdminMock();
 const spyOnInvokeSendNotification = jest.spyOn(PushNotificationUtils, 'invokeSendNotificationHandlerLambda');
 
 beforeEach(async () => {
@@ -27,15 +30,7 @@ describe('success', () => {
     expect.hasAssertions();
 
     const walletId = 'wallet1';
-    await addToWalletTable(mysql, [{
-      id: walletId,
-      xpubkey: 'xpubkey',
-      authXpubkey: 'auth_xpubkey',
-      status: 'ready',
-      maxGap: 5,
-      createdAt: 10000,
-      readyAt: 10001,
-    }]);
+    await addToWalletTable(mysql, [buildWallet({ id: walletId })]);
 
     // device with disabled enableShowAmounts, resulting in a generic notification
     const deviceId = 'device1';
@@ -102,13 +97,13 @@ describe('success', () => {
 
     const expectedNotification = {
       deviceId,
-      title: 'New transaction received!',
-      description: 'There is a new transaction in your wallet.',
       metadata: {
         txId,
+        body_loc_key: 'new_transaction_received_description_without_tokens',
+        title_loc_key: 'new_transaction_received_title',
       },
     } as SendNotificationToDevice;
-    expect(spyOnInvokeSendNotification).toHaveBeenCalledWith(expectedNotification);
+    expect(spyOnInvokeSendNotification).toHaveBeenLastCalledWith(expectedNotification);
   });
 
   it('should succeed wihout invoke notification when device settings found has push notification disabled', async () => {
@@ -179,15 +174,7 @@ describe('success', () => {
     const txId = 'txId1';
 
     beforeEach(async () => {
-      await addToWalletTable(mysql, [{
-        id: walletId,
-        xpubkey: 'xpubkey',
-        authXpubkey: 'auth_xpubkey',
-        status: 'ready',
-        maxGap: 5,
-        createdAt: 10000,
-        readyAt: 10001,
-      }]);
+      await addToWalletTable(mysql, [buildWallet({ id: walletId })]);
 
       // device with enabled enableShowAmounts, resulting in an specific notification
       const pushDevice = {
@@ -237,15 +224,19 @@ describe('success', () => {
       expect(result.success).toStrictEqual(true);
       expect(spyOnInvokeSendNotification).toHaveBeenCalledTimes(1);
 
-      const expectedNotification = {
-        deviceId,
-        title: 'New transaction received!',
-        description: 'You have received 10 token2.',
-        metadata: {
-          txId,
-        },
-      } as SendNotificationToDevice;
-      expect(spyOnInvokeSendNotification).toHaveBeenCalledWith(expectedNotification);
+      // first argument of the first call
+      const notificationSentOnSpy = spyOnInvokeSendNotification.mock.calls[0][0];
+      expect(notificationSentOnSpy).toMatchInlineSnapshot(`
+Object {
+  "deviceId": "device1",
+  "metadata": Object {
+    "body_loc_args": "[\\"10 token2\\"]",
+    "body_loc_key": "new_transaction_received_description_without_tokens",
+    "title_loc_key": "new_transaction_received_title",
+    "txId": "txId1",
+  },
+}
+`);
     });
 
     it('token balance with 2 token', async () => {
@@ -301,18 +292,22 @@ describe('success', () => {
       expect(result.success).toStrictEqual(true);
       expect(spyOnInvokeSendNotification).toHaveBeenCalledTimes(1);
 
-      const expectedNotification = {
-        deviceId,
-        title: 'New transaction received!',
-        description: 'You have received 10 token2 and 5 token1.',
-        metadata: {
-          txId,
-        },
-      } as SendNotificationToDevice;
-      expect(spyOnInvokeSendNotification).toHaveBeenCalledWith(expectedNotification);
+      // first argument of the first call
+      const notificationSentOnSpy = spyOnInvokeSendNotification.mock.calls[0][0];
+      expect(notificationSentOnSpy).toMatchInlineSnapshot(`
+Object {
+  "deviceId": "device1",
+  "metadata": Object {
+    "body_loc_args": "[\\"10 token2\\",\\"5 token1\\"]",
+    "body_loc_key": "new_transaction_received_description_without_tokens",
+    "title_loc_key": "new_transaction_received_title",
+    "txId": "txId1",
+  },
+}
+`);
     });
 
-    it('token balance with 3 or more tokens', async () => {
+    it('token balance with 3 tokens', async () => {
       expect.hasAssertions();
       const payloadWith1Token = {
         [walletId]: {
@@ -381,15 +376,119 @@ describe('success', () => {
       expect(result.success).toStrictEqual(true);
       expect(spyOnInvokeSendNotification).toHaveBeenCalledTimes(1);
 
-      const expectedNotification = {
-        deviceId,
-        title: 'New transaction received!',
-        description: 'You have received 10 token2, 5 token1, and 1 other token on a new transaction.',
-        metadata: {
+      // first argument of the first call
+      const notificationSentOnSpy = spyOnInvokeSendNotification.mock.calls[0][0];
+      expect(notificationSentOnSpy).toMatchInlineSnapshot(`
+Object {
+  "deviceId": "device1",
+  "metadata": Object {
+    "body_loc_args": "[\\"10 token2\\",\\"5 token1\\",\\"1\\"]",
+    "body_loc_key": "new_transaction_received_description_without_tokens",
+    "title_loc_key": "new_transaction_received_title",
+    "txId": "txId1",
+  },
+}
+`);
+    });
+
+    it('token balance with more than 3 tokens', async () => {
+      expect.hasAssertions();
+      const payloadWith1Token = {
+        [walletId]: {
+          walletId,
+          addresses: [
+            'addr2',
+          ],
           txId,
+          walletBalanceForTx: [
+            {
+              tokenId: 'token2',
+              lockExpires: null,
+              lockedAmount: 0,
+              lockedAuthorities: {
+                melt: false,
+                mint: false,
+              },
+              total: 10,
+              totalAmountSent: 10,
+              unlockedAmount: 10,
+              unlockedAuthorities: {
+                melt: false,
+                mint: false,
+              },
+            },
+            {
+              tokenId: 'token1',
+              lockExpires: null,
+              lockedAmount: 0,
+              lockedAuthorities: {
+                melt: false,
+                mint: false,
+              },
+              totalAmountSent: 5,
+              unlockedAmount: 5,
+              unlockedAuthorities: {
+                melt: false,
+                mint: false,
+              },
+              total: 5,
+            },
+            {
+              tokenId: 'token3',
+              lockExpires: null,
+              lockedAmount: 0,
+              lockedAuthorities: {
+                melt: false,
+                mint: false,
+              },
+              totalAmountSent: 1,
+              unlockedAmount: 1,
+              unlockedAuthorities: {
+                melt: false,
+                mint: false,
+              },
+              total: 1,
+            },
+            {
+              tokenId: 'token4',
+              lockExpires: null,
+              lockedAmount: 0,
+              lockedAuthorities: {
+                melt: false,
+                mint: false,
+              },
+              totalAmountSent: 1,
+              unlockedAmount: 1,
+              unlockedAuthorities: {
+                melt: false,
+                mint: false,
+              },
+              total: 1,
+            },
+          ],
         },
-      } as SendNotificationToDevice;
-      expect(spyOnInvokeSendNotification).toHaveBeenCalledWith(expectedNotification);
+      } as StringMap<WalletBalanceValue>;
+      const sendEvent = { body: payloadWith1Token };
+      const sendContext = { awsRequestId: '123' } as Context;
+
+      const result = await handleRequest(sendEvent, sendContext, null) as { success: boolean, message?: string, details?: unknown };
+
+      expect(result.success).toStrictEqual(true);
+      expect(spyOnInvokeSendNotification).toHaveBeenCalledTimes(1);
+
+      // first argument of the first call
+      const notificationSentOnSpy = spyOnInvokeSendNotification.mock.calls[0][0];
+      expect(notificationSentOnSpy).toMatchInlineSnapshot(`
+Object {
+  "deviceId": "device1",
+  "metadata": Object {
+    "body_loc_args": "[\\"10 token2\\",\\"5 token1\\",\\"2\\"]",
+    "body_loc_key": "new_transaction_received_description_without_tokens",
+    "title_loc_key": "new_transaction_received_title",
+    "txId": "txId1",
+  },
+}
+`);
     });
   });
 });
