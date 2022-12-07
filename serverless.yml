@@ -513,3 +513,10 @@ functions:
     warmup:
       walletWarmer:
         enabled: false
+  dbroutineDeleteStalePushDevices:
+    handler: src/db.routine.cleanStalePushDevices
+    events:
+      - schedule: cron(17 3 */15 * * *)
+    warmup:
+      walletWarmer:
+        enabled: false

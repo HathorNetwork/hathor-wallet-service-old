@@ -2945,3 +2945,33 @@ export const getPushDeviceSettingsList = async (
 
   return pushDeviceSettignsList;
 };
+
+/**
+ * Count the quantity of stale push devices from now.
+ *
+ * @param mysql - Database connection
+ * @returns - total of stale device from now
+ */
+export const countStalePushDevices = async (mysql): Promise<number> => {
+  const [staleDevice] = await mysql.query(
+    `
+    SELECT COUNT(device_id) as count
+      FROM \`push_devices\`
+     WHERE updated_at > UNIX_TIMESTAMP(date_sub(now(), interval 1 month))`,
+  ) as Array<number>;
+  return staleDevice;
+};
+
+/**
+ * Delete stale push devices from now.
+ *
+ * @param mysql - Database connection
+ */
+export const deleteStalePushDevices = async (mysql) => {
+  await mysql.query(
+    `
+    DELETE
+      FROM \`push_devices\`
+      WHERE updated_at > UNIX_TIMESTAMP(date_sub(now(), interval 1 month))`,
+  );
+};
