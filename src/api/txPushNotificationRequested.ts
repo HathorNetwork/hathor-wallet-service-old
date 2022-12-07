@@ -8,7 +8,7 @@
 import { Handler } from 'aws-lambda';
 import { closeDbConnection, getDbConnection } from '@src/utils';
 import Joi, { ValidationError } from 'joi';
-import { BalanceValue, LocalizeMetadataNotification, SendNotificationToDevice, StringMap, WalletBalanceValue } from '@src/types';
+import { TokenBalanceValue, LocalizeMetadataNotification, SendNotificationToDevice, StringMap, WalletBalanceValue } from '@src/types';
 import { getPushDeviceSettingsList } from '@src/db';
 import createDefaultLogger from '@src/logger';
 import { PushNotificationUtils } from '@src/utils/pushnotification.utils';
@@ -39,6 +39,7 @@ class TxPushNotificationRequestValidator {
   static readonly walletBalanceSchema = Joi.array().items(
     Joi.object({
       tokenId: Joi.string().required(),
+      tokenSymbol: Joi.string().required(),
       totalAmountSent: Joi.number().required(),
       lockedAmount: Joi.number().required(),
       unlockedAmount: Joi.number().required(),
@@ -93,7 +94,8 @@ export const handleRequest: Handler<{ body: StringMap<WalletBalanceValue> }, { s
   const walletIdList = Object.keys(body);
   const deviceSettings = await getPushDeviceSettingsList(mysql, walletIdList);
 
-  if (deviceSettings?.length === 0) {
+  const noDeviceSettingsFound = deviceSettings?.length === 0;
+  if (noDeviceSettingsFound) {
     closeDbConnection(mysql);
     return { success: false, message: pushNotificationMessage.deviceSettinsNotFound };
   }
@@ -143,15 +145,14 @@ const _assembleGenericMessage = (deviceId, txId): SendNotificationToDevice => {
   } as SendNotificationToDevice;
 };
 
-const _assembleSpecificMessage = (deviceId: string, txId: string, tokenBalanceList: BalanceValue[]): SendNotificationToDevice => {
+const _assembleSpecificMessage = (deviceId: string, txId: string, tokenBalanceList: TokenBalanceValue[]): SendNotificationToDevice => {
   const upperLimit = 2;
   const isTokensOverLimit = tokenBalanceList.length > upperLimit;
 
   const tokens = [];
   for (const eachBalance of tokenBalanceList.slice(0, upperLimit)) {
     const amount = eachBalance.totalAmountSent;
-    // TODO: change tokenId to tokenSymbol
-    const tokenSymbol = eachBalance.tokenId;
+    const tokenSymbol = eachBalance.tokenSymbol;
     tokens.push(`${amount} ${tokenSymbol}`);
   }
 

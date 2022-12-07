@@ -8,7 +8,7 @@ import {
 import { handleRequest, pushNotificationMessage } from '@src/api/txPushNotificationRequested';
 import { StringMap, WalletBalanceValue, PushProvider, SendNotificationToDevice } from '@src/types';
 import { PushNotificationUtils } from '@src/utils/pushnotification.utils';
-import { registerPushDevice } from '@src/db';
+import { registerPushDevice, storeTokenInformation } from '@src/db';
 import { Context } from 'aws-lambda';
 
 const mysql = getDbConnection();
@@ -41,6 +41,10 @@ describe('success', () => {
       enablePush: true,
       enableShowAmounts: false,
     };
+
+    await storeTokenInformation(mysql, 'token1', 'token1', 'T1');
+    await storeTokenInformation(mysql, 'token2', 'token2', 'T2');
+
     await registerPushDevice(mysql, pushDevice);
 
     const txId = 'txId1';
@@ -54,6 +58,7 @@ describe('success', () => {
         walletBalanceForTx: [
           {
             tokenId: 'token2',
+            tokenSymbol: 'T2',
             lockExpires: null,
             lockedAmount: 0,
             lockedAuthorities: {
@@ -70,6 +75,7 @@ describe('success', () => {
           },
           {
             tokenId: 'token1',
+            tokenSymbol: 'T1',
             lockExpires: null,
             lockedAmount: 0,
             lockedAuthorities: {
@@ -132,6 +138,8 @@ describe('success', () => {
     };
     await registerPushDevice(mysql, pushDevice);
 
+    await storeTokenInformation(mysql, 'token2', 'token2', 'T2');
+
     const payloadWith1Token = {
       [walletId]: {
         walletId,
@@ -142,6 +150,7 @@ describe('success', () => {
         walletBalanceForTx: [
           {
             tokenId: 'token2',
+            tokenSymbol: 'T2',
             lockExpires: null,
             lockedAmount: 0,
             lockedAuthorities: {
@@ -185,6 +194,10 @@ describe('success', () => {
         enableShowAmounts: true,
       };
       await registerPushDevice(mysql, pushDevice);
+      await storeTokenInformation(mysql, 'token1', 'token1', 'T1');
+      await storeTokenInformation(mysql, 'token2', 'token2', 'T2');
+      await storeTokenInformation(mysql, 'token3', 'token3', 'T3');
+      await storeTokenInformation(mysql, 'token4', 'token4', 'T4');
     });
 
     it('token balance with 1 token', async () => {
@@ -199,6 +212,7 @@ describe('success', () => {
           walletBalanceForTx: [
             {
               tokenId: 'token2',
+              tokenSymbol: 'T2',
               lockExpires: null,
               lockedAmount: 0,
               lockedAuthorities: {
@@ -230,7 +244,7 @@ describe('success', () => {
 Object {
   "deviceId": "device1",
   "metadata": Object {
-    "body_loc_args": "[\\"10 token2\\"]",
+    "body_loc_args": "[\\"10 T2\\"]",
     "body_loc_key": "new_transaction_received_description_without_tokens",
     "title_loc_key": "new_transaction_received_title",
     "txId": "txId1",
@@ -251,6 +265,7 @@ Object {
           walletBalanceForTx: [
             {
               tokenId: 'token2',
+              tokenSymbol: 'T2',
               lockExpires: null,
               lockedAmount: 0,
               lockedAuthorities: {
@@ -267,6 +282,7 @@ Object {
             },
             {
               tokenId: 'token1',
+              tokenSymbol: 'T1',
               lockExpires: null,
               lockedAmount: 0,
               lockedAuthorities: {
@@ -298,7 +314,7 @@ Object {
 Object {
   "deviceId": "device1",
   "metadata": Object {
-    "body_loc_args": "[\\"10 token2\\",\\"5 token1\\"]",
+    "body_loc_args": "[\\"10 T2\\",\\"5 T1\\"]",
     "body_loc_key": "new_transaction_received_description_without_tokens",
     "title_loc_key": "new_transaction_received_title",
     "txId": "txId1",
@@ -319,6 +335,7 @@ Object {
           walletBalanceForTx: [
             {
               tokenId: 'token2',
+              tokenSymbol: 'T2',
               lockExpires: null,
               lockedAmount: 0,
               lockedAuthorities: {
@@ -335,6 +352,7 @@ Object {
             },
             {
               tokenId: 'token1',
+              tokenSymbol: 'T1',
               lockExpires: null,
               lockedAmount: 0,
               lockedAuthorities: {
@@ -351,6 +369,7 @@ Object {
             },
             {
               tokenId: 'token3',
+              tokenSymbol: 'T3',
               lockExpires: null,
               lockedAmount: 0,
               lockedAuthorities: {
@@ -382,7 +401,7 @@ Object {
 Object {
   "deviceId": "device1",
   "metadata": Object {
-    "body_loc_args": "[\\"10 token2\\",\\"5 token1\\",\\"1\\"]",
+    "body_loc_args": "[\\"10 T2\\",\\"5 T1\\",\\"1\\"]",
     "body_loc_key": "new_transaction_received_description_without_tokens",
     "title_loc_key": "new_transaction_received_title",
     "txId": "txId1",
@@ -403,6 +422,7 @@ Object {
           walletBalanceForTx: [
             {
               tokenId: 'token2',
+              tokenSymbol: 'T2',
               lockExpires: null,
               lockedAmount: 0,
               lockedAuthorities: {
@@ -419,6 +439,7 @@ Object {
             },
             {
               tokenId: 'token1',
+              tokenSymbol: 'T1',
               lockExpires: null,
               lockedAmount: 0,
               lockedAuthorities: {
@@ -435,6 +456,7 @@ Object {
             },
             {
               tokenId: 'token3',
+              tokenSymbol: 'T3',
               lockExpires: null,
               lockedAmount: 0,
               lockedAuthorities: {
@@ -451,6 +473,7 @@ Object {
             },
             {
               tokenId: 'token4',
+              tokenSymbol: 'T4',
               lockExpires: null,
               lockedAmount: 0,
               lockedAuthorities: {
@@ -482,7 +505,7 @@ Object {
 Object {
   "deviceId": "device1",
   "metadata": Object {
-    "body_loc_args": "[\\"10 token2\\",\\"5 token1\\",\\"2\\"]",
+    "body_loc_args": "[\\"10 T2\\",\\"5 T1\\",\\"2\\"]",
     "body_loc_key": "new_transaction_received_description_without_tokens",
     "title_loc_key": "new_transaction_received_title",
     "txId": "txId1",
@@ -509,6 +532,7 @@ describe('failure', () => {
         walletBalanceForTx: [
           {
             tokenId: 'token2',
+            tokenSymbol: 'T2',
             lockExpires: null,
             lockedAmount: 0,
             lockedAuthorities: {
