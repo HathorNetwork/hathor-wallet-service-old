@@ -128,15 +128,15 @@ const _mapTxRecord2Tx = (record: Record<string, unknown>): Tx => (
 export class FromTokenBalanceMapToBalanceValueList {
   static convert(tokenBalanceMap: TokenBalanceMap): BalanceValue[] {
     const entryBalances = Object.entries(tokenBalanceMap.map);
-    const balances = entryBalances.map((entry) => ({
-      tokenId: entry[0],
-      lockedAmount: entry[1].lockedAmount,
-      lockedAuthorities: entry[1].lockedAuthorities.toJSON(),
-      lockExpires: entry[1].lockExpires,
-      unlockedAmount: entry[1].unlockedAmount,
-      unlockedAuthorities: entry[1].unlockedAuthorities.toJSON(),
-      totalAmountSent: entry[1].totalAmountSent,
-      total: entry[1].total(),
+    const balances = entryBalances.map(([tokenId, balance]) => ({
+      tokenId,
+      lockedAmount: balance.lockedAmount,
+      lockedAuthorities: balance.lockedAuthorities.toJSON(),
+      lockExpires: balance.lockExpires,
+      unlockedAmount: balance.unlockedAmount,
+      unlockedAuthorities: balance.unlockedAuthorities.toJSON(),
+      totalAmountSent: balance.totalAmountSent,
+      total: balance.total(),
     } as BalanceValue));
     return balances;
   }
