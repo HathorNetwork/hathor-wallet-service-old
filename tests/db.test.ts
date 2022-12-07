@@ -2717,7 +2717,7 @@ describe('getPushDeviceSettingsList', () => {
     expect(result).toStrictEqual([]);
   });
 
-  it('should return a list of seetings even when some wallet ids are not found', async () => {
+  it('should return a list of settings even when some wallet ids are not found', async () => {
     expect.hasAssertions();
 
     // arrange variables
