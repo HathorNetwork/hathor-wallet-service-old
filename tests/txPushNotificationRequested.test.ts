@@ -128,7 +128,7 @@ describe('success', () => {
       readyAt: 10001,
     }]);
 
-    // device with disabled enableShowAmounts, resulting in a generic notification
+    // device with disabled enableShowAmounts, resulting in no notification
     const pushDevice = {
       deviceId,
       walletId,
