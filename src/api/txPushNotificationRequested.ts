@@ -132,8 +132,8 @@ export const handleRequest: Handler<{ body: StringMap<WalletBalanceValue> }, { s
 
 const _assembleGenericMessage = (deviceId, txId): SendNotificationToDevice => {
   const localize = {
-    title_loc_key: pushNotificationMessage.newTransaction.titleKey,
-    body_loc_key: pushNotificationMessage.newTransaction.withoutTokens.descriptionKey,
+    titleLocKey: pushNotificationMessage.newTransaction.titleKey,
+    bodyLocKey: pushNotificationMessage.newTransaction.withoutTokens.descriptionKey,
   } as LocalizeMetadataNotification;
 
   return {
@@ -162,9 +162,9 @@ const _assembleSpecificMessage = (deviceId: string, txId: string, tokenBalanceLi
   }
 
   const localize = {
-    title_loc_key: pushNotificationMessage.newTransaction.titleKey,
-    body_loc_key: pushNotificationMessage.newTransaction.withoutTokens.descriptionKey,
-    body_loc_args: JSON.stringify(tokens),
+    titleLocKey: pushNotificationMessage.newTransaction.titleKey,
+    bodyLocKey: pushNotificationMessage.newTransaction.withoutTokens.descriptionKey,
+    bodyLocArgs: JSON.stringify(tokens),
   } as LocalizeMetadataNotification;
 
   return {

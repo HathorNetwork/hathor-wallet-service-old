@@ -733,23 +733,19 @@ export interface SendNotificationToDevice {
    *
    * @example
    * {
-   *    "title_loc_key": "new_transaction_received_title",
-   *    "body_loc_key": "new_transaction_received_description_with_tokens",
-   *    "body_loc_args": "['13 HTR', '8 TNT', '2']"
+   *    "titleLocKey": "new_transaction_received_title",
+   *    "bodyLocKey": "new_transaction_received_description_with_tokens",
+   *    "bodyLocArgs": "['13 HTR', '8 TNT', '2']"
    * }
    */
   metadata: Record<string, string>,
 }
 
 export type LocalizeMetadataNotification = {
-  // eslint-disable-next-line camelcase
-  title_loc_key: string,
-  // eslint-disable-next-line camelcase
-  title_loc_args: string,
-  // eslint-disable-next-line camelcase
-  body_loc_key: string,
-  // eslint-disable-next-line camelcase
-  body_loc_args: string,
+  titleLocKey: string,
+  titleLocArgs: string,
+  bodyLocKey: string,
+  bodyLocArgs: string,
 }
 
 export interface PushDevice {
