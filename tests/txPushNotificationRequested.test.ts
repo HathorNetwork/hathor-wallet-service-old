@@ -556,7 +556,7 @@ describe('failure', () => {
     const result = await handleRequest(sendEvent, sendContext, null) as { success: boolean, message?: string, details?: unknown };
 
     expect(result.success).toStrictEqual(false);
-    expect(result.message).toStrictEqual(pushNotificationMessage.deviceSettinsNotFound);
+    expect(result.message).toStrictEqual(pushNotificationMessage.deviceSettingsNotFound);
     expect(spyOnInvokeSendNotification).toHaveBeenCalledTimes(0);
   });
 });
