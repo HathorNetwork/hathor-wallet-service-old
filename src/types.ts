@@ -769,5 +769,9 @@ export interface WalletBalanceValue {
   txId: string,
   walletId: string,
   addresses: string[],
+<<<<<<< HEAD
   walletBalanceForTx: TokenBalanceValue[],
+=======
+  walletBalanceForTx: BalanceValue[],
+>>>>>>> dev
 }
