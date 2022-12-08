@@ -8,7 +8,7 @@
 import { Handler } from 'aws-lambda';
 import { closeDbConnection, getDbConnection } from '@src/utils';
 import Joi, { ValidationError } from 'joi';
-import { BalanceValue, SendNotificationToDevice, StringMap, WalletBalanceValue } from '@src/types';
+import { TokenBalanceValue, LocalizeMetadataNotification, SendNotificationToDevice, StringMap, WalletBalanceValue } from '@src/types';
 import { getPushDeviceSettingsList } from '@src/db';
 import createDefaultLogger from '@src/logger';
 import { PushNotificationUtils } from '@src/utils/pushnotification.utils';
@@ -18,11 +18,16 @@ const mysql = getDbConnection();
 
 export const pushNotificationMessage = {
   newTransaction: {
-    title: 'New transaction received!',
-    genericDescription: 'There is a new transaction in your wallet.',
+    titleKey: 'new_transaction_received_title',
+    withoutTokens: {
+      descriptionKey: 'new_transaction_received_description_without_tokens',
+    },
+    withTokens: {
+      descriptionKey: 'new_transaction_received_description_with_tokens',
+    },
   },
   invalidPayload: 'Failed due to invalid payload error. See details.',
-  deviceSettinsNotFound: 'Failed due to device settings not found.',
+  deviceSettingsNotFound: 'Failed due to device settings not found.',
 };
 
 class TxPushNotificationRequestValidator {
@@ -34,6 +39,7 @@ class TxPushNotificationRequestValidator {
   static readonly walletBalanceSchema = Joi.array().items(
     Joi.object({
       tokenId: Joi.string().required(),
+      tokenSymbol: Joi.string().required(),
       totalAmountSent: Joi.number().required(),
       lockedAmount: Joi.number().required(),
       unlockedAmount: Joi.number().required(),
@@ -69,6 +75,8 @@ export const handleRequest: Handler<{ body: StringMap<WalletBalanceValue> }, { s
   const logger = createDefaultLogger();
   // Logs the request id on every line, so we can see all logs from a request
   logger.defaultMeta = {
+    module: __filename,
+    scope: handleRequest.name,
     requestId: context.awsRequestId,
   };
 
@@ -81,16 +89,17 @@ export const handleRequest: Handler<{ body: StringMap<WalletBalanceValue> }, { s
     }));
 
     closeDbConnection(mysql);
-    logger.error('[ALERT] Invalid payload.', { details });
+    logger.error('[ALERT] Invalid payload while handling push notification request.', { details });
     return { success: false, message: pushNotificationMessage.invalidPayload, details };
   }
 
   const walletIdList = Object.keys(body);
   const deviceSettings = await getPushDeviceSettingsList(mysql, walletIdList);
 
-  if (deviceSettings?.length === 0) {
+  const noDeviceSettingsFound = deviceSettings?.length === 0;
+  if (noDeviceSettingsFound) {
     closeDbConnection(mysql);
-    return { success: false, message: pushNotificationMessage.deviceSettinsNotFound };
+    return { success: false, message: pushNotificationMessage.deviceSettingsNotFound };
   }
 
   const devicesEnabledToPush = deviceSettings
@@ -123,49 +132,50 @@ export const handleRequest: Handler<{ body: StringMap<WalletBalanceValue> }, { s
   };
 };
 
-const _assembleGenericMessage = (deviceId, txId): SendNotificationToDevice => ({
-  deviceId,
-  title: pushNotificationMessage.newTransaction.title,
-  description: pushNotificationMessage.newTransaction.genericDescription,
-  metadata: {
-    txId,
-  },
-} as SendNotificationToDevice);
+const _assembleGenericMessage = (deviceId, txId): SendNotificationToDevice => {
+  const localize = {
+    titleLocKey: pushNotificationMessage.newTransaction.titleKey,
+    bodyLocKey: pushNotificationMessage.newTransaction.withoutTokens.descriptionKey,
+  } as LocalizeMetadataNotification;
 
-const _assembleSpecificMessage = (deviceId: string, txId: string, tokenBalanceList: BalanceValue[]): SendNotificationToDevice => {
-  const tokensCap = 2;
-  const isTokensUnderCap = tokenBalanceList.length <= 2;
-
-  const messageChunks = [];
-  for (const eachBalance of tokenBalanceList.slice(0, tokensCap)) {
-    const amount = eachBalance.totalAmountSent;
-    // TODO: change tokenId to tokenSymbol
-    const tokenSymbol = eachBalance.tokenId;
-    messageChunks.push(`${amount} ${tokenSymbol}`);
-  }
-
-  if (!isTokensUnderCap) {
-    const remainingTokens = tokenBalanceList.length - tokensCap;
-    messageChunks.push(_remainingTokenChunkMessage(remainingTokens));
-  }
-
-  const description = `You have received ${isTokensUnderCap ? messageChunks.join(' and ') : messageChunks.join(', ')}.`;
-  const notification = {
+  return {
     deviceId,
-    title: pushNotificationMessage.newTransaction.title,
-    description,
     metadata: {
       txId,
+      ...localize,
     },
   } as SendNotificationToDevice;
-  return notification;
 };
 
-const _remainingTokenChunkMessage = (remainingTokens: number): string => {
-  const token = 'token';
-  const tokens = 'tokens';
-  const isSingular = remainingTokens === 1;
-  return `and ${remainingTokens} other ${isSingular ? token : tokens} on a new transaction`;
+const _assembleSpecificMessage = (deviceId: string, txId: string, tokenBalanceList: TokenBalanceValue[]): SendNotificationToDevice => {
+  const upperLimit = 2;
+  const isTokensOverLimit = tokenBalanceList.length > upperLimit;
+
+  const tokens = [];
+  for (const eachBalance of tokenBalanceList.slice(0, upperLimit)) {
+    const amount = eachBalance.totalAmountSent;
+    const tokenSymbol = eachBalance.tokenSymbol;
+    tokens.push(`${amount} ${tokenSymbol}`);
+  }
+
+  if (isTokensOverLimit) {
+    const remainingTokens = tokenBalanceList.length - upperLimit;
+    tokens.push(remainingTokens.toString());
+  }
+
+  const localize = {
+    titleLocKey: pushNotificationMessage.newTransaction.titleKey,
+    bodyLocKey: pushNotificationMessage.newTransaction.withoutTokens.descriptionKey,
+    bodyLocArgs: JSON.stringify(tokens),
+  } as LocalizeMetadataNotification;
+
+  return {
+    deviceId,
+    metadata: {
+      txId,
+      ...localize,
+    },
+  } as SendNotificationToDevice;
 };
 
 const _sendNotification = async (notification: SendNotificationToDevice, logger: Logger): Promise<void> => {

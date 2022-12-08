@@ -14,7 +14,7 @@ import {
   Tx,
   DbSelectResult,
   TokenBalanceMap,
-  BalanceValue,
+  TokenBalanceValue,
   WalletBalanceValue,
   StringMap,
   WalletBalance,
@@ -126,35 +126,52 @@ const _mapTxRecord2Tx = (record: Record<string, unknown>): Tx => (
 );
 
 export class FromTokenBalanceMapToBalanceValueList {
-  static convert(tokenBalanceMap: TokenBalanceMap): BalanceValue[] {
+  /**
+   * Convert the map of token balance instance into a map of token balance value.
+   * It also hydrate each token balance value with token symbol.
+   *
+   * @param tokenBalanceMap - Map of token balance instance
+   * @param tokenSymbolsMap - Map token's id to its symbol
+   * @returns a map of token balance value
+   */
+  static convert(tokenBalanceMap: TokenBalanceMap, tokenSymbolsMap: StringMap<string>): TokenBalanceValue[] {
     const entryBalances = Object.entries(tokenBalanceMap.map);
-    const balances = entryBalances.map((entry) => ({
-      tokenId: entry[0],
-      lockedAmount: entry[1].lockedAmount,
-      lockedAuthorities: entry[1].lockedAuthorities.toJSON(),
-      lockExpires: entry[1].lockExpires,
-      unlockedAmount: entry[1].unlockedAmount,
-      unlockedAuthorities: entry[1].unlockedAuthorities.toJSON(),
-      totalAmountSent: entry[1].totalAmountSent,
-      total: entry[1].total(),
-    } as BalanceValue));
+    const balances = entryBalances.map(([tokenId, balance]) => ({
+      tokenId,
+      tokenSymbol: tokenSymbolsMap[tokenId],
+      lockedAmount: balance.lockedAmount,
+      lockedAuthorities: balance.lockedAuthorities.toJSON(),
+      lockExpires: balance.lockExpires,
+      unlockedAmount: balance.unlockedAmount,
+      unlockedAuthorities: balance.unlockedAuthorities.toJSON(),
+      totalAmountSent: balance.totalAmountSent,
+      total: balance.total(),
+    } as TokenBalanceValue));
     return balances;
   }
 }
 
-export const sortBalanceValueByAbsTotal = (balanceA: BalanceValue, balanceB: BalanceValue): number => {
+export const sortBalanceValueByAbsTotal = (balanceA: TokenBalanceValue, balanceB: TokenBalanceValue): number => {
   if (Math.abs(balanceA.total) - Math.abs(balanceB.total) >= 0) return -1;
   return 0;
 };
 
 export class WalletBalanceMapConverter {
-  static toValue(walletBalanceMap: StringMap<WalletBalance>): StringMap<WalletBalanceValue> {
+  /**
+   * Convert the map of wallet balance instance into a map of wallet balance value.
+   *
+   * @param walletBalanceMap - Map wallet's id to its balance
+   * @param tokenSymbolsMap - Map token's id to its symbol
+   * @returns a map of wallet id to its balance value
+   */
+  static toValue(walletBalanceMap: StringMap<WalletBalance>, tokenSymbolsMap: StringMap<string>): StringMap<WalletBalanceValue> {
     const walletBalanceEntries = Object.entries(walletBalanceMap);
 
     const walletBalanceValueMap: StringMap<WalletBalanceValue> = {};
     for (const [walletId, walletBalance] of walletBalanceEntries) {
       const sortedTokenBalanceList = FromTokenBalanceMapToBalanceValueList
-        .convert(walletBalance.walletBalanceForTx)
+        // hydrate token balance value with token symbol while convert to value
+        .convert(walletBalance.walletBalanceForTx, tokenSymbolsMap)
         .sort(sortBalanceValueByAbsTotal);
 
       walletBalanceValueMap[walletId] = {

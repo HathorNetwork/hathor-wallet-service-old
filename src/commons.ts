@@ -36,6 +36,7 @@ import {
   rebuildAddressBalancesFromUtxos,
   fetchAddressBalance,
   fetchAddressTxHistorySum,
+  getTokenSymbols,
 } from '@src/db';
 import {
   DecodedOutput,
@@ -640,6 +641,9 @@ export const getWalletBalancesForTx = async (mysql: ServerlessMysql, tx: Transac
   // Create a new map focused on the walletId and storing its balance variation from this tx
   const walletsMap: StringMap<WalletBalance> = {};
 
+  // Accumulation of tokenId to be used to extract its symbols.
+  const tokenIdAccumulation = [];
+
   // Iterates all the addresses to populate the map's data
   const addressWalletEntries = stringMapIterator(addressWalletMap) as [string, Wallet][];
   for (const [address, wallet] of addressWalletEntries) {
@@ -660,7 +664,13 @@ export const getWalletBalancesForTx = async (mysql: ServerlessMysql, tx: Transac
     // Merge the balance of this address with the total balance of the wallet
     const mergedBalance = TokenBalanceMap.merge(walletData.walletBalanceForTx, addressBalanceMap[address]);
     walletData.walletBalanceForTx = mergedBalance;
+
+    const tokenIdList = Object.keys(mergedBalance.map);
+    tokenIdAccumulation.push(tokenIdList);
   }
 
-  return WalletBalanceMapConverter.toValue(walletsMap);
+  const tokenIdSet = new Set<string>(tokenIdAccumulation.reduce((prev, eachGroup) => [...prev, ...eachGroup], []));
+  const tokenSymbolsMap = await getTokenSymbols(mysql, Array.from(tokenIdSet.values()));
+
+  return WalletBalanceMapConverter.toValue(walletsMap, tokenSymbolsMap);
 };

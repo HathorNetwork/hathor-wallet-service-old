@@ -2975,3 +2975,29 @@ export const deleteStalePushDevices = async (mysql) => {
      WHERE updated_at > UNIX_TIMESTAMP(date_sub(now(), interval 1 month))`,
   );
 };
+
+/**
+ * Get token symbol map, correlating token id to its symbol.
+ *
+ * @param mysql - Database connection
+ * @param tokenIdList - A list of token id
+ * @returns The token information (or null if id is not found)
+ */
+export const getTokenSymbols = async (
+  mysql: ServerlessMysql,
+  tokenIdList: string[],
+): Promise<StringMap<string>> => {
+  if (tokenIdList.length === 0) return null;
+
+  const results: DbSelectResult = await mysql.query(
+    'SELECT `id`, `symbol` FROM `token` WHERE `id` IN (?)',
+    [tokenIdList],
+  );
+
+  if (results.length === 0) return null;
+  return results.reduce((prev: Record<string, string>, token: { id: string, symbol: string}) => {
+    // eslint-disable-next-line no-param-reassign
+    prev[token.id] = token.symbol;
+    return prev;
+  }, {}) as unknown as StringMap<string>;
+};

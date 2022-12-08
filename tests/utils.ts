@@ -980,6 +980,7 @@ export const buildWalletBalanceValueMap = (
     walletBalanceForTx: [
       {
         tokenId: 'token1',
+        tokenSymbol: 'T1',
         lockExpires: null,
         lockedAmount: 0,
         lockedAuthorities: {
@@ -998,3 +999,20 @@ export const buildWalletBalanceValueMap = (
   },
   ...override,
 });
+
+export const buildWallet = (overwrite?): WalletTableEntry => {
+  const defaultWallet = {
+    id: 'id',
+    xpubkey: 'xpubkey',
+    authXpubkey: 'auth_xpubkey',
+    status: 'ready',
+    maxGap: 5,
+    createdAt: 10000,
+    readyAt: 10001,
+  };
+
+  return {
+    ...defaultWallet,
+    ...overwrite,
+  };
+};
