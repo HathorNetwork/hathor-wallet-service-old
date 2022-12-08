@@ -44,6 +44,7 @@ import {
   createWallet,
   updateTxOutputSpentBy,
   addUtxos,
+  storeTokenInformation,
 } from '@src/db';
 import * as Utils from '@src/utils';
 import hathorLib from '@hathor/wallet-lib';
@@ -569,6 +570,7 @@ describe('getWalletBalancesForTx', () => {
       name: 'Token 1',
       symbol: 'T1',
     };
+    await storeTokenInformation(mysql, token1.id, token1.name, token1.symbol);
 
     // transaction base
     const utxos = [
@@ -652,6 +654,7 @@ describe('getWalletBalancesForTx', () => {
       name: 'Token 1',
       symbol: 'T1',
     };
+    await storeTokenInformation(mysql, token1.id, token1.name, token1.symbol);
 
     // instantiate token balance
     const balanceToken1 = {
@@ -726,6 +729,7 @@ describe('getWalletBalancesForTx', () => {
         walletBalanceForTx: [
           {
             tokenId: 'token1',
+            tokenSymbol: 'T1',
             lockExpires: null,
             lockedAmount: 0,
             lockedAuthorities: {
@@ -779,11 +783,13 @@ describe('getWalletBalancesForTx', () => {
         name: 'Token 1',
         symbol: 'T1',
       };
+      await storeTokenInformation(mysql, token1.id, token1.name, token1.symbol);
       const token2 = {
         id: 'token2',
         name: 'Token 2',
         symbol: 'T2',
       };
+      await storeTokenInformation(mysql, token2.id, token2.name, token2.symbol);
 
       // instantiate token balance
       const balanceToken1 = {
@@ -876,6 +882,7 @@ describe('getWalletBalancesForTx', () => {
           walletBalanceForTx: [
             {
               tokenId: 'token2',
+              tokenSymbol: 'T2',
               lockExpires: null,
               lockedAmount: 0,
               lockedAuthorities: {
@@ -892,6 +899,7 @@ describe('getWalletBalancesForTx', () => {
             },
             {
               tokenId: 'token1',
+              tokenSymbol: 'T1',
               lockExpires: null,
               lockedAmount: 0,
               lockedAuthorities: {
@@ -945,11 +953,13 @@ describe('getWalletBalancesForTx', () => {
         name: 'Token 1',
         symbol: 'T1',
       };
+      await storeTokenInformation(mysql, token1.id, token1.name, token1.symbol);
       const token2 = {
         id: 'token2',
         name: 'Token 2',
         symbol: 'T2',
       };
+      await storeTokenInformation(mysql, token2.id, token2.name, token2.symbol);
 
       // instantiate token balance
       const balanceToken1 = {
@@ -1043,6 +1053,7 @@ describe('getWalletBalancesForTx', () => {
           walletBalanceForTx: [
             {
               tokenId: 'token2',
+              tokenSymbol: 'T2',
               lockExpires: null,
               lockedAmount: 0,
               lockedAuthorities: {
@@ -1059,6 +1070,7 @@ describe('getWalletBalancesForTx', () => {
             },
             {
               tokenId: 'token1',
+              tokenSymbol: 'T1',
               lockExpires: null,
               lockedAmount: 0,
               lockedAuthorities: {
