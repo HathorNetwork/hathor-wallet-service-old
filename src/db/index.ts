@@ -2936,12 +2936,12 @@ export const getPushDeviceSettingsList = async (
   // eslint-disable-next-line camelcase
   ) as Array<{wallet_id, device_id, enable_push, enable_show_amounts}>;
 
-  const pushDeviceSettignsList = pushDeviceSettingsResult.map((each) => ({
+  const pushDeviceSettingsList = pushDeviceSettingsResult.map((each) => ({
     walletId: each.wallet_id,
     deviceId: each.device_id,
     enablePush: !!each.enable_push,
     enableShowAmounts: !!each.enable_show_amounts,
   } as PushDeviceSettings));
 
-  return pushDeviceSettignsList;
+  return pushDeviceSettingsList;
 };
