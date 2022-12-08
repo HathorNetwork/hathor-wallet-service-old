@@ -105,8 +105,8 @@ describe('success', () => {
       deviceId,
       metadata: {
         txId,
-        body_loc_key: 'new_transaction_received_description_without_tokens',
-        title_loc_key: 'new_transaction_received_title',
+        bodyLocKey: 'new_transaction_received_description_without_tokens',
+        titleLocKey: 'new_transaction_received_title',
       },
     } as SendNotificationToDevice;
     expect(spyOnInvokeSendNotification).toHaveBeenLastCalledWith(expectedNotification);
@@ -244,9 +244,9 @@ describe('success', () => {
 Object {
   "deviceId": "device1",
   "metadata": Object {
-    "body_loc_args": "[\\"10 T2\\"]",
-    "body_loc_key": "new_transaction_received_description_without_tokens",
-    "title_loc_key": "new_transaction_received_title",
+    "bodyLocArgs": "[\\"10 T2\\"]",
+    "bodyLocKey": "new_transaction_received_description_without_tokens",
+    "titleLocKey": "new_transaction_received_title",
     "txId": "txId1",
   },
 }
@@ -314,9 +314,9 @@ Object {
 Object {
   "deviceId": "device1",
   "metadata": Object {
-    "body_loc_args": "[\\"10 T2\\",\\"5 T1\\"]",
-    "body_loc_key": "new_transaction_received_description_without_tokens",
-    "title_loc_key": "new_transaction_received_title",
+    "bodyLocArgs": "[\\"10 T2\\",\\"5 T1\\"]",
+    "bodyLocKey": "new_transaction_received_description_without_tokens",
+    "titleLocKey": "new_transaction_received_title",
     "txId": "txId1",
   },
 }
@@ -401,9 +401,9 @@ Object {
 Object {
   "deviceId": "device1",
   "metadata": Object {
-    "body_loc_args": "[\\"10 T2\\",\\"5 T1\\",\\"1\\"]",
-    "body_loc_key": "new_transaction_received_description_without_tokens",
-    "title_loc_key": "new_transaction_received_title",
+    "bodyLocArgs": "[\\"10 T2\\",\\"5 T1\\",\\"1\\"]",
+    "bodyLocKey": "new_transaction_received_description_without_tokens",
+    "titleLocKey": "new_transaction_received_title",
     "txId": "txId1",
   },
 }
@@ -505,9 +505,9 @@ Object {
 Object {
   "deviceId": "device1",
   "metadata": Object {
-    "body_loc_args": "[\\"10 T2\\",\\"5 T1\\",\\"2\\"]",
-    "body_loc_key": "new_transaction_received_description_without_tokens",
-    "title_loc_key": "new_transaction_received_title",
+    "bodyLocArgs": "[\\"10 T2\\",\\"5 T1\\",\\"2\\"]",
+    "bodyLocKey": "new_transaction_received_description_without_tokens",
+    "titleLocKey": "new_transaction_received_title",
     "txId": "txId1",
   },
 }
