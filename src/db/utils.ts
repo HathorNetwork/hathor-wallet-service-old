@@ -5,9 +5,20 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+/* eslint-disable max-classes-per-file */
 import { ServerlessMysql } from 'serverless-mysql';
 import { getWalletId } from '@src/utils';
-import { WalletStatus, Wallet, Tx, DbSelectResult } from '@src/types';
+import {
+  WalletStatus,
+  Wallet,
+  Tx,
+  DbSelectResult,
+  TokenBalanceMap,
+  BalanceValue,
+  WalletBalanceValue,
+  StringMap,
+  WalletBalance,
+} from '@src/types';
 
 /**
  * Begins a transaction on the current connection
@@ -113,3 +124,49 @@ const _mapTxRecord2Tx = (record: Record<string, unknown>): Tx => (
     weight: record.weight as number,
   }
 );
+
+export class FromTokenBalanceMapToBalanceValueList {
+  static convert(tokenBalanceMap: TokenBalanceMap): BalanceValue[] {
+    const entryBalances = Object.entries(tokenBalanceMap.map);
+    const balances = entryBalances.map(([tokenId, balance]) => ({
+      tokenId,
+      lockedAmount: balance.lockedAmount,
+      lockedAuthorities: balance.lockedAuthorities.toJSON(),
+      lockExpires: balance.lockExpires,
+      unlockedAmount: balance.unlockedAmount,
+      unlockedAuthorities: balance.unlockedAuthorities.toJSON(),
+      totalAmountSent: balance.totalAmountSent,
+      total: balance.total(),
+    } as BalanceValue));
+    return balances;
+  }
+}
+
+export const sortBalanceValueByAbsTotal = (balanceA: BalanceValue, balanceB: BalanceValue): number => {
+  if (Math.abs(balanceA.total) - Math.abs(balanceB.total) >= 0) return -1;
+  return 0;
+};
+
+export class WalletBalanceMapConverter {
+  static toValue(walletBalanceMap: StringMap<WalletBalance>): StringMap<WalletBalanceValue> {
+    const walletBalanceEntries = Object.entries(walletBalanceMap);
+
+    const walletBalanceValueMap: StringMap<WalletBalanceValue> = {};
+    for (const [walletId, walletBalance] of walletBalanceEntries) {
+      const sortedTokenBalanceList = FromTokenBalanceMapToBalanceValueList
+        .convert(walletBalance.walletBalanceForTx)
+        .sort(sortBalanceValueByAbsTotal);
+
+      walletBalanceValueMap[walletId] = {
+        addresses: walletBalance.addresses,
+        txId: walletBalance.txId,
+        walletId: walletBalance.walletId,
+        walletBalanceForTx: sortedTokenBalanceList,
+      };
+    }
+
+    return walletBalanceValueMap;
+  }
+}
+
+export const stringMapIterator = (stringMap: StringMap<unknown>): [string, unknown][] => (Object.entries(stringMap));

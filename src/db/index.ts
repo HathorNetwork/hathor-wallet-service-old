@@ -47,11 +47,9 @@ import {
   getAddressPath,
   xpubDeriveChild,
   getAddresses,
-  isTxVoided,
 } from '@src/utils';
 import {
   getWalletFromDbEntry,
-  getTxFromDBResult,
   getTxsFromDBResult,
 } from '@src/db/utils';
 
@@ -2938,12 +2936,12 @@ export const getPushDeviceSettingsList = async (
   // eslint-disable-next-line camelcase
   ) as Array<{wallet_id, device_id, enable_push, enable_show_amounts}>;
 
-  const pushDeviceSettingsList = pushDeviceSettingsResult.map((each) => ({
+  const pushDeviceSettignsList = pushDeviceSettingsResult.map((each) => ({
     walletId: each.wallet_id,
     deviceId: each.device_id,
     enablePush: !!each.enable_push,
     enableShowAmounts: !!each.enable_show_amounts,
   } as PushDeviceSettings));
 
-  return pushDeviceSettingsList;
+  return pushDeviceSettignsList;
 };
