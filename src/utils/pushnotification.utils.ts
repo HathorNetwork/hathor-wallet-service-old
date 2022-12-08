@@ -48,7 +48,7 @@ export class PushNotificationUtils {
       android: {
         /**
          * When the application is in background the OS treat data messages as low priority by default.
-         * We can change priority to 'hight' to attempt deliver the message as soon as possible,
+         * We can change priority to 'high' to attempt deliver the message as soon as possible,
          * however FCM can adapt the delivery of the message over time in response to user engagement.
          *
          * @remarks

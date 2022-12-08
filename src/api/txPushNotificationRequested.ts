@@ -27,7 +27,7 @@ export const pushNotificationMessage = {
     },
   },
   invalidPayload: 'Failed due to invalid payload error. See details.',
-  deviceSettinsNotFound: 'Failed due to device settings not found.',
+  deviceSettingsNotFound: 'Failed due to device settings not found.',
 };
 
 class TxPushNotificationRequestValidator {
@@ -75,6 +75,8 @@ export const handleRequest: Handler<{ body: StringMap<WalletBalanceValue> }, { s
   const logger = createDefaultLogger();
   // Logs the request id on every line, so we can see all logs from a request
   logger.defaultMeta = {
+    module: __filename,
+    scope: handleRequest.name,
     requestId: context.awsRequestId,
   };
 
@@ -87,7 +89,7 @@ export const handleRequest: Handler<{ body: StringMap<WalletBalanceValue> }, { s
     }));
 
     closeDbConnection(mysql);
-    logger.error('[ALERT] Invalid payload.', { details });
+    logger.error('[ALERT] Invalid payload while handling push notification request.', { details });
     return { success: false, message: pushNotificationMessage.invalidPayload, details };
   }
 
@@ -97,7 +99,7 @@ export const handleRequest: Handler<{ body: StringMap<WalletBalanceValue> }, { s
   const noDeviceSettingsFound = deviceSettings?.length === 0;
   if (noDeviceSettingsFound) {
     closeDbConnection(mysql);
-    return { success: false, message: pushNotificationMessage.deviceSettinsNotFound };
+    return { success: false, message: pushNotificationMessage.deviceSettingsNotFound };
   }
 
   const devicesEnabledToPush = deviceSettings
