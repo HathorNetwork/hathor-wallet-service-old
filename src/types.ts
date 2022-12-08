@@ -331,6 +331,17 @@ export class Balance {
   }
 }
 
+export type BalanceValue = {
+  tokenId: string,
+  totalAmountSent: number;
+  lockedAmount: number;
+  unlockedAmount: number;
+  lockedAuthorities: Record<string, unknown>;
+  unlockedAuthorities: Record<string, unknown>;
+  lockExpires: number | null;
+  total: number;
+}
+
 export class WalletTokenBalance {
   token: TokenInfo;
 
@@ -729,3 +740,17 @@ export interface PushDevice {
 }
 
 export type PushDeviceSettings = Omit<PushDevice, 'pushProvider'>;
+
+export interface WalletBalance {
+  txId: string,
+  walletId: string,
+  addresses: string[],
+  walletBalanceForTx: TokenBalanceMap,
+}
+
+export interface WalletBalanceValue {
+  txId: string,
+  walletId: string,
+  addresses: string[],
+  walletBalanceForTx: BalanceValue[],
+}

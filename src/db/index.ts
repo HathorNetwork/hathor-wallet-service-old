@@ -47,11 +47,9 @@ import {
   getAddressPath,
   xpubDeriveChild,
   getAddresses,
-  isTxVoided,
 } from '@src/utils';
 import {
   getWalletFromDbEntry,
-  getTxFromDBResult,
   getTxsFromDBResult,
 } from '@src/db/utils';
 
