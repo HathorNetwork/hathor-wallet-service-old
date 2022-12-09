@@ -486,7 +486,7 @@ functions:
     events:
       - http:
           path: push/unregister
-          method: delete
+          method: post
           cors: true
           authorizer: ${self:custom.authorizer.walletBearer}
     warmup:
