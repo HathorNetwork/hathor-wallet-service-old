@@ -23,9 +23,7 @@ describe('PushNotificationUtils', () => {
       FIREBASE_PROJECT_ID: 'projectId',
       ON_TX_PUSH_NOTIFICATION_REQUESTED_LAMBDA_ENDPOINT: 'endpoint',
     };
-
     jest.resetModules();
-    jest.restoreAllMocks();
   });
 
   afterEach(() => {
