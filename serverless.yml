@@ -513,3 +513,10 @@ functions:
     warmup:
       walletWarmer:
         enabled: false
+  dbroutineDeleteStalePushDevices:
+    handler: src/db/cron.routines.cleanStalePushDevices
+    events:
+      - schedule: cron(17 3 */15 * * *) # run every 15 days at 3:17 (GMT)
+    warmup:
+      walletWarmer:
+        enabled: false
