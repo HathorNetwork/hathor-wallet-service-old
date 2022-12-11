@@ -50,9 +50,9 @@ test('get a transaction given its ID', async () => {
   await addToAddressTxHistoryTable(mysql, entries);
   await initWalletTxHistory(mysql, walletId1, [addr1]);
 
-  const event = makeGatewayEventWithAuthorizer(walletId1, null, {
+  const event = makeGatewayEventWithAuthorizer(walletId1, {
     txId: txId1,
-  });
+  }, null);
 
   const result = await get(event, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(result.body as string);
@@ -93,9 +93,9 @@ describe('statusCode:400', () => {
     expect.hasAssertions();
 
     const walletId = 'wallet1';
-    const event = makeGatewayEventWithAuthorizer(walletId, null, {
-      txId: 1, // must be string
-    });
+    const event = makeGatewayEventWithAuthorizer(walletId, {
+      txId: '', // must be string
+    }, null);
 
     const result = await get(event, null, null) as APIGatewayProxyResult;
     const returnBody = JSON.parse(result.body as string);
@@ -103,6 +103,16 @@ describe('statusCode:400', () => {
     expect(result.statusCode).toStrictEqual(400);
     expect(returnBody.success).toStrictEqual(false);
     expect(returnBody.error).toStrictEqual(ApiError.INVALID_PAYLOAD);
+    expect(returnBody.details).toMatchInlineSnapshot(`
+Array [
+  Object {
+    "message": "\\"txId\\" is not allowed to be empty",
+    "path": Array [
+      "txId",
+    ],
+  },
+]
+`);
   });
 });
 
@@ -113,9 +123,9 @@ describe('statusCode:404', () => {
     await addOrUpdateTx(mysql, 'txId1', 1, 2, 3, 65.4321);
 
     const walletId = 'wallet1';
-    const event = makeGatewayEventWithAuthorizer(walletId, null, {
+    const event = makeGatewayEventWithAuthorizer(walletId, {
       txId: 'tx-not-found',
-    });
+    }, null);
 
     const result = await get(event, null, null) as APIGatewayProxyResult;
     const returnBody = JSON.parse(result.body as string);
@@ -123,5 +133,6 @@ describe('statusCode:404', () => {
     expect(result.statusCode).toStrictEqual(404);
     expect(returnBody.success).toStrictEqual(false);
     expect(returnBody.error).toStrictEqual(ApiError.TX_NOT_FOUND);
+    expect(returnBody.details).toBeUndefined();
   });
 });

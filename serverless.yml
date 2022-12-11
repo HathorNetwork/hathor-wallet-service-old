@@ -496,10 +496,14 @@ functions:
     handler: src/api/txById.get
     events:
       - http:
-          path: wallet/getTxById
+          path: wallet/getTxById/{txId}
           method: get
           cors: true
           authorizer: ${self:custom.authorizer.walletBearer}
+          request:
+            parameters:
+              paths:
+                txId: true
     warmup:
       walletWarmer:
         enabled: false

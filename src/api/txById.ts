@@ -20,7 +20,7 @@ const mysql = getDbConnection();
 
 class TxByIdValidator {
   static readonly bodySchema = Joi.object({
-    txId: Joi.string().required(),
+    txId: Joi.string().min(1).required(),
   });
 
   static validate(payload): { value: TxByIdRequest, error: ValidationError } {
@@ -37,7 +37,7 @@ class TxByIdValidator {
  * This lambda is called by API Gateway on GET /wallet/getTxById
  */
 export const get: APIGatewayProxyHandler = middy(walletIdProxyHandler(async (walletId, event) => {
-  const { value: body, error } = TxByIdValidator.validate(event.body);
+  const { value: body, error } = TxByIdValidator.validate(event.pathParameters);
 
   if (error) {
     const details = error.details.map((err) => ({
