@@ -36,19 +36,34 @@ initializeApp({
 });
 
 export enum PushNotificationError {
-  INVALID_DEVICE_ID = 'invalid-device-id',
   UNKNOWN = 'unknown',
+  INVALID_DEVICE_ID = 'invalid-device-id',
 }
 
 export class PushNotificationUtils {
   public static async sendToFcm(notification: SendNotificationToDevice): Promise<{ success: boolean, errorMessage?: string }> {
     const message: MulticastMessage = {
       tokens: [notification.deviceId],
-      notification: {
-        title: notification.title,
-        body: notification.description,
-      },
       data: notification.metadata,
+      android: {
+        /**
+         * When the application is in background the OS treat data messages as low priority by default.
+         * We can change priority to 'high' to attempt deliver the message as soon as possible,
+         * however FCM can adapt the delivery of the message over time in response to user engagement.
+         *
+         * @remarks
+         * On iOS we can change the priority with the following code.
+         *
+         * @code
+         * {
+         *    ...android,
+         *    apns: {
+         *      payload: { aps: { contentAvailable: true } },
+         *    },
+         * }
+         */
+        priority: 'high',
+      },
     };
     const multicastResult = await messaging().sendMulticast(message);
 

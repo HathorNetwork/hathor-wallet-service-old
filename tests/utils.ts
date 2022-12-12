@@ -964,3 +964,20 @@ export const checkPushDevicesTable = async (
   }
   return true;
 };
+
+export const buildWallet = (overwrite?): WalletTableEntry => {
+  const defaultWallet = {
+    id: 'id',
+    xpubkey: 'xpubkey',
+    authXpubkey: 'auth_xpubkey',
+    status: 'ready',
+    maxGap: 5,
+    createdAt: 10000,
+    readyAt: 10001,
+  };
+
+  return {
+    ...defaultWallet,
+    ...overwrite,
+  };
+};

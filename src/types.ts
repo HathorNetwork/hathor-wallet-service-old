@@ -331,8 +331,9 @@ export class Balance {
   }
 }
 
-export type BalanceValue = {
+export type TokenBalanceValue = {
   tokenId: string,
+  tokenSymbol: string,
   totalAmountSent: number;
   lockedAmount: number;
   unlockedAmount: number;
@@ -726,9 +727,25 @@ export interface TxByIdToken {
 
 export interface SendNotificationToDevice {
   deviceId: string,
-  title: string,
-  description: string,
+  /**
+   * A string map used to send data in the notification message.
+   * @see LocalizeMetadataNotification
+   *
+   * @example
+   * {
+   *    "titleLocKey": "new_transaction_received_title",
+   *    "bodyLocKey": "new_transaction_received_description_with_tokens",
+   *    "bodyLocArgs": "['13 HTR', '8 TNT', '2']"
+   * }
+   */
   metadata: Record<string, string>,
+}
+
+export type LocalizeMetadataNotification = {
+  titleLocKey: string,
+  titleLocArgs: string,
+  bodyLocKey: string,
+  bodyLocArgs: string,
 }
 
 export interface PushDevice {
@@ -752,5 +769,5 @@ export interface WalletBalanceValue {
   txId: string,
   walletId: string,
   addresses: string[],
-  walletBalanceForTx: BalanceValue[],
+  walletBalanceForTx: TokenBalanceValue[],
 }
