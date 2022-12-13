@@ -2957,7 +2957,7 @@ export const countStalePushDevices = async (mysql): Promise<number> => {
     `
     SELECT COUNT(device_id) as count
       FROM \`push_devices\`
-     WHERE updated_at > UNIX_TIMESTAMP(date_sub(now(), interval 1 month))`,
+     WHERE UNIX_TIMESTAMP(updated_at) < UNIX_TIMESTAMP(date_sub(now(), interval 1 month))`,
   ) as Array<{ count }>;
   return count;
 };
@@ -2972,7 +2972,7 @@ export const deleteStalePushDevices = async (mysql) => {
     `
     DELETE
       FROM \`push_devices\`
-     WHERE updated_at > UNIX_TIMESTAMP(date_sub(now(), interval 1 month))`,
+     WHERE UNIX_TIMESTAMP(updated_at) < UNIX_TIMESTAMP(date_sub(now(), interval 1 month))`,
   );
 };
 
