@@ -1072,3 +1072,5 @@ export const insertPushDevice = async (mysql: ServerlessMysql, pushRegister: {
     ],
   );
 };
+
+export const daysAgo = (days) => new Date(new Date().getTime() - days * 24 * 60 * 60 * 1000);

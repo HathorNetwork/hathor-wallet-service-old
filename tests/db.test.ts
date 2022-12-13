@@ -75,6 +75,7 @@ import {
   getPushDeviceSettingsList,
   getTokenSymbols,
   countStalePushDevices,
+  deleteStalePushDevices,
 } from '@src/db';
 import {
   beginTransaction,
@@ -127,6 +128,7 @@ import {
   checkPushDevicesTable,
   buildPushRegister,
   insertPushDevice,
+  daysAgo,
 } from '@tests/utils';
 import { AddressTxHistoryTableEntry } from '@tests/types';
 
@@ -2933,11 +2935,36 @@ describe('countStalePushDevices', () => {
 
     const pushRegister = buildPushRegister({
       walletId: 'wallet1',
-      // 30 days ago
-      updatedAt: new Date(new Date().getTime() - 30 * 24 * 60 * 60 * 1000),
+      updatedAt: daysAgo(31),
     });
     await insertPushDevice(mysql, pushRegister);
 
     await expect(countStalePushDevices(mysql)).resolves.toBe(1);
+  });
+});
+
+describe('deleteStalePushDevices', () => {
+  it('should delete stale push devices', async () => {
+    expect.hasAssertions();
+
+    /**
+     * Before any push device is registered, deleteStalePushDevices should not fail
+     */
+    await expect(deleteStalePushDevices(mysql)).resolves.toBeUndefined();
+
+    const walletId = 'wallet1';
+    await createWallet(mysql, walletId, XPUBKEY, AUTH_XPUBKEY, 5);
+
+    const pushRegister = buildPushRegister({
+      walletId: 'wallet1',
+      updatedAt: daysAgo(31),
+    });
+    await insertPushDevice(mysql, pushRegister);
+
+    await expect(countStalePushDevices(mysql)).resolves.toBe(1);
+
+    await deleteStalePushDevices(mysql);
+
+    await expect(countStalePushDevices(mysql)).resolves.toBe(0);
   });
 });
