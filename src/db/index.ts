@@ -2953,13 +2953,13 @@ export const getPushDeviceSettingsList = async (
  * @returns - total of stale device from now
  */
 export const countStalePushDevices = async (mysql): Promise<number> => {
-  const [staleDevice] = await mysql.query(
+  const [{ count }] = await mysql.query(
     `
     SELECT COUNT(device_id) as count
       FROM \`push_devices\`
      WHERE updated_at > UNIX_TIMESTAMP(date_sub(now(), interval 1 month))`,
-  ) as Array<number>;
-  return staleDevice;
+  ) as Array<{ count }>;
+  return count;
 };
 
 /**

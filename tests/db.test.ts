@@ -74,6 +74,7 @@ import {
   existsWallet,
   getPushDeviceSettingsList,
   getTokenSymbols,
+  countStalePushDevices,
 } from '@src/db';
 import {
   beginTransaction,
@@ -124,6 +125,8 @@ import {
   countTxOutputTable,
   checkTokenTable,
   checkPushDevicesTable,
+  buildPushRegister,
+  insertPushDevice,
 } from '@tests/utils';
 import { AddressTxHistoryTableEntry } from '@tests/types';
 
@@ -2913,5 +2916,28 @@ describe('getTokenSymbols', () => {
     tokenSymbolMap = await getTokenSymbols(mysql, tokenIdList);
 
     expect(tokenSymbolMap).toBeNull();
+  });
+});
+
+describe('countStalePushDevices', () => {
+  it('should return the number of stale push devices', async () => {
+    expect.hasAssertions();
+
+    /**
+     * Before any push device is registered, there should be no stale push devices
+     */
+    await expect(countStalePushDevices(mysql)).resolves.toBe(0);
+
+    const walletId = 'wallet1';
+    await createWallet(mysql, walletId, XPUBKEY, AUTH_XPUBKEY, 5);
+
+    const pushRegister = buildPushRegister({
+      walletId: 'wallet1',
+      // 30 days ago
+      updatedAt: new Date(new Date().getTime() - 30 * 24 * 60 * 60 * 1000),
+    });
+    await insertPushDevice(mysql, pushRegister);
+
+    await expect(countStalePushDevices(mysql)).resolves.toBe(1);
   });
 });
