@@ -7,7 +7,10 @@ module.exports = {
     '^@events/(.*)$': '<rootDir>/events/$1',
   },
   setupFiles: ['./tests/jestSetup.ts'],
-  testPathIgnorePatterns: ['<rootDir>/tests/utils/pushnotification.utils.boundary.test.ts'],
+  testPathIgnorePatterns: [
+    '<rootDir>/tests/utils/pushnotification.utils.boundary.test.ts',
+    '<rootDir>/dist/',
+  ],
   coveragePathIgnorePatterns: ['/node_modules/', '/tests/utils.ts'],
   coverageThreshold: {
     global: {

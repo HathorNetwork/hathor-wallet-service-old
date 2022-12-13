@@ -6,6 +6,9 @@ import {
   TxInput,
   TxOutputWithIndex,
   FullNodeVersionData,
+  WalletBalanceValue,
+  StringMap,
+  PushProvider,
 } from '@src/types';
 import { getWalletId } from '@src/utils';
 import { walletUtils, network, HathorWalletServiceWallet } from '@hathor/wallet-lib';
@@ -965,6 +968,39 @@ export const checkPushDevicesTable = async (
   return true;
 };
 
+/**
+ * Builds a default value for StringMap<WalletBalanceValue>.
+ */
+export const buildWalletBalanceValueMap = (
+  override?: Record<string, unknown>,
+): StringMap<WalletBalanceValue> => ({
+  wallet1: {
+    walletId: 'wallet1',
+    addresses: ['addr1'],
+    txId: 'tx1',
+    walletBalanceForTx: [
+      {
+        tokenId: 'token1',
+        tokenSymbol: 'T1',
+        lockExpires: null,
+        lockedAmount: 0,
+        lockedAuthorities: {
+          melt: false,
+          mint: false,
+        },
+        total: 10,
+        totalAmountSent: 10,
+        unlockedAmount: 10,
+        unlockedAuthorities: {
+          melt: false,
+          mint: false,
+        },
+      },
+    ],
+  },
+  ...override,
+});
+
 export const buildWallet = (overwrite?): WalletTableEntry => {
   const defaultWallet = {
     id: 'id',
@@ -981,3 +1017,60 @@ export const buildWallet = (overwrite?): WalletTableEntry => {
     ...overwrite,
   };
 };
+
+export const buildPushRegister = (overwrite?): {
+    deviceId: string,
+    walletId: string,
+    pushProvider: PushProvider,
+    enablePush: boolean,
+    enableShowAmounts: boolean,
+    updatedAt: number,
+} => {
+  const defaultPushRegister = {
+    deviceId: 'deviceId',
+    walletId: 'walletId',
+    pushProvider: PushProvider.ANDROID,
+    enablePush: true,
+    enableShowAmounts: true,
+    updatedAt: new Date().getTime(),
+  };
+
+  return {
+    ...defaultPushRegister,
+    ...overwrite,
+  };
+};
+
+export const insertPushDevice = async (mysql: ServerlessMysql, pushRegister: {
+    deviceId: string,
+    walletId: string,
+    pushProvider: PushProvider,
+    enablePush: boolean,
+    enableShowAmounts: boolean,
+    updatedAt: number,
+}): Promise<void> => {
+  await mysql.query(
+    `
+  INSERT
+    INTO \`push_devices\` (
+          device_id
+        , wallet_id
+        , push_provider
+        , enable_push
+        , enable_show_amounts
+        , updated_at)
+  VALUES (?, ?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE
+          updated_at = CURRENT_TIMESTAMP`,
+    [
+      pushRegister.deviceId,
+      pushRegister.walletId,
+      pushRegister.pushProvider,
+      pushRegister.enablePush,
+      pushRegister.enableShowAmounts,
+      pushRegister.updatedAt,
+    ],
+  );
+};
+
+export const daysAgo = (days) => new Date(new Date().getTime() - days * 24 * 60 * 60 * 1000);
