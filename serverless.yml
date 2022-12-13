@@ -496,7 +496,7 @@ functions:
     handler: src/api/txById.get
     events:
       - http:
-          path: wallet/txById/{txId}
+          path: wallet/transactions/{txId}
           method: get
           cors: true
           authorizer: ${self:custom.authorizer.walletBearer}
