@@ -58,9 +58,9 @@ test('unregister push device given a wallet', async () => {
     enableShowAmounts,
   })).resolves.toBe(true);
 
-  const event = makeGatewayEventWithAuthorizer(walletId, null, {
+  const event = makeGatewayEventWithAuthorizer(walletId, {
     deviceId,
-  });
+  }, null);
 
   const result = await unregister(event, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(result.body as string);
@@ -112,9 +112,9 @@ describe('statusCode:200', () => {
     });
     await expect(checkPushDevicesTable(mysql, 2)).resolves.toBe(true);
 
-    const event = makeGatewayEventWithAuthorizer(walletId, null, {
+    const event = makeGatewayEventWithAuthorizer(walletId, {
       deviceId: deviceToUnregister,
-    });
+    }, null);
 
     const result = await unregister(event, null, null) as APIGatewayProxyResult;
     const returnBody = JSON.parse(result.body as string);
@@ -137,9 +137,9 @@ describe('statusCode:200', () => {
     const walletId = 'wallet1';
     const deviceId = 'device1';
 
-    const event = makeGatewayEventWithAuthorizer(walletId, null, {
+    const event = makeGatewayEventWithAuthorizer(walletId, {
       deviceId,
-    });
+    }, null);
 
     const result = await unregister(event, null, null) as APIGatewayProxyResult;
     const returnBody = JSON.parse(result.body as string);
@@ -186,9 +186,9 @@ describe('statusCode:200', () => {
       enableShowAmounts,
     })).resolves.toBe(true);
 
-    const event = makeGatewayEventWithAuthorizer(walletId, null, {
+    const event = makeGatewayEventWithAuthorizer(walletId, {
       deviceId: 'device-not-exists',
-    });
+    }, null);
 
     const result = await unregister(event, null, null) as APIGatewayProxyResult;
     const returnBody = JSON.parse(result.body as string);
