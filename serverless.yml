@@ -485,10 +485,14 @@ functions:
     handler: src/api/pushUnregister.unregister
     events:
       - http:
-          path: push/unregister
-          method: post
+          path: push/unregister/{deviceId}
+          method: delete
           cors: true
           authorizer: ${self:custom.authorizer.walletBearer}
+          request:
+            parameters:
+              paths:
+                deviceId: true
     warmup:
       walletWarmer:
         enabled: false
