@@ -26,7 +26,7 @@ afterAll(async () => {
 
 test('get a transaction given its ID', async () => {
   expect.hasAssertions();
-  const txId1 = 'txId1';
+  const txId1 = new Array(32).fill('0').join('');
   const walletId1 = 'wallet1';
   const addr1 = 'addr1';
   const token1 = { id: 'token1', name: 'Token 1', symbol: 'T1' };
@@ -119,12 +119,13 @@ Array [
 describe('statusCode:404', () => {
   it('should validate tx existence', async () => {
     expect.hasAssertions();
+    const txIdNotRegistered = new Array(32).fill('0').join('');
 
     await addOrUpdateTx(mysql, 'txId1', 1, 2, 3, 65.4321);
 
     const walletId = 'wallet1';
     const event = makeGatewayEventWithAuthorizer(walletId, {
-      txId: 'tx-not-found',
+      txId: txIdNotRegistered,
     }, null);
 
     const result = await get(event, null, null) as APIGatewayProxyResult;

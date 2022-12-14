@@ -20,7 +20,7 @@ const mysql = getDbConnection();
 
 class TxByIdValidator {
   static readonly bodySchema = Joi.object({
-    txId: Joi.string().min(1).required(),
+    txId: Joi.string().min(32).max(32).required(),
   });
 
   static validate(payload): { value: TxByIdRequest, error: ValidationError } {
