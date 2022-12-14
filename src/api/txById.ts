@@ -34,7 +34,7 @@ class TxByIdValidator {
 /*
  * Get a transaction by its ID.
  *
- * This lambda is called by API Gateway on GET /wallet/getTxById
+ * This lambda is called by API Gateway on GET /wallet/transactions/:txId
  */
 export const get: APIGatewayProxyHandler = middy(walletIdProxyHandler(async (walletId, event) => {
   const { value: body, error } = TxByIdValidator.validate(event.pathParameters);
