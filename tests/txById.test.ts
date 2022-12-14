@@ -26,7 +26,7 @@ afterAll(async () => {
 
 test('get a transaction given its ID', async () => {
   expect.hasAssertions();
-  const txId1 = new Array(32).fill('0').join('');
+  const txId1 = new Array(64).fill('0').join('');
   const walletId1 = 'wallet1';
   const addr1 = 'addr1';
   const token1 = { id: 'token1', name: 'Token 1', symbol: 'T1' };
@@ -119,7 +119,7 @@ Array [
 describe('statusCode:404', () => {
   it('should validate tx existence', async () => {
     expect.hasAssertions();
-    const txIdNotRegistered = new Array(32).fill('0').join('');
+    const txIdNotRegistered = new Array(64).fill('0').join('');
 
     await addOrUpdateTx(mysql, 'txId1', 1, 2, 3, 65.4321);
 
