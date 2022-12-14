@@ -2936,12 +2936,68 @@ export const getPushDeviceSettingsList = async (
   // eslint-disable-next-line camelcase
   ) as Array<{wallet_id, device_id, enable_push, enable_show_amounts}>;
 
-  const pushDeviceSettingsList = pushDeviceSettingsResult.map((each) => ({
+  const pushDeviceSettignsList = pushDeviceSettingsResult.map((each) => ({
     walletId: each.wallet_id,
     deviceId: each.device_id,
     enablePush: !!each.enable_push,
     enableShowAmounts: !!each.enable_show_amounts,
   } as PushDeviceSettings));
 
-  return pushDeviceSettingsList;
+  return pushDeviceSettignsList;
+};
+
+/**
+ * Count the quantity of stale push devices from now.
+ *
+ * @param mysql - Database connection
+ * @returns - total of stale device from now
+ */
+export const countStalePushDevices = async (mysql): Promise<number> => {
+  const [{ count }] = await mysql.query(
+    `
+    SELECT COUNT(device_id) as count
+      FROM \`push_devices\`
+     WHERE UNIX_TIMESTAMP(updated_at) < UNIX_TIMESTAMP(date_sub(now(), interval 1 month))`,
+  ) as Array<{ count }>;
+  return count;
+};
+
+/**
+ * Delete stale push devices from now.
+ *
+ * @param mysql - Database connection
+ */
+export const deleteStalePushDevices = async (mysql) => {
+  await mysql.query(
+    `
+    DELETE
+      FROM \`push_devices\`
+     WHERE UNIX_TIMESTAMP(updated_at) < UNIX_TIMESTAMP(date_sub(now(), interval 1 month))`,
+  );
+};
+
+/**
+ * Get token symbol map, correlating token id to its symbol.
+ *
+ * @param mysql - Database connection
+ * @param tokenIdList - A list of token id
+ * @returns The token information (or null if id is not found)
+ */
+export const getTokenSymbols = async (
+  mysql: ServerlessMysql,
+  tokenIdList: string[],
+): Promise<StringMap<string>> => {
+  if (tokenIdList.length === 0) return null;
+
+  const results: DbSelectResult = await mysql.query(
+    'SELECT `id`, `symbol` FROM `token` WHERE `id` IN (?)',
+    [tokenIdList],
+  );
+
+  if (results.length === 0) return null;
+  return results.reduce((prev: Record<string, string>, token: { id: string, symbol: string}) => {
+    // eslint-disable-next-line no-param-reassign
+    prev[token.id] = token.symbol;
+    return prev;
+  }, {}) as unknown as StringMap<string>;
 };

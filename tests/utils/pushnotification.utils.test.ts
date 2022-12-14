@@ -7,21 +7,23 @@ import { fcmConfigMock } from '@tests/utils/fcm.config.json.mock';
 import { sendMulticastMock, messaging } from '@tests/utils/firebase-admin.mock';
 import { invokeMock, promiseMock } from '@tests/utils/aws-sdk.mock';
 import { logger } from '@tests/winston.mock';
-import { PushNotificationUtils, PushNotificationError } from '@src/utils/pushnotification.utils';
+import { PushNotificationUtils, PushNotificationError, buildFunctionName, FunctionName } from '@src/utils/pushnotification.utils';
 import { SendNotificationToDevice } from '@src/types';
 import { Lambda } from 'aws-sdk';
+import { buildWalletBalanceValueMap } from '@tests/utils';
 
 describe('PushNotificationUtils', () => {
   const initEnv = process.env;
 
   beforeEach(() => {
-    jest.resetModules();
     process.env = {
       ...initEnv,
       SEND_NOTIFICATION_LAMBDA_ENDPOINT: 'endpoint',
       STAGE: 'stage',
       FIREBASE_PROJECT_ID: 'projectId',
+      ON_TX_PUSH_NOTIFICATION_REQUESTED_LAMBDA_ENDPOINT: 'endpoint',
     };
+    jest.resetModules();
   });
 
   afterEach(() => {
@@ -40,7 +42,12 @@ describe('PushNotificationUtils', () => {
       // reload push notification utils
       const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
 
-      expect(serviceAccount).toBeUndefined();
+      // make fcm.config.json file to resolve to undefined
+      fcmConfigMock.mockImplementation(() => undefined);
+
+      // reload pushnotification module
+      require('@src/utils/pushnotification.utils');
+
       expect(logger.error).toHaveBeenCalledWith('[ALERT] serviceAccount was not loaded. Make sure the file src/utils/fcm.config.json is included in the build output.');
     });
   });
@@ -273,6 +280,60 @@ describe('PushNotificationUtils', () => {
 
       await expect(PushNotificationUtils.invokeSendNotificationHandlerLambda(notification))
         .rejects.toThrow('Environment variables SEND_NOTIFICATION_LAMBDA_ENDPOINT and STAGE are not set.');
+    });
+  });
+
+  describe('invokeOnTxPushNotificationRequestedLambda(walletBalanceValueMap)', () => {
+    it('should succeed', async () => {
+      expect.hasAssertions();
+
+      // clear counts
+      jest.clearAllMocks();
+      // reload module
+      const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
+
+      const walletMap = buildWalletBalanceValueMap();
+      const result = await PushNotificationUtils.invokeOnTxPushNotificationRequestedLambda(walletMap);
+
+      // void method returns undefined
+      expect(result).toBeUndefined();
+
+      // assert Lambda constructor call
+      expect(Lambda).toHaveBeenCalledTimes(1);
+      expect(Lambda).toHaveBeenCalledWith({
+        apiVersion: '2015-03-31',
+        endpoint: process.env.ON_TX_PUSH_NOTIFICATION_REQUESTED_LAMBDA_ENDPOINT,
+      });
+
+      // assert lambda invoke call
+      expect(invokeMock).toHaveBeenCalledTimes(1);
+      expect(invokeMock).toHaveBeenCalledWith({
+        FunctionName: buildFunctionName(FunctionName.ON_TX_PUSH_NOTIFICATION_REQUESTED),
+        InvocationType: 'Event',
+        Payload: JSON.stringify(walletMap),
+      });
+    });
+
+    it('should throw an error when invoke fails', async () => {
+      expect.hasAssertions();
+
+      const not202Code = 500;
+      // simulate a failing lambda invokation
+      promiseMock.mockReturnValue({
+        StatusCode: not202Code,
+      });
+
+      // reload module
+      const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
+
+      const walletMap = buildWalletBalanceValueMap();
+      await expect(
+        PushNotificationUtils.invokeOnTxPushNotificationRequestedLambda(
+          walletMap,
+        ),
+      ).rejects.toMatchInlineSnapshot(
+        '[Error: hathor-wallet-service-stage-onTxPushNotificationRequested lambda invoke failed for wallets: wallet1]',
+      );
     });
   });
 });

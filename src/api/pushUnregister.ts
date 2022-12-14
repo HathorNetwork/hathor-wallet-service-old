@@ -37,7 +37,7 @@ class PushUpdateUnregisterValidator {
  * This lambda is called by API Gateway on POST /push/unregister
  */
 export const unregister: APIGatewayProxyHandler = middy(walletIdProxyHandler(async (walletId, event) => {
-  const { value: body, error } = PushUpdateUnregisterValidator.validate(event.body);
+  const { value: body, error } = PushUpdateUnregisterValidator.validate(event.pathParameters);
 
   if (error) {
     const details = error.details.map((err) => ({
