@@ -221,12 +221,9 @@ describe('statusCode:400', () => {
       readyAt: 10001,
     }]);
 
-    const event = makeGatewayEventWithAuthorizer('my-wallet', null, {
+    const event = makeGatewayEventWithAuthorizer('my-wallet', {
       deviceId,
-      pushProvider: 'android',
-      enablePush: true,
-      enableShowAmounts: false,
-    });
+    }, null);
 
     const result = await unregister(event, null, null) as APIGatewayProxyResult;
     const returnBody = JSON.parse(result.body as string);
@@ -234,5 +231,15 @@ describe('statusCode:400', () => {
     expect(result.statusCode).toStrictEqual(400);
     expect(returnBody.success).toStrictEqual(false);
     expect(returnBody.error).toStrictEqual(ApiError.INVALID_PAYLOAD);
+    expect(returnBody.details).toMatchInlineSnapshot(`
+Array [
+  Object {
+    "message": "\\"deviceId\\" length must be less than or equal to 256 characters long",
+    "path": Array [
+      "deviceId",
+    ],
+  },
+]
+`);
   });
 });
