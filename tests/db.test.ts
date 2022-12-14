@@ -73,6 +73,9 @@ import {
   removeAllPushDevicesByDeviceId,
   existsWallet,
   getPushDeviceSettingsList,
+  getTokenSymbols,
+  countStalePushDevices,
+  deleteStalePushDevices,
 } from '@src/db';
 import {
   beginTransaction,
@@ -123,6 +126,9 @@ import {
   countTxOutputTable,
   checkTokenTable,
   checkPushDevicesTable,
+  buildPushRegister,
+  insertPushDevice,
+  daysAgo,
 } from '@tests/utils';
 import { AddressTxHistoryTableEntry } from '@tests/types';
 
@@ -2858,5 +2864,107 @@ describe('getPushDeviceSettingsList', () => {
       enableShowAmounts: each.enableShowAmounts,
     }));
     expect(result).toStrictEqual(expectedPushDeviceSettigsList);
+  });
+});
+
+describe('getTokenSymbols', () => {
+  it('should return a map of token symbol by token id', async () => {
+    expect.hasAssertions();
+
+    const tokensToPersist = [
+      new TokenInfo('token1', 'tokenName1', 'TKN1'),
+      new TokenInfo('token2', 'tokenName2', 'TKN2'),
+      new TokenInfo('token3', 'tokenName3', 'TKN3'),
+      new TokenInfo('token4', 'tokenName4', 'TKN4'),
+      new TokenInfo('token5', 'tokenName5', 'TKN5'),
+    ];
+
+    // persist tokens
+    for (const eachToken of tokensToPersist) {
+      await storeTokenInformation(mysql, eachToken.id, eachToken.name, eachToken.symbol);
+    }
+
+    const tokenIdList = tokensToPersist.map((each: TokenInfo) => each.id);
+    const tokenSymbolMap = await getTokenSymbols(mysql, tokenIdList);
+
+    expect(tokenSymbolMap).toStrictEqual({
+      token1: 'TKN1',
+      token2: 'TKN2',
+      token3: 'TKN3',
+      token4: 'TKN4',
+      token5: 'TKN5',
+    });
+  });
+
+  it('should return null when no token is found', async () => {
+    expect.hasAssertions();
+
+    const tokensToPersist = [
+      new TokenInfo('token1', 'tokenName1', 'TKN1'),
+      new TokenInfo('token2', 'tokenName2', 'TKN2'),
+      new TokenInfo('token3', 'tokenName3', 'TKN3'),
+      new TokenInfo('token4', 'tokenName4', 'TKN4'),
+      new TokenInfo('token5', 'tokenName5', 'TKN5'),
+    ];
+
+    // no token persistence
+
+    let tokenIdList = tokensToPersist.map((each: TokenInfo) => each.id);
+    let tokenSymbolMap = await getTokenSymbols(mysql, tokenIdList);
+
+    expect(tokenSymbolMap).toBeNull();
+
+    tokenIdList = [];
+    tokenSymbolMap = await getTokenSymbols(mysql, tokenIdList);
+
+    expect(tokenSymbolMap).toBeNull();
+  });
+});
+
+describe('countStalePushDevices', () => {
+  it('should return the number of stale push devices', async () => {
+    expect.hasAssertions();
+
+    /**
+     * Before any push device is registered, there should be no stale push devices
+     */
+    await expect(countStalePushDevices(mysql)).resolves.toBe(0);
+
+    const walletId = 'wallet1';
+    await createWallet(mysql, walletId, XPUBKEY, AUTH_XPUBKEY, 5);
+
+    const pushRegister = buildPushRegister({
+      walletId: 'wallet1',
+      updatedAt: daysAgo(31),
+    });
+    await insertPushDevice(mysql, pushRegister);
+
+    await expect(countStalePushDevices(mysql)).resolves.toBe(1);
+  });
+});
+
+describe('deleteStalePushDevices', () => {
+  it('should delete stale push devices', async () => {
+    expect.hasAssertions();
+
+    /**
+     * Before any push device is registered, deleteStalePushDevices should not fail
+     */
+    await expect(deleteStalePushDevices(mysql)).resolves.toBeUndefined();
+
+    const walletId = 'wallet1';
+    await createWallet(mysql, walletId, XPUBKEY, AUTH_XPUBKEY, 5);
+
+    const pushRegister = buildPushRegister({
+      walletId: 'wallet1',
+      updatedAt: daysAgo(31),
+    });
+    await insertPushDevice(mysql, pushRegister);
+
+    await expect(countStalePushDevices(mysql)).resolves.toBe(1);
+
+    await deleteStalePushDevices(mysql);
+
+    await expect(countStalePushDevices(mysql)).resolves.toBe(0);
   });
 });
