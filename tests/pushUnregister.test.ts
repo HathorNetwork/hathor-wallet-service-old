@@ -58,9 +58,9 @@ test('unregister push device given a wallet', async () => {
     enableShowAmounts,
   })).resolves.toBe(true);
 
-  const event = makeGatewayEventWithAuthorizer(walletId, null, {
+  const event = makeGatewayEventWithAuthorizer(walletId, {
     deviceId,
-  });
+  }, null);
 
   const result = await unregister(event, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(result.body as string);
@@ -112,9 +112,9 @@ describe('statusCode:200', () => {
     });
     await expect(checkPushDevicesTable(mysql, 2)).resolves.toBe(true);
 
-    const event = makeGatewayEventWithAuthorizer(walletId, null, {
+    const event = makeGatewayEventWithAuthorizer(walletId, {
       deviceId: deviceToUnregister,
-    });
+    }, null);
 
     const result = await unregister(event, null, null) as APIGatewayProxyResult;
     const returnBody = JSON.parse(result.body as string);
@@ -137,9 +137,9 @@ describe('statusCode:200', () => {
     const walletId = 'wallet1';
     const deviceId = 'device1';
 
-    const event = makeGatewayEventWithAuthorizer(walletId, null, {
+    const event = makeGatewayEventWithAuthorizer(walletId, {
       deviceId,
-    });
+    }, null);
 
     const result = await unregister(event, null, null) as APIGatewayProxyResult;
     const returnBody = JSON.parse(result.body as string);
@@ -186,9 +186,9 @@ describe('statusCode:200', () => {
       enableShowAmounts,
     })).resolves.toBe(true);
 
-    const event = makeGatewayEventWithAuthorizer(walletId, null, {
+    const event = makeGatewayEventWithAuthorizer(walletId, {
       deviceId: 'device-not-exists',
-    });
+    }, null);
 
     const result = await unregister(event, null, null) as APIGatewayProxyResult;
     const returnBody = JSON.parse(result.body as string);
@@ -221,12 +221,9 @@ describe('statusCode:400', () => {
       readyAt: 10001,
     }]);
 
-    const event = makeGatewayEventWithAuthorizer('my-wallet', null, {
+    const event = makeGatewayEventWithAuthorizer('my-wallet', {
       deviceId,
-      pushProvider: 'android',
-      enablePush: true,
-      enableShowAmounts: false,
-    });
+    }, null);
 
     const result = await unregister(event, null, null) as APIGatewayProxyResult;
     const returnBody = JSON.parse(result.body as string);
@@ -240,24 +237,6 @@ Array [
     "message": "\\"deviceId\\" length must be less than or equal to 256 characters long",
     "path": Array [
       "deviceId",
-    ],
-  },
-  Object {
-    "message": "\\"pushProvider\\" is not allowed",
-    "path": Array [
-      "pushProvider",
-    ],
-  },
-  Object {
-    "message": "\\"enablePush\\" is not allowed",
-    "path": Array [
-      "enablePush",
-    ],
-  },
-  Object {
-    "message": "\\"enableShowAmounts\\" is not allowed",
-    "path": Array [
-      "enableShowAmounts",
     ],
   },
 ]
