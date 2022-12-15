@@ -4,14 +4,7 @@ import { credential, initializeApp, messaging, ServiceAccount } from 'firebase-a
 import { MulticastMessage } from 'firebase-admin/messaging';
 import createDefaultLogger from '@src/logger';
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const serviceAccount = require('@src/utils/fcm.config.json');
-
 const logger = createDefaultLogger();
-
-if (!serviceAccount) {
-  logger.error('[ALERT] serviceAccount was not loaded. Make sure the file src/utils/fcm.config.json is included in the build output.');
-}
 
 if (!process.env.SEND_NOTIFICATION_LAMBDA_ENDPOINT) {
   logger.error('[ALERT] env.SEND_NOTIFICATION_LAMBDA_ENDPOINT can not be null or undefined.');
@@ -25,6 +18,38 @@ if (!process.env.FIREBASE_PROJECT_ID) {
   logger.error('[ALERT] env.FIREBASE_PROJECT_ID can not be null or undefined.');
 }
 
+if (!process.env.FIREBASE_PRIVATE_KEY_ID) {
+  logger.error('[ALERT] env.FIREBASE_PRIVATE_KEY_ID can not be null or undefined.');
+}
+
+if (!process.env.FIREBASE_PRIVATE_KEY) {
+  logger.error('[ALERT] env.FIREBASE_PRIVATE_KEY can not be null or undefined.');
+}
+
+if (!process.env.FIREBASE_CLIENT_EMAIL) {
+  logger.error('[ALERT] env.FIREBASE_CLIENT_EMAIL can not be null or undefined.');
+}
+
+if (!process.env.FIREBASE_CLIENT_ID) {
+  logger.error('[ALERT] env.FIREBASE_CLIENT_ID can not be null or undefined.');
+}
+
+if (!process.env.FIREBASE_AUTH_URI) {
+  logger.error('[ALERT] env.FIREBASE_AUTH_URI can not be null or undefined.');
+}
+
+if (!process.env.FIREBASE_TOKEN_URI) {
+  logger.error('[ALERT] env.FIREBASE_TOKEN_URI can not be null or undefined.');
+}
+
+if (!process.env.FIREBASE_AUTH_PROVIDER_X509_CERT_URL) {
+  logger.error('[ALERT] env.FIREBASE_AUTH_PROVIDER_X509_CERT_URL can not be null or undefined.');
+}
+
+if (!process.env.FIREBASE_CLIENT_X509_CERT_URL) {
+  logger.error('[ALERT] env.FIREBASE_CLIENT_X509_CERT_URL can not be null or undefined.');
+}
+
 export function buildFunctionName(functionName: string): string {
   return `hathor-wallet-service-${process.env.STAGE}-${functionName}`;
 }
@@ -36,10 +61,31 @@ export enum FunctionName {
 
 const STAGE = process.env.STAGE;
 const SEND_NOTIFICATION_LAMBDA_ENDPOINT = process.env.SEND_NOTIFICATION_LAMBDA_ENDPOINT;
-const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID;
 const ON_TX_PUSH_NOTIFICATION_REQUESTED_LAMBDA_ENDPOINT = process.env.ON_TX_PUSH_NOTIFICATION_REQUESTED_LAMBDA_ENDPOINT;
 const SEND_NOTIFICATION_FUNCTION_NAME = buildFunctionName(FunctionName.SEND_NOTIFICATION_TO_DEVICE);
 const ON_TX_PUSH_NOTIFICATION_REQUESTED_FUNCTION_NAME = buildFunctionName(FunctionName.ON_TX_PUSH_NOTIFICATION_REQUESTED);
+const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID;
+const FIREBASE_PRIVATE_KEY_ID = process.env.FIREBASE_PRIVATE_KEY_ID;
+const FIREBASE_PRIVATE_KEY = process.env.FIREBASE_PRIVATE_KEY;
+const FIREBASE_CLIENT_EMAIL = process.env.FIREBASE_CLIENT_EMAIL;
+const FIREBASE_CLIENT_ID = process.env.FIREBASE_CLIENT_ID;
+const FIREBASE_AUTH_URI = process.env.FIREBASE_AUTH_URI;
+const FIREBASE_TOKEN_URI = process.env.FIREBASE_TOKEN_URI;
+const FIREBASE_AUTH_PROVIDER_X509_CERT_URL = process.env.FIREBASE_AUTH_PROVIDER_X509_CERT_URL;
+const FIREBASE_CLIENT_X509_CERT_URL = process.env.FIREBASE_CLIENT_X509_CERT_URL;
+
+const serviceAccount = {
+  "type": "service_account",
+  "project_id": FIREBASE_PROJECT_ID,
+  "private_key_id": FIREBASE_PRIVATE_KEY_ID,
+  "private_key": FIREBASE_PRIVATE_KEY,
+  "client_email": FIREBASE_CLIENT_EMAIL,
+  "client_id": FIREBASE_CLIENT_ID,
+  "auth_uri": FIREBASE_AUTH_URI,
+  "token_uri": FIREBASE_TOKEN_URI,
+  "auth_provider_x509_cert_url": FIREBASE_AUTH_PROVIDER_X509_CERT_URL,
+  "client_x509_cert_url": FIREBASE_CLIENT_X509_CERT_URL,
+};
 
 initializeApp({
   credential: credential.cert(serviceAccount as ServiceAccount),
