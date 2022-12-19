@@ -125,7 +125,7 @@ describe('PushNotificationUtils', () => {
     });
 
     // FIREBASE_AUTH_URI: 'https://accounts.google.com/o/oauth2/auth',
-    it ('FIREBASE_AUTH_URI', () => {
+    it('FIREBASE_AUTH_URI', () => {
       expect.hasAssertions();
 
       // load local env
