@@ -3,7 +3,6 @@
 /* eslint-disable no-shadow */
 /* eslint-disable @typescript-eslint/naming-convention */
 // mocks should be imported first
-import { fcmConfigMock } from '@tests/utils/fcm.config.json.mock';
 import { sendMulticastMock, messaging } from '@tests/utils/firebase-admin.mock';
 import { invokeMock, promiseMock } from '@tests/utils/aws-sdk.mock';
 import { logger } from '@tests/winston.mock';
@@ -20,36 +19,22 @@ describe('PushNotificationUtils', () => {
       ...initEnv,
       SEND_NOTIFICATION_LAMBDA_ENDPOINT: 'endpoint',
       STAGE: 'stage',
-      FIREBASE_PROJECT_ID: 'projectId',
       ON_TX_PUSH_NOTIFICATION_REQUESTED_LAMBDA_ENDPOINT: 'endpoint',
+      FIREBASE_PROJECT_ID: 'projectId',
+      FIREBASE_PRIVATE_KEY_ID: 'private-key-id',
+      FIREBASE_PRIVATE_KEY: 'private-key',
+      FIREBASE_CLIENT_EMAIL: 'client-email',
+      FIREBASE_CLIENT_ID: 'client-id',
+      FIREBASE_AUTH_URI: 'https://accounts.google.com/o/oauth2/auth',
+      FIREBASE_TOKEN_URI: 'https://oauth2.googleapis.com/token',
+      FIREBASE_AUTH_PROVIDER_X509_CERT_URL: 'https://www.googleapis.com/oauth2/v1/certs',
+      FIREBASE_CLIENT_X509_CERT_URL: 'https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk.iam.gserviceaccount.com',
     };
     jest.resetModules();
   });
 
   afterEach(() => {
     process.env = initEnv;
-  });
-
-  describe('fcm.config.json', () => {
-    it('file not loaded', () => {
-      expect.hasAssertions();
-
-      // make json resolve to undefined
-      fcmConfigMock.mockReturnValue(undefined);
-
-      // reload json module
-      const serviceAccount = require('@src/utils/fcm.config.json');
-      // reload push notification utils
-      const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
-
-      // make fcm.config.json file to resolve to undefined
-      fcmConfigMock.mockImplementation(() => undefined);
-
-      // reload pushnotification module
-      require('@src/utils/pushnotification.utils');
-
-      expect(logger.error).toHaveBeenCalledWith('[ALERT] serviceAccount was not loaded. Make sure the file src/utils/fcm.config.json is included in the build output.');
-    });
   });
 
   describe('process.env', () => {
@@ -87,6 +72,108 @@ describe('PushNotificationUtils', () => {
       const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
 
       expect(logger.error).toHaveBeenLastCalledWith('[ALERT] env.FIREBASE_PROJECT_ID can not be null or undefined.');
+    });
+
+    it('FIREBASE_PRIVATE_KEY_ID', () => {
+      expect.hasAssertions();
+
+      // load local env
+      process.env.FIREBASE_PRIVATE_KEY_ID = '';
+
+      // reload module
+      const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
+
+      expect(logger.error).toHaveBeenLastCalledWith('[ALERT] env.FIREBASE_PRIVATE_KEY_ID can not be null or undefined.');
+    });
+
+    it('FIREBASE_PRIVATE_KEY', () => {
+      expect.hasAssertions();
+
+      // load local env
+      process.env.FIREBASE_PRIVATE_KEY = '';
+
+      // reload module
+      const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
+
+      expect(logger.error).toHaveBeenLastCalledWith('[ALERT] env.FIREBASE_PRIVATE_KEY can not be null or undefined.');
+    });
+
+    // generate test for every comment below
+    it('FIREBASE_CLIENT_EMAIL', () => {
+      expect.hasAssertions();
+
+      // load local env
+      process.env.FIREBASE_CLIENT_EMAIL = '';
+
+      // reload module
+      const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
+
+      expect(logger.error).toHaveBeenLastCalledWith('[ALERT] env.FIREBASE_CLIENT_EMAIL can not be null or undefined.');
+    });
+
+    // FIREBASE_CLIENT_ID: 'client-id',
+    it('FIREBASE_CLIENT_ID', () => {
+      expect.hasAssertions();
+
+      // load local env
+      process.env.FIREBASE_CLIENT_ID = '';
+
+      // reload module
+      const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
+
+      expect(logger.error).toHaveBeenLastCalledWith('[ALERT] env.FIREBASE_CLIENT_ID can not be null or undefined.');
+    });
+
+    // FIREBASE_AUTH_URI: 'https://accounts.google.com/o/oauth2/auth',
+    it('FIREBASE_AUTH_URI', () => {
+      expect.hasAssertions();
+
+      // load local env
+      process.env.FIREBASE_AUTH_URI = '';
+
+      // reload module
+      const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
+
+      expect(logger.error).toHaveBeenLastCalledWith('[ALERT] env.FIREBASE_AUTH_URI can not be null or undefined.');
+    });
+
+    // FIREBASE_TOKEN_URI: 'https://oauth2.googleapis.com/token',
+    it('FIREBASE_TOKEN_URI', () => {
+      expect.hasAssertions();
+
+      // load local env
+      process.env.FIREBASE_TOKEN_URI = '';
+
+      // reload module
+      const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
+
+      expect(logger.error).toHaveBeenLastCalledWith('[ALERT] env.FIREBASE_TOKEN_URI can not be null or undefined.');
+    });
+
+    // FIREBASE_AUTH_PROVIDER_X509_CERT_URL: 'https://www.googleapis.com/oauth2/v1/certs',
+    it('FIREBASE_AUTH_PROVIDER_X509_CERT_URL', () => {
+      expect.hasAssertions();
+
+      // load local env
+      process.env.FIREBASE_AUTH_PROVIDER_X509_CERT_URL = '';
+
+      // reload module
+      const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
+
+      expect(logger.error).toHaveBeenLastCalledWith('[ALERT] env.FIREBASE_AUTH_PROVIDER_X509_CERT_URL can not be null or undefined.');
+    });
+
+    // FIREBASE_CLIENT_X509_CERT_URL: 'https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk.iam.gserviceaccount.com',
+    it('FIREBASE_CLIENT_X509_CERT_URL', () => {
+      expect.hasAssertions();
+
+      // load local env
+      process.env.FIREBASE_CLIENT_X509_CERT_URL = '';
+
+      // reload module
+      const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
+
+      expect(logger.error).toHaveBeenLastCalledWith('[ALERT] env.FIREBASE_CLIENT_X509_CERT_URL can not be null or undefined.');
     });
   });
 
