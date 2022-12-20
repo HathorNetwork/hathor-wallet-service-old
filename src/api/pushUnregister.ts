@@ -34,7 +34,7 @@ class PushUpdateUnregisterValidator {
 /*
  * Unregister a device to receive push notification.
  *
- * This lambda is called by API Gateway on POST /push/unregister
+ * This lambda is called by API Gateway on DELETE /push/unregister
  */
 export const unregister: APIGatewayProxyHandler = middy(walletIdProxyHandler(async (walletId, event) => {
   const { value: body, error } = PushUpdateUnregisterValidator.validate(event.pathParameters);
