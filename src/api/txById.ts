@@ -7,37 +7,37 @@
 
 import { APIGatewayProxyHandler } from 'aws-lambda';
 import { ApiError } from '@src/api/errors';
-import { closeDbAndGetError } from '@src/api/utils';
-import { unregisterPushDevice } from '@src/db';
+import { closeDbAndGetError, warmupMiddleware } from '@src/api/utils';
+import { getTransactionById } from '@src/db';
 import { getDbConnection } from '@src/utils';
 import { walletIdProxyHandler } from '@src/commons';
 import middy from '@middy/core';
 import cors from '@middy/http-cors';
 import Joi, { ValidationError } from 'joi';
-import { PushDelete } from '@src/types';
+import { TxByIdRequest } from '@src/types';
 
 const mysql = getDbConnection();
 
-class PushUpdateUnregisterValidator {
+class TxByIdValidator {
   static readonly bodySchema = Joi.object({
-    deviceId: Joi.string().max(256).required(),
+    txId: Joi.string().min(64).max(64).required(),
   });
 
-  static validate(payload: unknown): { value: PushDelete, error: ValidationError } {
-    return PushUpdateUnregisterValidator.bodySchema.validate(payload, {
+  static validate(payload): { value: TxByIdRequest, error: ValidationError } {
+    return TxByIdValidator.bodySchema.validate(payload, {
       abortEarly: false, // We want it to return all the errors not only the first
       convert: true, // We need to convert as parameters are sent on the QueryString
-    }) as { value: PushDelete, error: ValidationError };
+    }) as { value: TxByIdRequest, error: ValidationError };
   }
 }
 
 /*
- * Unregister a device to receive push notification.
+ * Get a transaction by its ID.
  *
- * This lambda is called by API Gateway on DELETE /push/unregister
+ * This lambda is called by API Gateway on GET /wallet/transactions/:txId
  */
-export const unregister: APIGatewayProxyHandler = middy(walletIdProxyHandler(async (walletId, event) => {
-  const { value: body, error } = PushUpdateUnregisterValidator.validate(event.pathParameters);
+export const get: APIGatewayProxyHandler = middy(walletIdProxyHandler(async (walletId, event) => {
+  const { value: body, error } = TxByIdValidator.validate(event.pathParameters);
 
   if (error) {
     const details = error.details.map((err) => ({
@@ -48,11 +48,15 @@ export const unregister: APIGatewayProxyHandler = middy(walletIdProxyHandler(asy
     return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, { details });
   }
 
-  await unregisterPushDevice(mysql, body.deviceId, walletId);
+  const txTokens = await getTransactionById(mysql, body.txId, walletId);
+  if (!txTokens.length) {
+    return closeDbAndGetError(mysql, ApiError.TX_NOT_FOUND);
+  }
 
   return {
     statusCode: 200,
-    body: JSON.stringify({ success: true }),
+    body: JSON.stringify({ success: true, txTokens }),
   };
 }))
-  .use(cors());
+  .use(cors())
+  .use(warmupMiddleware());

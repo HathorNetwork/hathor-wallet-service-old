@@ -331,6 +331,18 @@ export class Balance {
   }
 }
 
+export type TokenBalanceValue = {
+  tokenId: string,
+  tokenSymbol: string,
+  totalAmountSent: number;
+  lockedAmount: number;
+  unlockedAmount: number;
+  lockedAuthorities: Record<string, unknown>;
+  unlockedAuthorities: Record<string, unknown>;
+  lockExpires: number | null;
+  total: number;
+}
+
 export class WalletTokenBalance {
   token: TokenInfo;
 
@@ -693,4 +705,69 @@ export interface PushUpdate {
 
 export interface PushDelete {
   deviceId: string,
+}
+
+export interface TxByIdRequest {
+  txId: string,
+}
+
+export interface TxByIdToken {
+  txId: string;
+  timestamp: number;
+  version: number;
+  voided: boolean;
+  height?: number | null;
+  weight: number;
+  balance: Balance;
+  tokenId: string;
+  walletId: string;
+  tokenName: string;
+  tokenSymbol: string;
+}
+
+export interface SendNotificationToDevice {
+  deviceId: string,
+  /**
+   * A string map used to send data in the notification message.
+   * @see LocalizeMetadataNotification
+   *
+   * @example
+   * {
+   *    "titleLocKey": "new_transaction_received_title",
+   *    "bodyLocKey": "new_transaction_received_description_with_tokens",
+   *    "bodyLocArgs": "['13 HTR', '8 TNT', '2']"
+   * }
+   */
+  metadata: Record<string, string>,
+}
+
+export type LocalizeMetadataNotification = {
+  titleLocKey: string,
+  titleLocArgs: string,
+  bodyLocKey: string,
+  bodyLocArgs: string,
+}
+
+export interface PushDevice {
+  walletId: string,
+  deviceId: string,
+  pushProvider: PushProvider,
+  enablePush: boolean,
+  enableShowAmounts: boolean
+}
+
+export type PushDeviceSettings = Omit<PushDevice, 'pushProvider'>;
+
+export interface WalletBalance {
+  txId: string,
+  walletId: string,
+  addresses: string[],
+  walletBalanceForTx: TokenBalanceMap,
+}
+
+export interface WalletBalanceValue {
+  txId: string,
+  walletId: string,
+  addresses: string[],
+  walletBalanceForTx: TokenBalanceValue[],
 }

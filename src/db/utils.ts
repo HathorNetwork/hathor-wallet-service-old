@@ -5,9 +5,20 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+/* eslint-disable max-classes-per-file */
 import { ServerlessMysql } from 'serverless-mysql';
 import { getWalletId } from '@src/utils';
-import { WalletStatus, Wallet, Tx, DbSelectResult } from '@src/types';
+import {
+  WalletStatus,
+  Wallet,
+  Tx,
+  DbSelectResult,
+  TokenBalanceMap,
+  TokenBalanceValue,
+  WalletBalanceValue,
+  StringMap,
+  WalletBalance,
+} from '@src/types';
 
 /**
  * Begins a transaction on the current connection
@@ -84,17 +95,95 @@ export const getTxsFromDBResult = (results: DbSelectResult): Tx[] => {
   const transactions = [];
 
   for (const result of results) {
-    const tx: Tx = {
-      txId: result.tx_id as string,
-      timestamp: result.timestamp as number,
-      version: result.version as number,
-      voided: result.voided === 1,
-      height: result.height as number,
-      weight: result.weight as number,
-    };
+    const tx: Tx = _mapTxRecord2Tx(result);
 
     transactions.push(tx);
   }
 
   return transactions;
 };
+
+/**
+ * Receive a DbSelectResult with one record and transform it in a Tx
+ *
+ * @param results
+ * @returns Tx converted from DbSelectResult
+ */
+export const getTxFromDBResult = (result: DbSelectResult): Tx => {
+  const { 0: row } = result;
+  return _mapTxRecord2Tx(row);
+};
+
+const _mapTxRecord2Tx = (record: Record<string, unknown>): Tx => (
+  {
+    txId: record.tx_id as string,
+    timestamp: record.timestamp as number,
+    version: record.version as number,
+    voided: record.voided === 1,
+    height: record.height as number,
+    weight: record.weight as number,
+  }
+);
+
+export class FromTokenBalanceMapToBalanceValueList {
+  /**
+   * Convert the map of token balance instance into a map of token balance value.
+   * It also hydrate each token balance value with token symbol.
+   *
+   * @param tokenBalanceMap - Map of token balance instance
+   * @param tokenSymbolsMap - Map token's id to its symbol
+   * @returns a map of token balance value
+   */
+  static convert(tokenBalanceMap: TokenBalanceMap, tokenSymbolsMap: StringMap<string>): TokenBalanceValue[] {
+    const entryBalances = Object.entries(tokenBalanceMap.map);
+    const balances = entryBalances.map(([tokenId, balance]) => ({
+      tokenId,
+      tokenSymbol: tokenSymbolsMap[tokenId],
+      lockedAmount: balance.lockedAmount,
+      lockedAuthorities: balance.lockedAuthorities.toJSON(),
+      lockExpires: balance.lockExpires,
+      unlockedAmount: balance.unlockedAmount,
+      unlockedAuthorities: balance.unlockedAuthorities.toJSON(),
+      totalAmountSent: balance.totalAmountSent,
+      total: balance.total(),
+    } as TokenBalanceValue));
+    return balances;
+  }
+}
+
+export const sortBalanceValueByAbsTotal = (balanceA: TokenBalanceValue, balanceB: TokenBalanceValue): number => {
+  if (Math.abs(balanceA.total) - Math.abs(balanceB.total) >= 0) return -1;
+  return 0;
+};
+
+export class WalletBalanceMapConverter {
+  /**
+   * Convert the map of wallet balance instance into a map of wallet balance value.
+   *
+   * @param walletBalanceMap - Map wallet's id to its balance
+   * @param tokenSymbolsMap - Map token's id to its symbol
+   * @returns a map of wallet id to its balance value
+   */
+  static toValue(walletBalanceMap: StringMap<WalletBalance>, tokenSymbolsMap: StringMap<string>): StringMap<WalletBalanceValue> {
+    const walletBalanceEntries = Object.entries(walletBalanceMap);
+
+    const walletBalanceValueMap: StringMap<WalletBalanceValue> = {};
+    for (const [walletId, walletBalance] of walletBalanceEntries) {
+      const sortedTokenBalanceList = FromTokenBalanceMapToBalanceValueList
+        // hydrate token balance value with token symbol while convert to value
+        .convert(walletBalance.walletBalanceForTx, tokenSymbolsMap)
+        .sort(sortBalanceValueByAbsTotal);
+
+      walletBalanceValueMap[walletId] = {
+        addresses: walletBalance.addresses,
+        txId: walletBalance.txId,
+        walletId: walletBalance.walletId,
+        walletBalanceForTx: sortedTokenBalanceList,
+      };
+    }
+
+    return walletBalanceValueMap;
+  }
+}
+
+export const stringMapIterator = (stringMap: StringMap<unknown>): [string, unknown][] => (Object.entries(stringMap));

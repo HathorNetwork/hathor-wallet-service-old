@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
+import firebaseMock from '@tests/utils/firebase-admin.mock';
 import hathorLib from '@hathor/wallet-lib';
 import eventTemplate from '@events/eventTemplate.json';
 import tokenCreationTx from '@events/tokenCreationTx.json';
@@ -40,6 +41,7 @@ beforeAll(async () => {
   jest.resetModules();
   process.env = { ...OLD_ENV };
   process.env.BLOCK_REWARD_LOCK = '1';
+  firebaseMock.resetAllMocks();
 });
 
 afterAll(async () => {

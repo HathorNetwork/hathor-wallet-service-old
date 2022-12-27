@@ -36,6 +36,7 @@ import {
   rebuildAddressBalancesFromUtxos,
   fetchAddressBalance,
   fetchAddressTxHistorySum,
+  getTokenSymbols,
 } from '@src/db';
 import {
   DecodedOutput,
@@ -53,6 +54,9 @@ import {
   AddressBalance,
   AddressTotalBalance,
   WalletProxyHandler,
+  WalletBalance,
+  Transaction,
+  WalletBalanceValue,
 } from '@src/types';
 import { Logger } from 'winston';
 
@@ -62,6 +66,7 @@ import {
 } from '@src/utils';
 
 import hathorLib from '@hathor/wallet-lib';
+import { stringMapIterator, WalletBalanceMapConverter } from '@src/db/utils';
 
 const VERSION_CHECK_MAX_DIFF = 60 * 60 * 1000; // 1 hour
 const WARN_MAX_REORG_SIZE = parseInt(process.env.WARN_MAX_REORG_SIZE || '100', 10);
@@ -619,4 +624,53 @@ export const prepareOutputs = (outputs: TxOutput[], txId: string, logger: Logger
   );
 
   return preparedOutputs[1];
+};
+
+/**
+ * Get a list of wallet balance per token by informed transaction.
+ *
+ * @param mysql
+ * @param tx - The transaction to get related wallets and their token balances
+ * @returns
+ */
+export const getWalletBalancesForTx = async (mysql: ServerlessMysql, tx: Transaction): Promise<StringMap<WalletBalanceValue>> => {
+  const addressBalanceMap: StringMap<TokenBalanceMap> = getAddressBalanceMap(tx.inputs, tx.outputs);
+  // return only wallets that were started
+  const addressWalletMap: StringMap<Wallet> = await getAddressWalletInfo(mysql, Object.keys(addressBalanceMap));
+
+  // Create a new map focused on the walletId and storing its balance variation from this tx
+  const walletsMap: StringMap<WalletBalance> = {};
+
+  // Accumulation of tokenId to be used to extract its symbols.
+  const tokenIdAccumulation = [];
+
+  // Iterates all the addresses to populate the map's data
+  const addressWalletEntries = stringMapIterator(addressWalletMap) as [string, Wallet][];
+  for (const [address, wallet] of addressWalletEntries) {
+    // Create a new walletId entry if it does not exist
+    if (!walletsMap[wallet.walletId]) {
+      walletsMap[wallet.walletId] = {
+        txId: tx.tx_id,
+        walletId: wallet.walletId,
+        addresses: [],
+        walletBalanceForTx: new TokenBalanceMap(),
+      };
+    }
+    const walletData = walletsMap[wallet.walletId];
+
+    // Add this address to the wallet's affected addresses list
+    walletData.addresses.push(address);
+
+    // Merge the balance of this address with the total balance of the wallet
+    const mergedBalance = TokenBalanceMap.merge(walletData.walletBalanceForTx, addressBalanceMap[address]);
+    walletData.walletBalanceForTx = mergedBalance;
+
+    const tokenIdList = Object.keys(mergedBalance.map);
+    tokenIdAccumulation.push(tokenIdList);
+  }
+
+  const tokenIdSet = new Set<string>(tokenIdAccumulation.reduce((prev, eachGroup) => [...prev, ...eachGroup], []));
+  const tokenSymbolsMap = await getTokenSymbols(mysql, Array.from(tokenIdSet.values()));
+
+  return WalletBalanceMapConverter.toValue(walletsMap, tokenSymbolsMap);
 };

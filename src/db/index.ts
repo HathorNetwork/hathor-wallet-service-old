@@ -4,7 +4,6 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-
 import { strict as assert } from 'assert';
 import { ServerlessMysql } from 'serverless-mysql';
 import { get } from 'lodash';
@@ -38,6 +37,9 @@ import {
   AddressTotalBalance,
   IFilterTxOutput,
   Miner,
+  PushDevice,
+  TxByIdToken,
+  PushDeviceSettings,
 } from '@src/types';
 import {
   getUnixTimestamp,
@@ -2782,16 +2784,80 @@ export const updatePushDevice = async (
 export const unregisterPushDevice = async (
   mysql: ServerlessMysql,
   deviceId: string,
-  walletId: string,
+  walletId?: string,
 ) : Promise<void> => {
-  await mysql.query(
-    `
-    DELETE
-      FROM \`push_devices\`
-     WHERE device_id = ?
-       AND wallet_id = ?`,
-    [deviceId, walletId],
-  );
+  if (walletId) {
+    await mysql.query(
+      `
+      DELETE
+        FROM \`push_devices\`
+       WHERE device_id = ?
+         AND wallet_id = ?`,
+      [deviceId, walletId],
+    );
+  } else {
+    await mysql.query(
+      `
+      DELETE
+        FROM \`push_devices\`
+       WHERE device_id = ?`,
+      [deviceId],
+    );
+  }
+};
+
+/**
+ * Get a transaction by its ID.
+ *
+ * @param mysql - Database connection
+ * @param txId - A transaction ID
+ * @param walletId - The wallet related to the transaction
+ * @returns A list of tokens for a transaction if found, return an empty list otherwise
+ */
+export const getTransactionById = async (
+  mysql: ServerlessMysql,
+  txId: string,
+  walletId: string,
+): Promise<TxByIdToken[]> => {
+  const result = await mysql.query(`
+       SELECT
+              transaction.tx_id AS tx_id
+            , transaction.timestamp AS timestamp
+            , transaction.version AS version
+            , transaction.voided AS voided
+            , transaction.height AS height
+            , transaction.weight AS weight
+            , wallet_tx_history.balance AS balance
+            , wallet_tx_history.token_id AS token_id
+            , token.name AS name
+            , token.symbol AS symbol
+         FROM wallet_tx_history
+   INNER JOIN transaction ON transaction.tx_id = wallet_tx_history.tx_id
+   INNER JOIN token ON wallet_tx_history.token_id = token.id
+        WHERE transaction.tx_id = ?
+          AND transaction.voided = FALSE
+          AND wallet_tx_history.wallet_id = ?`,
+  // eslint-disable-next-line camelcase
+  [txId, walletId]) as Array<{tx_id, timestamp, version, voided, height, weight, balance, token_id, name, symbol }>;
+
+  const txTokens = [];
+  result.forEach((eachTxToken) => {
+    const txToken = {
+      txId: eachTxToken.tx_id,
+      timestamp: eachTxToken.timestamp,
+      version: eachTxToken.version,
+      voided: !!eachTxToken.voided,
+      height: eachTxToken.height,
+      weight: eachTxToken.weight,
+      balance: eachTxToken.balance,
+      tokenId: eachTxToken.token_id,
+      tokenName: eachTxToken.name,
+      tokenSymbol: eachTxToken.symbol,
+    } as TxByIdToken;
+    txTokens.push(txToken);
+  });
+
+  return txTokens;
 };
 
 /**
@@ -2813,4 +2879,125 @@ export const existsWallet = async (
   )) as unknown as Array<{ count }>;
 
   return count > 0;
+};
+
+/**
+ * Get registered push device by deviceId.
+ *
+ * @param mysql - Database connection
+ * @param deviceId - The device to verify existence
+ */
+export const getPushDevice = async (
+  mysql: ServerlessMysql,
+  deviceId: string,
+) : Promise<PushDevice|null> => {
+  const [pushDevice] = await mysql.query(
+    `
+    SELECT *
+      FROM \`push_devices\`
+     WHERE device_id = ?`,
+    [deviceId],
+  // eslint-disable-next-line camelcase
+  ) as Array<{wallet_id, device_id, push_provider, enable_push, enable_show_amounts}>;
+
+  if (!pushDevice) {
+    return null;
+  }
+
+  return {
+    walletId: pushDevice.wallet_id,
+    deviceId: pushDevice.device_id,
+    pushProvider: pushDevice.push_provider,
+    enablePush: !!pushDevice.enable_push,
+    enableShowAmounts: !!pushDevice.enable_show_amounts,
+  } as PushDevice;
+};
+
+/**
+ * Get a push device settings list given a list of wallet ids.
+ *
+ * @param mysql - Database connection
+ * @param walletIdList - A list of wallet ids
+ * @returns - a list of push device settings
+ */
+export const getPushDeviceSettingsList = async (
+  mysql: ServerlessMysql,
+  walletIdList: string[],
+) : Promise<PushDeviceSettings[]> => {
+  const pushDeviceSettingsResult = await mysql.query(
+    `
+    SELECT wallet_id
+         , device_id
+         , enable_push
+         , enable_show_amounts
+      FROM \`push_devices\`
+     WHERE wallet_id in (?)`,
+    [walletIdList],
+  // eslint-disable-next-line camelcase
+  ) as Array<{wallet_id, device_id, enable_push, enable_show_amounts}>;
+
+  const pushDeviceSettignsList = pushDeviceSettingsResult.map((each) => ({
+    walletId: each.wallet_id,
+    deviceId: each.device_id,
+    enablePush: !!each.enable_push,
+    enableShowAmounts: !!each.enable_show_amounts,
+  } as PushDeviceSettings));
+
+  return pushDeviceSettignsList;
+};
+
+/**
+ * Count the quantity of stale push devices from now.
+ *
+ * @param mysql - Database connection
+ * @returns - total of stale device from now
+ */
+export const countStalePushDevices = async (mysql): Promise<number> => {
+  const [{ count }] = await mysql.query(
+    `
+    SELECT COUNT(device_id) as count
+      FROM \`push_devices\`
+     WHERE UNIX_TIMESTAMP(updated_at) < UNIX_TIMESTAMP(date_sub(now(), interval 1 month))`,
+  ) as Array<{ count }>;
+  return count;
+};
+
+/**
+ * Delete stale push devices from now.
+ *
+ * @param mysql - Database connection
+ */
+export const deleteStalePushDevices = async (mysql) => {
+  await mysql.query(
+    `
+    DELETE
+      FROM \`push_devices\`
+     WHERE UNIX_TIMESTAMP(updated_at) < UNIX_TIMESTAMP(date_sub(now(), interval 1 month))`,
+  );
+};
+
+/**
+ * Get token symbol map, correlating token id to its symbol.
+ *
+ * @param mysql - Database connection
+ * @param tokenIdList - A list of token id
+ * @returns The token information (or null if id is not found)
+ */
+export const getTokenSymbols = async (
+  mysql: ServerlessMysql,
+  tokenIdList: string[],
+): Promise<StringMap<string>> => {
+  if (tokenIdList.length === 0) return null;
+
+  const results: DbSelectResult = await mysql.query(
+    'SELECT `id`, `symbol` FROM `token` WHERE `id` IN (?)',
+    [tokenIdList],
+  );
+
+  if (results.length === 0) return null;
+  return results.reduce((prev: Record<string, string>, token: { id: string, symbol: string}) => {
+    // eslint-disable-next-line no-param-reassign
+    prev[token.id] = token.symbol;
+    return prev;
+  }, {}) as unknown as StringMap<string>;
 };

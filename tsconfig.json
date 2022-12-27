@@ -13,6 +13,7 @@
     "sourceRoot": "/",
     "baseUrl": "./",
     "resolveJsonModule": true,
+    "skipLibCheck": true,
     "paths": {
       "@src/*": ["src/*"],
       "@tests/*": ["tests/*"],
@@ -21,7 +22,8 @@
   },
   "include": [
     "src/*.ts",
-    "src/**/*.ts"
+    "src/**/*.ts",
+    "tests"
   ],
   "exclude": [
     "node_modules/**/*",

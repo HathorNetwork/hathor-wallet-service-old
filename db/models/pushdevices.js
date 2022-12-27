@@ -41,11 +41,6 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         defaultValue: false,
       },
-      enable_only_new_tx: {
-        type: DataTypes.BOOLEAN,
-        allowNull: false,
-        defaultValue: false,
-      },
       updated_at: {
         type: 'TIMESTAMP',
         allowNull: false,
