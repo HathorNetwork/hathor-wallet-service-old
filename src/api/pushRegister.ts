@@ -40,7 +40,15 @@ class PushRegisterInputValidator {
  * This lambda is called by API Gateway on POST /push/register
  */
 export const register: APIGatewayProxyHandler = middy(walletIdProxyHandler(async (walletId, event) => {
-  const { value: body, error } = PushRegisterInputValidator.validate(event.body);
+  const eventBody = (function parseBody(body) {
+    try {
+      return JSON.parse(body);
+    } catch (e) {
+      return null;
+    }
+  }(event.body));
+
+  const { value: body, error } = PushRegisterInputValidator.validate(eventBody);
 
   if (error) {
     const details = error.details.map((err) => ({
