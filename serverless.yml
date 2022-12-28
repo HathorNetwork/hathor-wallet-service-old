@@ -463,7 +463,7 @@ functions:
     handler: src/api/pushRegister.register
     events:
       - http:
-          path: push/register
+          path: wallet/push/register
           method: post
           cors: true
           authorizer: ${self:custom.authorizer.walletBearer}
@@ -474,7 +474,7 @@ functions:
     handler: src/api/pushUpdate.update
     events:
       - http:
-          path: push/update
+          path: wallet/push/update
           method: put
           cors: true
           authorizer: ${self:custom.authorizer.walletBearer}
@@ -485,7 +485,7 @@ functions:
     handler: src/api/pushUnregister.unregister
     events:
       - http:
-          path: push/unregister/{deviceId}
+          path: wallet/push/unregister/{deviceId}
           method: delete
           cors: true
           authorizer: ${self:custom.authorizer.walletBearer}
