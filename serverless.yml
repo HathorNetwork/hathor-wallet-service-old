@@ -32,6 +32,45 @@ custom:
     maxConcurrentRequests: 250
   stage: ${opt:stage, 'dev'}
   explorerServiceStage: ${env:EXPLORER_STAGE, 'dev'}
+  alerts:
+    stages: # Select which stages to deploy alarms to
+      - mainnet
+      - testnet
+    topics: # SNS Topics to send alerts to
+      major:
+        alarm:
+          topic: arn:aws:sns:${self:provider.region}:${env:AWS_ACCOUNT_ID}:aws-chatbot-slack-alerts-major
+      minor:
+        alarm:
+          topic: arn:aws:sns:${self:provider.region}:${env:AWS_ACCOUNT_ID}:aws-chatbot-slack-alerts-minor
+    definitions: # Definition of alarms
+      majorFunctionErrors:
+        description: "Too many errors in hathor-wallet-service. Runbook: https://github.com/HathorNetwork/ops-tools/blob/master/docs/runbooks/wallet-service/errors-in-logs.md"
+        namespace: 'AWS/Lambda'
+        metric: Errors
+        threshold: 5
+        statistic: Sum
+        period: 60
+        evaluationPeriods: 5
+        comparisonOperator: GreaterThanOrEqualToThreshold
+        treatMissingData: notBreaching
+        alarmActions:
+          - major
+      minorFunctionErrors:
+        description: "An error has been detected in one of the hathor-wallet-service lambdas. Runbook: https://github.com/HathorNetwork/ops-tools/blob/master/docs/runbooks/wallet-service/errors-in-logs.md"
+        namespace: 'AWS/Lambda'
+        metric: Errors
+        threshold: 1
+        statistic: Sum
+        period: 60
+        evaluationPeriods: 1
+        comparisonOperator: GreaterThanOrEqualToThreshold
+        treatMissingData: notBreaching
+        alarmActions:
+          - minor
+    alarms: # Alarms that will be applied to all functions
+      - majorFunctionErrors
+      - minorFunctionErrors
 
 plugins:
   - serverless-offline
@@ -40,7 +79,7 @@ plugins:
   - serverless-api-gateway-throttling
   - serverless-plugin-warmup
   - serverless-iam-roles-per-function
-
+  - serverless-plugin-aws-alerts
 
 resources:
   Resources:
