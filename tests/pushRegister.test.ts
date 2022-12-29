@@ -34,12 +34,12 @@ test('register a device for push notification', async () => {
     readyAt: 10001,
   }]);
 
-  const event = makeGatewayEventWithAuthorizer('my-wallet', null, {
+  const event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({
     deviceId: 'device1',
     pushProvider: 'android',
     enablePush: true,
     enableShowAmounts: false,
-  });
+  }));
 
   const result = await register(event, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(result.body as string);
@@ -62,11 +62,11 @@ describe('statusCode:200', () => {
       readyAt: 10001,
     }]);
 
-    const payloadWithoutEnablePush = {
+    const payloadWithoutEnablePush = JSON.stringify({
       deviceId: 'device1',
       pushProvider: 'android',
       enableShowAmounts: false,
-    };
+    });
     const event = makeGatewayEventWithAuthorizer('my-wallet', null, payloadWithoutEnablePush);
 
     const result = await register(event, null, null) as APIGatewayProxyResult;
@@ -98,11 +98,11 @@ describe('statusCode:200', () => {
       readyAt: 10001,
     }]);
 
-    const payloadWithoutEnableShowAmounts = {
+    const payloadWithoutEnableShowAmounts = JSON.stringify({
       deviceId: 'device1',
       pushProvider: 'android',
       enablePush: true,
-    };
+    });
     const event = makeGatewayEventWithAuthorizer('my-wallet', null, payloadWithoutEnableShowAmounts);
 
     const result = await register(event, null, null) as APIGatewayProxyResult;
@@ -134,12 +134,12 @@ describe('statusCode:200', () => {
       readyAt: 10001,
     }]);
 
-    const payload = {
+    const payload = JSON.stringify({
       deviceId: 'device1',
       pushProvider: 'android',
       enablePush: true,
       enableShowAmounts: false,
-    };
+    });
     const event = makeGatewayEventWithAuthorizer('my-wallet', null, payload);
 
     let result = await register(event, null, null) as APIGatewayProxyResult;
@@ -171,12 +171,12 @@ describe('statusCode:400', () => {
       readyAt: 10001,
     }]);
 
-    const event = makeGatewayEventWithAuthorizer('my-wallet', null, {
+    const event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({
       deviceId: 'device1',
       pushProvider,
       enablePush: true,
       enableShowAmounts: false,
-    });
+    }));
 
     const result = await register(event, null, null) as APIGatewayProxyResult;
     const returnBody = JSON.parse(result.body as string);
@@ -210,12 +210,12 @@ Array [
       readyAt: 10001,
     }]);
 
-    const event = makeGatewayEventWithAuthorizer('my-wallet', null, {
+    const event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({
       deviceId,
       pushProvider: 'android',
       enablePush: true,
       enableShowAmounts: false,
-    });
+    }));
 
     const result = await register(event, null, null) as APIGatewayProxyResult;
     const returnBody = JSON.parse(result.body as string);
@@ -240,12 +240,12 @@ describe('statusCode:404', () => {
   it('should validate wallet existence', async () => {
     expect.hasAssertions();
 
-    const event = makeGatewayEventWithAuthorizer('my-wallet', null, {
+    const event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({
       deviceId: 'device1',
       pushProvider: 'android',
       enablePush: true,
       enableShowAmounts: false,
-    });
+    }));
 
     const result = await register(event, null, null) as APIGatewayProxyResult;
     const returnBody = JSON.parse(result.body as string);
