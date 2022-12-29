@@ -1,6 +1,6 @@
 import { Lambda } from 'aws-sdk';
 import { SendNotificationToDevice, StringMap, WalletBalanceValue } from '@src/types';
-import { credential, initializeApp, messaging, ServiceAccount } from 'firebase-admin';
+import fcmAdmin, { credential, messaging, ServiceAccount } from 'firebase-admin';
 import { MulticastMessage } from 'firebase-admin/messaging';
 import createDefaultLogger from '@src/logger';
 
@@ -87,7 +87,7 @@ const serviceAccount = {
   client_x509_cert_url: FIREBASE_CLIENT_X509_CERT_URL,
 };
 
-initializeApp({
+fcmAdmin.initializeApp({
   credential: credential.cert(serviceAccount as ServiceAccount),
   projectId: FIREBASE_PROJECT_ID,
 });
