@@ -50,11 +50,11 @@ test('update push device given a wallet', async () => {
     enableShowAmounts,
   });
 
-  const event = makeGatewayEventWithAuthorizer(walletId, null, {
+  const event = makeGatewayEventWithAuthorizer(walletId, null, JSON.stringify({
     deviceId,
     enablePush: true, // enables push notification
     enableShowAmounts: false,
-  });
+  }));
 
   const result = await update(event, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(result.body as string);
@@ -101,10 +101,10 @@ describe('statusCode:200', () => {
     });
 
     // enablePush should be disabled by default
-    const event = makeGatewayEventWithAuthorizer(walletId, null, {
+    const event = makeGatewayEventWithAuthorizer(walletId, null, JSON.stringify({
       deviceId,
       enableShowAmounts: false,
-    });
+    }));
 
     const result = await update(event, null, null) as APIGatewayProxyResult;
     const returnBody = JSON.parse(result.body as string);
@@ -150,10 +150,10 @@ describe('statusCode:200', () => {
     });
 
     // enableShowAmounts should be disabled by default
-    const event = makeGatewayEventWithAuthorizer(walletId, null, {
+    const event = makeGatewayEventWithAuthorizer(walletId, null, JSON.stringify({
       deviceId,
       enablePush,
-    });
+    }));
 
     const result = await update(event, null, null) as APIGatewayProxyResult;
     const returnBody = JSON.parse(result.body as string);
@@ -186,11 +186,11 @@ describe('statusCode:400', () => {
       readyAt: 10001,
     }]);
 
-    const event = makeGatewayEventWithAuthorizer('my-wallet', null, {
+    const event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({
       deviceId,
       enablePush: false,
       enableShowAmounts: false,
-    });
+    }));
 
     const result = await update(event, null, null) as APIGatewayProxyResult;
     const returnBody = JSON.parse(result.body as string);
@@ -226,11 +226,11 @@ describe('statusCode:404', () => {
       readyAt: 10001,
     }]);
 
-    const event = makeGatewayEventWithAuthorizer('my-wallet', null, {
+    const event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({
       deviceId,
       enablePush: false,
       enableShowAmounts: false,
-    });
+    }));
 
     const result = await update(event, null, null) as APIGatewayProxyResult;
     const returnBody = JSON.parse(result.body as string);

@@ -51,12 +51,12 @@ test('send push notification to the right provider', async () => {
     readyAt: 10001,
   }]);
 
-  const event = makeGatewayEventWithAuthorizer('my-wallet', null, {
+  const event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({
     deviceId: 'device1',
     pushProvider: 'android',
     enablePush: true,
     enableShowAmounts: false,
-  });
+  }));
   await register(event, null, null) as APIGatewayProxyResult;
 
   const validPayload = {
@@ -93,12 +93,12 @@ test('should unregister device when invalid device id', async () => {
     readyAt: 10001,
   }]);
 
-  const event = makeGatewayEventWithAuthorizer('my-wallet', null, {
+  const event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({
     deviceId: 'device1',
     pushProvider: 'android',
     enablePush: true,
     enableShowAmounts: false,
-  });
+  }));
   await register(event, null, null) as APIGatewayProxyResult;
   await expect(
     checkPushDevicesTable(mysql, 1),
@@ -195,12 +195,12 @@ describe('validation', () => {
       readyAt: 10001,
     }]);
 
-    const event = makeGatewayEventWithAuthorizer('my-wallet', null, {
+    const event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({
       deviceId: 'device1',
       pushProvider: 'android',
       enablePush: true,
       enableShowAmounts: false,
-    });
+    }));
     await register(event, null, null) as APIGatewayProxyResult;
 
     const payloadWithoutMetadata = {
@@ -252,12 +252,12 @@ describe('alert', () => {
       readyAt: 10001,
     }]);
 
-    const event = makeGatewayEventWithAuthorizer('my-wallet', null, {
+    const event = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({
       deviceId: 'device1',
       pushProvider: 'ios',
       enablePush: true,
       enableShowAmounts: false,
-    });
+    }));
     await register(event, null, null) as APIGatewayProxyResult;
 
     const validPayload = {
