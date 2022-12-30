@@ -57,10 +57,10 @@ custom:
         alarmActions:
           - major
       minorFunctionErrors:
-        description: "An error has been detected in one of the hathor-wallet-service lambdas. Runbook: https://github.com/HathorNetwork/ops-tools/blob/master/docs/runbooks/wallet-service/errors-in-logs.md"
+        description: "Too many errors in hathor-wallet-service. Runbook: https://github.com/HathorNetwork/ops-tools/blob/master/docs/runbooks/wallet-service/errors-in-logs.md"
         namespace: 'AWS/Lambda'
         metric: Errors
-        threshold: 1
+        threshold: 2
         statistic: Sum
         period: 60
         evaluationPeriods: 1
