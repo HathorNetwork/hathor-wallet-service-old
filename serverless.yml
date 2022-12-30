@@ -39,10 +39,10 @@ custom:
     topics: # SNS Topics to send alerts to
       major:
         alarm:
-          topic: arn:aws:sns:${self:provider.region}:${env:AWS_ACCOUNT_ID}:aws-chatbot-slack-alerts-major
+          topic: arn:aws:sns:eu-central-1:769498303037:opsgenie-cloudwatch-integration-production-major
       minor:
         alarm:
-          topic: arn:aws:sns:${self:provider.region}:${env:AWS_ACCOUNT_ID}:aws-chatbot-slack-alerts-minor
+          topic: arn:aws:sns:eu-central-1:769498303037:opsgenie-cloudwatch-integration-production-minor
     definitions: # Definition of alarms
       majorFunctionErrors:
         description: "Too many errors in hathor-wallet-service. Runbook: https://github.com/HathorNetwork/ops-tools/blob/master/docs/runbooks/wallet-service/errors-in-logs.md"
