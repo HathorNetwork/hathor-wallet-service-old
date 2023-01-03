@@ -125,7 +125,7 @@ phases:
         if expr "${GIT_REF_TO_DEPLOY}" : "dev" >/dev/null; then
           # Gets all env vars with `dev_` prefix and re-exports them without the prefix
           for var in "${!dev_@}"; do
-            export ${var#dev_}=${!var}
+            export ${var#dev_}="${!var}"
           done
 
           make migrate;
@@ -135,7 +135,7 @@ phases:
         if expr "${GIT_REF_TO_DEPLOY}" : "master" >/dev/null; then
           # Gets all env vars with `testnet_` prefix and re-exports them without the prefix
           for var in "${!testnet_@}"; do
-            export ${var#testnet_}=${!var}
+            export ${var#testnet_}="${!var}"
           done
 
           make migrate;
@@ -145,7 +145,7 @@ phases:
         if expr "${GIT_REF_TO_DEPLOY}" : "v.*" >/dev/null; then
           # Gets all env vars with `mainnet_` prefix and re-exports them without the prefix
           for var in "${!mainnet_@}"; do
-            export ${var#mainnet_}=${!var}
+            export ${var#mainnet_}="${!var}"
           done
 
           make migrate;
