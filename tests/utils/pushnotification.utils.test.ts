@@ -17,7 +17,7 @@ describe('PushNotificationUtils', () => {
   beforeEach(() => {
     process.env = {
       ...initEnv,
-      SEND_NOTIFICATION_LAMBDA_ENDPOINT: 'endpoint',
+      WALLET_SERVICE_LAMBDA_ENDPOINT: 'endpoint',
       STAGE: 'stage',
       ON_TX_PUSH_NOTIFICATION_REQUESTED_LAMBDA_ENDPOINT: 'endpoint',
       FIREBASE_PROJECT_ID: 'projectId',
@@ -38,16 +38,16 @@ describe('PushNotificationUtils', () => {
   });
 
   describe('process.env', () => {
-    it('SEND_NOTIFICATION_LAMBDA_ENDPOINT', () => {
+    it('WALLET_SERVICE_LAMBDA_ENDPOINT', () => {
       expect.hasAssertions();
 
       // load local env
-      process.env.SEND_NOTIFICATION_LAMBDA_ENDPOINT = '';
+      process.env.WALLET_SERVICE_LAMBDA_ENDPOINT = '';
 
       // reload module
       const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
 
-      expect(logger.error).toHaveBeenLastCalledWith('[ALERT] env.SEND_NOTIFICATION_LAMBDA_ENDPOINT can not be null or undefined.');
+      expect(logger.error).toHaveBeenLastCalledWith('[ALERT] env.WALLET_SERVICE_LAMBDA_ENDPOINT can not be null or undefined.');
     });
 
     it('STAGE', () => {
@@ -277,7 +277,7 @@ describe('PushNotificationUtils', () => {
 
       // load local env
       const fakeEndpoint = 'endpoint';
-      process.env.SEND_NOTIFICATION_LAMBDA_ENDPOINT = fakeEndpoint;
+      process.env.WALLET_SERVICE_LAMBDA_ENDPOINT = fakeEndpoint;
       const fakeStage = 'test';
       process.env.STAGE = fakeStage;
 
@@ -319,7 +319,7 @@ describe('PushNotificationUtils', () => {
 
       // load local env
       const fakeEndpoint = 'endpoint';
-      process.env.SEND_NOTIFICATION_LAMBDA_ENDPOINT = fakeEndpoint;
+      process.env.WALLET_SERVICE_LAMBDA_ENDPOINT = fakeEndpoint;
       const fakeStage = 'test';
       process.env.STAGE = fakeStage;
 
@@ -349,7 +349,7 @@ describe('PushNotificationUtils', () => {
 
       // load local env
       const fakeEndpoint = '';
-      process.env.SEND_NOTIFICATION_LAMBDA_ENDPOINT = fakeEndpoint;
+      process.env.WALLET_SERVICE_LAMBDA_ENDPOINT = fakeEndpoint;
       const fakeStage = '';
       process.env.STAGE = fakeStage;
 
@@ -366,7 +366,7 @@ describe('PushNotificationUtils', () => {
       } as SendNotificationToDevice;
 
       await expect(PushNotificationUtils.invokeSendNotificationHandlerLambda(notification))
-        .rejects.toThrow('Environment variables SEND_NOTIFICATION_LAMBDA_ENDPOINT and STAGE are not set.');
+        .rejects.toThrow('Environment variables WALLET_SERVICE_LAMBDA_ENDPOINT and STAGE are not set.');
     });
   });
 
