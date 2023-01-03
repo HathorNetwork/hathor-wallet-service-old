@@ -6,8 +6,8 @@ import createDefaultLogger from '@src/logger';
 
 const logger = createDefaultLogger();
 
-if (!process.env.SEND_NOTIFICATION_LAMBDA_ENDPOINT) {
-  logger.error('[ALERT] env.SEND_NOTIFICATION_LAMBDA_ENDPOINT can not be null or undefined.');
+if (!process.env.WALLET_SERVICE_LAMBDA_ENDPOINT) {
+  logger.error('[ALERT] env.WALLET_SERVICE_LAMBDA_ENDPOINT can not be null or undefined.');
 }
 
 if (!process.env.STAGE) {
@@ -60,8 +60,7 @@ export enum FunctionName {
 }
 
 const STAGE = process.env.STAGE;
-const SEND_NOTIFICATION_LAMBDA_ENDPOINT = process.env.SEND_NOTIFICATION_LAMBDA_ENDPOINT;
-const ON_TX_PUSH_NOTIFICATION_REQUESTED_LAMBDA_ENDPOINT = process.env.ON_TX_PUSH_NOTIFICATION_REQUESTED_LAMBDA_ENDPOINT;
+const WALLET_SERVICE_LAMBDA_ENDPOINT = process.env.WALLET_SERVICE_LAMBDA_ENDPOINT;
 const SEND_NOTIFICATION_FUNCTION_NAME = buildFunctionName(FunctionName.SEND_NOTIFICATION_TO_DEVICE);
 const ON_TX_PUSH_NOTIFICATION_REQUESTED_FUNCTION_NAME = buildFunctionName(FunctionName.ON_TX_PUSH_NOTIFICATION_REQUESTED);
 const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID;
@@ -141,13 +140,13 @@ export class PushNotificationUtils {
    * Invokes this application's own intermediary lambda `PushSendNotificationToDevice`.
    */
   static async invokeSendNotificationHandlerLambda(notification: SendNotificationToDevice): Promise<void> {
-    if (!SEND_NOTIFICATION_LAMBDA_ENDPOINT && !STAGE) {
-      throw new Error('Environment variables SEND_NOTIFICATION_LAMBDA_ENDPOINT and STAGE are not set.');
+    if (!WALLET_SERVICE_LAMBDA_ENDPOINT && !STAGE) {
+      throw new Error('Environment variables WALLET_SERVICE_LAMBDA_ENDPOINT and STAGE are not set.');
     }
 
     const lambda = new Lambda({
       apiVersion: '2015-03-31',
-      endpoint: SEND_NOTIFICATION_LAMBDA_ENDPOINT,
+      endpoint: WALLET_SERVICE_LAMBDA_ENDPOINT,
     });
 
     const params = {
@@ -171,7 +170,7 @@ export class PushNotificationUtils {
   static async invokeOnTxPushNotificationRequestedLambda(walletBalanceValueMap: StringMap<WalletBalanceValue>): Promise<void> {
     const lambda = new Lambda({
       apiVersion: '2015-03-31',
-      endpoint: ON_TX_PUSH_NOTIFICATION_REQUESTED_LAMBDA_ENDPOINT,
+      endpoint: WALLET_SERVICE_LAMBDA_ENDPOINT,
     });
 
     const params = {
