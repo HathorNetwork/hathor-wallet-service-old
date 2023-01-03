@@ -154,14 +154,11 @@ export const onNewTxRequest: APIGatewayProxyHandler = async (event, context) => 
       .catch((err) => logger.error('[ALERT] Errored on nftHandlerLambda invocation', err));
   }
 
-  const pushNotificationEnabled = false;
-  if (pushNotificationEnabled) {
-    const walletBalanceMap = await getWalletBalancesForTx(mysql, tx);
-    const { length: hasAffectWallets } = Object.keys(walletBalanceMap);
-    if (hasAffectWallets) {
-      PushNotificationUtils.invokeOnTxPushNotificationRequestedLambda(walletBalanceMap)
-        .catch((err) => logger.error('[ALERT] Errored on invokeOnTxPushNotificationRequestedLambda invocation', err));
-    }
+  const walletBalanceMap = await getWalletBalancesForTx(mysql, tx);
+  const { length: hasAffectWallets } = Object.keys(walletBalanceMap);
+  if (hasAffectWallets) {
+    PushNotificationUtils.invokeOnTxPushNotificationRequestedLambda(walletBalanceMap)
+      .catch((err) => logger.error('[ALERT] Errored on invokeOnTxPushNotificationRequestedLambda invocation', err));
   }
 
   return {
