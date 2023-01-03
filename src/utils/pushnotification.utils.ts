@@ -86,10 +86,13 @@ const serviceAccount = {
   client_x509_cert_url: FIREBASE_CLIENT_X509_CERT_URL,
 };
 
-fcmAdmin.initializeApp({
-  credential: credential.cert(serviceAccount as ServiceAccount),
-  projectId: FIREBASE_PROJECT_ID,
-});
+const pushNotificationEnabled = false;
+if (pushNotificationEnabled) {
+  fcmAdmin.initializeApp({
+    credential: credential.cert(serviceAccount as ServiceAccount),
+    projectId: FIREBASE_PROJECT_ID,
+  });
+}
 
 export enum PushNotificationError {
   UNKNOWN = 'unknown',
