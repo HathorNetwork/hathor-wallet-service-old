@@ -171,6 +171,11 @@ export class PushNotificationUtils {
    * @param walletBalanceValueMap - a map of walletId linked to its wallet balance data.
    */
   static async invokeOnTxPushNotificationRequestedLambda(walletBalanceValueMap: StringMap<WalletBalanceValue>): Promise<void> {
+    if (!pushNotificationEnabled) {
+      logger.debug('Push notification is disabled. Skipping invocation of OnTxPushNotificationRequestedLambda lambda.');
+      return;
+    }
+
     const lambda = new Lambda({
       apiVersion: '2015-03-31',
       endpoint: WALLET_SERVICE_LAMBDA_ENDPOINT,
