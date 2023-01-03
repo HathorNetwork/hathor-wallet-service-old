@@ -2935,7 +2935,7 @@ describe('countStalePushDevices', () => {
 
     const pushRegister = buildPushRegister({
       walletId: 'wallet1',
-      updatedAt: daysAgo(31),
+      updatedAt: daysAgo(32), // it must be 32 because there is months with 31 days
     });
     await insertPushDevice(mysql, pushRegister);
 
@@ -2957,7 +2957,7 @@ describe('deleteStalePushDevices', () => {
 
     const pushRegister = buildPushRegister({
       walletId: 'wallet1',
-      updatedAt: daysAgo(31),
+      updatedAt: daysAgo(32), // it must be 32 because there is months with 31 days
     });
     await insertPushDevice(mysql, pushRegister);
 
