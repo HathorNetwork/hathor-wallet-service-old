@@ -377,6 +377,7 @@ describe('PushNotificationUtils', () => {
       // clear counts
       jest.clearAllMocks();
       // reload module
+      process.env.PUSH_NOTIFICATION_ENABLED = 'true';
       const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
 
       const walletMap = buildWalletBalanceValueMap();
@@ -411,6 +412,7 @@ describe('PushNotificationUtils', () => {
       });
 
       // reload module
+      process.env.PUSH_NOTIFICATION_ENABLED = 'true';
       const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
 
       const walletMap = buildWalletBalanceValueMap();
