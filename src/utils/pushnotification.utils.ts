@@ -72,6 +72,10 @@ const FIREBASE_AUTH_URI = process.env.FIREBASE_AUTH_URI;
 const FIREBASE_TOKEN_URI = process.env.FIREBASE_TOKEN_URI;
 const FIREBASE_AUTH_PROVIDER_X509_CERT_URL = process.env.FIREBASE_AUTH_PROVIDER_X509_CERT_URL;
 const FIREBASE_CLIENT_X509_CERT_URL = process.env.FIREBASE_CLIENT_X509_CERT_URL;
+/** Local feature toggle that disable the push notification by default */
+const PUSH_NOTIFICATION_ENABLED = process.env.PUSH_NOTIFICATION_ENABLED;
+
+export const isPushNotificationEnabled = (): boolean => PUSH_NOTIFICATION_ENABLED === 'true';
 
 const serviceAccount = {
   type: 'service_account',
@@ -86,8 +90,7 @@ const serviceAccount = {
   client_x509_cert_url: FIREBASE_CLIENT_X509_CERT_URL,
 };
 
-const pushNotificationEnabled = false;
-if (pushNotificationEnabled) {
+if (isPushNotificationEnabled()) {
   fcmAdmin.initializeApp({
     credential: credential.cert(serviceAccount as ServiceAccount),
     projectId: FIREBASE_PROJECT_ID,
@@ -171,7 +174,7 @@ export class PushNotificationUtils {
    * @param walletBalanceValueMap - a map of walletId linked to its wallet balance data.
    */
   static async invokeOnTxPushNotificationRequestedLambda(walletBalanceValueMap: StringMap<WalletBalanceValue>): Promise<void> {
-    if (!pushNotificationEnabled) {
+    if (!isPushNotificationEnabled()) {
       logger.debug('Push notification is disabled. Skipping invocation of OnTxPushNotificationRequestedLambda lambda.');
       return;
     }
