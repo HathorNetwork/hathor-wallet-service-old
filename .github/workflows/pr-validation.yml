@@ -5,7 +5,8 @@ on:
     paths-ignore:
       - '**.md'
   push:
-    branch: [master, dev]
+    tags: ['v**']
+    branches: [master, dev]
 jobs:
   build:
     runs-on: ubuntu-20.04
