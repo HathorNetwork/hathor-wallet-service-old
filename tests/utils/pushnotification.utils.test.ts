@@ -377,6 +377,7 @@ describe('PushNotificationUtils', () => {
       // clear counts
       jest.clearAllMocks();
       // reload module
+      process.env.PUSH_NOTIFICATION_ENABLED = 'true';
       const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
 
       const walletMap = buildWalletBalanceValueMap();
@@ -401,6 +402,32 @@ describe('PushNotificationUtils', () => {
       });
     });
 
+    // it should not call lambda when push notification is disabled
+    it('should not call lambda when push notification is disabled', async () => {
+      expect.hasAssertions();
+
+      // clear counts
+      jest.clearAllMocks();
+      // reload module
+      process.env.PUSH_NOTIFICATION_ENABLED = 'false';
+      const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
+
+      const walletMap = buildWalletBalanceValueMap();
+      const result = await PushNotificationUtils.invokeOnTxPushNotificationRequestedLambda(walletMap);
+
+      // void method returns undefined
+      expect(result).toBeUndefined();
+
+      // assert Lambda constructor call
+      expect(Lambda).toHaveBeenCalledTimes(0);
+
+      // assert lambda invoke call
+      expect(invokeMock).toHaveBeenCalledTimes(0);
+
+      // assert log message
+      expect(logger.debug).toHaveBeenCalledWith('Push notification is disabled. Skipping invocation of OnTxPushNotificationRequestedLambda lambda.');
+    });
+
     it('should throw an error when invoke fails', async () => {
       expect.hasAssertions();
 
@@ -411,6 +438,7 @@ describe('PushNotificationUtils', () => {
       });
 
       // reload module
+      process.env.PUSH_NOTIFICATION_ENABLED = 'true';
       const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
 
       const walletMap = buildWalletBalanceValueMap();
