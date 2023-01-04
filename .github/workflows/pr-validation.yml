@@ -1,11 +1,11 @@
 name: PR Validation
 on:
   pull_request:
-    branches: [master, dev]
     paths-ignore:
       - '**.md'
   push:
-    branches: [master, dev]
+    paths-ignore:
+      - '**.md'
 jobs:
   build:
     runs-on: ubuntu-20.04
