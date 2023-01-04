@@ -3,7 +3,7 @@
 /* eslint-disable no-shadow */
 /* eslint-disable @typescript-eslint/naming-convention */
 // mocks should be imported first
-import { sendMulticastMock, messaging } from '@tests/utils/firebase-admin.mock';
+import { sendMulticastMock, messaging, initFirebaseAdminMock } from '@tests/utils/firebase-admin.mock';
 import { invokeMock, promiseMock } from '@tests/utils/aws-sdk.mock';
 import { logger } from '@tests/winston.mock';
 import { PushNotificationUtils, PushNotificationError, buildFunctionName, FunctionName } from '@src/utils/pushnotification.utils';
@@ -35,6 +35,24 @@ describe('PushNotificationUtils', () => {
 
   afterEach(() => {
     process.env = initEnv;
+  });
+
+  // test firebase initialization error
+  it('firebase initialization error', () => {
+    expect.hasAssertions();
+
+    // load local env
+    process.env.PUSH_NOTIFICATION_ENABLED = 'true';
+    initFirebaseAdminMock.mockReset();
+    initFirebaseAdminMock.mockImplementation(() => {
+      throw new Error('Failed to parse private key: Error: Invalid PEM formatted message.');
+    });
+
+    // reload module
+    const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
+
+    const resultMessageOfLastCallToLoggerError = logger.error.mock.calls[0][0];
+    expect(resultMessageOfLastCallToLoggerError).toMatchInlineSnapshot('"Error initializing Firebase Admin SDK. ErrorMessage: Failed to parse private key: Error: Invalid PEM formatted message."');
   });
 
   describe('process.env', () => {
