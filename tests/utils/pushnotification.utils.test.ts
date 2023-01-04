@@ -43,6 +43,7 @@ describe('PushNotificationUtils', () => {
 
     // load local env
     process.env.PUSH_NOTIFICATION_ENABLED = 'true';
+    logger.error.mockReset();
     initFirebaseAdminMock.mockReset();
     initFirebaseAdminMock.mockImplementation(() => {
       throw new Error('Failed to parse private key: Error: Invalid PEM formatted message.');
