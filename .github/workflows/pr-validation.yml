@@ -1,7 +1,6 @@
 name: PR Validation
 on:
   pull_request:
-    types: [opened, synchronize]
     paths-ignore:
       - '**.md'
   push:
