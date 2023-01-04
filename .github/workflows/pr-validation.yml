@@ -1,7 +1,6 @@
 name: PR Validation
 on:
   pull_request:
-    types: [ready_for_review, synchronize]
     branches: [master, dev]
     paths-ignore:
       - '**.md'
