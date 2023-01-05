@@ -1581,14 +1581,24 @@ test('GET /wallet/proxy/graphviz/neighbors', async () => {
   const mockFullnodeResponse = jest.fn(() => Promise.resolve(mockData));
   spy.mockImplementation(mockFullnodeResponse);
 
-  const event = makeGatewayEventWithAuthorizer('my-wallet', {
+  let event = makeGatewayEventWithAuthorizer('my-wallet', {
     txId: '000011f5cd1c2bcb7e5e91567666042d8681deeca96263bca60f10c528b9af32',
     graphType: 'verification',
     maxLevel: '1',
   });
-  const result = await queryGraphvizNeighbors(event, null, null) as APIGatewayProxyResult;
-  const returnBody = JSON.parse(result.body as string);
+  let result = await queryGraphvizNeighbors(event, null, null) as APIGatewayProxyResult;
+  let returnBody = JSON.parse(result.body as string);
 
   expect(result.statusCode).toBe(200);
   expect(returnBody).toStrictEqual(mockData);
+
+  event = makeGatewayEventWithAuthorizer('my-wallet', {
+    txId: '000011f5cd1c2bcb7e5e91567666042d8681deeca96263bca60f10c528b9af32',
+    graphType: 'verification',
+  });
+
+  result = await queryGraphvizNeighbors(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(400);
+  expect(returnBody).toMatchInlineSnapshot();
 });
