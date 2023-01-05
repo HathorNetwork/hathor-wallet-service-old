@@ -31,7 +31,34 @@ export const create = (baseURL = BASE_URL): any => {
     return response.data;
   };
 
-  return { downloadTx };
+  const getConfirmationData = async (txId: string) => {
+    const response = await api.get(`transaction_acc_weight?id=${txId}`, {
+      data: null,
+      headers: { 'content-type': 'application/json' },
+    });
+
+    return response.data;
+  };
+
+  const queryGraphvizNeighbors = async (
+    txId: string,
+    graphType: string,
+    maxLevel: string,
+  ) => {
+    const url = `graphviz/neighbours.dot/?tx=${txId}&graph_type=${graphType}&max_level=${maxLevel}`;
+    const response = await api.get(url, {
+      data: null,
+      headers: { 'content-type': 'application/json' },
+    });
+
+    return response.data;
+  };
+
+  return {
+    downloadTx,
+    getConfirmationData,
+    queryGraphvizNeighbors,
+  };
 };
 
 export default create();

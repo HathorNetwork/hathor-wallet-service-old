@@ -6,7 +6,11 @@ import { get as balancesGet } from '@src/api/balances';
 import { get as txHistoryGet } from '@src/api/txhistory';
 import { get as walletTokensGet } from '@src/api/tokens';
 import { get as getVersionDataGet } from '@src/api/version';
-import { getTransactionById } from '@src/api/fullnodeProxy';
+import {
+  getTransactionById,
+  getConfirmationData,
+  queryGraphvizNeighbors,
+} from '@src/api/fullnodeProxy';
 import { create as txProposalCreate } from '@src/api/txProposalCreate';
 import { send as txProposalSend } from '@src/api/txProposalSend';
 import { destroy as txProposalDestroy } from '@src/api/txProposalDestroy';
@@ -1537,5 +1541,54 @@ test('GET /wallet/proxy/transactions/{txId}', async () => {
 
   expect(result.statusCode).toBe(200);
   expect(returnBody.success).toBe(true);
+  expect(returnBody).toStrictEqual(mockData);
+});
+
+test('GET /wallet/proxy/confirmation_data/{txId}', async () => {
+  expect.hasAssertions();
+
+  const mockData = {
+    success: true,
+    accumulated_weight: 67.45956109191802,
+    accumulated_bigger: true,
+    stop_value: 67.45416781056525,
+    confirmation_level: 1,
+  };
+
+  const spy = jest.spyOn(fullnode, 'getConfirmationData');
+
+  const mockFullnodeResponse = jest.fn(() => Promise.resolve(mockData));
+  spy.mockImplementation(mockFullnodeResponse);
+
+  const event = makeGatewayEventWithAuthorizer('my-wallet', {
+    txId: '000011f5cd1c2bcb7e5e91567666042d8681deeca96263bca60f10c528b9af32',
+  });
+  const result = await getConfirmationData(event, null, null) as APIGatewayProxyResult;
+  const returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(true);
+  expect(returnBody).toStrictEqual(mockData);
+});
+
+test('GET /wallet/proxy/graphviz/neighbors', async () => {
+  expect.hasAssertions();
+
+  const mockData = 'digraph {}';
+
+  const spy = jest.spyOn(fullnode, 'queryGraphvizNeighbors');
+
+  const mockFullnodeResponse = jest.fn(() => Promise.resolve(mockData));
+  spy.mockImplementation(mockFullnodeResponse);
+
+  const event = makeGatewayEventWithAuthorizer('my-wallet', {
+    txId: '000011f5cd1c2bcb7e5e91567666042d8681deeca96263bca60f10c528b9af32',
+    graphType: 'verification',
+    maxLevel: '1',
+  });
+  const result = await queryGraphvizNeighbors(event, null, null) as APIGatewayProxyResult;
+  const returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(200);
   expect(returnBody).toStrictEqual(mockData);
 });

@@ -420,17 +420,6 @@ functions:
     warmup:
       walletWarmer:
         enabled: false
-  proxyGetTxById:
-    handler: src/api/fullnodeProxy.getTransactionById
-    events:
-      - http:
-        path: wallet/proxy/transactions/{txId}
-        method: get
-        cors: true
-        authorizer: ${self:custom.authorizer.walletBearer}
-    warmup:
-      walletWarmer:
-        enabled: false
   wsConnect:
     handler: src/ws/connection.connect
     timeout: 1
@@ -569,6 +558,47 @@ functions:
             parameters:
               paths:
                 txId: true
+    warmup:
+      walletWarmer:
+        enabled: false
+  proxiedGetTxById:
+    handler: src/api/fullnodeProxy.getTransactionById
+    events:
+      - http:
+          path: wallet/proxy/transactions/{txId}
+          method: get
+          cors: true
+          authorizer: ${self:custom.authorizer.walletBearer}
+          request:
+            parameters:
+              paths:
+                txId: true
+    warmup:
+      walletWarmer:
+        enabled: false
+  proxiedGetConfirmationData:
+    handler: src/api/fullnodeProxy.getConfirmationData
+    events:
+      - http:
+          path: wallet/proxy/transactions/{txId}/confirmation_data
+          method: get
+          cors: true
+          authorizer: ${self:custom.authorizer.walletBearer}
+          request:
+            parameters:
+              paths:
+                txId: true
+    warmup:
+      walletWarmer:
+        enabled: false
+  proxiedGraphvizNeighborsQuery:
+    handler: src/api/fullnodeProxy.queryGraphvizNeighbors
+    events:
+      - http:
+          path: wallet/proxy/graphviz/neighbors
+          method: get
+          cors: true
+          authorizer: ${self:custom.authorizer.walletBearer}
     warmup:
       walletWarmer:
         enabled: false

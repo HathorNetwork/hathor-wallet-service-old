@@ -22,9 +22,20 @@ import Joi from 'joi';
 
 const mysql = getDbConnection();
 
-const paramsSchema = Joi.object({
+const txIdValidator = Joi.object({
   txId: Joi.string()
     .alphanum()
+    .required(),
+});
+
+const graphvizValidator = Joi.object({
+  txId: Joi.string()
+    .alphanum()
+    .required(),
+  graphType: Joi.string()
+    .alphanum()
+    .required(),
+  maxLevel: Joi.number()
     .required(),
 });
 
@@ -34,9 +45,9 @@ const paramsSchema = Joi.object({
  * This lambda is called by API Gateway on GET /wallet/proxy/transactions/:id
  */
 export const getTransactionById: APIGatewayProxyHandler = middy(walletIdProxyHandler(async (_walletId: string, event) => {
-  const params = event.queryStringParameters || {};
+  const params = event.pathParameters || {};
 
-  const { value, error } = paramsSchema.validate(params, {
+  const { value, error } = txIdValidator.validate(params, {
     abortEarly: false,
     convert: false,
   });
@@ -60,3 +71,71 @@ export const getTransactionById: APIGatewayProxyHandler = middy(walletIdProxyHan
     body: JSON.stringify(transaction),
   };
 })).use(cors());
+
+/*
+ * Get confirmation data for a tx from the fullnode
+ *
+ * This lambda is called by API Gateway on GET /wallet/proxy/transactions/:id/confirmation_data
+ */
+export const getConfirmationData: APIGatewayProxyHandler = middy(walletIdProxyHandler(async (_walletId: string, event) => {
+  const params = event.pathParameters || {};
+
+  const { value, error } = txIdValidator.validate(params, {
+    abortEarly: false,
+    convert: false,
+  });
+
+  if (error) {
+    const details = error.details.map((err) => ({
+      message: err.message,
+      path: err.path,
+    }));
+
+    return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, { details });
+  }
+
+  const txId = value.txId;
+  const confirmationData = await fullnode.getConfirmationData(txId);
+
+  await closeDbConnection(mysql);
+
+  return {
+    statusCode: 200,
+    body: JSON.stringify(confirmationData),
+  };
+})).use(cors());
+
+/*
+ * Makes graphviz queries on the fullnode
+ *
+ * This lambda is called by API Gateway on GET /wallet/proxy/graphviz/neighbors
+ */
+export const queryGraphvizNeighbors: APIGatewayProxyHandler = middy(
+  walletIdProxyHandler(async (_walletId: string, event) => {
+    const params = event.queryStringParameters || {};
+
+    const { value, error } = graphvizValidator.validate(params, {
+      abortEarly: false,
+      convert: true,
+    });
+
+    if (error) {
+      const details = error.details.map((err) => ({
+        message: err.message,
+        path: err.path,
+      }));
+
+      return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, { details });
+    }
+
+    const { txId, graphType, maxLevel } = value;
+    const graphVizData = await fullnode.queryGraphvizNeighbors(txId, graphType, maxLevel);
+
+    await closeDbConnection(mysql);
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify(graphVizData),
+    };
+  }),
+).use(cors());
