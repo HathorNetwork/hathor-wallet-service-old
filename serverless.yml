@@ -573,6 +573,8 @@ functions:
             parameters:
               paths:
                 txId: true
+          throttling:
+            maxRequestsPerSecond: 50
     warmup:
       walletWarmer:
         enabled: false
@@ -588,6 +590,8 @@ functions:
             parameters:
               paths:
                 txId: true
+          throttling:
+            maxRequestsPerSecond: 10
     warmup:
       walletWarmer:
         enabled: false
@@ -599,6 +603,8 @@ functions:
           method: get
           cors: true
           authorizer: ${self:custom.authorizer.walletBearer}
+          throttling:
+            maxRequestsPerSecond: 20
     warmup:
       walletWarmer:
         enabled: false
