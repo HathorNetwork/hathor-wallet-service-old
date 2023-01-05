@@ -6,6 +6,7 @@ import { get as balancesGet } from '@src/api/balances';
 import { get as txHistoryGet } from '@src/api/txhistory';
 import { get as walletTokensGet } from '@src/api/tokens';
 import { get as getVersionDataGet } from '@src/api/version';
+import { getTransactionById } from '@src/api/fullnodeProxy';
 import { create as txProposalCreate } from '@src/api/txProposalCreate';
 import { send as txProposalSend } from '@src/api/txProposalSend';
 import { destroy as txProposalDestroy } from '@src/api/txProposalDestroy';
@@ -46,6 +47,7 @@ import {
   makeGatewayEventWithAuthorizer,
   getAuthData,
 } from '@tests/utils';
+import fullnode from '@src/fullnode';
 
 const mysql = getDbConnection();
 
@@ -1447,4 +1449,93 @@ test('GET /version', async () => {
   expect(result.statusCode).toBe(200);
   expect(returnBody.success).toBe(true);
   expect(returnBody.data).toStrictEqual(mockData);
+});
+
+test('GET /wallet/proxy/transactions/{txId}', async () => {
+  expect.hasAssertions();
+
+  const mockData = {
+    success: true,
+    tx: {
+      hash: '000011f5cd1c2bcb7e5e91567666042d8681deeca96263bca60f10c528b9af32',
+      nonce: '16651564',
+      timestamp: 1672930233,
+      version: 1,
+      weight: 18.173170552208116,
+      parents: [
+        '000021de2f105caa2daa9979bdb591a5860b6482a82ed4d7987496c30dbd4496',
+        '000007cf2c382898af0f9fd963b2a34279370b522e7816371b778f4a80951ca8',
+      ],
+      inputs: [{
+        value: 2,
+        token_data: 129,
+        script: 'dqkUuRVulIYgVepEURsh05y3F4ztyJaIrA==',
+        decoded: {
+          type: 'P2PKH',
+          address: 'HPPm4x85cytT9UmSk9MfgQEDfX295JKmiT',
+          timelock: null,
+          value: 2,
+          token_data: 129,
+        },
+        tx_id: '000028a7886b410958014a61924920b12c667945f2e1c20a986e230fb92afdfc',
+        index: 1,
+      }],
+      outputs: [{
+        value: 2,
+        token_data: 129,
+        script: 'dqkUBAsAnZEAjdjFegyP0eo6WClFKeCIrA==',
+        decoded: {
+          type: 'P2PKH',
+          address: 'H6tWGa8kY5uu3Hz9s4yqV63SCdd3yaXXmX',
+          timelock: null,
+          value: 2,
+          token_data: 129,
+        },
+      }],
+      tokens: [{
+        uid: '00003feaf0adb971ef05ad381f5a6c0364c52145617f8f3a8464048c43378628',
+        name: 'TEST TOKEN',
+        symbol: 'TEST',
+      }],
+      raw: '',
+    },
+    meta: {
+      hash: '000011f5cd1c2bcb7e5e91567666042d8681deeca96263bca60f10c528b9af32',
+      spent_outputs: [
+        [0, []],
+        [1, []],
+      ],
+      received_by: [],
+      children: [
+        '00000000000000000a3df6f146fef03b5044b0e415c4d85a702a72cae133d17b',
+        '00000000000000000f091b4d3088aa568ca4a60e4aa67d9e881b3ae60cb846c7',
+      ],
+      conflict_with: [],
+      voided_by: [],
+      twins: [],
+      accumulated_weight: 18.173170552208116,
+      score: 0,
+      height: 0,
+      min_height: 3074721,
+      first_block: '00000000000000000a3df6f146fef03b5044b0e415c4d85a702a72cae133d17b',
+      validation: 'full',
+      first_block_height: 3140266,
+    },
+    spent_outputs: {},
+  };
+
+  const spy = jest.spyOn(fullnode, 'downloadTx');
+
+  const mockFullnodeResponse = jest.fn(() => Promise.resolve(mockData));
+  spy.mockImplementation(mockFullnodeResponse);
+
+  const event = makeGatewayEventWithAuthorizer('my-wallet', {
+    txId: '000011f5cd1c2bcb7e5e91567666042d8681deeca96263bca60f10c528b9af32',
+  });
+  const result = await getTransactionById(event, null, null) as APIGatewayProxyResult;
+  const returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(true);
+  expect(returnBody).toStrictEqual(mockData);
 });

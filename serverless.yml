@@ -420,6 +420,17 @@ functions:
     warmup:
       walletWarmer:
         enabled: false
+  proxyGetTxById:
+    handler: src/api/fullnodeProxy.getTransactionById
+    events:
+      - http:
+        path: wallet/proxy/transactions/{txId}
+        method: get
+        cors: true
+        authorizer: ${self:custom.authorizer.walletBearer}
+    warmup:
+      walletWarmer:
+        enabled: false
   wsConnect:
     handler: src/ws/connection.connect
     timeout: 1
