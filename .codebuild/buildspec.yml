@@ -20,6 +20,7 @@ env:
     dev_EXPLORER_STAGE: "dev"
     dev_EXPLORER_SERVICE_LAMBDA_ENDPOINT: "https://lambda.eu-central-1.amazonaws.com"
     dev_WALLET_SERVICE_LAMBDA_ENDPOINT: "https://lambda.eu-central-1.amazonaws.com"
+    dev_PUSH_NOTIFICATION_ENABLED: "false"
     testnet_DEFAULT_SERVER: "https://wallet-service.private-nodes.testnet.hathor.network/v1a/"
     testnet_WS_DOMAIN: "ws.testnet.wallet-service.hathor.network"
     testnet_NETWORK: "testnet"
@@ -27,6 +28,7 @@ env:
     testnet_EXPLORER_STAGE: "testnet"
     testnet_EXPLORER_SERVICE_LAMBDA_ENDPOINT: "https://lambda.eu-central-1.amazonaws.com"
     testnet_WALLET_SERVICE_LAMBDA_ENDPOINT: "https://lambda.eu-central-1.amazonaws.com"
+    testnet_PUSH_NOTIFICATION_ENABLED: "false"
     mainnet_DEFAULT_SERVER: "https://wallet-service.private-nodes.hathor.network/v1a/"
     mainnet_WS_DOMAIN: "ws.wallet-service.hathor.network"
     mainnet_NETWORK: "mainnet"
@@ -34,6 +36,7 @@ env:
     mainnet_EXPLORER_STAGE: "mainnet"
     mainnet_EXPLORER_SERVICE_LAMBDA_ENDPOINT: "https://lambda.eu-central-1.amazonaws.com"
     mainnet_WALLET_SERVICE_LAMBDA_ENDPOINT: "https://lambda.eu-central-1.amazonaws.com"
+    mainnet_PUSH_NOTIFICATION_ENABLED: "false"
   # https://eu-central-1.console.aws.amazon.com/secretsmanager/home?region=eu-central-1#!/listSecrets
   secrets-manager:
     # Dev secrets

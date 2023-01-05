@@ -6,7 +6,7 @@ export default jest.mock('firebase-admin', () => ({
   credential: {
     cert: jest.fn(),
   },
-  initializeApp: jest.fn(),
+  initializeApp: initFirebaseAdminMock,
   messaging: messaging.mockImplementation(() => ({
     sendMulticast: sendMulticastMock.mockReturnValue({
       failureCount: 0,

@@ -91,10 +91,14 @@ const serviceAccount = {
 };
 
 if (isPushNotificationEnabled()) {
-  fcmAdmin.initializeApp({
-    credential: credential.cert(serviceAccount as ServiceAccount),
-    projectId: FIREBASE_PROJECT_ID,
-  });
+  try {
+    fcmAdmin.initializeApp({
+      credential: credential.cert(serviceAccount as ServiceAccount),
+      projectId: FIREBASE_PROJECT_ID,
+    });
+  } catch (error) {
+    logger.error(`Error initializing Firebase Admin SDK. ErrorMessage: ${error.message}`, error);
+  }
 }
 
 export enum PushNotificationError {
