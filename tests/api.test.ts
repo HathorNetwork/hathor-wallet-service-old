@@ -1565,7 +1565,7 @@ test('GET /wallet/proxy/transactions/{txId}', async () => {
   `);
 });
 
-test('GET /wallet/proxy/confirmation_data/{txId}', async () => {
+test('GET /wallet/proxy/{txId}/confirmation_data', async () => {
   expect.hasAssertions();
 
   const mockData = {
