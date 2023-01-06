@@ -1533,15 +1533,36 @@ test('GET /wallet/proxy/transactions/{txId}', async () => {
   const mockFullnodeResponse = jest.fn(() => Promise.resolve(mockData));
   spy.mockImplementation(mockFullnodeResponse);
 
-  const event = makeGatewayEventWithAuthorizer('my-wallet', {
+  let event = makeGatewayEventWithAuthorizer('my-wallet', {
     txId: '000011f5cd1c2bcb7e5e91567666042d8681deeca96263bca60f10c528b9af32',
   });
-  const result = await getTransactionById(event, null, null) as APIGatewayProxyResult;
-  const returnBody = JSON.parse(result.body as string);
+  let result = await getTransactionById(event, null, null) as APIGatewayProxyResult;
+  let returnBody = JSON.parse(result.body as string);
 
   expect(result.statusCode).toBe(200);
   expect(returnBody.success).toBe(true);
   expect(returnBody).toStrictEqual(mockData);
+
+  event = makeGatewayEventWithAuthorizer('my-wallet', {});
+  result = await getTransactionById(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody).toMatchInlineSnapshot(`
+    Object {
+      "details": Array [
+        Object {
+          "message": "\\"txId\\" is required",
+          "path": Array [
+            "txId",
+          ],
+        },
+      ],
+      "error": "invalid-payload",
+      "success": false,
+    }
+  `);
 });
 
 test('GET /wallet/proxy/confirmation_data/{txId}', async () => {
@@ -1560,15 +1581,37 @@ test('GET /wallet/proxy/confirmation_data/{txId}', async () => {
   const mockFullnodeResponse = jest.fn(() => Promise.resolve(mockData));
   spy.mockImplementation(mockFullnodeResponse);
 
-  const event = makeGatewayEventWithAuthorizer('my-wallet', {
+  let event = makeGatewayEventWithAuthorizer('my-wallet', {
     txId: '000011f5cd1c2bcb7e5e91567666042d8681deeca96263bca60f10c528b9af32',
   });
-  const result = await getConfirmationData(event, null, null) as APIGatewayProxyResult;
-  const returnBody = JSON.parse(result.body as string);
+  let result = await getConfirmationData(event, null, null) as APIGatewayProxyResult;
+  let returnBody = JSON.parse(result.body as string);
 
   expect(result.statusCode).toBe(200);
   expect(returnBody.success).toBe(true);
   expect(returnBody).toStrictEqual(mockData);
+
+  // Missing txId
+  event = makeGatewayEventWithAuthorizer('my-wallet', {});
+  result = await getConfirmationData(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody).toMatchInlineSnapshot(`
+    Object {
+      "details": Array [
+        Object {
+          "message": "\\"txId\\" is required",
+          "path": Array [
+            "txId",
+          ],
+        },
+      ],
+      "error": "invalid-payload",
+      "success": false,
+    }
+  `);
 });
 
 test('GET /wallet/proxy/graphviz/neighbors', async () => {
@@ -1592,6 +1635,7 @@ test('GET /wallet/proxy/graphviz/neighbors', async () => {
   expect(result.statusCode).toBe(200);
   expect(returnBody).toStrictEqual(mockData);
 
+  // Missing a single attribute
   event = makeGatewayEventWithAuthorizer('my-wallet', {
     txId: '000011f5cd1c2bcb7e5e91567666042d8681deeca96263bca60f10c528b9af32',
     graphType: 'verification',
@@ -1600,5 +1644,50 @@ test('GET /wallet/proxy/graphviz/neighbors', async () => {
   result = await queryGraphvizNeighbors(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(400);
-  expect(returnBody).toMatchInlineSnapshot();
+  expect(returnBody).toMatchInlineSnapshot(`
+    Object {
+      "details": Array [
+        Object {
+          "message": "\\"maxLevel\\" is required",
+          "path": Array [
+            "maxLevel",
+          ],
+        },
+      ],
+      "error": "invalid-payload",
+      "success": false,
+    }
+  `);
+
+  // Missing all attributes
+  event = makeGatewayEventWithAuthorizer('my-wallet', {});
+  result = await queryGraphvizNeighbors(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+  expect(result.statusCode).toBe(400);
+  expect(returnBody).toMatchInlineSnapshot(`
+    Object {
+      "details": Array [
+        Object {
+          "message": "\\"txId\\" is required",
+          "path": Array [
+            "txId",
+          ],
+        },
+        Object {
+          "message": "\\"graphType\\" is required",
+          "path": Array [
+            "graphType",
+          ],
+        },
+        Object {
+          "message": "\\"maxLevel\\" is required",
+          "path": Array [
+            "maxLevel",
+          ],
+        },
+      ],
+      "error": "invalid-payload",
+      "success": false,
+    }
+  `);
 });
