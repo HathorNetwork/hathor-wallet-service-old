@@ -22,7 +22,7 @@ export const create = (baseURL = BASE_URL): any => {
     timeout: TIMEOUT,
   });
 
-  const downloadTx = async (txId) => {
+  const downloadTx = async (txId: string) => {
     const response = await api.get(`transaction?id=${txId}`, {
       data: null,
       headers: { 'content-type': 'application/json' },
@@ -55,6 +55,7 @@ export const create = (baseURL = BASE_URL): any => {
   };
 
   return {
+    api, // exported so we can mock it on the tests
     downloadTx,
     getConfirmationData,
     queryGraphvizNeighbors,
