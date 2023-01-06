@@ -22,7 +22,7 @@ env:
     dev_WALLET_SERVICE_LAMBDA_ENDPOINT: "https://lambda.eu-central-1.amazonaws.com"
     dev_PUSH_NOTIFICATION_ENABLED: "false"
     testnet_DEFAULT_SERVER: "https://wallet-service.private-nodes.testnet.hathor.network/v1a/"
-    testnet_WS_DOMAIN: "ws.testnet.wallet-service.hathor.network"
+    testnet_WS_DOMAIN: "ws.wallet-service.testnet.hathor.network"
     testnet_NETWORK: "testnet"
     testnet_LOG_LEVEL: "info"
     testnet_EXPLORER_STAGE: "testnet"
