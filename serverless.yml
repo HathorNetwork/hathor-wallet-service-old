@@ -240,7 +240,7 @@ functions:
       walletWarmer:
         enabled: false
   loadWalletApi:
-    # role: arn:aws:iam::${self:provider.environment.ACCOUNT_ID}:role/WalletServiceLoadWalletLambda
+    role: arn:aws:iam::${self:provider.environment.ACCOUNT_ID}:role/WalletServiceLoadWalletLambda
     handler: src/api/wallet.load
     events:
       - http:
