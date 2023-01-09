@@ -38,7 +38,6 @@
     "redis": "^3.1.2",
     "sequelize": "^6.6.4",
     "serverless-mysql": "^1.5.4",
-    "serverless-plugin-resource-tagging": "^1.2.0",
     "source-map-support": "^0.5.19",
     "tiny-secp256k1": "^2.2.1",
     "uuid": "^8.3.0",

@@ -80,7 +80,6 @@ plugins:
   - serverless-plugin-warmup
   - serverless-iam-roles-per-function
   - serverless-plugin-aws-alerts
-  - serverless-plugin-resource-tagging
 
 resources:
   Resources:
