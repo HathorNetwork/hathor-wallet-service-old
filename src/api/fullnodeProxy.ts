@@ -8,17 +8,24 @@
 import 'source-map-support/register';
 
 import { APIGatewayProxyHandler } from 'aws-lambda';
+import middy from '@middy/core';
+import cors from '@middy/http-cors';
+import Joi from 'joi';
+
 import { ApiError } from '@src/api/errors';
-import { closeDbAndGetError } from '@src/api/utils';
+import { closeDbAndGetError, validateParams } from '@src/api/utils';
 import { walletIdProxyHandler } from '@src/commons';
 import fullnode from '@src/fullnode';
 import {
   closeDbConnection,
   getDbConnection,
 } from '@src/utils';
-import middy from '@middy/core';
-import cors from '@middy/http-cors';
-import Joi from 'joi';
+import {
+  GraphvizParams,
+  GetConfirmationDataParams,
+  GetTxByIdParams,
+  ParamValidationResult,
+} from '@src/types';
 
 const mysql = getDbConnection();
 
@@ -46,22 +53,15 @@ const graphvizValidator = Joi.object({
  */
 export const getTransactionById: APIGatewayProxyHandler = middy(walletIdProxyHandler(async (_walletId: string, event) => {
   const params = event.pathParameters || {};
+  const validationResult: ParamValidationResult = validateParams(txIdValidator, params);
 
-  const { value, error } = txIdValidator.validate(params, {
-    abortEarly: false,
-    convert: false,
-  });
-
-  if (error) {
-    const details = error.details.map((err) => ({
-      message: err.message,
-      path: err.path,
-    }));
-
-    return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, { details });
+  if (validationResult.error) {
+    return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, {
+      details: validationResult.details,
+    });
   }
 
-  const txId = value.txId;
+  const { txId } = validationResult.value as GetTxByIdParams;
   const transaction = await fullnode.downloadTx(txId);
 
   await closeDbConnection(mysql);
@@ -79,22 +79,15 @@ export const getTransactionById: APIGatewayProxyHandler = middy(walletIdProxyHan
  */
 export const getConfirmationData: APIGatewayProxyHandler = middy(walletIdProxyHandler(async (_walletId: string, event) => {
   const params = event.pathParameters || {};
+  const validationResult: ParamValidationResult = validateParams(txIdValidator, params);
 
-  const { value, error } = txIdValidator.validate(params, {
-    abortEarly: false,
-    convert: false,
-  });
-
-  if (error) {
-    const details = error.details.map((err) => ({
-      message: err.message,
-      path: err.path,
-    }));
-
-    return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, { details });
+  if (validationResult.error) {
+    return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, {
+      details: validationResult.details,
+    });
   }
 
-  const txId = value.txId;
+  const { txId } = validationResult.value as GetConfirmationDataParams;
   const confirmationData = await fullnode.getConfirmationData(txId);
 
   await closeDbConnection(mysql);
@@ -113,22 +106,25 @@ export const getConfirmationData: APIGatewayProxyHandler = middy(walletIdProxyHa
 export const queryGraphvizNeighbors: APIGatewayProxyHandler = middy(
   walletIdProxyHandler(async (_walletId: string, event) => {
     const params = event.queryStringParameters || {};
-
-    const { value, error } = graphvizValidator.validate(params, {
+    const validationResult: ParamValidationResult = validateParams(graphvizValidator, params, {
       abortEarly: false,
+      // Since we receive params as queryString,
+      // we want Joi to convert maxLevel from string to number
       convert: true,
     });
 
-    if (error) {
-      const details = error.details.map((err) => ({
-        message: err.message,
-        path: err.path,
-      }));
-
-      return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, { details });
+    if (validationResult.error) {
+      return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, {
+        details: validationResult.details,
+      });
     }
 
-    const { txId, graphType, maxLevel } = value;
+    const {
+      txId,
+      graphType,
+      maxLevel,
+    } = validationResult.value as GraphvizParams;
+
     const graphVizData = await fullnode.queryGraphvizNeighbors(txId, graphType, maxLevel);
 
     await closeDbConnection(mysql);
