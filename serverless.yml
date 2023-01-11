@@ -565,6 +565,53 @@ functions:
     warmup:
       walletWarmer:
         enabled: false
+  proxiedGetTxById:
+    handler: src/api/fullnodeProxy.getTransactionById
+    events:
+      - http:
+          path: wallet/proxy/transactions/{txId}
+          method: get
+          cors: true
+          authorizer: ${self:custom.authorizer.walletBearer}
+          request:
+            parameters:
+              paths:
+                txId: true
+          throttling:
+            maxRequestsPerSecond: 50
+    warmup:
+      walletWarmer:
+        enabled: false
+  proxiedGetConfirmationData:
+    handler: src/api/fullnodeProxy.getConfirmationData
+    events:
+      - http:
+          path: wallet/proxy/transactions/{txId}/confirmation_data
+          method: get
+          cors: true
+          authorizer: ${self:custom.authorizer.walletBearer}
+          request:
+            parameters:
+              paths:
+                txId: true
+          throttling:
+            maxRequestsPerSecond: 10
+    warmup:
+      walletWarmer:
+        enabled: false
+  proxiedGraphvizNeighborsQuery:
+    handler: src/api/fullnodeProxy.queryGraphvizNeighbors
+    events:
+      - http:
+          path: wallet/proxy/graphviz/neighbors
+          method: get
+          cors: true
+          authorizer: ${self:custom.authorizer.walletBearer}
+          throttling:
+            maxRequestsPerSecond: 20
+    warmup:
+      walletWarmer:
+        enabled: false
   sendNotificationToDevice:
     handler: src/api/pushSendNotificationToDevice.send
     warmup:

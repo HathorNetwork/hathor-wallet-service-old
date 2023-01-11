@@ -8,9 +8,18 @@
 import { APIGatewayProxyResult, APIGatewayProxyEvent } from 'aws-lambda';
 import { ServerlessMysql } from 'serverless-mysql';
 import middy from '@middy/core';
+import Joi, {
+  Schema,
+  ValidationOptions,
+  ValidationResult,
+} from 'joi';
 
 import { ApiError } from '@src/api/errors';
-import { PushProvider, StringMap } from '@src/types';
+import {
+  PushProvider,
+  StringMap,
+  ParamValidationResult,
+} from '@src/types';
 import { closeDbConnection } from '@src/utils';
 
 export const STATUS_CODE_TABLE = {
@@ -91,4 +100,34 @@ export const pushProviderRegexPattern = (): RegExp => {
   const entries = Object.values(PushProvider);
   const options = entries.join('|');
   return new RegExp(`^(?:${options})$`);
+};
+
+export const validateParams = <ResultType>(
+  validator: Schema,
+  params: unknown,
+  validatorOptions: ValidationOptions = {
+    abortEarly: false,
+    convert: false,
+  },
+): ParamValidationResult<ResultType> => {
+  const result: ValidationResult = validator.validate(params, validatorOptions);
+
+  const { error, value } = result;
+
+  if (error) {
+    const details = error.details.map((err) => ({
+      message: err.message,
+      path: err.path,
+    }));
+
+    return {
+      error: true,
+      details,
+    };
+  }
+
+  return {
+    error: false,
+    value,
+  };
 };
