@@ -22,7 +22,7 @@ export const create = (baseURL = BASE_URL): any => {
     timeout: TIMEOUT,
   });
 
-  const downloadTx = async (txId) => {
+  const downloadTx = async (txId: string) => {
     const response = await api.get(`transaction?id=${txId}`, {
       data: null,
       headers: { 'content-type': 'application/json' },
@@ -31,7 +31,35 @@ export const create = (baseURL = BASE_URL): any => {
     return response.data;
   };
 
-  return { downloadTx };
+  const getConfirmationData = async (txId: string) => {
+    const response = await api.get(`transaction_acc_weight?id=${txId}`, {
+      data: null,
+      headers: { 'content-type': 'application/json' },
+    });
+
+    return response.data;
+  };
+
+  const queryGraphvizNeighbors = async (
+    txId: string,
+    graphType: string,
+    maxLevel: number,
+  ) => {
+    const url = `graphviz/neighbours.dot/?tx=${txId}&graph_type=${graphType}&max_level=${maxLevel}`;
+    const response = await api.get(url, {
+      data: null,
+      headers: { 'content-type': 'application/json' },
+    });
+
+    return response.data;
+  };
+
+  return {
+    api, // exported so we can mock it on the tests
+    downloadTx,
+    getConfirmationData,
+    queryGraphvizNeighbors,
+  };
 };
 
 export default create();

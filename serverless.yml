@@ -39,10 +39,10 @@ custom:
     topics: # SNS Topics to send alerts to
       major:
         alarm:
-          topic: arn:aws:sns:eu-central-1:769498303037:opsgenie-cloudwatch-integration-production-major
+          topic: arn:aws:sns:eu-central-1:${self:provider.environment.ACCOUNT_ID}:opsgenie-cloudwatch-integration-production-major
       minor:
         alarm:
-          topic: arn:aws:sns:eu-central-1:769498303037:opsgenie-cloudwatch-integration-production-minor
+          topic: arn:aws:sns:eu-central-1:${self:provider.environment.ACCOUNT_ID}:opsgenie-cloudwatch-integration-production-minor
     definitions: # Definition of alarms
       majorFunctionErrors:
         description: "Too many errors in hathor-wallet-service. Runbook: https://github.com/HathorNetwork/ops-tools/blob/master/docs/runbooks/wallet-service/errors-in-logs.md"
@@ -119,9 +119,13 @@ provider:
       - ${env:AWS_SUBNET_ID_1}
       - ${env:AWS_SUBNET_ID_2}
       - ${env:AWS_SUBNET_ID_3}
+  stackTags:
+    Application: "hathor-wallet-service"
+    Stage: "${self:custom.stage}"
   apiGateway:
     minimumCompressionSize: 1024 # Enable gzip compression for responses > 1 KB
   environment:
+    ACCOUNT_ID: ${env:ACCOUNT_ID}
     ADMINTOKEN: ${env:ADMINTOKEN}
     AUTH_SECRET: ${env:AUTH_SECRET}
     AWS_VPC_DEFAULT_SG_ID: ${env:AWS_VPC_DEFAULT_SG_ID}
@@ -228,14 +232,14 @@ functions:
           - lambda:InvokeFunction
           - lambda:InvokeAsync
         Resource:
-          arn:aws:lambda:eu-central-1:769498303037:function:hathor-explorer-service-${self:custom.explorerServiceStage}-create_or_update_dag_metadata
+          arn:aws:lambda:eu-central-1:${self:provider.environment.ACCOUNT_ID}:function:hathor-explorer-service-${self:custom.explorerServiceStage}-create_or_update_dag_metadata
   loadWalletAsync:
     handler: src/api/wallet.loadWallet
     warmup:
       walletWarmer:
         enabled: false
   loadWalletApi:
-    role: arn:aws:iam::769498303037:role/WalletServiceLoadWalletLambda
+    role: arn:aws:iam::${self:provider.environment.ACCOUNT_ID}:role/WalletServiceLoadWalletLambda
     handler: src/api/wallet.load
     events:
       - http:
@@ -558,6 +562,53 @@ functions:
             parameters:
               paths:
                 txId: true
+    warmup:
+      walletWarmer:
+        enabled: false
+  proxiedGetTxById:
+    handler: src/api/fullnodeProxy.getTransactionById
+    events:
+      - http:
+          path: wallet/proxy/transactions/{txId}
+          method: get
+          cors: true
+          authorizer: ${self:custom.authorizer.walletBearer}
+          request:
+            parameters:
+              paths:
+                txId: true
+          throttling:
+            maxRequestsPerSecond: 50
+    warmup:
+      walletWarmer:
+        enabled: false
+  proxiedGetConfirmationData:
+    handler: src/api/fullnodeProxy.getConfirmationData
+    events:
+      - http:
+          path: wallet/proxy/transactions/{txId}/confirmation_data
+          method: get
+          cors: true
+          authorizer: ${self:custom.authorizer.walletBearer}
+          request:
+            parameters:
+              paths:
+                txId: true
+          throttling:
+            maxRequestsPerSecond: 10
+    warmup:
+      walletWarmer:
+        enabled: false
+  proxiedGraphvizNeighborsQuery:
+    handler: src/api/fullnodeProxy.queryGraphvizNeighbors
+    events:
+      - http:
+          path: wallet/proxy/graphviz/neighbors
+          method: get
+          cors: true
+          authorizer: ${self:custom.authorizer.walletBearer}
+          throttling:
+            maxRequestsPerSecond: 20
     warmup:
       walletWarmer:
         enabled: false

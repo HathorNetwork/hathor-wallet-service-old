@@ -725,6 +725,26 @@ export interface TxByIdToken {
   tokenSymbol: string;
 }
 
+export interface ParamValidationResult<ValueType> {
+  error: boolean;
+  details?: { message: string, path: (string | number)[] }[],
+  value?: ValueType;
+}
+
+export interface GraphvizParams {
+  txId: string;
+  graphType: string;
+  maxLevel: number;
+}
+
+export interface GetTxByIdParams {
+  txId: string;
+}
+
+export interface GetConfirmationDataParams {
+  txId: string;
+}
+
 export interface SendNotificationToDevice {
   deviceId: string,
   /**
