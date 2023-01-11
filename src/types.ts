@@ -725,10 +725,10 @@ export interface TxByIdToken {
   tokenSymbol: string;
 }
 
-export interface ParamValidationResult {
+export interface ParamValidationResult<ValueType> {
   error: boolean;
   details?: { message: string, path: (string | number)[] }[],
-  value?: any;
+  value?: ValueType;
 }
 
 export interface GraphvizParams {

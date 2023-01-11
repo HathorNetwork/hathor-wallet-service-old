@@ -102,14 +102,14 @@ export const pushProviderRegexPattern = (): RegExp => {
   return new RegExp(`^(?:${options})$`);
 };
 
-export const validateParams = (
+export const validateParams = <ResultType>(
   validator: Schema,
   params: unknown,
   validatorOptions: ValidationOptions = {
     abortEarly: false,
     convert: false,
   },
-): ParamValidationResult => {
+): ParamValidationResult<ResultType> => {
   const result: ValidationResult = validator.validate(params, validatorOptions);
 
   const { error, value } = result;

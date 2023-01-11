@@ -43,7 +43,7 @@ export const create = (baseURL = BASE_URL): any => {
   const queryGraphvizNeighbors = async (
     txId: string,
     graphType: string,
-    maxLevel: string,
+    maxLevel: number,
   ) => {
     const url = `graphviz/neighbours.dot/?tx=${txId}&graph_type=${graphType}&max_level=${maxLevel}`;
     const response = await api.get(url, {

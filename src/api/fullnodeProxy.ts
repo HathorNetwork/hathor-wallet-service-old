@@ -53,7 +53,7 @@ const graphvizValidator = Joi.object({
  */
 export const getTransactionById: APIGatewayProxyHandler = middy(walletIdProxyHandler(async (_walletId: string, event) => {
   const params = event.pathParameters || {};
-  const validationResult: ParamValidationResult = validateParams(txIdValidator, params);
+  const validationResult: ParamValidationResult<GetTxByIdParams> = validateParams(txIdValidator, params);
 
   if (validationResult.error) {
     return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, {
@@ -61,7 +61,7 @@ export const getTransactionById: APIGatewayProxyHandler = middy(walletIdProxyHan
     });
   }
 
-  const { txId } = validationResult.value as GetTxByIdParams;
+  const { txId } = validationResult.value;
   const transaction = await fullnode.downloadTx(txId);
 
   await closeDbConnection(mysql);
@@ -79,7 +79,7 @@ export const getTransactionById: APIGatewayProxyHandler = middy(walletIdProxyHan
  */
 export const getConfirmationData: APIGatewayProxyHandler = middy(walletIdProxyHandler(async (_walletId: string, event) => {
   const params = event.pathParameters || {};
-  const validationResult: ParamValidationResult = validateParams(txIdValidator, params);
+  const validationResult: ParamValidationResult<GetConfirmationDataParams> = validateParams(txIdValidator, params);
 
   if (validationResult.error) {
     return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, {
@@ -87,7 +87,7 @@ export const getConfirmationData: APIGatewayProxyHandler = middy(walletIdProxyHa
     });
   }
 
-  const { txId } = validationResult.value as GetConfirmationDataParams;
+  const { txId } = validationResult.value;
   const confirmationData = await fullnode.getConfirmationData(txId);
 
   await closeDbConnection(mysql);
@@ -106,7 +106,7 @@ export const getConfirmationData: APIGatewayProxyHandler = middy(walletIdProxyHa
 export const queryGraphvizNeighbors: APIGatewayProxyHandler = middy(
   walletIdProxyHandler(async (_walletId: string, event) => {
     const params = event.queryStringParameters || {};
-    const validationResult: ParamValidationResult = validateParams(graphvizValidator, params, {
+    const validationResult: ParamValidationResult<GraphvizParams> = validateParams<GraphvizParams>(graphvizValidator, params, {
       abortEarly: false,
       // Since we receive params as queryString,
       // we want Joi to convert maxLevel from string to number
@@ -123,7 +123,7 @@ export const queryGraphvizNeighbors: APIGatewayProxyHandler = middy(
       txId,
       graphType,
       maxLevel,
-    } = validationResult.value as GraphvizParams;
+    } = validationResult.value;
 
     const graphVizData = await fullnode.queryGraphvizNeighbors(txId, graphType, maxLevel);
 
