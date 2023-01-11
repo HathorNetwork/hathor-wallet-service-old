@@ -114,7 +114,7 @@ export const validateParams = <ResultType>(
 
   const { error, value } = result;
 
-  if (result.error) {
+  if (error) {
     const details = error.details.map((err) => ({
       message: err.message,
       path: err.path,
