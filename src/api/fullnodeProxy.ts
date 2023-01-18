@@ -101,9 +101,9 @@ export const getConfirmationData: APIGatewayProxyHandler = middy(walletIdProxyHa
 /*
  * Makes graphviz queries on the fullnode
  *
- * This lambda is called by API Gateway on GET /wallet/proxy/graphviz/neighbors
+ * This lambda is called by API Gateway on GET /wallet/proxy/graphviz/neighbours
  */
-export const queryGraphvizNeighbors: APIGatewayProxyHandler = middy(
+export const queryGraphvizNeighbours: APIGatewayProxyHandler = middy(
   walletIdProxyHandler(async (_walletId: string, event) => {
     const params = event.queryStringParameters || {};
     const validationResult: ParamValidationResult<GraphvizParams> = validateParams<GraphvizParams>(graphvizValidator, params, {
@@ -125,7 +125,7 @@ export const queryGraphvizNeighbors: APIGatewayProxyHandler = middy(
       maxLevel,
     } = validationResult.value;
 
-    const graphVizData = await fullnode.queryGraphvizNeighbors(txId, graphType, maxLevel);
+    const graphVizData = await fullnode.queryGraphvizNeighbours(txId, graphType, maxLevel);
 
     await closeDbConnection(mysql);
 
