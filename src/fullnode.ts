@@ -40,7 +40,7 @@ export const create = (baseURL = BASE_URL): any => {
     return response.data;
   };
 
-  const queryGraphvizNeighbors = async (
+  const queryGraphvizNeighbours = async (
     txId: string,
     graphType: string,
     maxLevel: number,
@@ -58,7 +58,7 @@ export const create = (baseURL = BASE_URL): any => {
     api, // exported so we can mock it on the tests
     downloadTx,
     getConfirmationData,
-    queryGraphvizNeighbors,
+    queryGraphvizNeighbours,
   };
 };
 

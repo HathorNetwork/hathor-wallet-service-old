@@ -4,18 +4,17 @@ import { get as addressesGet, checkMine } from '@src/api/addresses';
 import { get as newAddressesGet } from '@src/api/newAddresses';
 import { get as balancesGet } from '@src/api/balances';
 import { get as txHistoryGet } from '@src/api/txhistory';
-import { get as walletTokensGet } from '@src/api/tokens';
+import { get as walletTokensGet, getTokenDetails } from '@src/api/tokens';
 import { get as getVersionDataGet } from '@src/api/version';
 import {
   getTransactionById,
   getConfirmationData,
-  queryGraphvizNeighbors,
+  queryGraphvizNeighbours,
 } from '@src/api/fullnodeProxy';
 import { create as txProposalCreate } from '@src/api/txProposalCreate';
 import { send as txProposalSend } from '@src/api/txProposalSend';
 import { destroy as txProposalDestroy } from '@src/api/txProposalDestroy';
 import { getFilteredUtxos, getFilteredTxOutputs } from '@src/api/txOutputs';
-import { getTokenDetails } from '@src/api/tokens';
 import {
   get as walletGet,
   load as walletLoad,
@@ -1614,12 +1613,12 @@ test('GET /wallet/proxy/{txId}/confirmation_data', async () => {
   `);
 });
 
-test('GET /wallet/proxy/graphviz/neighbors', async () => {
+test('GET /wallet/proxy/graphviz/neighbours', async () => {
   expect.hasAssertions();
 
   const mockData = 'digraph {}';
 
-  const spy = jest.spyOn(fullnode, 'queryGraphvizNeighbors');
+  const spy = jest.spyOn(fullnode, 'queryGraphvizNeighbours');
 
   const mockFullnodeResponse = jest.fn(() => Promise.resolve(mockData));
   spy.mockImplementation(mockFullnodeResponse);
@@ -1629,7 +1628,7 @@ test('GET /wallet/proxy/graphviz/neighbors', async () => {
     graphType: 'verification',
     maxLevel: '1',
   });
-  let result = await queryGraphvizNeighbors(event, null, null) as APIGatewayProxyResult;
+  let result = await queryGraphvizNeighbours(event, null, null) as APIGatewayProxyResult;
   let returnBody = JSON.parse(result.body as string);
 
   expect(result.statusCode).toBe(200);
@@ -1641,7 +1640,7 @@ test('GET /wallet/proxy/graphviz/neighbors', async () => {
     graphType: 'verification',
   });
 
-  result = await queryGraphvizNeighbors(event, null, null) as APIGatewayProxyResult;
+  result = await queryGraphvizNeighbours(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(400);
   expect(returnBody).toMatchInlineSnapshot(`
@@ -1661,7 +1660,7 @@ test('GET /wallet/proxy/graphviz/neighbors', async () => {
 
   // Missing all attributes
   event = makeGatewayEventWithAuthorizer('my-wallet', {});
-  result = await queryGraphvizNeighbors(event, null, null) as APIGatewayProxyResult;
+  result = await queryGraphvizNeighbours(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(400);
   expect(returnBody).toMatchInlineSnapshot(`

@@ -600,10 +600,10 @@ functions:
       walletWarmer:
         enabled: false
   proxiedGraphvizNeighborsQuery:
-    handler: src/api/fullnodeProxy.queryGraphvizNeighbors
+    handler: src/api/fullnodeProxy.queryGraphvizNeighbours
     events:
       - http:
-          path: wallet/proxy/graphviz/neighbors
+          path: wallet/proxy/graphviz/neighbours
           method: get
           cors: true
           authorizer: ${self:custom.authorizer.walletBearer}
