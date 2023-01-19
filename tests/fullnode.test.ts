@@ -42,7 +42,7 @@ test('getConfirmationData', async () => {
   expect(response).toStrictEqual(mockData);
 });
 
-test('queryGraphvizNeighbors', async () => {
+test('queryGraphvizNeighbours', async () => {
   expect.hasAssertions();
 
   const mockData = 'diagraph {}';
@@ -53,6 +53,6 @@ test('queryGraphvizNeighbors', async () => {
     data: mockData,
   }));
 
-  const response = await fullnode.queryGraphvizNeighbors('tx1', 'test', 1);
+  const response = await fullnode.queryGraphvizNeighbours('tx1', 'test', 1);
   expect(response).toStrictEqual(mockData);
 });
