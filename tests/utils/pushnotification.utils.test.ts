@@ -29,7 +29,9 @@ describe('PushNotificationUtils', () => {
       FIREBASE_TOKEN_URI: 'https://oauth2.googleapis.com/token',
       FIREBASE_AUTH_PROVIDER_X509_CERT_URL: 'https://www.googleapis.com/oauth2/v1/certs',
       FIREBASE_CLIENT_X509_CERT_URL: 'https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk.iam.gserviceaccount.com',
+      PUSH_ALLOWED_PROVIDERS: 'android,ios',
     };
+    initFirebaseAdminMock.mockReset();
     jest.resetModules();
   });
 
@@ -44,7 +46,6 @@ describe('PushNotificationUtils', () => {
     // load local env
     process.env.PUSH_NOTIFICATION_ENABLED = 'true';
     logger.error.mockReset();
-    initFirebaseAdminMock.mockReset();
     initFirebaseAdminMock.mockImplementation(() => {
       throw new Error('Failed to parse private key: Error: Invalid PEM formatted message.');
     });
@@ -193,6 +194,18 @@ describe('PushNotificationUtils', () => {
       const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
 
       expect(logger.error).toHaveBeenLastCalledWith('[ALERT] env.FIREBASE_CLIENT_X509_CERT_URL can not be null or undefined.');
+    });
+
+    it('PUSH_ALLOWED_PROVIDERS', () => {
+      expect.hasAssertions();
+
+      // load local env
+      process.env.PUSH_ALLOWED_PROVIDERS = '';
+
+      // reload module
+      const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
+
+      expect(logger.error).toHaveBeenLastCalledWith('[ALERT] env.PUSH_ALLOWED_PROVIDERS is empty.');
     });
   });
 
@@ -461,13 +474,7 @@ describe('PushNotificationUtils', () => {
       const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
 
       const walletMap = buildWalletBalanceValueMap();
-      await expect(
-        PushNotificationUtils.invokeOnTxPushNotificationRequestedLambda(
-          walletMap,
-        ),
-      ).rejects.toMatchInlineSnapshot(
-        '[Error: hathor-wallet-service-stage-onTxPushNotificationRequested lambda invoke failed for wallets: wallet1]',
-      );
+      await expect(PushNotificationUtils.invokeOnTxPushNotificationRequestedLambda(walletMap)).rejects.toMatchInlineSnapshot('[Error: hathor-wallet-service-stage-txPushRequested lambda invoke failed for wallets: wallet1]');
     });
   });
 });

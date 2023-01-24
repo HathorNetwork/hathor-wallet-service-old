@@ -71,7 +71,7 @@ class TxPushNotificationRequestValidator {
  * This lambda is called internally by an invoker.
  */
 // eslint-disable-next-line max-len
-export const handleRequest: Handler<{ body: StringMap<WalletBalanceValue> }, { success: boolean, message?: string, details?: unknown }> = async (event, context) => {
+export const handleRequest: Handler<StringMap<WalletBalanceValue>, { success: boolean, message?: string, details?: unknown }> = async (event, context) => {
   const logger = createDefaultLogger();
   // Logs the request id on every line, so we can see all logs from a request
   logger.defaultMeta = {

@@ -1,3 +1,4 @@
+/* eslint-disable global-require */
 import { logger } from '@tests/winston.mock'; // most be the first to import
 import { initFirebaseAdminMock } from '@tests/utils/firebase-admin.mock';
 import {
@@ -25,14 +26,35 @@ initFirebaseAdminMock();
 const spyOnSendToFcm = jest.spyOn(PushNotificationUtils, 'sendToFcm');
 const spyOnLoggerError = jest.spyOn(logger, 'error');
 
+const initEnv = process.env;
+
 beforeEach(async () => {
+  process.env = {
+    ...initEnv,
+    PUSH_ALLOWED_PROVIDERS: 'android,ios',
+  };
   spyOnSendToFcm.mockClear();
   spyOnLoggerError.mockClear();
   await cleanDatabase(mysql);
+  jest.resetModules();
+});
+
+afterEach(() => {
+  process.env = initEnv;
 });
 
 afterAll(async () => {
   await closeDbConnection(mysql);
+});
+
+const buildEventPayload = (options?) => ({
+  deviceId: 'device1',
+  metadata: {
+    titleLocKey: 'new_transaction_received_title',
+    bodyLocKey: 'new_transaction_received_description_without_tokens',
+    txId: '00e2597222154cf99bfef171e27374e7f35aa7448afae10c15e9f049b95a3e67',
+    ...options,
+  },
 });
 
 test('send push notification to the right provider', async () => {
@@ -59,18 +81,10 @@ test('send push notification to the right provider', async () => {
   }));
   await register(event, null, null) as APIGatewayProxyResult;
 
-  const validPayload = {
-    deviceId: 'device1',
-    title: 'You have a new transaction',
-    description: '5HTR was sent to my-wallet',
-    metadata: {
-      txId: '00e2597222154cf99bfef171e27374e7f35aa7448afae10c15e9f049b95a3e67',
-    },
-  };
-  const sendEvent = { body: validPayload };
+  const validPayload = buildEventPayload();
   const sendContext = { awsRequestId: '123' } as Context;
 
-  const result = await send(sendEvent, sendContext, null) as { success: boolean, message?: string };
+  const result = await send(validPayload, sendContext, null) as { success: boolean, message?: string };
 
   expect(result.success).toStrictEqual(true);
   expect(spyOnSendToFcm).toHaveBeenCalledTimes(1);
@@ -104,18 +118,10 @@ test('should unregister device when invalid device id', async () => {
     checkPushDevicesTable(mysql, 1),
   ).resolves.toBe(true);
 
-  const validPayload = {
-    deviceId: 'device1',
-    title: 'You have a new transaction',
-    description: '5HTR was sent to my-wallet',
-    metadata: {
-      txId: '00e2597222154cf99bfef171e27374e7f35aa7448afae10c15e9f049b95a3e67',
-    },
-  };
-  const sendEvent = { body: validPayload };
+  const validPayload = buildEventPayload();
   const sendContext = { awsRequestId: '123' } as Context;
 
-  const result = await send(sendEvent, sendContext, null) as { success: boolean, message?: string };
+  const result = await send(validPayload, sendContext, null) as { success: boolean, message?: string };
 
   expect(result.success).toStrictEqual(false);
   expect(result.message).toStrictEqual('Failed due to invalid device id.');
@@ -221,18 +227,12 @@ describe('alert', () => {
   it('should alert when push device not found', async () => {
     expect.hasAssertions();
 
-    const validPayload = {
-      deviceId: 'device1',
-      title: 'You have a new transaction',
-      description: '5HTR was sent to my-wallet',
-      metadata: {
-        txId: '00e2597222154cf99bfef171e27374e7f35aa7448afae10c15e9f049b95a3e67',
-      },
-    };
-    const sendEvent = { body: validPayload };
+    // skip device registration
+
+    const validPayload = buildEventPayload();
     const sendContext = { awsRequestId: '123' } as Context;
 
-    const result = await send(sendEvent, sendContext, null) as { success: boolean, message?: string };
+    const result = await send(validPayload, sendContext, null) as { success: boolean, message?: string };
 
     expect(result.success).toStrictEqual(false);
     expect(result.message).not.toBeNull();
@@ -241,6 +241,10 @@ describe('alert', () => {
 
   it('should alert when provider not implemented', async () => {
     expect.hasAssertions();
+
+    // allow android and desktop, while test for ios provider
+    process.env.PUSH_ALLOWED_PROVIDERS = 'android,desktop';
+    require('@src/api/pushSendNotificationToDevice');
 
     await addToWalletTable(mysql, [{
       id: 'my-wallet',
@@ -260,18 +264,10 @@ describe('alert', () => {
     }));
     await register(event, null, null) as APIGatewayProxyResult;
 
-    const validPayload = {
-      deviceId: 'device1',
-      title: 'You have a new transaction',
-      description: '5HTR was sent to my-wallet',
-      metadata: {
-        txId: '00e2597222154cf99bfef171e27374e7f35aa7448afae10c15e9f049b95a3e67',
-      },
-    };
-    const sendEvent = { body: validPayload };
+    const validPayload = buildEventPayload();
     const sendContext = { awsRequestId: '123' } as Context;
 
-    const result = await send(sendEvent, sendContext, null) as { success: boolean, message?: string };
+    const result = await send(validPayload, sendContext, null) as { success: boolean, message?: string };
 
     expect(result.success).toStrictEqual(false);
     expect(result.message).not.toBeNull();

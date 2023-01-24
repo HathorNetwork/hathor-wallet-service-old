@@ -16,6 +16,52 @@ const mysql = getDbConnection();
 initFirebaseAdminMock();
 const spyOnInvokeSendNotification = jest.spyOn(PushNotificationUtils, 'invokeSendNotificationHandlerLambda');
 
+const buildEvent = (walletId, txId, walletBalanceForTx?): StringMap<WalletBalanceValue> => ({
+  [walletId]: {
+    walletId,
+    addresses: [
+      'addr2',
+    ],
+    txId,
+    walletBalanceForTx: walletBalanceForTx || [
+      {
+        tokenId: 'token2',
+        tokenSymbol: 'T2',
+        lockExpires: null,
+        lockedAmount: 0,
+        lockedAuthorities: {
+          melt: false,
+          mint: false,
+        },
+        total: 10,
+        totalAmountSent: 10,
+        unlockedAmount: 10,
+        unlockedAuthorities: {
+          melt: false,
+          mint: false,
+        },
+      },
+      {
+        tokenId: 'token1',
+        tokenSymbol: 'T1',
+        lockExpires: null,
+        lockedAmount: 0,
+        lockedAuthorities: {
+          melt: false,
+          mint: false,
+        },
+        totalAmountSent: 5,
+        unlockedAmount: 5,
+        unlockedAuthorities: {
+          melt: false,
+          mint: false,
+        },
+        total: 5,
+      },
+    ],
+  },
+});
+
 beforeEach(async () => {
   jest.resetAllMocks();
   await cleanDatabase(mysql);
@@ -48,52 +94,43 @@ describe('success', () => {
     await registerPushDevice(mysql, pushDevice);
 
     const txId = 'txId1';
-    const validPayload = {
-      [walletId]: {
-        walletId,
-        addresses: [
-          'addr2',
-        ],
-        txId,
-        walletBalanceForTx: [
-          {
-            tokenId: 'token2',
-            tokenSymbol: 'T2',
-            lockExpires: null,
-            lockedAmount: 0,
-            lockedAuthorities: {
-              melt: false,
-              mint: false,
-            },
-            total: 10,
-            totalAmountSent: 10,
-            unlockedAmount: 10,
-            unlockedAuthorities: {
-              melt: false,
-              mint: false,
-            },
-          },
-          {
-            tokenId: 'token1',
-            tokenSymbol: 'T1',
-            lockExpires: null,
-            lockedAmount: 0,
-            lockedAuthorities: {
-              melt: false,
-              mint: false,
-            },
-            totalAmountSent: 5,
-            unlockedAmount: 5,
-            unlockedAuthorities: {
-              melt: false,
-              mint: false,
-            },
-            total: 5,
-          },
-        ],
+
+    const sendEvent = buildEvent(walletId, txId, [
+      {
+        tokenId: 'token2',
+        tokenSymbol: 'T2',
+        lockExpires: null,
+        lockedAmount: 0,
+        lockedAuthorities: {
+          melt: false,
+          mint: false,
+        },
+        total: 10,
+        totalAmountSent: 10,
+        unlockedAmount: 10,
+        unlockedAuthorities: {
+          melt: false,
+          mint: false,
+        },
       },
-    } as StringMap<WalletBalanceValue>;
-    const sendEvent = { body: validPayload };
+      {
+        tokenId: 'token1',
+        tokenSymbol: 'T1',
+        lockExpires: null,
+        lockedAmount: 0,
+        lockedAuthorities: {
+          melt: false,
+          mint: false,
+        },
+        totalAmountSent: 5,
+        unlockedAmount: 5,
+        unlockedAuthorities: {
+          melt: false,
+          mint: false,
+        },
+        total: 5,
+      },
+    ]);
     const sendContext = { awsRequestId: '123' } as Context;
 
     const result = await handleRequest(sendEvent, sendContext, null) as { success: boolean, message?: string, details?: unknown };
@@ -140,35 +177,25 @@ describe('success', () => {
 
     await storeTokenInformation(mysql, 'token2', 'token2', 'T2');
 
-    const payloadWith1Token = {
-      [walletId]: {
-        walletId,
-        addresses: [
-          'addr2',
-        ],
-        txId,
-        walletBalanceForTx: [
-          {
-            tokenId: 'token2',
-            tokenSymbol: 'T2',
-            lockExpires: null,
-            lockedAmount: 0,
-            lockedAuthorities: {
-              melt: false,
-              mint: false,
-            },
-            total: 10,
-            totalAmountSent: 10,
-            unlockedAmount: 10,
-            unlockedAuthorities: {
-              melt: false,
-              mint: false,
-            },
-          },
-        ],
+    const sendEvent = buildEvent(walletId, txId, [
+      {
+        tokenId: 'token2',
+        tokenSymbol: 'T2',
+        lockExpires: null,
+        lockedAmount: 0,
+        lockedAuthorities: {
+          melt: false,
+          mint: false,
+        },
+        total: 10,
+        totalAmountSent: 10,
+        unlockedAmount: 10,
+        unlockedAuthorities: {
+          melt: false,
+          mint: false,
+        },
       },
-    } as StringMap<WalletBalanceValue>;
-    const sendEvent = { body: payloadWith1Token };
+    ]);
     const sendContext = { awsRequestId: '123' } as Context;
 
     const result = await handleRequest(sendEvent, sendContext, null) as { success: boolean, message?: string, details?: unknown };
@@ -202,35 +229,26 @@ describe('success', () => {
 
     it('token balance with 1 token', async () => {
       expect.hasAssertions();
-      const payloadWith1Token = {
-        [walletId]: {
-          walletId,
-          addresses: [
-            'addr2',
-          ],
-          txId,
-          walletBalanceForTx: [
-            {
-              tokenId: 'token2',
-              tokenSymbol: 'T2',
-              lockExpires: null,
-              lockedAmount: 0,
-              lockedAuthorities: {
-                melt: false,
-                mint: false,
-              },
-              total: 10,
-              totalAmountSent: 10,
-              unlockedAmount: 10,
-              unlockedAuthorities: {
-                melt: false,
-                mint: false,
-              },
-            },
-          ],
+
+      const sendEvent = buildEvent(walletId, txId, [
+        {
+          tokenId: 'token2',
+          tokenSymbol: 'T2',
+          lockExpires: null,
+          lockedAmount: 0,
+          lockedAuthorities: {
+            melt: false,
+            mint: false,
+          },
+          total: 10,
+          totalAmountSent: 10,
+          unlockedAmount: 10,
+          unlockedAuthorities: {
+            melt: false,
+            mint: false,
+          },
         },
-      } as StringMap<WalletBalanceValue>;
-      const sendEvent = { body: payloadWith1Token };
+      ]);
       const sendContext = { awsRequestId: '123' } as Context;
 
       const result = await handleRequest(sendEvent, sendContext, null) as { success: boolean, message?: string, details?: unknown };
@@ -245,7 +263,7 @@ Object {
   "deviceId": "device1",
   "metadata": Object {
     "bodyLocArgs": "[\\"10 T2\\"]",
-    "bodyLocKey": "new_transaction_received_description_without_tokens",
+    "bodyLocKey": "new_transaction_received_description_with_tokens",
     "titleLocKey": "new_transaction_received_title",
     "txId": "txId1",
   },
@@ -255,52 +273,43 @@ Object {
 
     it('token balance with 2 token', async () => {
       expect.hasAssertions();
-      const payloadWith1Token = {
-        [walletId]: {
-          walletId,
-          addresses: [
-            'addr2',
-          ],
-          txId,
-          walletBalanceForTx: [
-            {
-              tokenId: 'token2',
-              tokenSymbol: 'T2',
-              lockExpires: null,
-              lockedAmount: 0,
-              lockedAuthorities: {
-                melt: false,
-                mint: false,
-              },
-              total: 10,
-              totalAmountSent: 10,
-              unlockedAmount: 10,
-              unlockedAuthorities: {
-                melt: false,
-                mint: false,
-              },
-            },
-            {
-              tokenId: 'token1',
-              tokenSymbol: 'T1',
-              lockExpires: null,
-              lockedAmount: 0,
-              lockedAuthorities: {
-                melt: false,
-                mint: false,
-              },
-              totalAmountSent: 5,
-              unlockedAmount: 5,
-              unlockedAuthorities: {
-                melt: false,
-                mint: false,
-              },
-              total: 5,
-            },
-          ],
+
+      const sendEvent = buildEvent(walletId, txId, [
+        {
+          tokenId: 'token2',
+          tokenSymbol: 'T2',
+          lockExpires: null,
+          lockedAmount: 0,
+          lockedAuthorities: {
+            melt: false,
+            mint: false,
+          },
+          total: 10,
+          totalAmountSent: 10,
+          unlockedAmount: 10,
+          unlockedAuthorities: {
+            melt: false,
+            mint: false,
+          },
         },
-      } as StringMap<WalletBalanceValue>;
-      const sendEvent = { body: payloadWith1Token };
+        {
+          tokenId: 'token1',
+          tokenSymbol: 'T1',
+          lockExpires: null,
+          lockedAmount: 0,
+          lockedAuthorities: {
+            melt: false,
+            mint: false,
+          },
+          totalAmountSent: 5,
+          unlockedAmount: 5,
+          unlockedAuthorities: {
+            melt: false,
+            mint: false,
+          },
+          total: 5,
+        },
+      ]);
       const sendContext = { awsRequestId: '123' } as Context;
 
       const result = await handleRequest(sendEvent, sendContext, null) as { success: boolean, message?: string, details?: unknown };
@@ -315,7 +324,7 @@ Object {
   "deviceId": "device1",
   "metadata": Object {
     "bodyLocArgs": "[\\"10 T2\\",\\"5 T1\\"]",
-    "bodyLocKey": "new_transaction_received_description_without_tokens",
+    "bodyLocKey": "new_transaction_received_description_with_tokens",
     "titleLocKey": "new_transaction_received_title",
     "txId": "txId1",
   },
@@ -325,69 +334,60 @@ Object {
 
     it('token balance with 3 tokens', async () => {
       expect.hasAssertions();
-      const payloadWith1Token = {
-        [walletId]: {
-          walletId,
-          addresses: [
-            'addr2',
-          ],
-          txId,
-          walletBalanceForTx: [
-            {
-              tokenId: 'token2',
-              tokenSymbol: 'T2',
-              lockExpires: null,
-              lockedAmount: 0,
-              lockedAuthorities: {
-                melt: false,
-                mint: false,
-              },
-              total: 10,
-              totalAmountSent: 10,
-              unlockedAmount: 10,
-              unlockedAuthorities: {
-                melt: false,
-                mint: false,
-              },
-            },
-            {
-              tokenId: 'token1',
-              tokenSymbol: 'T1',
-              lockExpires: null,
-              lockedAmount: 0,
-              lockedAuthorities: {
-                melt: false,
-                mint: false,
-              },
-              totalAmountSent: 5,
-              unlockedAmount: 5,
-              unlockedAuthorities: {
-                melt: false,
-                mint: false,
-              },
-              total: 5,
-            },
-            {
-              tokenId: 'token3',
-              tokenSymbol: 'T3',
-              lockExpires: null,
-              lockedAmount: 0,
-              lockedAuthorities: {
-                melt: false,
-                mint: false,
-              },
-              totalAmountSent: 1,
-              unlockedAmount: 1,
-              unlockedAuthorities: {
-                melt: false,
-                mint: false,
-              },
-              total: 1,
-            },
-          ],
+
+      const sendEvent = buildEvent(walletId, txId, [
+        {
+          tokenId: 'token2',
+          tokenSymbol: 'T2',
+          lockExpires: null,
+          lockedAmount: 0,
+          lockedAuthorities: {
+            melt: false,
+            mint: false,
+          },
+          total: 10,
+          totalAmountSent: 10,
+          unlockedAmount: 10,
+          unlockedAuthorities: {
+            melt: false,
+            mint: false,
+          },
         },
-      } as StringMap<WalletBalanceValue>;
-      const sendEvent = { body: payloadWith1Token };
+        {
+          tokenId: 'token1',
+          tokenSymbol: 'T1',
+          lockExpires: null,
+          lockedAmount: 0,
+          lockedAuthorities: {
+            melt: false,
+            mint: false,
+          },
+          totalAmountSent: 5,
+          unlockedAmount: 5,
+          unlockedAuthorities: {
+            melt: false,
+            mint: false,
+          },
+          total: 5,
+        },
+        {
+          tokenId: 'token3',
+          tokenSymbol: 'T3',
+          lockExpires: null,
+          lockedAmount: 0,
+          lockedAuthorities: {
+            melt: false,
+            mint: false,
+          },
+          totalAmountSent: 1,
+          unlockedAmount: 1,
+          unlockedAuthorities: {
+            melt: false,
+            mint: false,
+          },
+          total: 1,
+        },
+      ]);
       const sendContext = { awsRequestId: '123' } as Context;
 
       const result = await handleRequest(sendEvent, sendContext, null) as { success: boolean, message?: string, details?: unknown };
@@ -402,7 +402,7 @@ Object {
   "deviceId": "device1",
   "metadata": Object {
     "bodyLocArgs": "[\\"10 T2\\",\\"5 T1\\",\\"1\\"]",
-    "bodyLocKey": "new_transaction_received_description_without_tokens",
+    "bodyLocKey": "new_transaction_received_description_with_tokens",
     "titleLocKey": "new_transaction_received_title",
     "txId": "txId1",
   },
@@ -412,86 +412,77 @@ Object {
 
     it('token balance with more than 3 tokens', async () => {
       expect.hasAssertions();
-      const payloadWith1Token = {
-        [walletId]: {
-          walletId,
-          addresses: [
-            'addr2',
-          ],
-          txId,
-          walletBalanceForTx: [
-            {
-              tokenId: 'token2',
-              tokenSymbol: 'T2',
-              lockExpires: null,
-              lockedAmount: 0,
-              lockedAuthorities: {
-                melt: false,
-                mint: false,
-              },
-              total: 10,
-              totalAmountSent: 10,
-              unlockedAmount: 10,
-              unlockedAuthorities: {
-                melt: false,
-                mint: false,
-              },
-            },
-            {
-              tokenId: 'token1',
-              tokenSymbol: 'T1',
-              lockExpires: null,
-              lockedAmount: 0,
-              lockedAuthorities: {
-                melt: false,
-                mint: false,
-              },
-              totalAmountSent: 5,
-              unlockedAmount: 5,
-              unlockedAuthorities: {
-                melt: false,
-                mint: false,
-              },
-              total: 5,
-            },
-            {
-              tokenId: 'token3',
-              tokenSymbol: 'T3',
-              lockExpires: null,
-              lockedAmount: 0,
-              lockedAuthorities: {
-                melt: false,
-                mint: false,
-              },
-              totalAmountSent: 1,
-              unlockedAmount: 1,
-              unlockedAuthorities: {
-                melt: false,
-                mint: false,
-              },
-              total: 1,
-            },
-            {
-              tokenId: 'token4',
-              tokenSymbol: 'T4',
-              lockExpires: null,
-              lockedAmount: 0,
-              lockedAuthorities: {
-                melt: false,
-                mint: false,
-              },
-              totalAmountSent: 1,
-              unlockedAmount: 1,
-              unlockedAuthorities: {
-                melt: false,
-                mint: false,
-              },
-              total: 1,
-            },
-          ],
+
+      const sendEvent = buildEvent(walletId, txId, [
+        {
+          tokenId: 'token2',
+          tokenSymbol: 'T2',
+          lockExpires: null,
+          lockedAmount: 0,
+          lockedAuthorities: {
+            melt: false,
+            mint: false,
+          },
+          total: 10,
+          totalAmountSent: 10,
+          unlockedAmount: 10,
+          unlockedAuthorities: {
+            melt: false,
+            mint: false,
+          },
         },
-      } as StringMap<WalletBalanceValue>;
-      const sendEvent = { body: payloadWith1Token };
+        {
+          tokenId: 'token1',
+          tokenSymbol: 'T1',
+          lockExpires: null,
+          lockedAmount: 0,
+          lockedAuthorities: {
+            melt: false,
+            mint: false,
+          },
+          totalAmountSent: 5,
+          unlockedAmount: 5,
+          unlockedAuthorities: {
+            melt: false,
+            mint: false,
+          },
+          total: 5,
+        },
+        {
+          tokenId: 'token3',
+          tokenSymbol: 'T3',
+          lockExpires: null,
+          lockedAmount: 0,
+          lockedAuthorities: {
+            melt: false,
+            mint: false,
+          },
+          totalAmountSent: 1,
+          unlockedAmount: 1,
+          unlockedAuthorities: {
+            melt: false,
+            mint: false,
+          },
+          total: 1,
+        },
+        {
+          tokenId: 'token4',
+          tokenSymbol: 'T4',
+          lockExpires: null,
+          lockedAmount: 0,
+          lockedAuthorities: {
+            melt: false,
+            mint: false,
+          },
+          totalAmountSent: 1,
+          unlockedAmount: 1,
+          unlockedAuthorities: {
+            melt: false,
+            mint: false,
+          },
+          total: 1,
+        },
+      ]);
       const sendContext = { awsRequestId: '123' } as Context;
 
       const result = await handleRequest(sendEvent, sendContext, null) as { success: boolean, message?: string, details?: unknown };
@@ -506,7 +497,7 @@ Object {
   "deviceId": "device1",
   "metadata": Object {
     "bodyLocArgs": "[\\"10 T2\\",\\"5 T1\\",\\"2\\"]",
-    "bodyLocKey": "new_transaction_received_description_without_tokens",
+    "bodyLocKey": "new_transaction_received_description_with_tokens",
     "titleLocKey": "new_transaction_received_title",
     "txId": "txId1",
   },
@@ -522,35 +513,25 @@ describe('failure', () => {
     const walletId = 'wallet1';
     const txId = 'txId1';
 
-    const payloadWith1Token = {
-      [walletId]: {
-        walletId,
-        addresses: [
-          'addr2',
-        ],
-        txId,
-        walletBalanceForTx: [
-          {
-            tokenId: 'token2',
-            tokenSymbol: 'T2',
-            lockExpires: null,
-            lockedAmount: 0,
-            lockedAuthorities: {
-              melt: false,
-              mint: false,
-            },
-            total: 10,
-            totalAmountSent: 10,
-            unlockedAmount: 10,
-            unlockedAuthorities: {
-              melt: false,
-              mint: false,
-            },
-          },
-        ],
+    const sendEvent = buildEvent(walletId, txId, [
+      {
+        tokenId: 'token2',
+        tokenSymbol: 'T2',
+        lockExpires: null,
+        lockedAmount: 0,
+        lockedAuthorities: {
+          melt: false,
+          mint: false,
+        },
+        total: 10,
+        totalAmountSent: 10,
+        unlockedAmount: 10,
+        unlockedAuthorities: {
+          melt: false,
+          mint: false,
+        },
       },
-    } as StringMap<WalletBalanceValue>;
-    const sendEvent = { body: payloadWith1Token };
+    ]);
     const sendContext = { awsRequestId: '123' } as Context;
 
     const result = await handleRequest(sendEvent, sendContext, null) as { success: boolean, message?: string, details?: unknown };
@@ -565,8 +546,7 @@ describe('validation StringMap<WalletBalanceValue>', () => {
   it('should validate map format', async () => {
     expect.hasAssertions();
 
-    const invalidPayload = [] as unknown as StringMap<WalletBalanceValue>;
-    const sendEvent = { body: invalidPayload };
+    const sendEvent = [] as unknown as StringMap<WalletBalanceValue>;
     const sendContext = { awsRequestId: '123' } as Context;
 
     const result = await handleRequest(sendEvent, sendContext, null) as { success: boolean, message?: string, details?: unknown };
@@ -580,8 +560,7 @@ describe('validation StringMap<WalletBalanceValue>', () => {
   it('should validate map key type', async () => {
     expect.hasAssertions();
 
-    const invalidPayload = {} as unknown as StringMap<WalletBalanceValue>;
-    const sendEvent = { body: invalidPayload };
+    const sendEvent = {} as unknown as StringMap<WalletBalanceValue>;
     const sendContext = { awsRequestId: '123' } as Context;
 
     const result = await handleRequest(sendEvent, sendContext, null) as { success: boolean, message?: string, details?: unknown };
@@ -595,8 +574,7 @@ describe('validation StringMap<WalletBalanceValue>', () => {
   it('should validate required WalletBalanceValue keys', async () => {
     expect.hasAssertions();
 
-    const invalidPayload = { wallet1: { } } as unknown as StringMap<WalletBalanceValue>;
-    const sendEvent = { body: invalidPayload };
+    const sendEvent = { wallet1: { } } as unknown as StringMap<WalletBalanceValue>;
     const sendContext = { awsRequestId: '123' } as Context;
 
     const result = await handleRequest(sendEvent, sendContext, null) as { success: boolean, message?: string, details?: unknown };

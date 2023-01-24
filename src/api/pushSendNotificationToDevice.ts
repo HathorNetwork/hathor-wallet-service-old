@@ -39,7 +39,7 @@ class PushSendNotificationToDeviceInputValidator {
  *
  * This lambda is called by API Gateway on POST /push/register
  */
-export const send: Handler<{ body: unknown }, { success: boolean, message?: string, details?: unknown }> = async (event, context) => {
+export const send: Handler<unknown, { success: boolean, message?: string, details?: unknown }> = async (event, context) => {
   const logger = createDefaultLogger();
   // Logs the request id on every line, so we can see all logs from a request
   logger.defaultMeta = {

@@ -50,10 +50,6 @@ if (!process.env.FIREBASE_CLIENT_X509_CERT_URL) {
   logger.error('[ALERT] env.FIREBASE_CLIENT_X509_CERT_URL can not be null or undefined.');
 }
 
-if (!process.env.PUSH_ALLOWED_PROVIDERS) {
-  logger.error('[ALERT] env.PUSH_ALLOWED_PROVIDERS can not be null or undefined.');
-}
-
 export function buildFunctionName(functionName: string): string {
   return `hathor-wallet-service-${process.env.STAGE}-${functionName}`;
 }
