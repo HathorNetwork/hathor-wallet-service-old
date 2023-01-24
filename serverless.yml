@@ -426,7 +426,7 @@ functions:
         enabled: false
   wsConnect:
     handler: src/ws/connection.connect
-    timeout: 1
+    timeout: 2
     events:
       - websocket:
           route: $connect
@@ -439,7 +439,7 @@ functions:
         enabled: false
   wsJoin:
     handler: src/ws/join.handler
-    timeout: 1
+    timeout: 2
     events:
       - websocket:
           route: join
@@ -448,7 +448,7 @@ functions:
         enabled: false
   wsTxNotifyNew:
     handler: src/ws/txNotify.onNewTx
-    timeout: 1
+    timeout: 2
     events:
       - sqs:
           arn:
@@ -463,25 +463,25 @@ functions:
         enabled: false
   wsTxNotifyUpdate:
     handler: src/ws/txNotify.onUpdateTx
-    timeout: 1
+    timeout: 2
     warmup:
       walletWarmer:
         enabled: false
   wsAdminBroadcast:
     handler: src/ws/admin.broadcast
-    timeout: 1
+    timeout: 2
     warmup:
       walletWarmer:
         enabled: false
   wsAdminDisconnect:
     handler: src/ws/admin.disconnect
-    timeout: 1
+    timeout: 2
     warmup:
       walletWarmer:
         enabled: false
   wsAdminMulticast:
     handler: src/ws/admin.multicast
-    timeout: 1
+    timeout: 2
     warmup:
       walletWarmer:
         enabled: false
