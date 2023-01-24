@@ -58,7 +58,7 @@ import {
 } from '@src/utils';
 import createDefaultLogger from '@src/logger';
 import { NftUtils } from '@src/utils/nft.utils';
-import { PushNotificationUtils } from '@src/utils/pushnotification.utils';
+import { PushNotificationUtils, isPushNotificationEnabled } from '@src/utils/pushnotification.utils';
 
 const mysql = getDbConnection();
 
@@ -154,11 +154,13 @@ export const onNewTxRequest: APIGatewayProxyHandler = async (event, context) => 
       .catch((err) => logger.error('[ALERT] Errored on nftHandlerLambda invocation', err));
   }
 
-  const walletBalanceMap = await getWalletBalancesForTx(mysql, tx);
-  const { length: hasAffectWallets } = Object.keys(walletBalanceMap);
-  if (hasAffectWallets) {
-    PushNotificationUtils.invokeOnTxPushNotificationRequestedLambda(walletBalanceMap)
-      .catch((err) => logger.error('[ALERT] Errored on invokeOnTxPushNotificationRequestedLambda invocation', err));
+  if (isPushNotificationEnabled()) {
+    const walletBalanceMap = await getWalletBalancesForTx(mysql, tx);
+    const { length: hasAffectWallets } = Object.keys(walletBalanceMap);
+    if (hasAffectWallets) {
+      PushNotificationUtils.invokeOnTxPushNotificationRequestedLambda(walletBalanceMap)
+        .catch((err) => logger.error('[ALERT] Errored on invokeOnTxPushNotificationRequestedLambda invocation', err));
+    }
   }
 
   return {
