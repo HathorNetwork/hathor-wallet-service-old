@@ -1,5 +1,5 @@
 import { Lambda } from 'aws-sdk';
-import { SendNotificationToDevice, StringMap, WalletBalanceValue } from '@src/types';
+import { PushProvider, SendNotificationToDevice, StringMap, WalletBalanceValue } from '@src/types';
 import fcmAdmin, { credential, messaging, ServiceAccount } from 'firebase-admin';
 import { MulticastMessage } from 'firebase-admin/messaging';
 import createDefaultLogger from '@src/logger';
@@ -50,13 +50,17 @@ if (!process.env.FIREBASE_CLIENT_X509_CERT_URL) {
   logger.error('[ALERT] env.FIREBASE_CLIENT_X509_CERT_URL can not be null or undefined.');
 }
 
+if (!process.env.PUSH_ALLOWED_PROVIDERS) {
+  logger.error('[ALERT] env.PUSH_ALLOWED_PROVIDERS can not be null or undefined.');
+}
+
 export function buildFunctionName(functionName: string): string {
   return `hathor-wallet-service-${process.env.STAGE}-${functionName}`;
 }
 
 export enum FunctionName {
   SEND_NOTIFICATION_TO_DEVICE = 'sendNotificationToDevice',
-  ON_TX_PUSH_NOTIFICATION_REQUESTED = 'onTxPushNotificationRequested',
+  ON_TX_PUSH_NOTIFICATION_REQUESTED = 'txPushRequested',
 }
 
 const STAGE = process.env.STAGE;
@@ -74,6 +78,17 @@ const FIREBASE_AUTH_PROVIDER_X509_CERT_URL = process.env.FIREBASE_AUTH_PROVIDER_
 const FIREBASE_CLIENT_X509_CERT_URL = process.env.FIREBASE_CLIENT_X509_CERT_URL;
 /** Local feature toggle that disable the push notification by default */
 const PUSH_NOTIFICATION_ENABLED = process.env.PUSH_NOTIFICATION_ENABLED;
+const PUSH_ALLOWED_PROVIDERS = (() => {
+  const providers = process.env.PUSH_ALLOWED_PROVIDERS;
+  if (!providers) {
+    // If no providers are set, we allow android by default, but alert the environment variable is empty
+    logger.error('[ALERT] env.PUSH_ALLOWED_PROVIDERS is empty.');
+    return [PushProvider.ANDROID];
+  }
+  return providers.split(',');
+})();
+
+export const isPushProviderAllowed = (provider: string): boolean => PUSH_ALLOWED_PROVIDERS.includes(provider);
 
 export const isPushNotificationEnabled = (): boolean => PUSH_NOTIFICATION_ENABLED === 'true';
 
@@ -90,12 +105,14 @@ const serviceAccount = {
   client_x509_cert_url: FIREBASE_CLIENT_X509_CERT_URL,
 };
 
+let isFirebaseInitialized = false;
 if (isPushNotificationEnabled()) {
   try {
     fcmAdmin.initializeApp({
       credential: credential.cert(serviceAccount as ServiceAccount),
       projectId: FIREBASE_PROJECT_ID,
     });
+    isFirebaseInitialized = true;
   } catch (error) {
     logger.error(`Error initializing Firebase Admin SDK. ErrorMessage: ${error.message}`, error);
   }
@@ -108,6 +125,10 @@ export enum PushNotificationError {
 
 export class PushNotificationUtils {
   public static async sendToFcm(notification: SendNotificationToDevice): Promise<{ success: boolean, errorMessage?: string }> {
+    if (!isFirebaseInitialized) {
+      return { success: false, errorMessage: 'Firebase not initialized.' };
+    }
+
     const message: MulticastMessage = {
       tokens: [notification.deviceId],
       data: notification.metadata,
