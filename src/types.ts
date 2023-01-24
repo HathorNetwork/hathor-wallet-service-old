@@ -716,11 +716,9 @@ export interface TxByIdToken {
   timestamp: number;
   version: number;
   voided: boolean;
-  height?: number | null;
   weight: number;
   balance: Balance;
   tokenId: string;
-  walletId: string;
   tokenName: string;
   tokenSymbol: string;
 }

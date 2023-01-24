@@ -2838,7 +2838,7 @@ export const getTransactionById = async (
           AND transaction.voided = FALSE
           AND wallet_tx_history.wallet_id = ?`,
   // eslint-disable-next-line camelcase
-  [txId, walletId]) as Array<{tx_id, timestamp, version, voided, height, weight, balance, token_id, name, symbol }>;
+  [txId, walletId]) as Array<{tx_id, timestamp, version, voided, weight, balance, token_id, name, symbol }>;
 
   const txTokens = [];
   result.forEach((eachTxToken) => {
@@ -2847,7 +2847,6 @@ export const getTransactionById = async (
       timestamp: eachTxToken.timestamp,
       version: eachTxToken.version,
       voided: !!eachTxToken.voided,
-      height: eachTxToken.height,
       weight: eachTxToken.weight,
       balance: eachTxToken.balance,
       tokenId: eachTxToken.token_id,
