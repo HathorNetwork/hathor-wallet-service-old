@@ -448,7 +448,7 @@ functions:
     warmup:
       walletWarmer:
         enabled: false
-    alarms:
+    alarms: # This gets merged with the global alarms
       - wsLambdasExecutionDuration
   wsJoin:
     handler: src/ws/join.handler
