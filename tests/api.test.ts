@@ -1394,6 +1394,14 @@ test('GET /wallet/tokens/token_id/details', async () => {
   expect(returnBody.details.authorities.mint).toStrictEqual(true);
   expect(returnBody.details.authorities.melt).toStrictEqual(true);
   expect(returnBody.details.tokenInfo).toStrictEqual(token2);
+
+  event = makeGatewayEventWithAuthorizer('my-wallet', { token_id: constants.HATHOR_TOKEN_CONFIG.uid });
+  result = await getTokenDetails(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.details).toStrictEqual([{ message: 'Invalid tokenId' }]);
 });
 
 test('GET /wallet/utxos', async () => {
