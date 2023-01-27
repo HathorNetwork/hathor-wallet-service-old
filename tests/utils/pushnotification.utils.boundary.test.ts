@@ -1,32 +1,40 @@
-/* eslint-disable jest/no-disabled-tests */
 import { PushNotificationUtils } from '@src/utils/pushnotification.utils';
 import { SendNotificationToDevice } from '@src/types';
 
-const registrationToken = 'fR4TqxCASDCtV1sWs53ZO0:APA91bE0lw-t44auU5AS0-cj3qcUiIH_bGY8m_TwnNvnx5xEus3yPYy-95zmz-h6PNp9tKFazyfu0wb7E0o_zqjR3eqP3Q1lSMbgK9X6NQIUAhkLtAmDE1LaEoN7ql1p18XPHQClM5P0';
-const invalidRegistrationToken = 'invalid-registration-token';
+/**
+ * README
+ * To make this test work, you need to comment the line
+ * `'<rootDir>/tests/utils/pushnotification.utils.boundary.test.ts',` in jest.config.js.
+ *
+ * You need to configure the firebase environment variables in the .env file.
+ *
+ * ATTENTION!
+ * - The tests in this file are not run by default because they trigger real calls to FCM.
+ * - Do NOT use production configuration to run the tests.
+ */
 
-// This test was designed to make real call to FCM.
-// NOTE: Use a testing project. Do not use production project.
-describe('pushnotification.utils', () => {
-  describe('sendToFcm', () => {
-    it('should call FCM', async () => {
-      expect.hasAssertions();
+/**
+ * Run the following test to send a notification to your device.
+ * @example
+ * npx jest --testPathPattern=pushnotification.utils.boundary.test.ts -t=sendToFcm
+ */
+test('sendToFcm', async () => {
+  expect.hasAssertions();
 
-      const deviceId = registrationToken;
-      const title = 'New transaction';
-      const description = 'You have received 1 XYZ';
-      const txId = 'tx1';
+  const buildNotification = (deviceId: string, metadata?: Record<string, unknown>) => ({
+    deviceId,
+    metadata: {
+      txId: '00c30fc8a1b9a326a766ab0351faf3635297d316fd039a0eda01734d9de40185',
+      bodyLocKey: 'new_transaction_received_description_without_tokens',
+      titleLocKey: 'new_transaction_received_title',
+      ...metadata,
+    },
+  } as SendNotificationToDevice);
 
-      const notification = {
-        deviceId,
-        title,
-        description,
-        metadata: { txId },
-      } as SendNotificationToDevice;
+  // Go to the wallet-mobile and log the deviceId in the push notification saga initialization.
+  const notification = buildNotification('<add-your-device-id>');
 
-      const result = await PushNotificationUtils.sendToFcm(notification);
+  const result = await PushNotificationUtils.sendToFcm(notification);
 
-      expect(result).toStrictEqual({});
-    });
-  });
+  expect(result.success).toStrictEqual(true);
 });
