@@ -72,6 +72,14 @@ export const getTokenDetails = middy(walletIdProxyHandler(async (walletId, event
   const tokenId = value.token_id;
   const tokenInfo: TokenInfo = await getTokenInformation(mysql, tokenId);
 
+  if (tokenId === constants.HATHOR_TOKEN_CONFIG.uid) {
+    const details = [{
+      message: 'Invalid tokenId',
+    }];
+
+    return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, { details });
+  }
+
   if (!tokenInfo) {
     const details = [{
       message: 'Token not found',
