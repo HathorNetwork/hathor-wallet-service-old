@@ -42,6 +42,8 @@ export const get = middy(walletIdProxyHandler(async (walletId) => {
 const getTokenDetailsParamsSchema = Joi.object({
   token_id: Joi.string()
     .alphanum()
+    .min(64)
+    .max(64)
     .required(),
 });
 

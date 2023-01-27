@@ -1329,7 +1329,7 @@ test('GET /wallet/tokens/token_id/details', async () => {
     readyAt: 10001,
   }]);
 
-  let event = makeGatewayEventWithAuthorizer('my-wallet', { token_id: 'unknown' });
+  let event = makeGatewayEventWithAuthorizer('my-wallet', { token_id: '000000007bee89ef2d301ca6f7a1aa997f618011ea5116ed261aa82401513284' });
   let result = await getTokenDetails(event, null, null) as APIGatewayProxyResult;
   let returnBody = JSON.parse(result.body as string);
 
@@ -1346,8 +1346,8 @@ test('GET /wallet/tokens/token_id/details', async () => {
   expect(returnBody.details[0]).toStrictEqual({ message: '"token_id" is required', path: ['token_id'] });
 
   // add tokens
-  const token1 = { id: 'token1', name: 'MyToken1', symbol: 'MT1' };
-  const token2 = { id: 'token2', name: 'MyToken2', symbol: 'MT2' };
+  const token1 = { id: '000000001a234f4239b762a4d713556bc810d1c3d18fd5569dc96119cc496dd0', name: 'MyToken1', symbol: 'MT1' };
+  const token2 = { id: '0000052b5a0c69783b70cabf0c17f357bd6eef86cd0d93d8b59862f56943137a', name: 'MyToken2', symbol: 'MT2' };
 
   await addToTokenTable(mysql, [
     { id: token1.id, name: token1.name, symbol: token1.symbol, transactions: 0 },
