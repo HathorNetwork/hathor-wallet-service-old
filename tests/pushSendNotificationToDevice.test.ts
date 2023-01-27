@@ -244,7 +244,7 @@ describe('alert', () => {
 
     // allow android and desktop, while test for ios provider
     process.env.PUSH_ALLOWED_PROVIDERS = 'android,desktop';
-    require('@src/api/pushSendNotificationToDevice');
+    await import('@src/api/pushSendNotificationToDevice');
 
     await addToWalletTable(mysql, [{
       id: 'my-wallet',
