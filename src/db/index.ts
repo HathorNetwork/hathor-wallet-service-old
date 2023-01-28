@@ -383,7 +383,7 @@ export const initWalletTxHistory = async (mysql: ServerlessMysql, walletId: stri
   const results: DbSelectResult = await mysql.query(
     `SELECT \`tx_id\`,
             \`token_id\`,
-            SUM(\`balance\`) AS balance,
+            CAST(SUM(\`balance\`) AS INTEGER) AS balance,
             \`timestamp\`
        FROM \`address_tx_history\`
       WHERE \`address\` IN (?)
@@ -423,10 +423,10 @@ export const initWalletBalance = async (mysql: ServerlessMysql, walletId: string
   // need to receive the addresses, but the caller probably has this info already
   const results1: DbSelectResult = await mysql.query(
     `SELECT \`token_id\`,
-            SUM(\`total_received\`) AS \`total_received\`,
-            SUM(\`unlocked_balance\`) AS \`unlocked_balance\`,
-            SUM(\`locked_balance\`) AS \`locked_balance\`,
-            MIN(\`timelock_expires\`) AS \`timelock_expires\`
+            CAST(SUM(\`total_received\`) AS INTEGER) AS \`total_received\`,
+            CAST(SUM(\`unlocked_balance\`) AS INTEGER) AS \`unlocked_balance\`,
+            CAST(SUM(\`locked_balance\`) AS INTEGER) AS \`locked_balance\`,
+            CAST(MIN(\`timelock_expires\`) AS INTEGER) AS \`timelock_expires\`
        FROM \`address_balance\`
       WHERE \`address\`
          IN (?)
@@ -438,7 +438,7 @@ export const initWalletBalance = async (mysql: ServerlessMysql, walletId: string
   // sum the transaction count for each address_balance, as they may share transactions
   const results2: DbSelectResult = await mysql.query(
     `SELECT \`token_id\`,
-            SUM(\`balance\`) AS \`balance\`,
+            CAST(SUM(\`balance\`) AS INTEGER) AS \`balance\`,
             COUNT(DISTINCT \`tx_id\`) AS \`transactions\`
        FROM \`address_tx_history\`
       WHERE \`address\` IN (?)
@@ -2095,7 +2095,7 @@ export const rebuildAddressBalancesFromUtxos = async (
     )
         SELECT address,
                 token_id,
-                SUM(\`value\`), -- unlocked_balance
+                CAST(SUM(\`value\`) AS INTEGER), -- unlocked_balance
                 0,
                 BIT_OR(\`authorities\`), -- unlocked_authorities
                 0, -- locked_authorities
@@ -2126,7 +2126,7 @@ export const rebuildAddressBalancesFromUtxos = async (
        SELECT address,
               token_id,
               0 AS unlocked_balance,
-              SUM(\`value\`) AS locked_balance,
+              CAST(SUM(\`value\`) AS INTEGER) AS locked_balance,
               BIT_OR(\`authorities\`) AS locked_authorities,
               MIN(\`timelock\`) AS timelock_expires,
               0 -- transactions
@@ -2241,7 +2241,7 @@ export const fetchAddressTxHistorySum = async (
   const results: DbSelectResult = await mysql.query(
     `SELECT address,
             token_id,
-            SUM(\`balance\`) AS balance,
+            CAST(SUM(\`balance\`) AS INTEGER) AS balance,
             COUNT(\`tx_id\`) AS transactions
        FROM \`address_tx_history\`
       WHERE \`address\` IN (?)
@@ -2455,7 +2455,7 @@ export const getTotalSupply = async (
   tokenId: string,
 ): Promise<number> => {
   const results: DbSelectResult = await mysql.query(`
-    SELECT SUM(value) as value
+    SELECT CAST(SUM(value) AS INTEGER) as value
       FROM tx_output
      WHERE spent_by IS NULL
        AND token_id = ?
@@ -2637,7 +2637,7 @@ export const getAffectedAddressTotalReceivedFromTxList = async (
   txList: string[],
 ): Promise<StringMap<number>> => {
   const results: DbSelectResult = await mysql.query(`
-    SELECT address, token_id as tokenId, SUM(value) as total
+    SELECT address, token_id as tokenId, CAST(SUM(value) AS INTEGER) as total
       FROM tx_output
      WHERE tx_id IN (?)
        AND voided = TRUE

@@ -116,6 +116,8 @@ export const getUnixTimestamp = (): number => (
  */
 export const getDbConnection = (): ServerlessMysql => (
   serverlessMysql({
+    // eslint-disable-next-line
+    library: require('mysql2'),
     config: {
       host: process.env.DB_ENDPOINT,
       database: process.env.DB_NAME,
