@@ -5,9 +5,12 @@ import { sendMulticastMock, messaging, initFirebaseAdminMock } from '@tests/util
 import { invokeMock, promiseMock } from '@tests/utils/aws-sdk.mock';
 import { logger } from '@tests/winston.mock';
 import { PushNotificationUtils, PushNotificationError, buildFunctionName, FunctionName } from '@src/utils/pushnotification.utils';
+import * as pushnotificationUtils from '@src/utils/pushnotification.utils';
 import { SendNotificationToDevice } from '@src/types';
 import { Lambda } from 'aws-sdk';
 import { buildWalletBalanceValueMap } from '@tests/utils';
+
+const isFirebaseInitializedMock = jest.spyOn(pushnotificationUtils, 'isFirebaseInitialized');
 
 describe('PushNotificationUtils', () => {
   const initEnv = process.env;
@@ -30,6 +33,7 @@ describe('PushNotificationUtils', () => {
       PUSH_ALLOWED_PROVIDERS: 'android,ios',
     };
     initFirebaseAdminMock.mockReset();
+    isFirebaseInitializedMock.mockReset();
     jest.resetModules();
   });
 
@@ -217,9 +221,27 @@ describe('PushNotificationUtils', () => {
       }));
     });
 
+    it('should return success false when firebase is not initialized', async () => {
+      expect.hasAssertions();
+
+      isFirebaseInitializedMock.mockReturnValue(false);
+      const notification = {
+        deviceId: 'device1',
+        title: 'New transaction',
+        description: 'You recieved 1 HTR.',
+        metadata: {
+          txId: 'tx1',
+        },
+      } as SendNotificationToDevice;
+      const result = await PushNotificationUtils.sendToFcm(notification);
+
+      expect(result).toStrictEqual({ success: false, errorMessage: 'Firebase not initialized.' });
+    });
+
     it('should return success true when succeed', async () => {
       expect.hasAssertions();
 
+      isFirebaseInitializedMock.mockReturnValue(true);
       const notification = {
         deviceId: 'device1',
         title: 'New transaction',
@@ -236,6 +258,7 @@ describe('PushNotificationUtils', () => {
     it('should return success false when deviceId is invalid', async () => {
       expect.hasAssertions();
 
+      isFirebaseInitializedMock.mockReturnValue(true);
       messaging.mockImplementation(() => ({
         sendMulticast: sendMulticastMock.mockReturnValue({
           responses: [
@@ -265,6 +288,7 @@ describe('PushNotificationUtils', () => {
     it('should return success false with unknown error when failure is not treated', async () => {
       expect.hasAssertions();
 
+      isFirebaseInitializedMock.mockReturnValue(true);
       messaging.mockImplementation(() => ({
         sendMulticast: sendMulticastMock.mockReturnValue({
           responses: [

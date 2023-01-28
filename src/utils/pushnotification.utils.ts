@@ -101,18 +101,20 @@ const serviceAccount = {
   client_x509_cert_url: FIREBASE_CLIENT_X509_CERT_URL,
 };
 
-let isFirebaseInitialized = false;
+let firebaseInitialized = false;
 if (isPushNotificationEnabled()) {
   try {
     fcmAdmin.initializeApp({
       credential: credential.cert(serviceAccount as ServiceAccount),
       projectId: FIREBASE_PROJECT_ID,
     });
-    isFirebaseInitialized = true;
+    firebaseInitialized = true;
   } catch (error) {
     logger.error(`Error initializing Firebase Admin SDK. ErrorMessage: ${error.message}`, error);
   }
 }
+
+export const isFirebaseInitialized = (): boolean => firebaseInitialized;
 
 export enum PushNotificationError {
   UNKNOWN = 'unknown',
@@ -121,7 +123,7 @@ export enum PushNotificationError {
 
 export class PushNotificationUtils {
   public static async sendToFcm(notification: SendNotificationToDevice): Promise<{ success: boolean, errorMessage?: string }> {
-    if (!isFirebaseInitialized) {
+    if (!isFirebaseInitialized()) {
       return { success: false, errorMessage: 'Firebase not initialized.' };
     }
 
