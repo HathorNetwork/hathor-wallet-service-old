@@ -123,7 +123,7 @@ describe('success', () => {
     expect(result.success).toStrictEqual(true);
     expect(spyOnInvokeSendNotification).toHaveBeenCalledTimes(1);
     const lastErrorCall = logger.error.mock.calls[logger.error.mock.calls.length - 1][0];
-    expect(lastErrorCall).toMatchInlineSnapshot(`'[ALERT] unexpected failure while calling invokeSendNotificationHandlerLambda.'`);
+    expect(lastErrorCall).toMatchInlineSnapshot('"[ALERT] unexpected failure while calling invokeSendNotificationHandlerLambda."');
   });
 
   it('should invoke send notification with generic message', async () => {
