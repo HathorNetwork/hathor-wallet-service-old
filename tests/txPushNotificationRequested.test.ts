@@ -1,3 +1,4 @@
+import { logger } from '@tests/winston.mock';
 import { initFirebaseAdminMock } from '@tests/utils/firebase-admin.mock';
 import { closeDbConnection, getDbConnection } from '@src/utils';
 import {
@@ -63,7 +64,8 @@ const buildEvent = (walletId, txId, walletBalanceForTx?): StringMap<WalletBalanc
 });
 
 beforeEach(async () => {
-  jest.resetAllMocks();
+  initFirebaseAdminMock.mockReset();
+  spyOnInvokeSendNotification.mockReset();
   await cleanDatabase(mysql);
 });
 
@@ -72,6 +74,58 @@ afterAll(async () => {
 });
 
 describe('success', () => {
+  it('should alert when invoke send notification fails', async () => {
+    expect.hasAssertions();
+
+    const walletId = 'wallet1';
+    await addToWalletTable(mysql, [buildWallet({ id: walletId })]);
+
+    // device with disabled enableShowAmounts, resulting in a generic notification
+    const deviceId = 'device1';
+    const pushDevice = {
+      deviceId,
+      walletId,
+      pushProvider: PushProvider.ANDROID,
+      enablePush: true,
+      enableShowAmounts: false,
+    };
+
+    await storeTokenInformation(mysql, 'token1', 'token1', 'T1');
+
+    await registerPushDevice(mysql, pushDevice);
+
+    const txId = 'txId1';
+
+    const sendEvent = buildEvent(walletId, txId, [
+      {
+        tokenId: 'token2',
+        tokenSymbol: 'T2',
+        lockExpires: null,
+        lockedAmount: 0,
+        lockedAuthorities: {
+          melt: false,
+          mint: false,
+        },
+        total: 10,
+        totalAmountSent: 10,
+        unlockedAmount: 10,
+        unlockedAuthorities: {
+          melt: false,
+          mint: false,
+        },
+      },
+    ]);
+    const sendContext = { awsRequestId: '123' } as Context;
+    
+    spyOnInvokeSendNotification.mockRejectedValue(new Error('Error sending push notification'));
+    const result = await handleRequest(sendEvent, sendContext, null) as { success: boolean, message?: string, details?: unknown };
+
+    expect(result.success).toStrictEqual(true);
+    expect(spyOnInvokeSendNotification).toHaveBeenCalledTimes(1);
+    const lastErrorCall = logger.error.mock.calls[logger.error.mock.calls.length - 1][0];
+    expect(lastErrorCall).toMatchInlineSnapshot(`"[ALERT] unexpected failure while calling invokeSendNotificationHandlerLambda."`);
+  });
+
   it('should invoke send notification with generic message', async () => {
     expect.hasAssertions();
 
