@@ -116,14 +116,14 @@ describe('success', () => {
       },
     ]);
     const sendContext = { awsRequestId: '123' } as Context;
-    
+
     spyOnInvokeSendNotification.mockRejectedValue(new Error('Error sending push notification'));
     const result = await handleRequest(sendEvent, sendContext, null) as { success: boolean, message?: string, details?: unknown };
 
     expect(result.success).toStrictEqual(true);
     expect(spyOnInvokeSendNotification).toHaveBeenCalledTimes(1);
     const lastErrorCall = logger.error.mock.calls[logger.error.mock.calls.length - 1][0];
-    expect(lastErrorCall).toMatchInlineSnapshot(`"[ALERT] unexpected failure while calling invokeSendNotificationHandlerLambda."`);
+    expect(lastErrorCall).toMatchInlineSnapshot(`'[ALERT] unexpected failure while calling invokeSendNotificationHandlerLambda.'`);
   });
 
   it('should invoke send notification with generic message', async () => {
