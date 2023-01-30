@@ -13,7 +13,7 @@ import {
 } from '@src/types';
 import { getDbConnection } from '@src/utils';
 import { ApiError } from '@src/api/errors';
-import { closeDbAndGetError, warmupMiddleware } from '@src/api/utils';
+import { closeDbAndGetError, warmupMiddleware, txIdJoiValidator } from '@src/api/utils';
 import Joi from 'joi';
 import { constants } from '@hathor/wallet-lib';
 import middy from '@middy/core';
@@ -40,11 +40,7 @@ export const get = middy(walletIdProxyHandler(async (walletId) => {
   .use(warmupMiddleware());
 
 const getTokenDetailsParamsSchema = Joi.object({
-  token_id: Joi.string()
-    .alphanum()
-    .min(64)
-    .max(64)
-    .required(),
+  token_id: txIdJoiValidator.required(),
 });
 
 /*
@@ -71,6 +67,14 @@ export const getTokenDetails = middy(walletIdProxyHandler(async (walletId, event
 
   const tokenId = value.token_id;
   const tokenInfo: TokenInfo = await getTokenInformation(mysql, tokenId);
+
+  if (tokenId === constants.HATHOR_TOKEN_CONFIG.uid) {
+    const details = [{
+      message: 'Invalid tokenId',
+    }];
+
+    return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, { details });
+  }
 
   if (!tokenInfo) {
     const details = [{
