@@ -789,3 +789,12 @@ export interface WalletBalanceValue {
   addresses: string[],
   walletBalanceForTx: TokenBalanceValue[],
 }
+
+export enum Severity {
+  CRITICAL = 'critical',
+  MAJOR = 'major',
+  MEDIUM = 'medium',
+  MINOR = 'minor',
+  WARNING = 'warning',
+  INFO = 'info',
+}

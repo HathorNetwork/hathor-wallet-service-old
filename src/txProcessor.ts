@@ -50,6 +50,7 @@ import {
   TokenBalanceMap,
   Wallet,
   Tx,
+  Severity,
 } from '@src/types';
 import {
   closeDbConnection,
@@ -59,6 +60,7 @@ import {
 import createDefaultLogger from '@src/logger';
 import { NftUtils } from '@src/utils/nft.utils';
 import { PushNotificationUtils, isPushNotificationEnabled } from '@src/utils/pushnotification.utils';
+import { addAlert } from '@src/utils/alerting.utils';
 
 const mysql = getDbConnection();
 
@@ -136,6 +138,12 @@ export const onNewTxRequest: APIGatewayProxyHandler = async (event, context) => 
   } catch (e) {
     // eslint-disable-next-line
     logger.error('Errored on onNewTxRequest: ', e);
+    await addAlert(
+      'Error on onNewTxRequest',
+      'Errored on onNewTxRequest lambda',
+      Severity.MINOR,
+      { TxId: tx.tx_id, error: e.message },
+    );
 
     return {
       statusCode: 500,
@@ -151,7 +159,16 @@ export const onNewTxRequest: APIGatewayProxyHandler = async (event, context) => 
     // This process is not critical, so we run it in a fire-and-forget manner, not waiting for the promise.
     // In case of errors, just log the asynchronous exception and take no action on it.
     NftUtils.invokeNftHandlerLambda(tx.tx_id)
-      .catch((err) => logger.error('[ALERT] Errored on nftHandlerLambda invocation', err));
+      .catch((err) => {
+        logger.error('Erroed on invokeOnTxPushNotificationRequestedLambda', err);
+
+        return addAlert(
+          'Error on PushNotification',
+          'Errored on invokeOnTxPushNotificationRequestedLambda invocation',
+          Severity.MINOR,
+          { TxId: tx.tx_id, error: err.message },
+        );
+      });
   }
 
   if (isPushNotificationEnabled()) {
@@ -159,7 +176,15 @@ export const onNewTxRequest: APIGatewayProxyHandler = async (event, context) => 
     const { length: hasAffectWallets } = Object.keys(walletBalanceMap);
     if (hasAffectWallets) {
       PushNotificationUtils.invokeOnTxPushNotificationRequestedLambda(walletBalanceMap)
-        .catch((err) => logger.error('[ALERT] Errored on invokeOnTxPushNotificationRequestedLambda invocation', err));
+        .catch((err) => {
+          logger.error('Errored on invokeOnTxPushNotificationRequestedLambda invocation', err);
+          return addAlert(
+            'Error on PushNotification',
+            'Errored on invokeOnTxPushNotificationRequestedLambda invocation',
+            Severity.MINOR,
+            { TxId: tx.tx_id, error: err.message },
+          );
+        });
     }
   }
 

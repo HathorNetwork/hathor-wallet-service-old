@@ -10,7 +10,7 @@ import {
   getMempoolTransactionsBeforeDate,
   updateTx,
 } from '@src/db';
-import { Tx } from '@src/types';
+import { Severity, Tx } from '@src/types';
 import { handleVoided } from '@src/commons';
 import {
   isTxVoided,
@@ -20,6 +20,7 @@ import {
   getUnixTimestamp,
 } from '@src/utils';
 import createDefaultLogger from '@src/logger';
+import { addAlert } from '@src/utils/alerting.utils';
 
 const mysql = getDbConnection();
 
@@ -51,13 +52,19 @@ export const onHandleOldVoidedTxs = async (): Promise<void> => {
     const [isVoided, transaction] = await isTxVoided(tx.txId);
     logger.debug(`Is transaction ${tx.txId} voided? ${isVoided}`);
 
-    /* This will alarm (using the ALERT string) if the transaction is not yet confirmed on our database and is not voided since
+    /* This will alarm if the transaction is not yet confirmed on our database and is not voided since
      * this indicates an issue with our sync mechanism.
      *
      * It will also try to correct it by fetching the height that confirms it and updating the transaction on our database.
      */
     if (!isVoided) {
-      logger.debug(`[ALERT] Transaction ${tx.txId} is not yet confirmed on our database but it is not voided on the fullnode.`);
+      await addAlert(
+        'Error on mempool',
+        `Transaction ${tx.txId} is not yet confirmed on our database but it is not voided on the fullnode.`,
+        Severity.MAJOR,
+        { Tx: transaction },
+      );
+      logger.error(`Transaction ${tx.txId} is not yet confirmed on our database but it is not voided on the fullnode.`);
       // Check if it is confirmed by a block
       if (transaction.meta.first_block) {
         /* Here we are sure that we really did lose the confirmation. We should fetch the height that confirmed it and update
