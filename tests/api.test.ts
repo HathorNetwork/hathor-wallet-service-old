@@ -33,6 +33,7 @@ import { walletUtils, constants, network, HathorWalletServiceWallet } from '@hat
 import bitcore from 'bitcore-lib';
 import {
   ADDRESSES,
+  TX_IDS,
   XPUBKEY,
   AUTH_XPUBKEY,
   TEST_SEED,
@@ -1329,7 +1330,7 @@ test('GET /wallet/tokens/token_id/details', async () => {
     readyAt: 10001,
   }]);
 
-  let event = makeGatewayEventWithAuthorizer('my-wallet', { token_id: 'unknown' });
+  let event = makeGatewayEventWithAuthorizer('my-wallet', { token_id: TX_IDS[0] });
   let result = await getTokenDetails(event, null, null) as APIGatewayProxyResult;
   let returnBody = JSON.parse(result.body as string);
 
@@ -1346,8 +1347,8 @@ test('GET /wallet/tokens/token_id/details', async () => {
   expect(returnBody.details[0]).toStrictEqual({ message: '"token_id" is required', path: ['token_id'] });
 
   // add tokens
-  const token1 = { id: 'token1', name: 'MyToken1', symbol: 'MT1' };
-  const token2 = { id: 'token2', name: 'MyToken2', symbol: 'MT2' };
+  const token1 = { id: TX_IDS[1], name: 'MyToken1', symbol: 'MT1' };
+  const token2 = { id: TX_IDS[2], name: 'MyToken2', symbol: 'MT2' };
 
   await addToTokenTable(mysql, [
     { id: token1.id, name: token1.name, symbol: token1.symbol, transactions: 0 },
@@ -1394,6 +1395,37 @@ test('GET /wallet/tokens/token_id/details', async () => {
   expect(returnBody.details.authorities.mint).toStrictEqual(true);
   expect(returnBody.details.authorities.melt).toStrictEqual(true);
   expect(returnBody.details.tokenInfo).toStrictEqual(token2);
+
+  event = makeGatewayEventWithAuthorizer('my-wallet', { token_id: constants.HATHOR_TOKEN_CONFIG.uid });
+  result = await getTokenDetails(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.details).toMatchInlineSnapshot(`
+  Array [
+    Object {
+      "message": "\\"token_id\\" length must be at least 64 characters long",
+      "path": Array [
+        "token_id",
+      ],
+    },
+  ]
+  `);
+
+  const oldHathorTokenConfig = constants.HATHOR_TOKEN_CONFIG.uid;
+
+  constants.HATHOR_TOKEN_CONFIG.uid = TX_IDS[4];
+
+  event = makeGatewayEventWithAuthorizer('my-wallet', { token_id: constants.HATHOR_TOKEN_CONFIG.uid });
+  result = await getTokenDetails(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(400);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.details).toStrictEqual([{ message: 'Invalid tokenId' }]);
+
+  constants.HATHOR_TOKEN_CONFIG.uid = oldHathorTokenConfig;
 });
 
 test('GET /wallet/utxos', async () => {

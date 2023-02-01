@@ -68,6 +68,17 @@ custom:
         treatMissingData: notBreaching
         alarmActions:
           - minor
+      wsLambdasExecutionDuration:
+        description: "WebSocket lambda took too long to execute"
+        namespace: 'AWS/Lambda'
+        metric: "Duration"
+        statistic: Average
+        threshold: 1000 # This is in milliseconds
+        period: 60
+        evaluationPeriods: 1
+        comparisonOperator: GreaterThanThreshold
+        alarmActions:
+          - minor
     alarms: # Alarms that will be applied to all functions
       - majorFunctionErrors
       - minorFunctionErrors
@@ -426,7 +437,7 @@ functions:
         enabled: false
   wsConnect:
     handler: src/ws/connection.connect
-    timeout: 1
+    timeout: 2
     events:
       - websocket:
           route: $connect
@@ -437,18 +448,22 @@ functions:
     warmup:
       walletWarmer:
         enabled: false
+    alarms: # This gets merged with the global alarms
+      - wsLambdasExecutionDuration
   wsJoin:
     handler: src/ws/join.handler
-    timeout: 1
+    timeout: 2
     events:
       - websocket:
           route: join
     warmup:
       walletWarmer:
         enabled: false
+    alarms:
+      - wsLambdasExecutionDuration
   wsTxNotifyNew:
     handler: src/ws/txNotify.onNewTx
-    timeout: 1
+    timeout: 2
     events:
       - sqs:
           arn:
@@ -461,30 +476,40 @@ functions:
     warmup:
       walletWarmer:
         enabled: false
+    alarms:
+      - wsLambdasExecutionDuration
   wsTxNotifyUpdate:
     handler: src/ws/txNotify.onUpdateTx
-    timeout: 1
+    timeout: 2
     warmup:
       walletWarmer:
         enabled: false
+    alarms:
+      - wsLambdasExecutionDuration
   wsAdminBroadcast:
     handler: src/ws/admin.broadcast
-    timeout: 1
+    timeout: 2
     warmup:
       walletWarmer:
         enabled: false
+    alarms:
+      - wsLambdasExecutionDuration
   wsAdminDisconnect:
     handler: src/ws/admin.disconnect
-    timeout: 1
+    timeout: 2
     warmup:
       walletWarmer:
         enabled: false
+    alarms:
+      - wsLambdasExecutionDuration
   wsAdminMulticast:
     handler: src/ws/admin.multicast
-    timeout: 1
+    timeout: 2
     warmup:
       walletWarmer:
         enabled: false
+    alarms:
+      - wsLambdasExecutionDuration
   authTokenApi:
     handler: src/api/auth.tokenHandler
     timeout: 6

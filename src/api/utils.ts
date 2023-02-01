@@ -131,3 +131,8 @@ export const validateParams = <ResultType>(
     value,
   };
 };
+
+/**
+ * This should be used inside a Joi validator object
+ */
+export const txIdJoiValidator = Joi.string().alphanum().min(64).max(64);
