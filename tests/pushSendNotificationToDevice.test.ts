@@ -39,11 +39,8 @@ beforeEach(async () => {
   jest.resetModules();
 });
 
-afterEach(() => {
-  process.env = initEnv;
-});
-
 afterAll(async () => {
+  process.env = initEnv;
   await closeDbConnection(mysql);
 });
 
