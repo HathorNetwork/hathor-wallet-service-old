@@ -1,5 +1,3 @@
-/* eslint-disable global-require */
-/* eslint-disable @typescript-eslint/no-var-requires */
 /* eslint-disable no-shadow */
 /* eslint-disable @typescript-eslint/naming-convention */
 // mocks should be imported first
@@ -7,9 +5,12 @@ import { sendMulticastMock, messaging, initFirebaseAdminMock } from '@tests/util
 import { invokeMock, promiseMock } from '@tests/utils/aws-sdk.mock';
 import { logger } from '@tests/winston.mock';
 import { PushNotificationUtils, PushNotificationError, buildFunctionName, FunctionName } from '@src/utils/pushnotification.utils';
+import * as pushnotificationUtils from '@src/utils/pushnotification.utils';
 import { SendNotificationToDevice } from '@src/types';
 import { Lambda } from 'aws-sdk';
 import { buildWalletBalanceValueMap } from '@tests/utils';
+
+const isFirebaseInitializedMock = jest.spyOn(pushnotificationUtils, 'isFirebaseInitialized');
 
 describe('PushNotificationUtils', () => {
   const initEnv = process.env;
@@ -29,7 +30,10 @@ describe('PushNotificationUtils', () => {
       FIREBASE_TOKEN_URI: 'https://oauth2.googleapis.com/token',
       FIREBASE_AUTH_PROVIDER_X509_CERT_URL: 'https://www.googleapis.com/oauth2/v1/certs',
       FIREBASE_CLIENT_X509_CERT_URL: 'https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk.iam.gserviceaccount.com',
+      PUSH_ALLOWED_PROVIDERS: 'android,ios',
     };
+    initFirebaseAdminMock.mockReset();
+    isFirebaseInitializedMock.mockReset();
     jest.resetModules();
   });
 
@@ -38,161 +42,172 @@ describe('PushNotificationUtils', () => {
   });
 
   // test firebase initialization error
-  it('firebase initialization error', () => {
+  it('firebase initialization error', async () => {
     expect.hasAssertions();
 
     // load local env
     process.env.PUSH_NOTIFICATION_ENABLED = 'true';
     logger.error.mockReset();
-    initFirebaseAdminMock.mockReset();
     initFirebaseAdminMock.mockImplementation(() => {
       throw new Error('Failed to parse private key: Error: Invalid PEM formatted message.');
     });
 
     // reload module
-    const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
+    const { PushNotificationUtils } = await import('@src/utils/pushnotification.utils');
 
     const resultMessageOfLastCallToLoggerError = logger.error.mock.calls[0][0];
     expect(resultMessageOfLastCallToLoggerError).toMatchInlineSnapshot('"Error initializing Firebase Admin SDK. ErrorMessage: Failed to parse private key: Error: Invalid PEM formatted message."');
   });
 
   describe('process.env', () => {
-    it('WALLET_SERVICE_LAMBDA_ENDPOINT', () => {
+    it('WALLET_SERVICE_LAMBDA_ENDPOINT', async () => {
       expect.hasAssertions();
 
       // load local env
       process.env.WALLET_SERVICE_LAMBDA_ENDPOINT = '';
 
       // reload module
-      const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
+      const { PushNotificationUtils } = await import('@src/utils/pushnotification.utils');
 
       expect(logger.error).toHaveBeenLastCalledWith('[ALERT] env.WALLET_SERVICE_LAMBDA_ENDPOINT can not be null or undefined.');
     });
 
-    it('STAGE', () => {
+    it('STAGE', async () => {
       expect.hasAssertions();
 
       // load local env
       process.env.STAGE = '';
 
       // reload module
-      const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
+      const { PushNotificationUtils } = await import('@src/utils/pushnotification.utils');
 
       expect(logger.error).toHaveBeenLastCalledWith('[ALERT] env.STAGE can not be null or undefined.');
     });
 
-    it('FIREBASE_PROJECT_ID', () => {
+    it('FIREBASE_PROJECT_ID', async () => {
       expect.hasAssertions();
 
       // load local env
       process.env.FIREBASE_PROJECT_ID = '';
 
       // reload module
-      const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
+      const { PushNotificationUtils } = await import('@src/utils/pushnotification.utils');
 
       expect(logger.error).toHaveBeenLastCalledWith('[ALERT] env.FIREBASE_PROJECT_ID can not be null or undefined.');
     });
 
-    it('FIREBASE_PRIVATE_KEY_ID', () => {
+    it('FIREBASE_PRIVATE_KEY_ID', async () => {
       expect.hasAssertions();
 
       // load local env
       process.env.FIREBASE_PRIVATE_KEY_ID = '';
 
       // reload module
-      const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
+      const { PushNotificationUtils } = await import('@src/utils/pushnotification.utils');
 
       expect(logger.error).toHaveBeenLastCalledWith('[ALERT] env.FIREBASE_PRIVATE_KEY_ID can not be null or undefined.');
     });
 
-    it('FIREBASE_PRIVATE_KEY', () => {
+    it('FIREBASE_PRIVATE_KEY', async () => {
       expect.hasAssertions();
 
       // load local env
       process.env.FIREBASE_PRIVATE_KEY = '';
 
       // reload module
-      const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
+      const { PushNotificationUtils } = await import('@src/utils/pushnotification.utils');
 
       expect(logger.error).toHaveBeenLastCalledWith('[ALERT] env.FIREBASE_PRIVATE_KEY can not be null or undefined.');
     });
 
     // generate test for every comment below
-    it('FIREBASE_CLIENT_EMAIL', () => {
+    it('FIREBASE_CLIENT_EMAIL', async () => {
       expect.hasAssertions();
 
       // load local env
       process.env.FIREBASE_CLIENT_EMAIL = '';
 
       // reload module
-      const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
+      const { PushNotificationUtils } = await import('@src/utils/pushnotification.utils');
 
       expect(logger.error).toHaveBeenLastCalledWith('[ALERT] env.FIREBASE_CLIENT_EMAIL can not be null or undefined.');
     });
 
     // FIREBASE_CLIENT_ID: 'client-id',
-    it('FIREBASE_CLIENT_ID', () => {
+    it('FIREBASE_CLIENT_ID', async () => {
       expect.hasAssertions();
 
       // load local env
       process.env.FIREBASE_CLIENT_ID = '';
 
       // reload module
-      const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
+      const { PushNotificationUtils } = await import('@src/utils/pushnotification.utils');
 
       expect(logger.error).toHaveBeenLastCalledWith('[ALERT] env.FIREBASE_CLIENT_ID can not be null or undefined.');
     });
 
     // FIREBASE_AUTH_URI: 'https://accounts.google.com/o/oauth2/auth',
-    it('FIREBASE_AUTH_URI', () => {
+    it('FIREBASE_AUTH_URI', async () => {
       expect.hasAssertions();
 
       // load local env
       process.env.FIREBASE_AUTH_URI = '';
 
       // reload module
-      const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
+      const { PushNotificationUtils } = await import('@src/utils/pushnotification.utils');
 
       expect(logger.error).toHaveBeenLastCalledWith('[ALERT] env.FIREBASE_AUTH_URI can not be null or undefined.');
     });
 
     // FIREBASE_TOKEN_URI: 'https://oauth2.googleapis.com/token',
-    it('FIREBASE_TOKEN_URI', () => {
+    it('FIREBASE_TOKEN_URI', async () => {
       expect.hasAssertions();
 
       // load local env
       process.env.FIREBASE_TOKEN_URI = '';
 
       // reload module
-      const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
+      const { PushNotificationUtils } = await import('@src/utils/pushnotification.utils');
 
       expect(logger.error).toHaveBeenLastCalledWith('[ALERT] env.FIREBASE_TOKEN_URI can not be null or undefined.');
     });
 
     // FIREBASE_AUTH_PROVIDER_X509_CERT_URL: 'https://www.googleapis.com/oauth2/v1/certs',
-    it('FIREBASE_AUTH_PROVIDER_X509_CERT_URL', () => {
+    it('FIREBASE_AUTH_PROVIDER_X509_CERT_URL', async () => {
       expect.hasAssertions();
 
       // load local env
       process.env.FIREBASE_AUTH_PROVIDER_X509_CERT_URL = '';
 
       // reload module
-      const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
+      const { PushNotificationUtils } = await import('@src/utils/pushnotification.utils');
 
       expect(logger.error).toHaveBeenLastCalledWith('[ALERT] env.FIREBASE_AUTH_PROVIDER_X509_CERT_URL can not be null or undefined.');
     });
 
     // FIREBASE_CLIENT_X509_CERT_URL: 'https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk.iam.gserviceaccount.com',
-    it('FIREBASE_CLIENT_X509_CERT_URL', () => {
+    it('FIREBASE_CLIENT_X509_CERT_URL', async () => {
       expect.hasAssertions();
 
       // load local env
       process.env.FIREBASE_CLIENT_X509_CERT_URL = '';
 
       // reload module
-      const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
+      const { PushNotificationUtils } = await import('@src/utils/pushnotification.utils');
 
       expect(logger.error).toHaveBeenLastCalledWith('[ALERT] env.FIREBASE_CLIENT_X509_CERT_URL can not be null or undefined.');
+    });
+
+    it('PUSH_ALLOWED_PROVIDERS', async () => {
+      expect.hasAssertions();
+
+      // load local env
+      process.env.PUSH_ALLOWED_PROVIDERS = '';
+
+      // reload module
+      const { PushNotificationUtils } = await import('@src/utils/pushnotification.utils');
+
+      expect(logger.error).toHaveBeenLastCalledWith('[ALERT] env.PUSH_ALLOWED_PROVIDERS is empty.');
     });
   });
 
@@ -206,9 +221,27 @@ describe('PushNotificationUtils', () => {
       }));
     });
 
+    it('should return success false when firebase is not initialized', async () => {
+      expect.hasAssertions();
+
+      isFirebaseInitializedMock.mockReturnValue(false);
+      const notification = {
+        deviceId: 'device1',
+        title: 'New transaction',
+        description: 'You recieved 1 HTR.',
+        metadata: {
+          txId: 'tx1',
+        },
+      } as SendNotificationToDevice;
+      const result = await PushNotificationUtils.sendToFcm(notification);
+
+      expect(result).toStrictEqual({ success: false, errorMessage: 'Firebase not initialized.' });
+    });
+
     it('should return success true when succeed', async () => {
       expect.hasAssertions();
 
+      isFirebaseInitializedMock.mockReturnValue(true);
       const notification = {
         deviceId: 'device1',
         title: 'New transaction',
@@ -225,6 +258,7 @@ describe('PushNotificationUtils', () => {
     it('should return success false when deviceId is invalid', async () => {
       expect.hasAssertions();
 
+      isFirebaseInitializedMock.mockReturnValue(true);
       messaging.mockImplementation(() => ({
         sendMulticast: sendMulticastMock.mockReturnValue({
           responses: [
@@ -254,6 +288,7 @@ describe('PushNotificationUtils', () => {
     it('should return success false with unknown error when failure is not treated', async () => {
       expect.hasAssertions();
 
+      isFirebaseInitializedMock.mockReturnValue(true);
       messaging.mockImplementation(() => ({
         sendMulticast: sendMulticastMock.mockReturnValue({
           responses: [
@@ -301,7 +336,7 @@ describe('PushNotificationUtils', () => {
       process.env.STAGE = fakeStage;
 
       // reload module
-      const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
+      const { PushNotificationUtils } = await import('@src/utils/pushnotification.utils');
 
       const notification = {
         deviceId: 'device1',
@@ -343,7 +378,7 @@ describe('PushNotificationUtils', () => {
       process.env.STAGE = fakeStage;
 
       // reload module
-      const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
+      const { PushNotificationUtils } = await import('@src/utils/pushnotification.utils');
 
       const notification = {
         deviceId: 'device1',
@@ -373,7 +408,7 @@ describe('PushNotificationUtils', () => {
       process.env.STAGE = fakeStage;
 
       // reload module
-      const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
+      const { PushNotificationUtils } = await import('@src/utils/pushnotification.utils');
 
       const notification = {
         deviceId: 'device1',
@@ -397,7 +432,7 @@ describe('PushNotificationUtils', () => {
       jest.clearAllMocks();
       // reload module
       process.env.PUSH_NOTIFICATION_ENABLED = 'true';
-      const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
+      const { PushNotificationUtils } = await import('@src/utils/pushnotification.utils');
 
       const walletMap = buildWalletBalanceValueMap();
       const result = await PushNotificationUtils.invokeOnTxPushNotificationRequestedLambda(walletMap);
@@ -429,7 +464,7 @@ describe('PushNotificationUtils', () => {
       jest.clearAllMocks();
       // reload module
       process.env.PUSH_NOTIFICATION_ENABLED = 'false';
-      const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
+      const { PushNotificationUtils } = await import('@src/utils/pushnotification.utils');
 
       const walletMap = buildWalletBalanceValueMap();
       const result = await PushNotificationUtils.invokeOnTxPushNotificationRequestedLambda(walletMap);
@@ -458,16 +493,10 @@ describe('PushNotificationUtils', () => {
 
       // reload module
       process.env.PUSH_NOTIFICATION_ENABLED = 'true';
-      const { PushNotificationUtils } = require('@src/utils/pushnotification.utils');
+      const { PushNotificationUtils } = await import('@src/utils/pushnotification.utils');
 
       const walletMap = buildWalletBalanceValueMap();
-      await expect(
-        PushNotificationUtils.invokeOnTxPushNotificationRequestedLambda(
-          walletMap,
-        ),
-      ).rejects.toMatchInlineSnapshot(
-        '[Error: hathor-wallet-service-stage-onTxPushNotificationRequested lambda invoke failed for wallets: wallet1]',
-      );
+      await expect(PushNotificationUtils.invokeOnTxPushNotificationRequestedLambda(walletMap)).rejects.toMatchInlineSnapshot('[Error: hathor-wallet-service-stage-txPushRequested lambda invoke failed for wallets: wallet1]');
     });
   });
 });

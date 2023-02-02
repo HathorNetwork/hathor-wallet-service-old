@@ -1,5 +1,5 @@
 import { Lambda } from 'aws-sdk';
-import { SendNotificationToDevice, StringMap, WalletBalanceValue } from '@src/types';
+import { PushProvider, SendNotificationToDevice, StringMap, WalletBalanceValue } from '@src/types';
 import fcmAdmin, { credential, messaging, ServiceAccount } from 'firebase-admin';
 import { MulticastMessage } from 'firebase-admin/messaging';
 import createDefaultLogger from '@src/logger';
@@ -56,7 +56,7 @@ export function buildFunctionName(functionName: string): string {
 
 export enum FunctionName {
   SEND_NOTIFICATION_TO_DEVICE = 'sendNotificationToDevice',
-  ON_TX_PUSH_NOTIFICATION_REQUESTED = 'onTxPushNotificationRequested',
+  ON_TX_PUSH_NOTIFICATION_REQUESTED = 'txPushRequested',
 }
 
 const STAGE = process.env.STAGE;
@@ -74,6 +74,32 @@ const FIREBASE_AUTH_PROVIDER_X509_CERT_URL = process.env.FIREBASE_AUTH_PROVIDER_
 const FIREBASE_CLIENT_X509_CERT_URL = process.env.FIREBASE_CLIENT_X509_CERT_URL;
 /** Local feature toggle that disable the push notification by default */
 const PUSH_NOTIFICATION_ENABLED = process.env.PUSH_NOTIFICATION_ENABLED;
+/**
+ * Controls which providers are allowed to send notification when it is enabled
+ * @example
+ * PUSH_ALLOWED_PROVIDERS=android,ios
+ * @remarks
+ * In the test this constant works like the environment variable constants.
+ * It needs to be reloaded after changing the underlying environment variable
+ * `process.env.PUSH_ALLOWED_PROVIDERS`.
+ *
+ * @example Reload the constant by reloading the module:
+ * ```ts
+ // reload module
+ const { PushNotificationUtils } = await import('@src/utils/pushnotification.utils');
+ * ```
+ * */
+const PUSH_ALLOWED_PROVIDERS = (() => {
+  const providers = process.env.PUSH_ALLOWED_PROVIDERS;
+  if (!providers) {
+    // If no providers are set, we allow android by default, but alert the environment variable is empty
+    logger.error('[ALERT] env.PUSH_ALLOWED_PROVIDERS is empty.');
+    return [PushProvider.ANDROID];
+  }
+  return providers.split(',');
+})();
+
+export const isPushProviderAllowed = (provider: string): boolean => PUSH_ALLOWED_PROVIDERS.includes(provider);
 
 export const isPushNotificationEnabled = (): boolean => PUSH_NOTIFICATION_ENABLED === 'true';
 
@@ -90,16 +116,20 @@ const serviceAccount = {
   client_x509_cert_url: FIREBASE_CLIENT_X509_CERT_URL,
 };
 
+let firebaseInitialized = false;
 if (isPushNotificationEnabled()) {
   try {
     fcmAdmin.initializeApp({
       credential: credential.cert(serviceAccount as ServiceAccount),
       projectId: FIREBASE_PROJECT_ID,
     });
+    firebaseInitialized = true;
   } catch (error) {
     logger.error(`Error initializing Firebase Admin SDK. ErrorMessage: ${error.message}`, error);
   }
 }
+
+export const isFirebaseInitialized = (): boolean => firebaseInitialized;
 
 export enum PushNotificationError {
   UNKNOWN = 'unknown',
@@ -108,6 +138,10 @@ export enum PushNotificationError {
 
 export class PushNotificationUtils {
   public static async sendToFcm(notification: SendNotificationToDevice): Promise<{ success: boolean, errorMessage?: string }> {
+    if (!isFirebaseInitialized()) {
+      return { success: false, errorMessage: 'Firebase not initialized.' };
+    }
+
     const message: MulticastMessage = {
       tokens: [notification.deviceId],
       data: notification.metadata,

@@ -2568,7 +2568,6 @@ describe('getTransactionById', () => {
 
     expect(firstToken).toStrictEqual({
       balance: 10,
-      height: height1,
       timestamp: timestamp1,
       tokenId: token1.id,
       tokenName: token1.name,
@@ -2580,7 +2579,6 @@ describe('getTransactionById', () => {
     });
     expect(secondToken).toStrictEqual({
       balance: 7,
-      height: height1,
       timestamp: timestamp1,
       tokenId: token2.id,
       tokenName: token2.name,

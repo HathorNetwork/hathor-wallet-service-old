@@ -63,7 +63,6 @@ test('get a transaction given its ID', async () => {
   expect(returnBody.txTokens).toStrictEqual([
     {
       balance: 10,
-      height: 1,
       timestamp: 10,
       tokenId: token1.id,
       tokenName: token1.name,
@@ -75,7 +74,6 @@ test('get a transaction given its ID', async () => {
     },
     {
       balance: 7,
-      height: 1,
       timestamp: 10,
       tokenId: token2.id,
       tokenName: token2.name,

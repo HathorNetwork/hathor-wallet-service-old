@@ -3,6 +3,7 @@
     "lib": ["es2017"],
     "removeComments": true,
     "moduleResolution": "node",
+    "module": "commonjs",
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "sourceMap": true,

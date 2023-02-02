@@ -208,7 +208,8 @@ functions:
           - lambda:InvokeFunction
           - lambda:InvokeAsync
         Resource:
-          Fn::GetAtt: [ OnNewNftEventLambdaFunction, Arn ]
+          - Fn::GetAtt: [ OnNewNftEventLambdaFunction, Arn ]
+          - Fn::GetAtt: [ TxPushRequestedLambdaFunction, Arn ]
   onMinersListRequest:
     handler: src/api/miners.onMinersListRequest
     warmup:
@@ -642,11 +643,19 @@ functions:
     warmup:
       walletWarmer:
         enabled: false
-  txPushNotificationRequested:
+  txPushRequested:
     handler: src/api/txPushNotificationRequested.handleRequest
     warmup:
       walletWarmer:
         enabled: false
+    iamRoleStatementsInherit: true
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - lambda:InvokeFunction
+          - lambda:InvokeAsync
+        Resource:
+          Fn::GetAtt: [ SendNotificationToDeviceLambdaFunction , Arn ]
   deleteStalePushDevices:
     handler: src/db/cron.routines.cleanStalePushDevices
     events:
