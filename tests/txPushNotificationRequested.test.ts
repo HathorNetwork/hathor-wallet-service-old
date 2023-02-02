@@ -80,7 +80,6 @@ describe('success', () => {
     const walletId = 'wallet1';
     await addToWalletTable(mysql, [buildWallet({ id: walletId })]);
 
-    // device with disabled enableShowAmounts, resulting in a generic notification
     const deviceId = 'device1';
     const pushDevice = {
       deviceId,
