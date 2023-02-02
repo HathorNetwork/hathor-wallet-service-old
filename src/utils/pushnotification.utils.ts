@@ -74,6 +74,21 @@ const FIREBASE_AUTH_PROVIDER_X509_CERT_URL = process.env.FIREBASE_AUTH_PROVIDER_
 const FIREBASE_CLIENT_X509_CERT_URL = process.env.FIREBASE_CLIENT_X509_CERT_URL;
 /** Local feature toggle that disable the push notification by default */
 const PUSH_NOTIFICATION_ENABLED = process.env.PUSH_NOTIFICATION_ENABLED;
+/**
+ * Controls which providers are allowed to send notification when it is enabled
+ * @example
+ * PUSH_ALLOWED_PROVIDERS=android,ios
+ * @remarks
+ * In the test this constant works like the environment variable constants.
+ * It need to be reloaded after change the underlying environment variable
+ * `process.env.PUSH_ALLOWED_PROVIDERS`.
+ *
+ * @example Reload the constant by reloading the module:
+ * ```ts
+ // reload module
+ const { PushNotificationUtils } = await import('@src/utils/pushnotification.utils');
+ * ```
+ * */
 const PUSH_ALLOWED_PROVIDERS = (() => {
   const providers = process.env.PUSH_ALLOWED_PROVIDERS;
   if (!providers) {
