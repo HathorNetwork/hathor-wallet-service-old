@@ -80,7 +80,7 @@ const PUSH_NOTIFICATION_ENABLED = process.env.PUSH_NOTIFICATION_ENABLED;
  * PUSH_ALLOWED_PROVIDERS=android,ios
  * @remarks
  * In the test this constant works like the environment variable constants.
- * It need to be reloaded after change the underlying environment variable
+ * It needs to be reloaded after changing the underlying environment variable
  * `process.env.PUSH_ALLOWED_PROVIDERS`.
  *
  * @example Reload the constant by reloading the module:
