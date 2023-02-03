@@ -367,7 +367,7 @@ export const getAddressFromXpub = (xpubkey: string): string => {
 export const validateEnvVariables = (envVariables: string[]): void => {
   const missingList = [];
   for (const envVariable of envVariables) {
-    if (!(envVariable in process.env)) {
+    if (!(envVariable in process.env) || process.env[envVariable].length === 0) {
       missingList.push(envVariable);
     }
   }
