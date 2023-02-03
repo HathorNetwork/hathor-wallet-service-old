@@ -119,8 +119,13 @@ const serviceAccount = {
 let firebaseInitialized = false;
 if (isPushNotificationEnabled()) {
   try {
+    serviceAccount.private_key = FIREBASE_PRIVATE_KEY
+      ? FIREBASE_PRIVATE_KEY.replace(/\\n/gm, '\n')
+      : undefined;
+
     console.log('serviceAccount.private_key', serviceAccount.private_key);
     console.log('FIREBASE_PRIVATE_KEY', FIREBASE_PRIVATE_KEY);
+
     fcmAdmin.initializeApp({
       credential: credential.cert(serviceAccount as ServiceAccount),
       projectId: FIREBASE_PROJECT_ID,
