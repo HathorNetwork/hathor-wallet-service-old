@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
 import firebaseMock from '@tests/utils/firebase-admin.mock';
+import { mockedAddAlert } from '@tests/utils/alerting.utils.mock';
 import hathorLib from '@hathor/wallet-lib';
 import eventTemplate from '@events/eventTemplate.json';
 import tokenCreationTx from '@events/tokenCreationTx.json';
@@ -30,7 +31,7 @@ import { getHandlerContext, nftCreationTx } from '@events/nftCreationTx';
 import * as pushNotificationUtils from '@src/utils/pushnotification.utils';
 import * as commons from '@src/commons';
 import { Context } from 'aws-lambda';
-import { StringMap, WalletBalanceValue } from '@src/types';
+import { StringMap, WalletBalanceValue, Severity } from '@src/types';
 
 const mysql = getDbConnection();
 const blockReward = 6400;
@@ -670,4 +671,25 @@ test('txProcess onNewTxRequest with push notification', async () => {
   await txProcessor.onNewTxRequest(fakeEvent, fakeContext, null);
 
   expect(invokeOnTxPushNotificationRequestedLambdaMock).toHaveBeenCalledTimes(1);
+});
+
+test('onNewTxRequest should send alert on SQS on failure', async () => {
+  expect.hasAssertions();
+
+  const addNewTxSpy = jest.spyOn(txProcessor, 'addNewTx');
+  addNewTxSpy.mockImplementationOnce(() => Promise.reject(new Error('error')));
+
+  const fakeEvent = JSON.parse(JSON.stringify(eventTemplate)).Records[0];
+  const fakeContext = {
+    awsRequestId: 'requestId',
+  } as unknown as Context;
+
+  await txProcessor.onNewTxRequest(fakeEvent, fakeContext, null);
+
+  expect(mockedAddAlert).toHaveBeenCalledWith(
+    'Error on onNewTxRequest',
+    'Erroed on onNewTxRequest lambda',
+    Severity.MINOR,
+    { TxId: null, error: 'error' },
+  );
 });
