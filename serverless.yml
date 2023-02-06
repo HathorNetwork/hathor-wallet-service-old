@@ -664,3 +664,10 @@ functions:
     warmup:
       walletWarmer:
         enabled: false
+  cleanUnsentTxProposalsUtxos:
+    handler: src/db/cron.routines.cleanUnsentTxProposalsUtxos
+    events:
+      - schedule: cron(*/5 * * * * *) # run every 5 minutes
+    warmup:
+      walletWarmer:
+        enabled: false
