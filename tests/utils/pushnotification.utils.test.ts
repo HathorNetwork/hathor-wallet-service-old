@@ -198,6 +198,19 @@ describe('PushNotificationUtils', () => {
       expect(logger.error).toHaveBeenLastCalledWith('[ALERT] env.FIREBASE_CLIENT_X509_CERT_URL can not be null or undefined.');
     });
 
+    it('FIREBASE_PRIVATE_KEY-IIFE', async () => {
+      expect.hasAssertions();
+
+      // load local env
+      // env variables are of type string, by assigning a boolean value we can test the error handling
+      process.env.FIREBASE_PRIVATE_KEY = true as unknown as string;
+
+      // reload module
+      const { PushNotificationUtils } = await import('@src/utils/pushnotification.utils');
+
+      expect(logger.error).toHaveBeenLastCalledWith('[ALERT] Error while parsing the env.FIREBASE_PRIVATE_KEY.');
+    });
+
     it('PUSH_ALLOWED_PROVIDERS', async () => {
       expect.hasAssertions();
 

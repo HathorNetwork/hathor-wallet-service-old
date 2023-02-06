@@ -65,13 +65,30 @@ const SEND_NOTIFICATION_FUNCTION_NAME = buildFunctionName(FunctionName.SEND_NOTI
 const ON_TX_PUSH_NOTIFICATION_REQUESTED_FUNCTION_NAME = buildFunctionName(FunctionName.ON_TX_PUSH_NOTIFICATION_REQUESTED);
 const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID;
 const FIREBASE_PRIVATE_KEY_ID = process.env.FIREBASE_PRIVATE_KEY_ID;
-const FIREBASE_PRIVATE_KEY = process.env.FIREBASE_PRIVATE_KEY;
 const FIREBASE_CLIENT_EMAIL = process.env.FIREBASE_CLIENT_EMAIL;
 const FIREBASE_CLIENT_ID = process.env.FIREBASE_CLIENT_ID;
 const FIREBASE_AUTH_URI = process.env.FIREBASE_AUTH_URI;
 const FIREBASE_TOKEN_URI = process.env.FIREBASE_TOKEN_URI;
 const FIREBASE_AUTH_PROVIDER_X509_CERT_URL = process.env.FIREBASE_AUTH_PROVIDER_X509_CERT_URL;
 const FIREBASE_CLIENT_X509_CERT_URL = process.env.FIREBASE_CLIENT_X509_CERT_URL;
+const FIREBASE_PRIVATE_KEY = (() => {
+  try {
+    /**
+     * To fix the error 'Error: Invalid PEM formatted message.',
+     * when initializing the firebase admin app, we need to replace
+     * the escaped line break with an unescaped line break.
+     * https://github.com/gladly-team/next-firebase-auth/discussions/95#discussioncomment-2891225
+     */
+    const privateKey = process.env.FIREBASE_PRIVATE_KEY;
+    return privateKey
+      ? privateKey.replace(/\\n/gm, '\n')
+      : null;
+  } catch (error) {
+    logger.error('[ALERT] Error while parsing the env.FIREBASE_PRIVATE_KEY.');
+    return null;
+  }
+})();
+
 /** Local feature toggle that disable the push notification by default */
 const PUSH_NOTIFICATION_ENABLED = process.env.PUSH_NOTIFICATION_ENABLED;
 /**
@@ -119,13 +136,6 @@ const serviceAccount = {
 let firebaseInitialized = false;
 if (isPushNotificationEnabled()) {
   try {
-    serviceAccount.private_key = FIREBASE_PRIVATE_KEY
-      ? FIREBASE_PRIVATE_KEY.replace(/\\n/gm, '\n')
-      : undefined;
-
-    console.log('serviceAccount.private_key', serviceAccount.private_key);
-    console.log('FIREBASE_PRIVATE_KEY', FIREBASE_PRIVATE_KEY);
-
     fcmAdmin.initializeApp({
       credential: credential.cert(serviceAccount as ServiceAccount),
       projectId: FIREBASE_PROJECT_ID,
