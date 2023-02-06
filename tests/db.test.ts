@@ -1,4 +1,5 @@
 import { logger } from '@tests/winston.mock';
+import { mockedAddAlert } from '@tests/utils/alerting.utils.mock';
 import { v4 as uuidv4 } from 'uuid';
 import {
   addNewAddresses,
@@ -97,6 +98,7 @@ import {
   DbTxOutput,
   PushDevice,
   PushProvider,
+  Severity,
 } from '@src/types';
 import {
   closeDbConnection,
@@ -2289,6 +2291,17 @@ test('getTotalSupply', async () => {
   expect(await getTotalSupply(mysql, '00')).toStrictEqual(20);
   expect(await getTotalSupply(mysql, 'token2')).toStrictEqual(25);
   expect(await getTotalSupply(mysql, 'token1')).toStrictEqual(35);
+
+  const mysqlQuerySpy = jest.spyOn(mysql, 'query');
+  mysqlQuerySpy.mockImplementationOnce(() => Promise.resolve({ length: null }));
+
+  await expect(getTotalSupply(mysql, 'undefined-token')).rejects.toThrow('Total supply query returned no results');
+  expect(mockedAddAlert).toHaveBeenCalledWith(
+    'Total supply query returned no results',
+    '-',
+    Severity.MINOR,
+    { tokenId: 'undefined-token' },
+  );
 });
 
 test('getExpiredTimelocksUtxos', async () => {
@@ -2348,6 +2361,17 @@ test('getTotalTransactions', async () => {
 
   expect(await getTotalTransactions(mysql, 'token1')).toStrictEqual(3);
   expect(await getTotalTransactions(mysql, 'token2')).toStrictEqual(2);
+
+  const mysqlQuerySpy = jest.spyOn(mysql, 'query');
+  mysqlQuerySpy.mockImplementationOnce(() => Promise.resolve({ length: null }));
+
+  await expect(getTotalTransactions(mysql, 'undefined-token')).rejects.toThrow('Total transactions query returned no results');
+  expect(mockedAddAlert).toHaveBeenCalledWith(
+    'Total transactions query returned no results',
+    '-',
+    Severity.MINOR,
+    { tokenId: 'undefined-token' },
+  );
 });
 
 test('getAvailableAuthorities', async () => {
