@@ -1,4 +1,6 @@
 import hathorLib from '@hathor/wallet-lib';
+import { mockedAddAlert } from '@tests/utils/alerting.utils.mock';
+import { Severity } from '@src/types';
 import { MAX_METADATA_UPDATE_RETRIES, NftUtils } from '@src/utils/nft.utils';
 import { getHandlerContext, getTransaction } from '@events/nftCreationTx';
 import { Lambda as LambdaMock } from 'aws-sdk';
@@ -230,6 +232,13 @@ describe('invokeNftHandlerLambda', () => {
 
     await expect(NftUtils.invokeNftHandlerLambda('sampleUid'))
       .rejects.toThrow(new Error('onNewNftEvent lambda invoke failed for tx: sampleUid'));
+
+    expect(mockedAddAlert).toHaveBeenCalledWith(
+      'Error on NFTHandler lambda',
+      'Erroed on invokeNftHandlerLambda invocation',
+      Severity.MINOR,
+      { TxId: 'sampleUid' },
+    );
   });
 });
 

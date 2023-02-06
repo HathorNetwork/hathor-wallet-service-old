@@ -159,16 +159,7 @@ export const onNewTxRequest: APIGatewayProxyHandler = async (event, context) => 
     // This process is not critical, so we run it in a fire-and-forget manner, not waiting for the promise.
     // In case of errors, just log the asynchronous exception and take no action on it.
     NftUtils.invokeNftHandlerLambda(tx.tx_id)
-      .catch((err) => {
-        logger.error('Erroed on invokeOnTxPushNotificationRequestedLambda', err);
-
-        return addAlert(
-          'Error on PushNotification',
-          'Errored on invokeOnTxPushNotificationRequestedLambda invocation',
-          Severity.MINOR,
-          { TxId: tx.tx_id, error: err.message },
-        );
-      });
+      .catch((err) => logger.error('[ALERT] Errored on nftHandlerLambda invocation', err));
   }
 
   if (isPushNotificationEnabled()) {
@@ -176,15 +167,7 @@ export const onNewTxRequest: APIGatewayProxyHandler = async (event, context) => 
     const { length: hasAffectWallets } = Object.keys(walletBalanceMap);
     if (hasAffectWallets) {
       PushNotificationUtils.invokeOnTxPushNotificationRequestedLambda(walletBalanceMap)
-        .catch((err) => {
-          logger.error('Errored on invokeOnTxPushNotificationRequestedLambda invocation', err);
-          return addAlert(
-            'Error on PushNotification',
-            'Errored on invokeOnTxPushNotificationRequestedLambda invocation',
-            Severity.MINOR,
-            { TxId: tx.tx_id, error: err.message },
-          );
-        });
+        .catch((err: Error) => logger.error('Errored on invokeOnTxPushNotificationRequestedLambda invocation', err));
     }
   }
 
