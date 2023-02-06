@@ -79,6 +79,17 @@ custom:
         comparisonOperator: GreaterThanThreshold
         alarmActions:
           - minor
+      cleanTxProposalsUtxosDuration:
+        description: "Clean tx proposals utxos cronjob taking too long"
+        namespace: 'AWS/Lambda'
+        metric: "Duration"
+        statistic: Average
+        threshold: 30000 # 30s
+        period: 60
+        evaluationPeriods: 1
+        comparisonOperator: GreaterThanThreshold
+        alarmActions:
+          - minor
     alarms: # Alarms that will be applied to all functions
       - majorFunctionErrors
       - minorFunctionErrors
@@ -666,8 +677,11 @@ functions:
         enabled: false
   cleanUnsentTxProposalsUtxos:
     handler: src/db/cron.routines.cleanUnsentTxProposalsUtxos
+    timeout: 60 # 1 minute
     events:
       - schedule: cron(*/5 * * * * *) # run every 5 minutes
     warmup:
       walletWarmer:
         enabled: false
+    alarms:
+      - cleanTxProposalsUtxosDuration
