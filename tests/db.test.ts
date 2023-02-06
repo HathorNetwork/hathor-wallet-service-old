@@ -76,7 +76,10 @@ import {
   getTokenSymbols,
   countStalePushDevices,
   deleteStalePushDevices,
+  releaseTxProposalUtxos,
+  getUnsentTxProposals,
 } from '@src/db';
+import { cleanUnsentTxProposalsUtxos } from '@src/db/cron.routines';
 import {
   beginTransaction,
   rollbackTransaction,
@@ -1368,7 +1371,7 @@ test('markUtxosWithProposalId and getTxProposalInputs', async () => {
   expect(await getTxProposalInputs(mysql, txProposalId)).toStrictEqual(inputs);
 });
 
-test('createTxProposal, updateTxProposal and getTxProposal', async () => {
+test('createTxProposal, updateTxProposal, getTxProposal, countUnsentTxProposals, releaseTxProposalUtxos', async () => {
   expect.hasAssertions();
 
   const now = getUnixTimestamp();
@@ -1386,6 +1389,36 @@ test('createTxProposal, updateTxProposal and getTxProposal', async () => {
 
   // tx proposal not found
   expect(await getTxProposal(mysql, 'aaa')).toBeNull();
+
+  const txProposalId1: string = uuidv4() as string;
+  const txProposalId2: string = uuidv4() as string;
+  const txProposalId3: string = uuidv4() as string;
+
+  // count unsent tx proposals
+  await createTxProposal(mysql, txProposalId1, walletId, 1);
+  await createTxProposal(mysql, txProposalId2, walletId, 1);
+  await createTxProposal(mysql, txProposalId3, walletId, 1);
+
+  const txProposalsBefore = getUnixTimestamp() - 5 * 60; // 5 minutes in seconds
+
+  const unsentTxProposals = await getUnsentTxProposals(mysql, txProposalsBefore);
+  expect(unsentTxProposals).toContain(txProposalId1);
+  expect(unsentTxProposals).toContain(txProposalId2);
+  expect(unsentTxProposals).toContain(txProposalId3);
+
+  await addToUtxoTable(mysql, [
+    ['tx1', 0, '00', 'address1', 5, 0, 0, 0, false, null, txProposalId1, 0],
+    ['tx2', 0, '00', 'address1', 5, 0, 0, 0, false, null, txProposalId2, 0],
+    ['tx3', 0, '00', 'address1', 5, 0, 0, 0, false, null, txProposalId3, 0],
+  ]);
+
+  await releaseTxProposalUtxos(mysql, [txProposalId1, txProposalId2, txProposalId3]);
+  await expect(releaseTxProposalUtxos(mysql, ['invalid-tx-proposal'])).rejects.toMatchInlineSnapshot(`
+    [AssertionError: Expected values to be strictly equal:
+
+    0 !== 1
+    ]
+  `);
 });
 
 test('updateVersionData', async () => {
@@ -2964,5 +2997,46 @@ describe('deleteStalePushDevices', () => {
     await deleteStalePushDevices(mysql);
 
     await expect(countStalePushDevices(mysql)).resolves.toBe(0);
+  });
+});
+
+describe('Clear unsent txProposals utxos', () => {
+  it('should unset txProposal and txProposalId from unsent txProposals', async () => {
+    expect.hasAssertions();
+
+    const walletId = 'wallet-id';
+
+    const txProposalId1: string = uuidv4() as string;
+    const txProposalId2: string = uuidv4() as string;
+    const txProposalId3: string = uuidv4() as string;
+
+    // count unsent tx proposals
+    await createTxProposal(mysql, txProposalId1, walletId, 1);
+    await createTxProposal(mysql, txProposalId2, walletId, 1);
+    await createTxProposal(mysql, txProposalId3, walletId, 1);
+
+    await addToUtxoTable(mysql, [
+      ['tx1', 0, '00', 'address1', 5, 0, 0, 0, false, null, txProposalId1, 0],
+      ['tx2', 0, '00', 'address1', 5, 0, 0, 0, false, null, txProposalId2, 0],
+      ['tx3', 0, '00', 'address1', 5, 0, 0, 0, false, null, txProposalId3, 0],
+    ]);
+
+    let utxo1 = await getTxOutput(mysql, 'tx1', 0, false);
+    let utxo2 = await getTxOutput(mysql, 'tx2', 0, false);
+    let utxo3 = await getTxOutput(mysql, 'tx3', 0, false);
+
+    expect(utxo1.txProposalId).toStrictEqual(txProposalId1);
+    expect(utxo2.txProposalId).toStrictEqual(txProposalId2);
+    expect(utxo3.txProposalId).toStrictEqual(txProposalId3);
+
+    await cleanUnsentTxProposalsUtxos();
+
+    utxo1 = await getTxOutput(mysql, 'tx1', 0, false);
+    utxo2 = await getTxOutput(mysql, 'tx2', 0, false);
+    utxo3 = await getTxOutput(mysql, 'tx3', 0, false);
+
+    expect(utxo1.txProposalId).toBeNull();
+    expect(utxo2.txProposalId).toBeNull();
+    expect(utxo3.txProposalId).toBeNull();
   });
 });

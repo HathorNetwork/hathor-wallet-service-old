@@ -567,7 +567,8 @@ export const addToUtxoTable = async (
                           \`token_id\`, \`address\`,
                           \`value\`, \`authorities\`,
                           \`timelock\`, \`heightlock\`,
-                          \`locked\`, \`spent_by\`)
+                          \`locked\`, \`spent_by\`,
+                          \`tx_proposal\`, \`tx_proposal_index\`)
      VALUES ?`,
     [entries],
   );
