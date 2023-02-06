@@ -8,10 +8,10 @@
 import { Handler } from 'aws-lambda';
 import { closeDbConnection, getDbConnection } from '@src/utils';
 import Joi, { ValidationError } from 'joi';
-import { Severity, SendNotificationToDevice, PushProvider } from '@src/types';
+import { Severity, SendNotificationToDevice } from '@src/types';
 import { getPushDevice, unregisterPushDevice } from '@src/db';
 import createDefaultLogger from '@src/logger';
-import { PushNotificationUtils, PushNotificationError } from '@src/utils/pushnotification.utils';
+import { isPushProviderAllowed, PushNotificationUtils, PushNotificationError } from '@src/utils/pushnotification.utils';
 import { addAlert } from '@src/utils/alerting.utils';
 
 const mysql = getDbConnection();
@@ -76,7 +76,7 @@ export const send: Handler<unknown, { success: boolean, message?: string, detail
     return { success: false, message: 'Failed due to device not found.' };
   }
 
-  if (pushDevice.pushProvider !== PushProvider.ANDROID) {
+  if (!isPushProviderAllowed(pushDevice.pushProvider)) {
     closeDbConnection(mysql);
     await addAlert(
       'Invalid provider error while sending push notification',
