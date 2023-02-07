@@ -364,7 +364,7 @@ export const getAddressFromXpub = (xpubkey: string): string => {
  *
  * @param envVariables - A list of variables to check
  */
-export const validateEnvVariables = (envVariables: string[]): void => {
+export const assertEnvVariablesExistence = (envVariables: string[]): void => {
   const missingList = [];
   for (const envVariable of envVariables) {
     if (!(envVariable in process.env) || process.env[envVariable].length === 0) {

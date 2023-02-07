@@ -3,13 +3,13 @@ import { PushProvider, Severity, SendNotificationToDevice, StringMap, WalletBala
 import fcmAdmin, { credential, messaging, ServiceAccount } from 'firebase-admin';
 import { MulticastMessage } from 'firebase-admin/messaging';
 import createDefaultLogger from '@src/logger';
-import { validateEnvVariables } from '@src/utils';
+import { assertEnvVariablesExistence } from '@src/utils';
 import { addAlert } from '@src/utils/alerting.utils';
 
 const logger = createDefaultLogger();
 
 try {
-  validateEnvVariables([
+  assertEnvVariablesExistence([
     'WALLET_SERVICE_LAMBDA_ENDPOINT',
     'STAGE',
     'FIREBASE_PROJECT_ID',
