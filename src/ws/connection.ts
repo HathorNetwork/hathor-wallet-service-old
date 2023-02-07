@@ -59,7 +59,7 @@ export const connect = async (
       { error: e.message },
     );
 
-    logger.error(e);
+    logger.error('Captured error on connect websocket lambda', e);
   }
 
   return DEFAULT_API_GATEWAY_RESPONSE;
