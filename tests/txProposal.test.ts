@@ -99,11 +99,40 @@ test('POST /txproposals with utxos that are already used on another txproposal s
   const token1 = '004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50';
   const token2 = '002f2bcc3261b4fb8510a458ed9df9f6ba2a413ee35901b3c5f81b0c085287e2';
 
-  const utxos = [
-    ['004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50', 0, token1, ADDRESSES[0], 300, 0, null, null, false, null],
-    ['0000001e39bc37fe8710c01cc1e8c0a937bf6f9337551fbbfddc222bfc28c197', 0, token1, ADDRESSES[0], 100, 0, null, null, false, null],
-    ['00000060a25077e48926bcd9473d77259296e123ec6af1c1a16c1c381093ab90', 0, token2, ADDRESSES[0], 300, 0, null, null, false, null],
-  ];
+  const utxos = [{
+    txId: '004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50',
+    index: 0,
+    tokenId: token1,
+    address: ADDRESSES[0],
+    value: 300,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: '0000001e39bc37fe8710c01cc1e8c0a937bf6f9337551fbbfddc222bfc28c197',
+    index: 0,
+    tokenId: token1,
+    address: ADDRESSES[0],
+    value: 100,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: '00000060a25077e48926bcd9473d77259296e123ec6af1c1a16c1c381093ab90',
+    index: 0,
+    tokenId: token2,
+    address: ADDRESSES[0],
+    value: 300,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }];
 
   await addToUtxoTable(mysql, utxos);
   await addToWalletBalanceTable(mysql, [{
@@ -146,7 +175,7 @@ test('POST /txproposals with utxos that are already used on another txproposal s
       },
     ),
   ];
-  const inputs = [new hathorLib.Input(utxos[0][0], utxos[0][1])];
+  const inputs = [new hathorLib.Input(utxos[0].txId, utxos[0].index)];
   const transaction = new hathorLib.Transaction(inputs, outputs, { tokens: [token1] });
 
   const txHex = transaction.toHex();
@@ -158,7 +187,7 @@ test('POST /txproposals with utxos that are already used on another txproposal s
   expect(returnBody.success).toBe(true);
   expect(returnBody.txProposalId).toHaveLength(36);
   expect(returnBody.inputs).toHaveLength(1);
-  expect(returnBody.inputs).toContainEqual({ txId: utxos[0][0], index: utxos[0][1], addressPath: `${defaultDerivationPath}0` });
+  expect(returnBody.inputs).toContainEqual({ txId: utxos[0].txId, index: utxos[0].index, addressPath: `${defaultDerivationPath}0` });
 
   // Send the same tx (same txHex) again
   const usedInputsEvent = makeGatewayEventWithAuthorizer('my-wallet', null, JSON.stringify({ txHex }));
@@ -253,11 +282,41 @@ test('POST /txproposals with a wallet that is not ready should fail with ApiErro
     transactions: 2,
   }]);
 
-  const utxos = [
-    ['txSuccess0', 0, 'token1', ADDRESSES[0], 300, 0, null, null, false, null],
-    ['txSuccess1', 0, 'token1', ADDRESSES[0], 100, 0, null, null, false, null],
-    ['txSuccess2', 0, 'token2', ADDRESSES[0], 300, 0, null, null, false, null],
-  ];
+  const utxos = [{
+    txId: 'txSuccess0',
+    index: 0,
+    tokenId: 'token1',
+    address: ADDRESSES[0],
+    value: 300,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: 'txSuccess1',
+    index: 0,
+    tokenId: 'token1',
+    address: ADDRESSES[0],
+    value: 100,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: 'txSuccess2',
+    index: 0,
+    tokenId: 'token2',
+    address: ADDRESSES[0],
+    value: 300,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }];
+
   await addToUtxoTable(mysql, utxos);
   await addToWalletBalanceTable(mysql, [{
     walletId: 'my-wallet',
@@ -316,11 +375,40 @@ test('PUT /txproposals/{proposalId} with an empty body should fail with ApiError
   const token1 = '004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50';
   const token2 = '002f2bcc3261b4fb8510a458ed9df9f6ba2a413ee35901b3c5f81b0c085287e2';
 
-  const utxos = [
-    ['004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50', 0, token1, ADDRESSES[0], 300, 0, null, null, false, null],
-    ['0000001e39bc37fe8710c01cc1e8c0a937bf6f9337551fbbfddc222bfc28c197', 0, token1, ADDRESSES[0], 100, 0, null, null, false, null],
-    ['00000060a25077e48926bcd9473d77259296e123ec6af1c1a16c1c381093ab90', 0, token2, ADDRESSES[0], 300, 0, null, null, false, null],
-  ];
+  const utxos = [{
+    txId: '004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50',
+    index: 0,
+    tokenId: token1,
+    address: ADDRESSES[0],
+    value: 300,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: '0000001e39bc37fe8710c01cc1e8c0a937bf6f9337551fbbfddc222bfc28c197',
+    index: 0,
+    tokenId: token1,
+    address: ADDRESSES[0],
+    value: 100,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: '00000060a25077e48926bcd9473d77259296e123ec6af1c1a16c1c381093ab90',
+    index: 0,
+    tokenId: token2,
+    address: ADDRESSES[0],
+    value: 300,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }];
 
   await addToUtxoTable(mysql, utxos);
   await addToWalletBalanceTable(mysql, [{
@@ -361,7 +449,7 @@ test('PUT /txproposals/{proposalId} with an empty body should fail with ApiError
       },
     ),
   ];
-  const inputs = [new hathorLib.Input(utxos[0][0], utxos[0][1])];
+  const inputs = [new hathorLib.Input(utxos[0].txId, utxos[0].index)];
   const transaction = new hathorLib.Transaction(inputs, outputs, { tokens: [token1] });
 
   const txHex = transaction.toHex();
@@ -428,11 +516,40 @@ test('PUT /txproposals/{proposalId} on a proposal which status is not OPEN or SE
   const token1 = '004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50';
   const token2 = '002f2bcc3261b4fb8510a458ed9df9f6ba2a413ee35901b3c5f81b0c085287e2';
 
-  const utxos = [
-    ['004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50', 0, token1, ADDRESSES[0], 300, 0, null, null, false, null],
-    ['0000001e39bc37fe8710c01cc1e8c0a937bf6f9337551fbbfddc222bfc28c197', 0, token1, ADDRESSES[0], 100, 0, null, null, false, null],
-    ['00000060a25077e48926bcd9473d77259296e123ec6af1c1a16c1c381093ab90', 0, token2, ADDRESSES[0], 300, 0, null, null, false, null],
-  ];
+  const utxos = [{
+    txId: '004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50',
+    index: 0,
+    tokenId: token1,
+    address: ADDRESSES[0],
+    value: 300,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: '0000001e39bc37fe8710c01cc1e8c0a937bf6f9337551fbbfddc222bfc28c197',
+    index: 0,
+    tokenId: token1,
+    address: ADDRESSES[0],
+    value: 100,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: '00000060a25077e48926bcd9473d77259296e123ec6af1c1a16c1c381093ab90',
+    index: 0,
+    tokenId: token2,
+    address: ADDRESSES[0],
+    value: 300,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }];
 
   await addToUtxoTable(mysql, utxos);
   await addToWalletBalanceTable(mysql, [{
@@ -477,7 +594,7 @@ test('PUT /txproposals/{proposalId} on a proposal which status is not OPEN or SE
       },
     ),
   ];
-  const inputs = [new hathorLib.Input(utxos[0][0], utxos[0][1])];
+  const inputs = [new hathorLib.Input(utxos[0].txId, utxos[0].index)];
   const transaction = new hathorLib.Transaction(inputs, outputs, { tokens: [token1] });
 
   const txHex = transaction.toHex();
@@ -524,11 +641,40 @@ test('PUT /txproposals/{proposalId} on a proposal which is not owned by the user
   const token1 = '004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50';
   const token2 = '002f2bcc3261b4fb8510a458ed9df9f6ba2a413ee35901b3c5f81b0c085287e2';
 
-  const utxos = [
-    ['004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50', 0, token1, ADDRESSES[0], 300, 0, null, null, false, null],
-    ['0000001e39bc37fe8710c01cc1e8c0a937bf6f9337551fbbfddc222bfc28c197', 0, token1, ADDRESSES[0], 100, 0, null, null, false, null],
-    ['00000060a25077e48926bcd9473d77259296e123ec6af1c1a16c1c381093ab90', 0, token2, ADDRESSES[0], 300, 0, null, null, false, null],
-  ];
+  const utxos = [{
+    txId: '004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50',
+    index: 0,
+    tokenId: token1,
+    address: ADDRESSES[0],
+    value: 300,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: '0000001e39bc37fe8710c01cc1e8c0a937bf6f9337551fbbfddc222bfc28c197',
+    index: 0,
+    tokenId: token1,
+    address: ADDRESSES[0],
+    value: 100,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: '00000060a25077e48926bcd9473d77259296e123ec6af1c1a16c1c381093ab90',
+    index: 0,
+    tokenId: token2,
+    address: ADDRESSES[0],
+    value: 300,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }];
 
   await addToUtxoTable(mysql, utxos);
   await addToWalletBalanceTable(mysql, [{
@@ -571,7 +717,7 @@ test('PUT /txproposals/{proposalId} on a proposal which is not owned by the user
       },
     ),
   ];
-  const inputs = [new hathorLib.Input(utxos[0][0], utxos[0][1])];
+  const inputs = [new hathorLib.Input(utxos[0].txId, utxos[0].index)];
   const transaction = new hathorLib.Transaction(inputs, outputs, { tokens: [token1] });
 
   const txHex = transaction.toHex();
@@ -644,11 +790,40 @@ test('PUT /txproposals/{proposalId} with an invalid txHex should fail and update
   const token1 = '004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50';
   const token2 = '002f2bcc3261b4fb8510a458ed9df9f6ba2a413ee35901b3c5f81b0c085287e2';
 
-  const utxos = [
-    ['004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50', 0, token1, ADDRESSES[0], 300, 0, null, null, false, null],
-    ['0000001e39bc37fe8710c01cc1e8c0a937bf6f9337551fbbfddc222bfc28c197', 0, token1, ADDRESSES[0], 100, 0, null, null, false, null],
-    ['00000060a25077e48926bcd9473d77259296e123ec6af1c1a16c1c381093ab90', 0, token2, ADDRESSES[0], 300, 0, null, null, false, null],
-  ];
+  const utxos = [{
+    txId: '004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50',
+    index: 0,
+    tokenId: token1,
+    address: ADDRESSES[0],
+    value: 300,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: '0000001e39bc37fe8710c01cc1e8c0a937bf6f9337551fbbfddc222bfc28c197',
+    index: 0,
+    tokenId: token1,
+    address: ADDRESSES[0],
+    value: 100,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: '00000060a25077e48926bcd9473d77259296e123ec6af1c1a16c1c381093ab90',
+    index: 0,
+    tokenId: token2,
+    address: ADDRESSES[0],
+    value: 300,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }];
 
   await addToUtxoTable(mysql, utxos);
   await addToWalletBalanceTable(mysql, [{
@@ -691,7 +866,7 @@ test('PUT /txproposals/{proposalId} with an invalid txHex should fail and update
       },
     ),
   ];
-  const inputs = [new hathorLib.Input(utxos[0][0], utxos[0][1])];
+  const inputs = [new hathorLib.Input(utxos[0].txId, utxos[0].index)];
   const transaction = new hathorLib.Transaction(inputs, outputs, { tokens: [token1] });
 
   const txHex = transaction.toHex();
@@ -758,11 +933,40 @@ test('PUT /txproposals/{proposalId} should update tx_proposal to SEND_ERROR on f
   const token1 = '004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50';
   const token2 = '002f2bcc3261b4fb8510a458ed9df9f6ba2a413ee35901b3c5f81b0c085287e2';
 
-  const utxos = [
-    ['004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50', 0, token1, ADDRESSES[0], 300, 0, null, null, false, null],
-    ['0000001e39bc37fe8710c01cc1e8c0a937bf6f9337551fbbfddc222bfc28c197', 0, token1, ADDRESSES[0], 100, 0, null, null, false, null],
-    ['00000060a25077e48926bcd9473d77259296e123ec6af1c1a16c1c381093ab90', 0, token2, ADDRESSES[0], 300, 0, null, null, false, null],
-  ];
+  const utxos = [{
+    txId: '004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50',
+    index: 0,
+    tokenId: token1,
+    address: ADDRESSES[0],
+    value: 300,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: '0000001e39bc37fe8710c01cc1e8c0a937bf6f9337551fbbfddc222bfc28c197',
+    index: 0,
+    tokenId: token1,
+    address: ADDRESSES[0],
+    value: 100,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: '00000060a25077e48926bcd9473d77259296e123ec6af1c1a16c1c381093ab90',
+    index: 0,
+    tokenId: token2,
+    address: ADDRESSES[0],
+    value: 300,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }];
 
   await addToUtxoTable(mysql, utxos);
   await addToWalletBalanceTable(mysql, [{
@@ -805,7 +1009,7 @@ test('PUT /txproposals/{proposalId} should update tx_proposal to SEND_ERROR on f
       },
     ),
   ];
-  const inputs = [new hathorLib.Input(utxos[0][0], utxos[0][1])];
+  const inputs = [new hathorLib.Input(utxos[0].txId, utxos[0].index)];
   const transaction = new hathorLib.Transaction(inputs, outputs, { tokens: [token1] });
 
   const txHex = transaction.toHex();
@@ -849,11 +1053,40 @@ test('DELETE /txproposals/{proposalId} should delete a tx_proposal and remove th
   const token1 = '004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50';
   const token2 = '002f2bcc3261b4fb8510a458ed9df9f6ba2a413ee35901b3c5f81b0c085287e2';
 
-  const utxos = [
-    ['00000000000000001650cd208a2bcff09dce8af88d1b07097ef0efdba4aacbaa', 0, token1, ADDRESSES[0], 300, 0, null, null, false, null],
-    ['000000000000000042fb8ae48accbc48561729e2359838751e11f837ca9a5746', 0, token1, ADDRESSES[0], 100, 0, null, null, false, null],
-    ['0000000000000000cfd3dea4c689aa4c863bf6e6aea4518abcfe7d5ff6769aef', 0, token2, ADDRESSES[0], 300, 0, null, null, false, null],
-  ];
+  const utxos = [{
+    txId: '00000000000000001650cd208a2bcff09dce8af88d1b07097ef0efdba4aacbaa',
+    index: 0,
+    tokenId: token1,
+    address: ADDRESSES[0],
+    value: 300,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: '000000000000000042fb8ae48accbc48561729e2359838751e11f837ca9a5746',
+    index: 0,
+    tokenId: token1,
+    address: ADDRESSES[0],
+    value: 100,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: '0000000000000000cfd3dea4c689aa4c863bf6e6aea4518abcfe7d5ff6769aef',
+    index: 0,
+    tokenId: token2,
+    address: ADDRESSES[0],
+    value: 300,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }];
 
   await addToUtxoTable(mysql, utxos);
   await addToWalletBalanceTable(mysql, [{
@@ -896,7 +1129,7 @@ test('DELETE /txproposals/{proposalId} should delete a tx_proposal and remove th
       },
     ),
   ];
-  const inputs = [new hathorLib.Input(utxos[0][0], utxos[0][1])];
+  const inputs = [new hathorLib.Input(utxos[0].txId, utxos[0].index)];
   const transaction = new hathorLib.Transaction(inputs, outputs, { tokens: [token1] });
 
   const txHex = transaction.toHex();
@@ -990,11 +1223,40 @@ test('POST /txproposals one output and input on txHex', async () => {
   const token1 = '004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50';
   const token2 = '002f2bcc3261b4fb8510a458ed9df9f6ba2a413ee35901b3c5f81b0c085287e2';
 
-  const utxos = [
-    ['004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50', 0, token1, ADDRESSES[0], 300, 0, null, null, false, null],
-    ['0000001e39bc37fe8710c01cc1e8c0a937bf6f9337551fbbfddc222bfc28c197', 0, token1, ADDRESSES[0], 100, 0, null, null, false, null],
-    ['00000060a25077e48926bcd9473d77259296e123ec6af1c1a16c1c381093ab90', 0, token2, ADDRESSES[0], 300, 0, null, null, false, null],
-  ];
+  const utxos = [{
+    txId: '004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50',
+    index: 0,
+    tokenId: token1,
+    address: ADDRESSES[0],
+    value: 300,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: '0000001e39bc37fe8710c01cc1e8c0a937bf6f9337551fbbfddc222bfc28c197',
+    index: 0,
+    tokenId: token1,
+    address: ADDRESSES[0],
+    value: 100,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: '00000060a25077e48926bcd9473d77259296e123ec6af1c1a16c1c381093ab90',
+    index: 0,
+    tokenId: token2,
+    address: ADDRESSES[0],
+    value: 300,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }];
 
   await addToUtxoTable(mysql, utxos);
   await addToWalletBalanceTable(mysql, [{
@@ -1037,7 +1299,7 @@ test('POST /txproposals one output and input on txHex', async () => {
       },
     ),
   ];
-  const inputs = [new hathorLib.Input(utxos[0][0], utxos[0][1])];
+  const inputs = [new hathorLib.Input(utxos[0].txId, utxos[0].index)];
   const transaction = new hathorLib.Transaction(inputs, outputs, { tokens: [token1] });
 
   const txHex = transaction.toHex();
@@ -1049,7 +1311,7 @@ test('POST /txproposals one output and input on txHex', async () => {
   expect(returnBody.success).toBe(true);
   expect(returnBody.txProposalId).toHaveLength(36);
   expect(returnBody.inputs).toHaveLength(1);
-  expect(returnBody.inputs).toContainEqual({ txId: utxos[0][0], index: utxos[0][1], addressPath: `${defaultDerivationPath}0` });
+  expect(returnBody.inputs).toContainEqual({ txId: utxos[0].txId, index: utxos[0].index, addressPath: `${defaultDerivationPath}0` });
 
   await _checkTxProposalTables(returnBody.txProposalId, returnBody.inputs);
 });
@@ -1091,11 +1353,40 @@ test('POST /txproposals with denied utxos', async () => {
   const token1 = '004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50';
   const token2 = '002f2bcc3261b4fb8510a458ed9df9f6ba2a413ee35901b3c5f81b0c085287e2';
 
-  const utxos = [
-    ['004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50', 0, token1, ADDRESSES[1], 300, 0, null, null, false, null],
-    ['0000001e39bc37fe8710c01cc1e8c0a937bf6f9337551fbbfddc222bfc28c197', 0, token1, ADDRESSES[1], 100, 0, null, null, false, null],
-    ['00000060a25077e48926bcd9473d77259296e123ec6af1c1a16c1c381093ab90', 0, token2, ADDRESSES[1], 300, 0, null, null, false, null],
-  ];
+  const utxos = [{
+    txId: '004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50',
+    index: 0,
+    tokenId: token1,
+    address: ADDRESSES[1],
+    value: 300,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: '0000001e39bc37fe8710c01cc1e8c0a937bf6f9337551fbbfddc222bfc28c197',
+    index: 0,
+    tokenId: token1,
+    address: ADDRESSES[1],
+    value: 100,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: '00000060a25077e48926bcd9473d77259296e123ec6af1c1a16c1c381093ab90',
+    index: 0,
+    tokenId: token2,
+    address: ADDRESSES[1],
+    value: 300,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }];
 
   await addToUtxoTable(mysql, utxos);
 
@@ -1111,7 +1402,7 @@ test('POST /txproposals with denied utxos', async () => {
       },
     ),
   ];
-  const inputs = [new hathorLib.Input(utxos[0][0], utxos[0][1])];
+  const inputs = [new hathorLib.Input(utxos[0].txId, utxos[0].index)];
   const transaction = new hathorLib.Transaction(inputs, outputs, { tokens: [token1] });
 
   const txHex = transaction.toHex();
@@ -1143,9 +1434,18 @@ test('POST /txproposals a tx create action on txHex', async () => {
     transactions: 2,
   }]);
 
-  const utxos = [
-    ['004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50', 0, '00', ADDRESSES[0], 300, 0, null, null, false, null],
-  ];
+  const utxos = [{
+    txId: '004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50',
+    index: 0,
+    tokenId: '00',
+    address: ADDRESSES[0],
+    value: 300,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }];
 
   await addToUtxoTable(mysql, utxos);
   await addToAddressTable(mysql, [{
@@ -1156,7 +1456,7 @@ test('POST /txproposals a tx create action on txHex', async () => {
   }]);
 
   // hathor input for deposit
-  const inputs = [new hathorLib.Input(utxos[0][0], utxos[0][1])];
+  const inputs = [new hathorLib.Input(utxos[0].txId, utxos[0].index)];
   const outputs = [
     // change output 100 htr deposited:
     new hathorLib.Output(
@@ -1223,7 +1523,7 @@ test('POST /txproposals a tx create action on txHex', async () => {
   expect(returnBody.success).toBe(true);
   expect(returnBody.txProposalId).toHaveLength(36);
   expect(returnBody.inputs).toHaveLength(1);
-  expect(returnBody.inputs).toContainEqual({ txId: utxos[0][0], index: utxos[0][1], addressPath: `${defaultDerivationPath}0` });
+  expect(returnBody.inputs).toContainEqual({ txId: utxos[0].txId, index: utxos[0].index, addressPath: `${defaultDerivationPath}0` });
 });
 
 test('PUT /txproposals/{proposalId} with txhex', async () => {
@@ -1271,11 +1571,40 @@ test('PUT /txproposals/{proposalId} with txhex', async () => {
   const token1 = '004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50';
   const token2 = '002f2bcc3261b4fb8510a458ed9df9f6ba2a413ee35901b3c5f81b0c085287e2';
 
-  const utxos = [
-    ['004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50', 0, token1, ADDRESSES[0], 300, 0, null, null, false, null],
-    ['0000001e39bc37fe8710c01cc1e8c0a937bf6f9337551fbbfddc222bfc28c197', 0, token1, ADDRESSES[0], 100, 0, null, null, false, null],
-    ['00000060a25077e48926bcd9473d77259296e123ec6af1c1a16c1c381093ab90', 0, token2, ADDRESSES[0], 300, 0, null, null, false, null],
-  ];
+  const utxos = [{
+    txId: '004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50',
+    index: 0,
+    tokenId: token1,
+    address: ADDRESSES[0],
+    value: 300,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: '0000001e39bc37fe8710c01cc1e8c0a937bf6f9337551fbbfddc222bfc28c197',
+    index: 0,
+    tokenId: token1,
+    address: ADDRESSES[0],
+    value: 100,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: '00000060a25077e48926bcd9473d77259296e123ec6af1c1a16c1c381093ab90',
+    index: 0,
+    tokenId: token2,
+    address: ADDRESSES[0],
+    value: 300,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }];
 
   await addToUtxoTable(mysql, utxos);
   await addToWalletBalanceTable(mysql, [{
@@ -1315,7 +1644,7 @@ test('PUT /txproposals/{proposalId} with txhex', async () => {
       { tokenData: 1 },
     ),
   ];
-  const inputs = [new hathorLib.Input(utxos[0][0], utxos[0][1])];
+  const inputs = [new hathorLib.Input(utxos[0].txId, utxos[0].index)];
   const transaction = new hathorLib.Transaction(inputs, outputs, { tokens: [token1] });
 
   const txHex = transaction.toHex();
@@ -1382,11 +1711,40 @@ test('PUT /txproposals/{proposalId} with a different txhex than the one sent in 
   const token1 = '004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50';
   const token2 = '002f2bcc3261b4fb8510a458ed9df9f6ba2a413ee35901b3c5f81b0c085287e2';
 
-  const utxos = [
-    ['004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50', 0, token1, ADDRESSES[0], 300, 0, null, null, false, null],
-    ['0000001e39bc37fe8710c01cc1e8c0a937bf6f9337551fbbfddc222bfc28c197', 0, token1, ADDRESSES[0], 100, 0, null, null, false, null],
-    ['00000060a25077e48926bcd9473d77259296e123ec6af1c1a16c1c381093ab90', 0, token2, ADDRESSES[0], 300, 0, null, null, false, null],
-  ];
+  const utxos = [{
+    txId: '004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50',
+    index: 0,
+    tokenId: token1,
+    address: ADDRESSES[0],
+    value: 300,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: '0000001e39bc37fe8710c01cc1e8c0a937bf6f9337551fbbfddc222bfc28c197',
+    index: 0,
+    tokenId: token1,
+    address: ADDRESSES[0],
+    value: 100,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: '00000060a25077e48926bcd9473d77259296e123ec6af1c1a16c1c381093ab90',
+    index: 0,
+    tokenId: token2,
+    address: ADDRESSES[0],
+    value: 300,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }];
 
   await addToUtxoTable(mysql, utxos);
   await addToWalletBalanceTable(mysql, [{
@@ -1426,7 +1784,7 @@ test('PUT /txproposals/{proposalId} with a different txhex than the one sent in 
       { tokenData: 1 },
     ),
   ];
-  const inputs = [new hathorLib.Input(utxos[0][0], utxos[0][1])];
+  const inputs = [new hathorLib.Input(utxos[0].txId, utxos[0].index)];
   const transaction = new hathorLib.Transaction(inputs, outputs, { tokens: [token1] });
   const txHex = transaction.toHex();
 
@@ -1434,7 +1792,7 @@ test('PUT /txproposals/{proposalId} with a different txhex than the one sent in 
   const result = await txProposalCreate(event, null, null) as APIGatewayProxyResult;
   const returnBody = JSON.parse(result.body as string);
 
-  const differentInputs = [new hathorLib.Input(utxos[2][0], utxos[2][1])];
+  const differentInputs = [new hathorLib.Input(utxos[2].txId, utxos[2].index)];
   const transaction2 = new hathorLib.Transaction(differentInputs, outputs, { tokens: [token1] });
   const txHex2 = transaction2.toHex();
 

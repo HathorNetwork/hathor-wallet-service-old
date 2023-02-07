@@ -561,21 +561,6 @@ export const addToTransactionTable = async (
 
 export const addToUtxoTable = async (
   mysql: ServerlessMysql,
-  entries: unknown[][],
-): Promise<void> => {
-  await mysql.query(
-    `INSERT INTO \`tx_output\`(\`tx_id\`, \`index\`,
-                          \`token_id\`, \`address\`,
-                          \`value\`, \`authorities\`,
-                          \`timelock\`, \`heightlock\`,
-                          \`locked\`, \`spent_by\`)
-     VALUES ?`,
-    [entries],
-  );
-};
-
-export const addToUtxoTable2 = async (
-  mysql: ServerlessMysql,
   entries: DbTxOutput[],
 ): Promise<void> => {
   const payload = entries.map((entry: DbTxOutput) => ([

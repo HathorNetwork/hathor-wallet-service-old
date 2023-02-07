@@ -51,12 +51,51 @@ test('filter utxos api with invalid parameters', async () => {
 
   const token1 = '004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50';
 
-  const utxos = [
-    [TX_IDS[0], 0, token1, ADDRESSES[0], 50, 0, null, null, false, null],
-    [TX_IDS[1], 0, token1, ADDRESSES[1], 100, 0, null, null, false, null],
-    [TX_IDS[2], 0, token1, ADDRESSES[2], 150, 0, null, null, false, null],
-    [TX_IDS[2], 1, token1, ADDRESSES[3], 200, 0, null, null, false, null],
-  ];
+  const utxos = [{
+    txId: TX_IDS[0],
+    index: 0,
+    tokenId: token1,
+    address: ADDRESSES[0],
+    value: 50,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: TX_IDS[1],
+    index: 0,
+    tokenId: token1,
+    address: ADDRESSES[1],
+    value: 100,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: TX_IDS[2],
+    index: 0,
+    tokenId: token1,
+    address: ADDRESSES[2],
+    value: 150,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: TX_IDS[2],
+    index: 1,
+    tokenId: token1,
+    address: ADDRESSES[3],
+    value: 200,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }];
 
   await addToUtxoTable(mysql, utxos);
 
@@ -142,12 +181,51 @@ test('filter tx_output api with invalid parameters', async () => {
 
   const token1 = '004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50';
 
-  const utxos = [
-    [TX_IDS[0], 0, token1, ADDRESSES[0], 50, 0, null, null, false, null],
-    [TX_IDS[1], 0, token1, ADDRESSES[1], 100, 0, null, null, false, null],
-    [TX_IDS[2], 0, token1, ADDRESSES[2], 150, 0, null, null, false, null],
-    [TX_IDS[2], 1, token1, ADDRESSES[3], 200, 0, null, null, false, null],
-  ];
+  const utxos = [{
+    txId: TX_IDS[0],
+    index: 0,
+    tokenId: token1,
+    address: ADDRESSES[0],
+    value: 50,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: TX_IDS[1],
+    index: 0,
+    tokenId: token1,
+    address: ADDRESSES[1],
+    value: 100,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: TX_IDS[2],
+    index: 0,
+    tokenId: token1,
+    address: ADDRESSES[2],
+    value: 150,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: TX_IDS[2],
+    index: 1,
+    tokenId: token1,
+    address: ADDRESSES[3],
+    value: 200,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }];
 
   await addToUtxoTable(mysql, utxos);
 
@@ -232,12 +310,51 @@ test('get utxos with wallet id', async () => {
 
   const token1 = '004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50';
 
-  const utxos = [
-    [TX_IDS[0], 0, token1, ADDRESSES[0], 50, 0, null, null, false, null],
-    [TX_IDS[1], 0, token1, ADDRESSES[0], 100, 0, null, null, false, null],
-    [TX_IDS[2], 0, token1, ADDRESSES[1], 150, 0, null, null, false, null],
-    [TX_IDS[2], 1, token1, ADDRESSES[0], 200, 0, null, null, false, null],
-  ];
+  const utxos = [{
+    txId: TX_IDS[0],
+    index: 0,
+    tokenId: token1,
+    address: ADDRESSES[0],
+    value: 50,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: TX_IDS[1],
+    index: 0,
+    tokenId: token1,
+    address: ADDRESSES[0],
+    value: 100,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: TX_IDS[2],
+    index: 0,
+    tokenId: token1,
+    address: ADDRESSES[1],
+    value: 150,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: TX_IDS[2],
+    index: 1,
+    tokenId: token1,
+    address: ADDRESSES[0],
+    value: 200,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }];
 
   await addToUtxoTable(mysql, utxos);
 
@@ -251,15 +368,15 @@ test('get utxos with wallet id', async () => {
   const returnBody = JSON.parse(result.body as string);
 
   const formatUtxo = (utxo, path) => ({
-    txId: utxo[0],
-    index: utxo[1],
-    tokenId: utxo[2],
-    address: utxo[3],
-    value: utxo[4],
-    authorities: utxo[5],
-    timelock: utxo[6],
-    heightlock: utxo[7],
-    locked: utxo[8],
+    txId: utxo.txId,
+    index: utxo.index,
+    tokenId: utxo.tokenId,
+    address: utxo.address,
+    value: utxo.value,
+    authorities: utxo.authorities,
+    timelock: utxo.timelock,
+    heightlock: utxo.heightlock,
+    locked: utxo.locked,
     addressPath: `m/44'/280'/0'/0/${path}`,
     txProposalId: null,
     txProposalIndex: null,
@@ -299,12 +416,51 @@ test('get tx outputs with wallet id', async () => {
 
   const token1 = '004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50';
 
-  const utxos = [
-    [TX_IDS[0], 0, token1, ADDRESSES[0], 50, 0, null, null, false, null],
-    [TX_IDS[1], 0, token1, ADDRESSES[0], 100, 0, null, null, false, null],
-    [TX_IDS[2], 0, token1, ADDRESSES[1], 150, 0, null, null, false, null],
-    [TX_IDS[2], 1, token1, ADDRESSES[0], 200, 0, null, null, false, null],
-  ];
+  const utxos = [{
+    txId: TX_IDS[0],
+    index: 0,
+    tokenId: token1,
+    address: ADDRESSES[0],
+    value: 50,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: TX_IDS[1],
+    index: 0,
+    tokenId: token1,
+    address: ADDRESSES[0],
+    value: 100,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: TX_IDS[2],
+    index: 0,
+    tokenId: token1,
+    address: ADDRESSES[1],
+    value: 150,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: TX_IDS[2],
+    index: 1,
+    tokenId: token1,
+    address: ADDRESSES[0],
+    value: 200,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }];
 
   await addToUtxoTable(mysql, utxos);
 
@@ -318,15 +474,15 @@ test('get tx outputs with wallet id', async () => {
   const returnBody = JSON.parse(result.body as string);
 
   const formatUtxo = (utxo, path) => ({
-    txId: utxo[0],
-    index: utxo[1],
-    tokenId: utxo[2],
-    address: utxo[3],
-    value: utxo[4],
-    authorities: utxo[5],
-    timelock: utxo[6],
-    heightlock: utxo[7],
-    locked: utxo[8],
+    txId: utxo.txId,
+    index: utxo.index,
+    tokenId: utxo.tokenId,
+    address: utxo.address,
+    value: utxo.value,
+    authorities: utxo.authorities,
+    timelock: utxo.timelock,
+    heightlock: utxo.heightlock,
+    locked: utxo.locked,
     addressPath: `m/44'/280'/0'/0/${path}`,
     txProposalId: null,
     txProposalIndex: null,
@@ -366,26 +522,75 @@ test('get authority utxos', async () => {
 
   const token1 = '004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50';
 
-  const utxos = [
-    [TX_IDS[0], 0, token1, ADDRESSES[0], 0, 1, null, null, false, null],
-    [TX_IDS[1], 0, token1, ADDRESSES[0], 0, 2, null, null, false, null],
-    [TX_IDS[2], 0, token1, ADDRESSES[1], 0, 1, null, null, false, null],
-    [TX_IDS[2], 1, token1, ADDRESSES[0], 0, 1, null, null, false, null],
-    [TX_IDS[3], 0, token1, ADDRESSES[0], 150, 0, null, null, false, null],
-  ];
+  const utxos = [{
+    txId: TX_IDS[0],
+    index: 0,
+    tokenId: token1,
+    address: ADDRESSES[0],
+    value: 0,
+    authorities: 1,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: TX_IDS[1],
+    index: 0,
+    tokenId: token1,
+    address: ADDRESSES[0],
+    value: 0,
+    authorities: 2,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: TX_IDS[2],
+    index: 0,
+    tokenId: token1,
+    address: ADDRESSES[1],
+    value: 0,
+    authorities: 1,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: TX_IDS[2],
+    index: 1,
+    tokenId: token1,
+    address: ADDRESSES[0],
+    value: 0,
+    authorities: 1,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: TX_IDS[3],
+    index: 0,
+    tokenId: token1,
+    address: ADDRESSES[0],
+    value: 150,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }];
 
   await addToUtxoTable(mysql, utxos);
 
   const formatUtxo = (utxo, path) => ({
-    txId: utxo[0],
-    index: utxo[1],
-    tokenId: utxo[2],
-    address: utxo[3],
-    value: utxo[4],
-    authorities: utxo[5],
-    timelock: utxo[6],
-    heightlock: utxo[7],
-    locked: utxo[8],
+    txId: utxo.txId,
+    index: utxo.index,
+    tokenId: utxo.tokenId,
+    address: utxo.address,
+    value: utxo.value,
+    authorities: utxo.authorities,
+    timelock: utxo.timelock,
+    heightlock: utxo.heightlock,
+    locked: utxo.locked,
     addressPath: `m/44'/280'/0'/0/${path}`,
     txProposalId: null,
     txProposalIndex: null,
@@ -446,12 +651,51 @@ test('get a specific utxo', async () => {
 
   const token1 = '004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50';
 
-  const utxos = [
-    [TX_IDS[0], 0, token1, ADDRESSES[0], 50, 0, null, null, false, null],
-    [TX_IDS[1], 0, token1, ADDRESSES[0], 100, 0, null, null, false, null],
-    [TX_IDS[2], 0, token1, ADDRESSES[1], 150, 0, null, null, false, null],
-    [TX_IDS[2], 1, token1, ADDRESSES[0], 200, 0, null, null, false, null],
-  ];
+  const utxos = [{
+    txId: TX_IDS[0],
+    index: 0,
+    tokenId: token1,
+    address: ADDRESSES[0],
+    value: 50,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: TX_IDS[1],
+    index: 0,
+    tokenId: token1,
+    address: ADDRESSES[0],
+    value: 100,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: TX_IDS[2],
+    index: 0,
+    tokenId: token1,
+    address: ADDRESSES[1],
+    value: 150,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: TX_IDS[2],
+    index: 1,
+    tokenId: token1,
+    address: ADDRESSES[0],
+    value: 200,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }];
 
   await addToUtxoTable(mysql, utxos);
 
@@ -464,15 +708,15 @@ test('get a specific utxo', async () => {
   const returnBody = JSON.parse(result.body as string);
 
   const formatUtxo = (utxo, path) => ({
-    txId: utxo[0],
-    index: utxo[1],
-    tokenId: utxo[2],
-    address: utxo[3],
-    value: utxo[4],
-    authorities: utxo[5],
-    timelock: utxo[6],
-    heightlock: utxo[7],
-    locked: utxo[8],
+    txId: utxo.txId,
+    index: utxo.index,
+    tokenId: utxo.tokenId,
+    address: utxo.address,
+    value: utxo.value,
+    authorities: utxo.authorities,
+    timelock: utxo.timelock,
+    heightlock: utxo.heightlock,
+    locked: utxo.locked,
     txProposalId: null,
     txProposalIndex: null,
     addressPath: `m/44'/280'/0'/0/${path}`,
@@ -511,12 +755,51 @@ test('get utxos from addresses that are not my own should fail with ApiError.ADD
 
   const token1 = '004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50';
 
-  const utxos = [
-    [TX_IDS[0], 0, token1, ADDRESSES[0], 50, 0, null, null, false, null],
-    [TX_IDS[1], 0, token1, ADDRESSES[0], 100, 0, null, null, false, null],
-    [TX_IDS[2], 0, token1, ADDRESSES[1], 150, 0, null, null, false, null],
-    [TX_IDS[2], 1, token1, ADDRESSES[1], 200, 0, null, null, false, null],
-  ];
+  const utxos = [{
+    txId: TX_IDS[0],
+    index: 0,
+    tokenId: token1,
+    address: ADDRESSES[0],
+    value: 50,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: TX_IDS[1],
+    index: 0,
+    tokenId: token1,
+    address: ADDRESSES[0],
+    value: 100,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: TX_IDS[2],
+    index: 0,
+    tokenId: token1,
+    address: ADDRESSES[1],
+    value: 150,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: TX_IDS[2],
+    index: 1,
+    tokenId: token1,
+    address: ADDRESSES[1],
+    value: 200,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }];
 
   await addToUtxoTable(mysql, utxos);
 
@@ -558,10 +841,29 @@ test('get spent tx_output', async () => {
 
   const token1 = '004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50';
 
-  const txOutputs = [
-    [TX_IDS[0], 0, token1, ADDRESSES[0], 50, 0, null, null, false, null],
-    [TX_IDS[1], 0, token1, ADDRESSES[0], 100, 0, null, null, false, '004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50'],
-  ];
+  const txOutputs = [{
+    txId: TX_IDS[0],
+    index: 0,
+    tokenId: token1,
+    address: ADDRESSES[0],
+    value: 50,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: TX_IDS[1],
+    index: 0,
+    tokenId: token1,
+    address: ADDRESSES[0],
+    value: 100,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: '004d75c1edd4294379e7e5b7ab6c118c53c8b07a506728feb5688c8d26a97e50',
+  }];
 
   await addToUtxoTable(mysql, txOutputs);
 
@@ -574,19 +876,10 @@ test('get spent tx_output', async () => {
   const returnBody = JSON.parse(result.body as string);
 
   const formatTxOutput = (txOutput, path) => ({
-    txId: txOutput[0],
-    index: txOutput[1],
-    tokenId: txOutput[2],
-    address: txOutput[3],
-    value: txOutput[4],
-    authorities: txOutput[5],
-    timelock: txOutput[6],
-    heightlock: txOutput[7],
-    locked: txOutput[8],
-    txProposalId: null,
+    ...txOutput,
     txProposalIndex: null,
+    txProposalId: null,
     addressPath: `m/44'/280'/0'/0/${path}`,
-    spentBy: txOutput[9],
   });
 
   expect(result.statusCode).toBe(200);

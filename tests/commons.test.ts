@@ -219,13 +219,65 @@ test('unlockUtxos', async () => {
   const walletId = 'walletId';
   const now = 1000;
   await addToUtxoTable(mysql, [
-    // blocks with heightlock
-    [txId1, 0, token, addr, reward, 0, null, 3, true, null],
-    [txId2, 0, token, addr, reward, 0, null, 4, true, null],
+  // blocks with heightlock
+    {
+      txId: txId1,
+      index: 0,
+      tokenId: token,
+      address: addr,
+      value: reward,
+      authorities: 0,
+      timelock: null,
+      heightlock: 3,
+      locked: true,
+      spentBy: null,
+    }, {
+      txId: txId2,
+      index: 0,
+      tokenId: token,
+      address: addr,
+      value: reward,
+      authorities: 0,
+      timelock: null,
+      heightlock: 4,
+      locked: true,
+      spentBy: null,
+    },
     // some transactions with timelock
-    [txId3, 0, token, addr, 2500, 0, now, null, true, null],
-    [txId4, 0, token, addr, 2500, 0, now * 2, null, true, null],
-    [txId5, 0, token, addr, 0, 0b10, now * 3, null, true, null],
+    {
+      txId: txId3,
+      index: 0,
+      tokenId: token,
+      address: addr,
+      value: 2500,
+      authorities: 0,
+      timelock: now,
+      heightlock: null,
+      locked: true,
+      spentBy: null,
+    }, {
+      txId: txId4,
+      index: 0,
+      tokenId: token,
+      address: addr,
+      value: 2500,
+      authorities: 0,
+      timelock: now * 2,
+      heightlock: null,
+      locked: true,
+      spentBy: null,
+    }, {
+      txId: txId5,
+      index: 0,
+      tokenId: token,
+      address: addr,
+      value: 0,
+      authorities: 0b10,
+      timelock: now * 3,
+      heightlock: null,
+      locked: true,
+      spentBy: null,
+    },
   ]);
 
   await addToWalletTable(mysql, [{
@@ -339,11 +391,40 @@ test('unlockTimelockedUtxos', async () => {
   const addr = 'address';
   const walletId = 'walletId';
   const now = 1000;
-  await addToUtxoTable(mysql, [
-    [txId1, 0, token, addr, 2500, 0, now, null, true, null],
-    [txId2, 0, token, addr, 2500, 0, now * 2, null, true, null],
-    [txId3, 0, token, addr, 0, 0b10, now * 3, null, true, null],
-  ]);
+  await addToUtxoTable(mysql, [{
+    txId: txId1,
+    index: 0,
+    tokenId: token,
+    address: addr,
+    value: 2500,
+    authorities: 0,
+    timelock: now,
+    heightlock: null,
+    locked: true,
+    spentBy: null,
+  }, {
+    txId: txId2,
+    index: 0,
+    tokenId: token,
+    address: addr,
+    value: 2500,
+    authorities: 0,
+    timelock: now * 2,
+    heightlock: null,
+    locked: true,
+    spentBy: null,
+  }, {
+    txId: txId3,
+    index: 0,
+    tokenId: token,
+    address: addr,
+    value: 0,
+    authorities: 0b10,
+    timelock: now * 3,
+    heightlock: null,
+    locked: true,
+    spentBy: null,
+  }]);
 
   await addToWalletTable(mysql, [{
     id: walletId,

@@ -112,7 +112,7 @@ import {
   addToAddressTable,
   addToAddressTxHistoryTable,
   addToTokenTable,
-  addToUtxoTable2,
+  addToUtxoTable,
   addToWalletBalanceTable,
   addToWalletTxHistoryTable,
   addToWalletTable,
@@ -1064,7 +1064,7 @@ test('updateAddressLockedBalance', async () => {
   await expect(checkAddressBalanceTable(mysql, 3, addr1, otherToken, 5, 5, null, 1)).resolves.toBe(true);
 
   // now pretend there's another locked authority, so final balance of locked authorities should be updated accordingly
-  await addToUtxoTable2(mysql, [{
+  await addToUtxoTable(mysql, [{
     txId: 'txId',
     index: 0,
     tokenId,
@@ -1262,7 +1262,7 @@ test('getWalletSortedValueUtxos', async () => {
     walletId,
     transactions: 1,
   }]);
-  await addToUtxoTable2(mysql, [
+  await addToUtxoTable(mysql, [
     // authority utxos should be ignored
     {
       txId,
@@ -1494,7 +1494,7 @@ test('createTxProposal, updateTxProposal, getTxProposal, countUnsentTxProposals,
   expect(unsentTxProposals).toContain(txProposalId2);
   expect(unsentTxProposals).toContain(txProposalId3);
 
-  await addToUtxoTable2(mysql, [{
+  await addToUtxoTable(mysql, [{
     txId: 'tx1',
     index: 0,
     tokenId: '00',
@@ -1942,7 +1942,7 @@ test('filterTxOutputs', async () => {
     transactions: 1,
   }]);
 
-  await addToUtxoTable2(mysql, [{
+  await addToUtxoTable(mysql, [{
     txId: txId3,
     index: 0,
     tokenId: '00',
@@ -2126,7 +2126,7 @@ test('beginTransaction, commitTransaction, rollbackTransaction', async () => {
 
   await beginTransaction(mysql);
 
-  await addToUtxoTable2(mysql, [{
+  await addToUtxoTable(mysql, [{
     txId,
     index: 0,
     tokenId,
@@ -2169,7 +2169,7 @@ test('beginTransaction, commitTransaction, rollbackTransaction', async () => {
 
   await beginTransaction(mysql);
 
-  await addToUtxoTable2(mysql, [{
+  await addToUtxoTable(mysql, [{
     txId,
     index: 3,
     tokenId: 'tokenId2',
@@ -2350,7 +2350,7 @@ test('getAvailableAuthorities', async () => {
   const tokenId = 'token1';
   const tokenId2 = 'token2';
 
-  await addToUtxoTable2(mysql, [{
+  await addToUtxoTable(mysql, [{
     txId: 'txId',
     index: 0,
     tokenId,
@@ -2406,7 +2406,7 @@ test('getUtxo, getAuthorityUtxo', async () => {
   const tokenId = 'tokenId';
   const addr1 = 'addr1';
 
-  await addToUtxoTable2(mysql, [{
+  await addToUtxoTable(mysql, [{
     txId: 'txId',
     index: 0,
     tokenId,
@@ -2418,7 +2418,7 @@ test('getUtxo, getAuthorityUtxo', async () => {
     locked: true,
     spentBy: null,
   }]);
-  await addToUtxoTable2(mysql, [{
+  await addToUtxoTable(mysql, [{
     txId: 'txId',
     index: 1,
     tokenId,
@@ -3336,7 +3336,7 @@ describe('Clear unsent txProposals utxos', () => {
     await createTxProposal(mysql, txProposalId2, walletId, 1);
     await createTxProposal(mysql, txProposalId3, walletId, 1);
 
-    await addToUtxoTable2(mysql, [{
+    await addToUtxoTable(mysql, [{
       txId: 'tx1',
       index: 0,
       tokenId: '00',

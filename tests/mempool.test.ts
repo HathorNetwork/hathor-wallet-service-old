@@ -34,12 +34,51 @@ test('onHandleOldVoidedTxs', async () => {
     [TX_IDS[2], 1000, 2, false, null, 60],
   ];
 
-  const utxos = [
-    [TX_IDS[0], 0, '00', ADDRESSES[0], 50, 0, null, null, false, null],
-    [TX_IDS[1], 0, '00', ADDRESSES[1], 100, 0, null, null, false, null],
-    [TX_IDS[2], 0, '00', ADDRESSES[2], 150, 0, null, null, false, null],
-    [TX_IDS[2], 1, '00', ADDRESSES[3], 200, 0, null, null, false, null],
-  ];
+  const utxos = [{
+    txId: TX_IDS[0],
+    index: 0,
+    tokenId: '00',
+    address: ADDRESSES[0],
+    value: 50,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: TX_IDS[1],
+    index: 0,
+    tokenId: '00',
+    address: ADDRESSES[1],
+    value: 100,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: TX_IDS[2],
+    index: 0,
+    tokenId: '00',
+    address: ADDRESSES[2],
+    value: 150,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: TX_IDS[2],
+    index: 1,
+    tokenId: '00',
+    address: ADDRESSES[3],
+    value: 200,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }];
 
   const txHistory = [
     { address: ADDRESSES[0], txId: TX_IDS[0], tokenId: '00', balance: 50, timestamp: 10 },
@@ -83,9 +122,18 @@ test('onHandleOldVoidedTxs should try to confirm the block by fetching the first
     [TX_IDS[0], 1, 2, false, null, 60],
   ];
 
-  const utxos = [
-    [TX_IDS[0], 0, '00', ADDRESSES[0], 50, 0, null, null, false, null],
-  ];
+  const utxos = [{
+    txId: TX_IDS[0],
+    index: 0,
+    tokenId: '00',
+    address: ADDRESSES[0],
+    value: 50,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }];
 
   await addToTransactionTable(mysql, transactions);
   await addToUtxoTable(mysql, utxos);

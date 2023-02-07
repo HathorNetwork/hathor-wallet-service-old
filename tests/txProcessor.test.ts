@@ -78,10 +78,19 @@ test('spend "locked" utxo', async () => {
     readyAt: 2,
   }]);
 
-  await addToUtxoTable(mysql, [
-    // we received a tx that has timelock
-    [txId1, 0, token, addr, 2500, 0, timelock, null, true, null],
-  ]);
+  // we received a tx that has timelock
+  await addToUtxoTable(mysql, [{
+    txId: txId1,
+    index: 0,
+    tokenId: token,
+    address: addr,
+    value: 2500,
+    authorities: 0,
+    timelock,
+    heightlock: null,
+    locked: true,
+    spentBy: null,
+  }]);
 
   await addToAddressTable(mysql, [
     { address: addr, index: 0, walletId, transactions: 1 },
@@ -266,9 +275,18 @@ test('txProcessor should ignore NFT outputs', async () => {
     readyAt: 2,
   }]);
 
-  await addToUtxoTable(mysql, [
-    [txId1, 0, '00', addr, 41, 0, null, null, false, null],
-  ]);
+  await addToUtxoTable(mysql, [{
+    txId: txId1,
+    index: 0,
+    tokenId: '00',
+    address: addr,
+    value: 41,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }]);
 
   await addToAddressTable(mysql, [
     { address: addr, index: 0, walletId, transactions: 1 },
@@ -383,20 +401,18 @@ test('receive token creation tx', async () => {
   expect.hasAssertions();
 
   // we must already have a tx to be used for deposit
-  await addToUtxoTable(mysql, [
-    [
-      tokenCreationTx.inputs[0].tx_id,
-      tokenCreationTx.inputs[0].index,
-      tokenCreationTx.inputs[0].token,
-      tokenCreationTx.inputs[0].decoded.address,
-      tokenCreationTx.inputs[0].value,
-      0,
-      null,
-      null,
-      false,
-      null,
-    ],
-  ]);
+  await addToUtxoTable(mysql, [{
+    txId: tokenCreationTx.inputs[0].tx_id,
+    index: tokenCreationTx.inputs[0].index,
+    tokenId: tokenCreationTx.inputs[0].token,
+    address: tokenCreationTx.inputs[0].decoded.address,
+    value: tokenCreationTx.inputs[0].value,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }]);
   await addToAddressBalanceTable(mysql, [[tokenCreationTx.inputs[0].decoded.address,
     tokenCreationTx.inputs[0].token, tokenCreationTx.inputs[0].value, 0, null, 1, 0, 0, tokenCreationTx.inputs[0].value]]);
 
@@ -449,9 +465,18 @@ test('onHandleVoidedTxRequest', async () => {
     readyAt: 2,
   }]);
 
-  await addToUtxoTable(mysql, [
-    [txId1, 0, token, addr, 2500, 0, null, null, false, null],
-  ]);
+  await addToUtxoTable(mysql, [{
+    txId: txId1,
+    index: 0,
+    tokenId: token,
+    address: addr,
+    value: 2500,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }]);
 
   await addToAddressTable(mysql, [
     { address: addr, index: 0, walletId, transactions: 1 },
