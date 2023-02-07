@@ -35,6 +35,7 @@ describe('PushNotificationUtils', () => {
     };
     initFirebaseAdminMock.mockReset();
     isFirebaseInitializedMock.mockReset();
+    mockedAddAlert.mockReset();
     jest.resetModules();
   });
 
