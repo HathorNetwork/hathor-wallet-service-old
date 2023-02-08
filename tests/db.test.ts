@@ -1,5 +1,5 @@
+import { logger } from '@tests/winston.mock';
 import { v4 as uuidv4 } from 'uuid';
-
 import {
   addNewAddresses,
   addUtxos,
@@ -79,6 +79,7 @@ import {
   releaseTxProposalUtxos,
   getUnsentTxProposals,
 } from '@src/db';
+import * as Db from '@src/db';
 import { cleanUnsentTxProposalsUtxos } from '@src/db/cron.routines';
 import {
   beginTransaction,
@@ -145,6 +146,7 @@ for (const [index, address] of ADDRESSES.entries()) {
 }
 
 beforeEach(async () => {
+  jest.resetModules();
   await cleanDatabase(mysql);
 });
 
@@ -1471,7 +1473,7 @@ test('createTxProposal, updateTxProposal, getTxProposal, countUnsentTxProposals,
   expect(txProposal).toStrictEqual({ id: txProposalId, walletId, status: TxProposalStatus.OPEN, createdAt: now, updatedAt: null });
 
   // update
-  await updateTxProposal(mysql, txProposalId, now + 7, TxProposalStatus.SENT);
+  await updateTxProposal(mysql, [txProposalId], now + 7, TxProposalStatus.SENT);
   txProposal = await getTxProposal(mysql, txProposalId);
   expect(txProposal).toStrictEqual({ id: txProposalId, walletId, status: TxProposalStatus.SENT, createdAt: now, updatedAt: now + 7 });
 
@@ -3394,5 +3396,24 @@ describe('Clear unsent txProposals utxos', () => {
     expect(utxo1.txProposalId).toBeNull();
     expect(utxo2.txProposalId).toBeNull();
     expect(utxo3.txProposalId).toBeNull();
+
+    const txProposals = await Promise.all([
+      getTxProposal(mysql, txProposalId1),
+      getTxProposal(mysql, txProposalId2),
+      getTxProposal(mysql, txProposalId3),
+    ]);
+
+    expect(txProposals[0].status).toStrictEqual(TxProposalStatus.CANCELLED);
+    expect(txProposals[1].status).toStrictEqual(TxProposalStatus.CANCELLED);
+    expect(txProposals[2].status).toStrictEqual(TxProposalStatus.CANCELLED);
+
+    const spy = jest.spyOn(Db, 'releaseTxProposalUtxos');
+    spy.mockImplementationOnce(() => {
+      throw new Error('error-releasing-tx-proposal');
+    });
+
+    await cleanUnsentTxProposalsUtxos();
+
+    expect(logger.error).toHaveBeenCalledWith('Failed to release unspent tx proposals: ', expect.anything());
   });
 });

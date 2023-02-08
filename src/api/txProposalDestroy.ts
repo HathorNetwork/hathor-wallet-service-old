@@ -50,7 +50,7 @@ export const destroy: APIGatewayProxyHandler = middy(walletIdProxyHandler(async 
 
   await updateTxProposal(
     mysql,
-    txProposalId,
+    [txProposalId],
     now,
     TxProposalStatus.CANCELLED,
   );

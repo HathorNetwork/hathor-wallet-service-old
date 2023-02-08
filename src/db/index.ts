@@ -1711,23 +1711,28 @@ export const createTxProposal = async (
 };
 
 /**
- * Update a tx proposal.
+ * Update a list of tx proposals.
  *
  * @param mysql - Database connection
- * @param txProposalId - The transaction proposal id
+ * @param txProposalIds - The transaction proposal ids
  * @param now - The current timestamp
  * @param status - The new status
  */
 export const updateTxProposal = async (
   mysql: ServerlessMysql,
-  txProposalId: string,
+  txProposalIds: string[],
   now: number,
   status: TxProposalStatus,
 ): Promise<void> => {
-  await mysql.query(
-    'UPDATE `tx_proposal` SET `updated_at` = ?, `status` = ? WHERE `id` = ?',
-    [now, status, txProposalId],
-  );
+  await mysql.query(`
+    UPDATE \`tx_proposal\`
+       SET \`updated_at\` = ?,
+           \`status\` = ?
+     WHERE \`id\` IN (?)`, [
+    now,
+    status,
+    txProposalIds,
+  ]);
 };
 
 /**

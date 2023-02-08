@@ -11,6 +11,7 @@ import {
   deleteStalePushDevices,
   getUnsentTxProposals,
   releaseTxProposalUtxos,
+  updateTxProposal,
 } from '@src/db';
 import {
   closeDbConnection,
@@ -18,6 +19,9 @@ import {
   getUnixTimestamp,
 } from '@src/utils';
 import createDefaultLogger from '@src/logger';
+import { TxProposalStatus } from '@src/types';
+
+const STALE_TX_PROPOSAL_INTERVAL = 5 * 60;
 
 const mysql = getDbConnection();
 
@@ -51,11 +55,13 @@ export const cleanStalePushDevices = async (): Promise<void> => {
 export const cleanUnsentTxProposalsUtxos = async (): Promise<void> => {
   const logger = createDefaultLogger();
 
-  const txProposalsBefore = getUnixTimestamp() - 5 * 60; // 5 minutes in seconds
+  const now = getUnixTimestamp();
+  const txProposalsBefore = now - STALE_TX_PROPOSAL_INTERVAL;
   const unsentTxProposals: string[] = await getUnsentTxProposals(mysql, txProposalsBefore);
 
   try {
     await releaseTxProposalUtxos(mysql, unsentTxProposals);
+    await updateTxProposal(mysql, unsentTxProposals, now, TxProposalStatus.CANCELLED);
   } catch (e) {
     logger.error('Failed to release unspent tx proposals: ', unsentTxProposals);
   }
