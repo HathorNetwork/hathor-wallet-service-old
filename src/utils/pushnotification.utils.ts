@@ -1,5 +1,5 @@
 import { Lambda } from 'aws-sdk';
-import { SendNotificationToDevice, StringMap, WalletBalanceValue } from '@src/types';
+import { PushProvider, SendNotificationToDevice, StringMap, WalletBalanceValue } from '@src/types';
 import fcmAdmin, { credential, messaging, ServiceAccount } from 'firebase-admin';
 import { MulticastMessage } from 'firebase-admin/messaging';
 import createDefaultLogger from '@src/logger';
@@ -56,7 +56,7 @@ export function buildFunctionName(functionName: string): string {
 
 export enum FunctionName {
   SEND_NOTIFICATION_TO_DEVICE = 'sendNotificationToDevice',
-  ON_TX_PUSH_NOTIFICATION_REQUESTED = 'onTxPushNotificationRequested',
+  ON_TX_PUSH_NOTIFICATION_REQUESTED = 'txPushRequested',
 }
 
 const STAGE = process.env.STAGE;
@@ -65,15 +65,58 @@ const SEND_NOTIFICATION_FUNCTION_NAME = buildFunctionName(FunctionName.SEND_NOTI
 const ON_TX_PUSH_NOTIFICATION_REQUESTED_FUNCTION_NAME = buildFunctionName(FunctionName.ON_TX_PUSH_NOTIFICATION_REQUESTED);
 const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID;
 const FIREBASE_PRIVATE_KEY_ID = process.env.FIREBASE_PRIVATE_KEY_ID;
-const FIREBASE_PRIVATE_KEY = process.env.FIREBASE_PRIVATE_KEY;
 const FIREBASE_CLIENT_EMAIL = process.env.FIREBASE_CLIENT_EMAIL;
 const FIREBASE_CLIENT_ID = process.env.FIREBASE_CLIENT_ID;
 const FIREBASE_AUTH_URI = process.env.FIREBASE_AUTH_URI;
 const FIREBASE_TOKEN_URI = process.env.FIREBASE_TOKEN_URI;
 const FIREBASE_AUTH_PROVIDER_X509_CERT_URL = process.env.FIREBASE_AUTH_PROVIDER_X509_CERT_URL;
 const FIREBASE_CLIENT_X509_CERT_URL = process.env.FIREBASE_CLIENT_X509_CERT_URL;
+const FIREBASE_PRIVATE_KEY = (() => {
+  try {
+    /**
+     * To fix the error 'Error: Invalid PEM formatted message.',
+     * when initializing the firebase admin app, we need to replace
+     * the escaped line break with an unescaped line break.
+     * https://github.com/gladly-team/next-firebase-auth/discussions/95#discussioncomment-2891225
+     */
+    const privateKey = process.env.FIREBASE_PRIVATE_KEY;
+    return privateKey
+      ? privateKey.replace(/\\n/gm, '\n')
+      : null;
+  } catch (error) {
+    logger.error('[ALERT] Error while parsing the env.FIREBASE_PRIVATE_KEY.');
+    return null;
+  }
+})();
+
 /** Local feature toggle that disable the push notification by default */
 const PUSH_NOTIFICATION_ENABLED = process.env.PUSH_NOTIFICATION_ENABLED;
+/**
+ * Controls which providers are allowed to send notification when it is enabled
+ * @example
+ * PUSH_ALLOWED_PROVIDERS=android,ios
+ * @remarks
+ * In the test this constant works like the environment variable constants.
+ * It needs to be reloaded after changing the underlying environment variable
+ * `process.env.PUSH_ALLOWED_PROVIDERS`.
+ *
+ * @example Reload the constant by reloading the module:
+ * ```ts
+ // reload module
+ const { PushNotificationUtils } = await import('@src/utils/pushnotification.utils');
+ * ```
+ * */
+const PUSH_ALLOWED_PROVIDERS = (() => {
+  const providers = process.env.PUSH_ALLOWED_PROVIDERS;
+  if (!providers) {
+    // If no providers are set, we allow android by default, but alert the environment variable is empty
+    logger.error('[ALERT] env.PUSH_ALLOWED_PROVIDERS is empty.');
+    return [PushProvider.ANDROID];
+  }
+  return providers.split(',');
+})();
+
+export const isPushProviderAllowed = (provider: string): boolean => PUSH_ALLOWED_PROVIDERS.includes(provider);
 
 export const isPushNotificationEnabled = (): boolean => PUSH_NOTIFICATION_ENABLED === 'true';
 
@@ -90,16 +133,20 @@ const serviceAccount = {
   client_x509_cert_url: FIREBASE_CLIENT_X509_CERT_URL,
 };
 
+let firebaseInitialized = false;
 if (isPushNotificationEnabled()) {
   try {
     fcmAdmin.initializeApp({
       credential: credential.cert(serviceAccount as ServiceAccount),
       projectId: FIREBASE_PROJECT_ID,
     });
+    firebaseInitialized = true;
   } catch (error) {
     logger.error(`Error initializing Firebase Admin SDK. ErrorMessage: ${error.message}`, error);
   }
 }
+
+export const isFirebaseInitialized = (): boolean => firebaseInitialized;
 
 export enum PushNotificationError {
   UNKNOWN = 'unknown',
@@ -108,6 +155,10 @@ export enum PushNotificationError {
 
 export class PushNotificationUtils {
   public static async sendToFcm(notification: SendNotificationToDevice): Promise<{ success: boolean, errorMessage?: string }> {
+    if (!isFirebaseInitialized()) {
+      return { success: false, errorMessage: 'Firebase not initialized.' };
+    }
+
     const message: MulticastMessage = {
       tokens: [notification.deviceId],
       data: notification.metadata,

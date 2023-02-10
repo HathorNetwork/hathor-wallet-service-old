@@ -71,7 +71,7 @@ class TxPushNotificationRequestValidator {
  * This lambda is called internally by an invoker.
  */
 // eslint-disable-next-line max-len
-export const handleRequest: Handler<{ body: StringMap<WalletBalanceValue> }, { success: boolean, message?: string, details?: unknown }> = async (event, context) => {
+export const handleRequest: Handler<StringMap<WalletBalanceValue>, { success: boolean, message?: string, details?: unknown }> = async (event, context) => {
   const logger = createDefaultLogger();
   // Logs the request id on every line, so we can see all logs from a request
   logger.defaultMeta = {
@@ -80,7 +80,7 @@ export const handleRequest: Handler<{ body: StringMap<WalletBalanceValue> }, { s
     requestId: context.awsRequestId,
   };
 
-  const { value: body, error } = TxPushNotificationRequestValidator.validate(event.body);
+  const { value: body, error } = TxPushNotificationRequestValidator.validate(event);
 
   if (error) {
     const details = error.details.map((err) => ({
@@ -103,7 +103,13 @@ export const handleRequest: Handler<{ body: StringMap<WalletBalanceValue> }, { s
   }
 
   const devicesEnabledToPush = deviceSettings
-    .filter((eachSettings) => eachSettings.enablePush);
+    .filter((eachSettings) => eachSettings.enablePush)
+    // filter wallets in which the token balance > 0
+    .filter((eachSettings) => {
+      const wallet = body[eachSettings.walletId];
+      // verify by the first token balance
+      return wallet.walletBalanceForTx[0].total > 0;
+    });
 
   const genericMessages = devicesEnabledToPush
     .filter((eachSettings) => !eachSettings.enableShowAmounts)
@@ -112,9 +118,9 @@ export const handleRequest: Handler<{ body: StringMap<WalletBalanceValue> }, { s
       return _assembleGenericMessage(eachSettings.deviceId, wallet.txId);
     });
 
-  genericMessages.forEach(async (eachNotification) => {
+  for (const eachNotification of genericMessages) {
     await _sendNotification(eachNotification, logger);
-  });
+  }
 
   const specificMessages = devicesEnabledToPush
     .filter((eachSettings) => eachSettings.enableShowAmounts)
@@ -123,9 +129,9 @@ export const handleRequest: Handler<{ body: StringMap<WalletBalanceValue> }, { s
       return _assembleSpecificMessage(eachSettings.deviceId, wallet.txId, wallet.walletBalanceForTx);
     });
 
-  specificMessages.forEach(async (eachNotification) => {
+  for (const eachNotification of specificMessages) {
     await _sendNotification(eachNotification, logger);
-  });
+  }
 
   return {
     success: true,
@@ -153,7 +159,7 @@ const _assembleSpecificMessage = (deviceId: string, txId: string, tokenBalanceLi
 
   const tokens = [];
   for (const eachBalance of tokenBalanceList.slice(0, upperLimit)) {
-    const amount = eachBalance.totalAmountSent;
+    const amount = eachBalance.total;
     const tokenSymbol = eachBalance.tokenSymbol;
     tokens.push(`${amount} ${tokenSymbol}`);
   }
@@ -165,7 +171,7 @@ const _assembleSpecificMessage = (deviceId: string, txId: string, tokenBalanceLi
 
   const localize = {
     titleLocKey: pushNotificationMessage.newTransaction.titleKey,
-    bodyLocKey: pushNotificationMessage.newTransaction.withoutTokens.descriptionKey,
+    bodyLocKey: pushNotificationMessage.newTransaction.withTokens.descriptionKey,
     bodyLocArgs: JSON.stringify(tokens),
   } as LocalizeMetadataNotification;
 
@@ -182,6 +188,6 @@ const _sendNotification = async (notification: SendNotificationToDevice, logger:
   try {
     await PushNotificationUtils.invokeSendNotificationHandlerLambda(notification);
   } catch (error) {
-    logger.error('[ALERT] unexpected failure while calling invokeSendNotificationHandlerLambda.', { ...notification });
+    logger.error('[ALERT] unexpected failure while calling invokeSendNotificationHandlerLambda.', { ...notification, cause: error.cause, stack: error.stack });
   }
 };

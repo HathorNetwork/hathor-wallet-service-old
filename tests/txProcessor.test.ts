@@ -27,6 +27,10 @@ import {
   addToAddressTxHistoryTable,
 } from '@tests/utils';
 import { getHandlerContext, nftCreationTx } from '@events/nftCreationTx';
+import * as pushNotificationUtils from '@src/utils/pushnotification.utils';
+import * as commons from '@src/commons';
+import { Context } from 'aws-lambda';
+import { StringMap, WalletBalanceValue } from '@src/types';
 
 const mysql = getDbConnection();
 const blockReward = 6400;
@@ -602,4 +606,43 @@ test('txProcessor should rollback the entire transaction if an error occurs on b
   await expect(checkAddressTable(mysql, 1, 'address1', null, null, 5)).resolves.toBe(true);
   // txId5 is locked, so our address balance will be 25600
   await expect(checkAddressBalanceTable(mysql, 1, 'address1', '00', blockReward * 4, blockReward, null, 5)).resolves.toBe(true);
+});
+
+test('txProcess onNewTxRequest with push notification', async () => {
+  expect.hasAssertions();
+
+  const fakeEvent = JSON.parse(JSON.stringify(eventTemplate)).Records[0];
+  const fakeContext = {
+    awsRequestId: 'requestId',
+  } as unknown as Context;
+  const fakeWalletBalanceValue = { 123: { txId: 'txId' } } as unknown as StringMap<WalletBalanceValue>;
+
+  const addNewTxMock = jest.spyOn(txProcessor, 'addNewTx');
+  const isTransactionNFTCreationMock = jest.spyOn(NftUtils, 'isTransactionNFTCreation');
+  const isPushNotificationEnabledMock = jest.spyOn(pushNotificationUtils, 'isPushNotificationEnabled');
+  const getWalletBalancesForTxMock = jest.spyOn(commons, 'getWalletBalancesForTx');
+  const invokeOnTxPushNotificationRequestedLambdaMock = jest.spyOn(pushNotificationUtils.PushNotificationUtils, 'invokeOnTxPushNotificationRequestedLambda');
+
+  /**
+   * Push notification disabled
+   */
+  addNewTxMock.mockImplementation(() => Promise.resolve());
+  isTransactionNFTCreationMock.mockReturnValue(false);
+  isPushNotificationEnabledMock.mockReturnValue(false);
+
+  await txProcessor.onNewTxRequest(fakeEvent, fakeContext, null);
+
+  expect(invokeOnTxPushNotificationRequestedLambdaMock).toHaveBeenCalledTimes(0);
+
+  /**
+   * Push notification enabled
+   */
+  isPushNotificationEnabledMock.mockReturnValue(true);
+  // Get a valid wallet balance value to invoke push notification lambda
+  getWalletBalancesForTxMock.mockResolvedValue(fakeWalletBalanceValue);
+  invokeOnTxPushNotificationRequestedLambdaMock.mockResolvedValue();
+
+  await txProcessor.onNewTxRequest(fakeEvent, fakeContext, null);
+
+  expect(invokeOnTxPushNotificationRequestedLambdaMock).toHaveBeenCalledTimes(1);
 });

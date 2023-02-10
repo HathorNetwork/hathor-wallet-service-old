@@ -8,22 +8,23 @@
 import { Handler } from 'aws-lambda';
 import { closeDbConnection, getDbConnection } from '@src/utils';
 import Joi, { ValidationError } from 'joi';
-import { SendNotificationToDevice, PushProvider } from '@src/types';
+import { SendNotificationToDevice } from '@src/types';
 import { getPushDevice, unregisterPushDevice } from '@src/db';
 import createDefaultLogger from '@src/logger';
-import { PushNotificationUtils, PushNotificationError } from '@src/utils/pushnotification.utils';
+import { PushNotificationUtils, PushNotificationError, isPushProviderAllowed } from '@src/utils/pushnotification.utils';
 
 const mysql = getDbConnection();
 
 class PushSendNotificationToDeviceInputValidator {
   static readonly bodySchema = Joi.object({
     deviceId: Joi.string().max(256).required(),
-    title: Joi.string().required(),
-    description: Joi.string().required(),
     metadata: Joi.object({
       txId: Joi.string().required(),
+      titleLocKey: Joi.string().required(),
+      bodyLocKey: Joi.string().required(),
+      bodyLocArgs: Joi.string().optional(),
     }).required(),
-  });
+  }).required();
 
   static validate(payload: unknown): { value: SendNotificationToDevice, error: ValidationError } {
     return PushSendNotificationToDeviceInputValidator.bodySchema.validate(payload, {
@@ -38,14 +39,14 @@ class PushSendNotificationToDeviceInputValidator {
  *
  * This lambda is called by API Gateway on POST /push/register
  */
-export const send: Handler<{ body: unknown }, { success: boolean, message?: string, details?: unknown }> = async (event, context) => {
+export const send: Handler<unknown, { success: boolean, message?: string, details?: unknown }> = async (event, context) => {
   const logger = createDefaultLogger();
   // Logs the request id on every line, so we can see all logs from a request
   logger.defaultMeta = {
     requestId: context.awsRequestId,
   };
 
-  const { value: body, error } = PushSendNotificationToDeviceInputValidator.validate(event.body);
+  const { value: body, error } = PushSendNotificationToDeviceInputValidator.validate(event);
 
   if (error) {
     const details = error.details.map((err) => ({
@@ -68,7 +69,7 @@ export const send: Handler<{ body: unknown }, { success: boolean, message?: stri
     return { success: false, message: 'Failed due to device not found.' };
   }
 
-  if (pushDevice.pushProvider !== PushProvider.ANDROID) {
+  if (!isPushProviderAllowed(pushDevice.pushProvider)) {
     closeDbConnection(mysql);
     logger.error('[ALERT] Provider invalid.', {
       deviceId: body.deviceId,
