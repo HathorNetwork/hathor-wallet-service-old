@@ -7,7 +7,13 @@
 
 import AWS from 'aws-sdk';
 import { Severity } from '@src/types';
+import { assertEnvVariablesExistence } from '@src/utils';
 import createDefaultLogger from '@src/logger';
+
+assertEnvVariablesExistence([
+  'NETWORK',
+  'APPLICATION_NAME',
+]);
 
 /**
  * Adds a message to the SQS alerting queue
