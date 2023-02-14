@@ -1778,7 +1778,11 @@ export const releaseTxProposalUtxos = async (
     [txProposalIds],
   );
 
-  assert.strictEqual(result.affectedRows, txProposalIds.length);
+  assert.strictEqual(
+    result.affectedRows,
+    txProposalIds.length,
+    'Not all utxos were correctly updated',
+  );
 };
 
 /**

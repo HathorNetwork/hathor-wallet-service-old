@@ -1483,19 +1483,28 @@ test('createTxProposal, updateTxProposal, getTxProposal, countUnsentTxProposals,
   const txProposalId1: string = uuidv4() as string;
   const txProposalId2: string = uuidv4() as string;
   const txProposalId3: string = uuidv4() as string;
+  const txProposalId4: string = uuidv4() as string;
 
-  // count unsent tx proposals
+  // Create old tx proposals
   await createTxProposal(mysql, txProposalId1, walletId, 1);
   await createTxProposal(mysql, txProposalId2, walletId, 1);
   await createTxProposal(mysql, txProposalId3, walletId, 1);
 
-  const txProposalsBefore = getUnixTimestamp() - 5 * 60; // 5 minutes in seconds
+  // Create a new tx proposal, that won't be removed
+  await createTxProposal(mysql, txProposalId4, walletId, now);
 
+  const txProposalsBefore = now - (5 * 60); // 5 minutes in seconds
+
+  // Fetch the list of unsent tx proposals
   const unsentTxProposals = await getUnsentTxProposals(mysql, txProposalsBefore);
   expect(unsentTxProposals).toContain(txProposalId1);
   expect(unsentTxProposals).toContain(txProposalId2);
   expect(unsentTxProposals).toContain(txProposalId3);
 
+  // The new tx proposal should not be in the unsent list
+  expect(unsentTxProposals).not.toContain(txProposalId4);
+
+  // Add utxos for the unsent tx proposals so we can check if they got cleaned up
   await addToUtxoTable(mysql, [{
     txId: 'tx1',
     index: 0,
@@ -1537,13 +1546,10 @@ test('createTxProposal, updateTxProposal, getTxProposal, countUnsentTxProposals,
     txProposalIndex: 0,
   }]);
 
+  // Release txProposalUtxos should properly release the utxos. This method will throw an error if the
+  // updated count is different from the sent tx proposals count.
   await releaseTxProposalUtxos(mysql, [txProposalId1, txProposalId2, txProposalId3]);
-  await expect(releaseTxProposalUtxos(mysql, ['invalid-tx-proposal'])).rejects.toMatchInlineSnapshot(`
-    [AssertionError: Expected values to be strictly equal:
-
-    0 !== 1
-    ]
-  `);
+  await expect(releaseTxProposalUtxos(mysql, ['invalid-tx-proposal'])).rejects.toMatchInlineSnapshot('[AssertionError: Not all utxos were correctly updated]');
 });
 
 test('updateVersionData', async () => {
