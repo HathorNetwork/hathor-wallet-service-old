@@ -564,20 +564,33 @@ export const addToUtxoTable = async (
   entries: DbTxOutput[],
 ): Promise<void> => {
   const payload = entries.map((entry: DbTxOutput) => ([
-    entry.txId, entry.index,
-    entry.tokenId, entry.address,
-    entry.value, entry.authorities,
-    entry.timelock || null, entry.heightlock || null,
-    entry.locked, entry.spentBy || null,
-    entry.txProposalId || null, entry.txProposalIndex,
+    entry.txId,
+    entry.index,
+    entry.tokenId,
+    entry.address,
+    entry.value,
+    entry.authorities,
+    entry.timelock || null,
+    entry.heightlock || null,
+    entry.locked,
+    entry.spentBy || null,
+    entry.txProposalId || null,
+    entry.txProposalIndex,
   ]));
   await mysql.query(
-    `INSERT INTO \`tx_output\`(\`tx_id\`, \`index\`,
-                          \`token_id\`, \`address\`,
-                          \`value\`, \`authorities\`,
-                          \`timelock\`, \`heightlock\`,
-                          \`locked\`, \`spent_by\`,
-                          \`tx_proposal\`, \`tx_proposal_index\`)
+    `INSERT INTO \`tx_output\`(
+                   \`tx_id\`
+                 , \`index\`
+                 , \`token_id\`
+                 , \`address\`
+                 , \`value\`
+                 , \`authorities\`
+                 , \`timelock\`
+                 , \`heightlock\`
+                 , \`locked\`
+                 , \`spent_by\`
+                 , \`tx_proposal\`
+                 , \`tx_proposal_index\`)
      VALUES ?`,
     [payload],
   );
