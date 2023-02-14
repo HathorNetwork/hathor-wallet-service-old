@@ -85,7 +85,7 @@ custom:
         metric: "Duration"
         statistic: Average
         threshold: 30000 # 30s
-        period: 60
+        period: 60 # seconds
         evaluationPeriods: 1
         comparisonOperator: GreaterThanThreshold
         alarmActions:
