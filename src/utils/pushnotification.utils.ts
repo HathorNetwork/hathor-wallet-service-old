@@ -210,7 +210,7 @@ export class PushNotificationUtils {
     if (response.StatusCode !== 202) {
       await addAlert(
         'Error on PushNotificationUtils',
-        `${ON_TX_PUSH_NOTIFICATION_REQUESTED_FUNCTION_NAME} lambda invoke failed for device: ${notification.deviceId}`,
+        `${SEND_NOTIFICATION_FUNCTION_NAME} lambda invoke failed for device: ${notification.deviceId}`,
         Severity.MINOR,
         { DeviceId: notification.deviceId },
       );
@@ -246,7 +246,7 @@ export class PushNotificationUtils {
     if (response.StatusCode !== 202) {
       await addAlert(
         'Error on PushNotificationUtils',
-        `${SEND_NOTIFICATION_FUNCTION_NAME} lambda invoke failed for wallets`,
+        `${ON_TX_PUSH_NOTIFICATION_REQUESTED_FUNCTION_NAME} lambda invoke failed for wallets`,
         Severity.MINOR,
         { Wallets: walletIdList },
       );
