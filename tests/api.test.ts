@@ -1386,6 +1386,7 @@ test('GET /wallet/tokens/token_id/details', async () => {
   ]);
 
   await addToUtxoTable(mysql, [{
+    // Total tokens created
     txId: 'txId',
     index: 0,
     tokenId: token1.id,
@@ -1397,6 +1398,7 @@ test('GET /wallet/tokens/token_id/details', async () => {
     locked: false,
     spentBy: null,
   }, {
+    // Mint UTXO:
     txId: 'txId',
     index: 1,
     tokenId: token1.id,
@@ -1408,6 +1410,7 @@ test('GET /wallet/tokens/token_id/details', async () => {
     locked: false,
     spentBy: null,
   }, {
+    // Another Mint UTXO
     txId: 'txId',
     index: 2,
     tokenId: token1.id,
@@ -1419,6 +1422,7 @@ test('GET /wallet/tokens/token_id/details', async () => {
     locked: false,
     spentBy: null,
   }, {
+    // Total tokens created
     txId: 'txId2',
     index: 0,
     tokenId: token2.id,
@@ -1430,6 +1434,7 @@ test('GET /wallet/tokens/token_id/details', async () => {
     locked: true,
     spentBy: null,
   }, {
+    // Locked utxo
     txId: 'txId2',
     index: 1,
     tokenId: token2.id,
@@ -1441,6 +1446,7 @@ test('GET /wallet/tokens/token_id/details', async () => {
     locked: true,
     spentBy: null,
   }, {
+    // Spent utxo
     txId: 'txId2',
     index: 2,
     tokenId: token2.id,
@@ -1463,6 +1469,7 @@ test('GET /wallet/tokens/token_id/details', async () => {
     locked: false,
     spentBy: null,
   }, {
+    // Melt UTXO
     txId: 'txId3',
     index: 1,
     tokenId: token2.id,
