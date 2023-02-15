@@ -679,7 +679,7 @@ functions:
     handler: src/db/cron.routines.cleanUnsentTxProposalsUtxos
     timeout: 60 # 1 minute
     events:
-      - schedule: cron(*/5 * * * * *) # run every 5 minutes
+      - schedule: cron(*/5 * * * ? *) # run every 5 minutes
     warmup:
       walletWarmer:
         enabled: false
