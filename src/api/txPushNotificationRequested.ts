@@ -8,11 +8,19 @@
 import { Handler } from 'aws-lambda';
 import { closeDbConnection, getDbConnection } from '@src/utils';
 import Joi, { ValidationError } from 'joi';
-import { TokenBalanceValue, LocalizeMetadataNotification, SendNotificationToDevice, StringMap, WalletBalanceValue } from '@src/types';
+import {
+  Severity,
+  TokenBalanceValue,
+  LocalizeMetadataNotification,
+  SendNotificationToDevice,
+  StringMap,
+  WalletBalanceValue,
+} from '@src/types';
 import { getPushDeviceSettingsList } from '@src/db';
 import createDefaultLogger from '@src/logger';
 import { PushNotificationUtils } from '@src/utils/pushnotification.utils';
 import { Logger } from 'winston';
+import { addAlert } from '@src/utils/alerting.utils';
 
 const mysql = getDbConnection();
 
@@ -89,7 +97,13 @@ export const handleRequest: Handler<StringMap<WalletBalanceValue>, { success: bo
     }));
 
     closeDbConnection(mysql);
-    logger.error('[ALERT] Invalid payload while handling push notification request.', { details });
+    await addAlert(
+      'Invalid payload while handling push notification request.',
+      '-',
+      Severity.MINOR,
+      { details },
+    );
+    logger.error('Invalid payload while handling push notification request.', { details });
     return { success: false, message: pushNotificationMessage.invalidPayload, details };
   }
 
@@ -188,6 +202,12 @@ const _sendNotification = async (notification: SendNotificationToDevice, logger:
   try {
     await PushNotificationUtils.invokeSendNotificationHandlerLambda(notification);
   } catch (error) {
-    logger.error('[ALERT] unexpected failure while calling invokeSendNotificationHandlerLambda.', { ...notification, cause: error.cause, stack: error.stack });
+    await addAlert(
+      'Unexpected failure while calling invokeSendNotificationHandlerLambda',
+      '-',
+      Severity.MINOR,
+      { ...notification },
+    );
+    logger.error('Unexpected failure while calling invokeSendNotificationHandlerLambda.', { ...notification, error });
   }
 };

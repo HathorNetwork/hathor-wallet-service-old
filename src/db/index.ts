@@ -40,6 +40,7 @@ import {
   PushDevice,
   TxByIdToken,
   PushDeviceSettings,
+  Severity,
 } from '@src/types';
 import {
   getUnixTimestamp,
@@ -52,6 +53,7 @@ import {
   getWalletFromDbEntry,
   getTxsFromDBResult,
 } from '@src/db/utils';
+import { addAlert } from '@src/utils/alerting.utils';
 
 const BLOCK_VERSION = [
   constants.BLOCK_VERSION,
@@ -2458,7 +2460,7 @@ export const getMinersList = async (
 };
 
 /**
- * Get the total sum of HTR utxos, excluding the burned and voided ones
+ * Get the total sum of a token's utxos, excluding the burned and voided ones
  *
  * @param mysql - Database connection
 
@@ -2479,7 +2481,13 @@ export const getTotalSupply = async (
 
   if (!results.length) {
     // This should never happen.
-    throw new Error('[ALERT] Total supply query returned no results');
+    await addAlert(
+      'Total supply query returned no results',
+      '-',
+      Severity.MINOR,
+      { tokenId },
+    );
+    throw new Error('Total supply query returned no results');
   }
 
   return results[0].value as number;
@@ -2531,7 +2539,13 @@ export const getTotalTransactions = async (
 
   if (!results.length) {
     // This should never happen.
-    throw new Error('[ALERT] Total transactions query returned no results');
+    await addAlert(
+      'Total transactions query returned no results',
+      '-',
+      Severity.MINOR,
+      { tokenId },
+    );
+    throw new Error('Total transactions query returned no results');
   }
 
   return results[0].count as number;

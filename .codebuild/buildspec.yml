@@ -22,6 +22,7 @@ env:
     dev_WALLET_SERVICE_LAMBDA_ENDPOINT: "https://lambda.eu-central-1.amazonaws.com"
     dev_PUSH_NOTIFICATION_ENABLED: "true"
     dev_PUSH_ALLOWED_PROVIDERS: "android"
+    dev_APPLICATION_NAME: "wallet-service-dev"
     testnet_DEFAULT_SERVER: "https://wallet-service.private-nodes.testnet.hathor.network/v1a/"
     testnet_WS_DOMAIN: "ws.wallet-service.testnet.hathor.network"
     testnet_NETWORK: "testnet"
@@ -31,6 +32,7 @@ env:
     testnet_WALLET_SERVICE_LAMBDA_ENDPOINT: "https://lambda.eu-central-1.amazonaws.com"
     testnet_PUSH_NOTIFICATION_ENABLED: "true"
     testnet_PUSH_ALLOWED_PROVIDERS: "android"
+    testnet_APPLICATION_NAME: "wallet-service-testnet"
     mainnet_DEFAULT_SERVER: "https://wallet-service.private-nodes.hathor.network/v1a/"
     mainnet_WS_DOMAIN: "ws.wallet-service.hathor.network"
     mainnet_NETWORK: "mainnet"
@@ -40,6 +42,7 @@ env:
     mainnet_WALLET_SERVICE_LAMBDA_ENDPOINT: "https://lambda.eu-central-1.amazonaws.com"
     mainnet_PUSH_NOTIFICATION_ENABLED: "true"
     mainnet_PUSH_ALLOWED_PROVIDERS: "android"
+    mainnet_APPLICATION_NAME: "wallet-service-mainnet"
   # https://eu-central-1.console.aws.amazon.com/secretsmanager/home?region=eu-central-1#!/listSecrets
   secrets-manager:
     # Dev secrets

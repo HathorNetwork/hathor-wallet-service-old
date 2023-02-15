@@ -1,10 +1,11 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { RedisClient } from 'redis';
+import { addAlert } from '@src/utils/alerting.utils';
 
 import AWS from 'aws-sdk';
 import util from 'util';
 
-import { WsConnectionInfo } from '@src/types';
+import { WsConnectionInfo, Severity } from '@src/types';
 import { endWsConnection } from '@src/redis';
 
 export const connectionInfoFromEvent = (
@@ -22,9 +23,15 @@ export const connectionInfoFromEvent = (
   const domain = process.env.WS_DOMAIN;
 
   if (!domain) {
+    addAlert(
+      'Erroed while fetching connection info',
+      'Domain not on env variables',
+      Severity.MINOR,
+    );
+
     // Throw so we receive an alert telling us that something is wrong with the env variable
     // instead of trying to invoke a lambda at https://undefined
-    throw new Error('[ALERT] Domain not on env variables');
+    throw new Error('Domain not on env variables');
   }
 
   return {

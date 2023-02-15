@@ -1,6 +1,8 @@
 /* eslint-disable global-require */
+import { mockedAddAlert } from '@tests/utils/alerting.utils.mock';
 import { logger } from '@tests/winston.mock'; // most be the first to import
 import { initFirebaseAdminMock } from '@tests/utils/firebase-admin.mock';
+
 import {
   send,
 } from '@src/api/pushSendNotificationToDevice';
@@ -19,6 +21,7 @@ import {
   checkPushDevicesTable,
 } from '@tests/utils';
 import { APIGatewayProxyResult, Context } from 'aws-lambda';
+import { Severity } from '@src/types';
 
 const mysql = getDbConnection();
 
@@ -35,6 +38,7 @@ beforeEach(async () => {
   };
   spyOnSendToFcm.mockClear();
   spyOnLoggerError.mockClear();
+  jest.resetModules(); // Needed for the AWS.SQS mock, as it is getting cached
   await cleanDatabase(mysql);
   jest.resetModules();
 });
@@ -233,7 +237,13 @@ describe('alert', () => {
 
     expect(result.success).toStrictEqual(false);
     expect(result.message).not.toBeNull();
-    expect(spyOnLoggerError).toHaveBeenCalledWith('[ALERT] Device not found.', { deviceId: 'device1' });
+    expect(spyOnLoggerError).toHaveBeenCalledWith('Device not found.', { deviceId: 'device1' });
+    expect(mockedAddAlert).toHaveBeenCalledWith(
+      'Device not found while trying to send notification',
+      '-',
+      Severity.MINOR,
+      { deviceId: 'device1' },
+    );
   });
 
   it('should alert when provider not implemented', async () => {
@@ -268,6 +278,12 @@ describe('alert', () => {
 
     expect(result.success).toStrictEqual(false);
     expect(result.message).not.toBeNull();
-    expect(spyOnLoggerError).toHaveBeenCalledWith('[ALERT] Provider invalid.', { deviceId: 'device1', pushProvider: 'ios' });
+    expect(spyOnLoggerError).toHaveBeenCalledWith('Provider invalid.', { deviceId: 'device1', pushProvider: 'ios' });
+    expect(mockedAddAlert).toHaveBeenCalledWith(
+      'Invalid provider error while sending push notification',
+      '-',
+      Severity.MINOR,
+      { deviceId: 'device1', pushProvider: 'ios' },
+    );
   });
 });

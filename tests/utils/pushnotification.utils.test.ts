@@ -1,12 +1,13 @@
 /* eslint-disable no-shadow */
 /* eslint-disable @typescript-eslint/naming-convention */
 // mocks should be imported first
+import { mockedAddAlert } from '@tests/utils/alerting.utils.mock';
 import { sendMulticastMock, messaging, initFirebaseAdminMock } from '@tests/utils/firebase-admin.mock';
 import { invokeMock, promiseMock } from '@tests/utils/aws-sdk.mock';
 import { logger } from '@tests/winston.mock';
 import { PushNotificationUtils, PushNotificationError, buildFunctionName, FunctionName } from '@src/utils/pushnotification.utils';
 import * as pushnotificationUtils from '@src/utils/pushnotification.utils';
-import { SendNotificationToDevice } from '@src/types';
+import { SendNotificationToDevice, Severity } from '@src/types';
 import { Lambda } from 'aws-sdk';
 import { buildWalletBalanceValueMap } from '@tests/utils';
 
@@ -34,6 +35,7 @@ describe('PushNotificationUtils', () => {
     };
     initFirebaseAdminMock.mockReset();
     isFirebaseInitializedMock.mockReset();
+    mockedAddAlert.mockReset();
     jest.resetModules();
   });
 
@@ -69,7 +71,11 @@ describe('PushNotificationUtils', () => {
       // reload module
       const { PushNotificationUtils } = await import('@src/utils/pushnotification.utils');
 
-      expect(logger.error).toHaveBeenLastCalledWith('[ALERT] env.WALLET_SERVICE_LAMBDA_ENDPOINT can not be null or undefined.');
+      expect(mockedAddAlert).toHaveBeenLastCalledWith(
+        'Lambda missing env variables',
+        'Env missing the following variables WALLET_SERVICE_LAMBDA_ENDPOINT',
+        Severity.MINOR,
+      );
     });
 
     it('STAGE', async () => {
@@ -81,7 +87,11 @@ describe('PushNotificationUtils', () => {
       // reload module
       const { PushNotificationUtils } = await import('@src/utils/pushnotification.utils');
 
-      expect(logger.error).toHaveBeenLastCalledWith('[ALERT] env.STAGE can not be null or undefined.');
+      expect(mockedAddAlert).toHaveBeenLastCalledWith(
+        'Lambda missing env variables',
+        'Env missing the following variables STAGE',
+        Severity.MINOR,
+      );
     });
 
     it('FIREBASE_PROJECT_ID', async () => {
@@ -93,7 +103,11 @@ describe('PushNotificationUtils', () => {
       // reload module
       const { PushNotificationUtils } = await import('@src/utils/pushnotification.utils');
 
-      expect(logger.error).toHaveBeenLastCalledWith('[ALERT] env.FIREBASE_PROJECT_ID can not be null or undefined.');
+      expect(mockedAddAlert).toHaveBeenLastCalledWith(
+        'Lambda missing env variables',
+        'Env missing the following variables FIREBASE_PROJECT_ID',
+        Severity.MINOR,
+      );
     });
 
     it('FIREBASE_PRIVATE_KEY_ID', async () => {
@@ -105,7 +119,11 @@ describe('PushNotificationUtils', () => {
       // reload module
       const { PushNotificationUtils } = await import('@src/utils/pushnotification.utils');
 
-      expect(logger.error).toHaveBeenLastCalledWith('[ALERT] env.FIREBASE_PRIVATE_KEY_ID can not be null or undefined.');
+      expect(mockedAddAlert).toHaveBeenLastCalledWith(
+        'Lambda missing env variables',
+        'Env missing the following variables FIREBASE_PRIVATE_KEY_ID',
+        Severity.MINOR,
+      );
     });
 
     it('FIREBASE_PRIVATE_KEY', async () => {
@@ -117,7 +135,11 @@ describe('PushNotificationUtils', () => {
       // reload module
       const { PushNotificationUtils } = await import('@src/utils/pushnotification.utils');
 
-      expect(logger.error).toHaveBeenLastCalledWith('[ALERT] env.FIREBASE_PRIVATE_KEY can not be null or undefined.');
+      expect(mockedAddAlert).toHaveBeenLastCalledWith(
+        'Lambda missing env variables',
+        'Env missing the following variables FIREBASE_PRIVATE_KEY',
+        Severity.MINOR,
+      );
     });
 
     // generate test for every comment below
@@ -130,7 +152,11 @@ describe('PushNotificationUtils', () => {
       // reload module
       const { PushNotificationUtils } = await import('@src/utils/pushnotification.utils');
 
-      expect(logger.error).toHaveBeenLastCalledWith('[ALERT] env.FIREBASE_CLIENT_EMAIL can not be null or undefined.');
+      expect(mockedAddAlert).toHaveBeenLastCalledWith(
+        'Lambda missing env variables',
+        'Env missing the following variables FIREBASE_CLIENT_EMAIL',
+        Severity.MINOR,
+      );
     });
 
     // FIREBASE_CLIENT_ID: 'client-id',
@@ -143,7 +169,11 @@ describe('PushNotificationUtils', () => {
       // reload module
       const { PushNotificationUtils } = await import('@src/utils/pushnotification.utils');
 
-      expect(logger.error).toHaveBeenLastCalledWith('[ALERT] env.FIREBASE_CLIENT_ID can not be null or undefined.');
+      expect(mockedAddAlert).toHaveBeenLastCalledWith(
+        'Lambda missing env variables',
+        'Env missing the following variables FIREBASE_CLIENT_ID',
+        Severity.MINOR,
+      );
     });
 
     // FIREBASE_AUTH_URI: 'https://accounts.google.com/o/oauth2/auth',
@@ -156,7 +186,11 @@ describe('PushNotificationUtils', () => {
       // reload module
       const { PushNotificationUtils } = await import('@src/utils/pushnotification.utils');
 
-      expect(logger.error).toHaveBeenLastCalledWith('[ALERT] env.FIREBASE_AUTH_URI can not be null or undefined.');
+      expect(mockedAddAlert).toHaveBeenLastCalledWith(
+        'Lambda missing env variables',
+        'Env missing the following variables FIREBASE_AUTH_URI',
+        Severity.MINOR,
+      );
     });
 
     // FIREBASE_TOKEN_URI: 'https://oauth2.googleapis.com/token',
@@ -169,7 +203,11 @@ describe('PushNotificationUtils', () => {
       // reload module
       const { PushNotificationUtils } = await import('@src/utils/pushnotification.utils');
 
-      expect(logger.error).toHaveBeenLastCalledWith('[ALERT] env.FIREBASE_TOKEN_URI can not be null or undefined.');
+      expect(mockedAddAlert).toHaveBeenLastCalledWith(
+        'Lambda missing env variables',
+        'Env missing the following variables FIREBASE_TOKEN_URI',
+        Severity.MINOR,
+      );
     });
 
     // FIREBASE_AUTH_PROVIDER_X509_CERT_URL: 'https://www.googleapis.com/oauth2/v1/certs',
@@ -182,7 +220,11 @@ describe('PushNotificationUtils', () => {
       // reload module
       const { PushNotificationUtils } = await import('@src/utils/pushnotification.utils');
 
-      expect(logger.error).toHaveBeenLastCalledWith('[ALERT] env.FIREBASE_AUTH_PROVIDER_X509_CERT_URL can not be null or undefined.');
+      expect(mockedAddAlert).toHaveBeenLastCalledWith(
+        'Lambda missing env variables',
+        'Env missing the following variables FIREBASE_AUTH_PROVIDER_X509_CERT_URL',
+        Severity.MINOR,
+      );
     });
 
     // FIREBASE_CLIENT_X509_CERT_URL: 'https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk.iam.gserviceaccount.com',
@@ -195,7 +237,11 @@ describe('PushNotificationUtils', () => {
       // reload module
       const { PushNotificationUtils } = await import('@src/utils/pushnotification.utils');
 
-      expect(logger.error).toHaveBeenLastCalledWith('[ALERT] env.FIREBASE_CLIENT_X509_CERT_URL can not be null or undefined.');
+      expect(mockedAddAlert).toHaveBeenLastCalledWith(
+        'Lambda missing env variables',
+        'Env missing the following variables FIREBASE_CLIENT_X509_CERT_URL',
+        Severity.MINOR,
+      );
     });
 
     it('FIREBASE_PRIVATE_KEY-IIFE', async () => {
@@ -326,7 +372,14 @@ describe('PushNotificationUtils', () => {
       const result = await PushNotificationUtils.sendToFcm(notification);
 
       expect(result).toStrictEqual({ success: false, errorMessage: PushNotificationError.UNKNOWN });
-      expect(logger.error).toHaveBeenLastCalledWith('[ALERT] Error while calling sendMulticast(message) of Firebase Cloud Message.', { error: { code: 'any-other-code' } });
+      expect(logger.error).toHaveBeenLastCalledWith('Error while calling sendMulticast(message) of Firebase Cloud Message.', { error: { code: 'any-other-code' } });
+
+      expect(mockedAddAlert).toHaveBeenLastCalledWith(
+        'Error on PushNotificationUtils',
+        'Error while calling sendMulticast(message) of Firebase Cloud Message.',
+        Severity.MAJOR,
+        { error: { code: 'any-other-code' } },
+      );
     });
   });
 
