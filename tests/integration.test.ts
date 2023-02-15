@@ -3,7 +3,7 @@ import eventTemplate from '@events/eventTemplate.json';
 import { loadWallet } from '@src/api/wallet';
 import { createWallet, getMinersList } from '@src/db';
 import * as txProcessor from '@src/txProcessor';
-import { Transaction, WalletStatus } from '@src/types';
+import { Transaction, WalletStatus, TxInput } from '@src/types';
 import { closeDbConnection, getDbConnection, getUnixTimestamp, getWalletId } from '@src/utils';
 import {
   ADDRESSES,
@@ -110,18 +110,18 @@ tx2.outputs = [
 ];
 
 // tx2Inputs on the format addToUtxoTable expects
-const tx2Inputs = tx2.inputs.map((input) => [
-  input.tx_id,
-  input.index,
-  input.token,
-  input.decoded.address,
-  input.value,
-  null, // authorities,
-  null, // timelock
-  null, // heightlock
-  false, // locked
-  null, // spentBy
-]);
+const tx2Inputs = tx2.inputs.map((input: TxInput) => ({
+  txId: input.tx_id,
+  index: input.index,
+  tokenId: input.token,
+  address: input.decoded.address,
+  value: input.value,
+  authorities: null,
+  timelock: null,
+  heightlock: null,
+  locked: false,
+  spentBy: null,
+}));
 
 beforeEach(async () => {
   await cleanDatabase(mysql);

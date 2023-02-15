@@ -115,7 +115,7 @@ export const send: APIGatewayProxyHandler = middy(walletIdProxyHandler(async (wa
 
     await updateTxProposal(
       mysql,
-      txProposalId,
+      [txProposalId],
       now,
       TxProposalStatus.SENT,
     );
@@ -133,7 +133,7 @@ export const send: APIGatewayProxyHandler = middy(walletIdProxyHandler(async (wa
   } catch (e) {
     await updateTxProposal(
       mysql,
-      txProposalId,
+      [txProposalId],
       now,
       TxProposalStatus.SEND_ERROR,
     );

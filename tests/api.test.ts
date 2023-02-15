@@ -471,7 +471,18 @@ test('GET /balances', async () => {
     timelockExpires: lockExpires2,
     transactions: 2,
   }]);
-  await addToUtxoTable(mysql, [['txId', 0, 'token3', ADDRESSES[0], 1, 0, lockExpires2, null, true, null]]);
+  await addToUtxoTable(mysql, [{
+    txId: 'txId',
+    index: 0,
+    tokenId: 'token3',
+    address: ADDRESSES[0],
+    value: 1,
+    authorities: 0,
+    timelock: lockExpires2,
+    heightlock: null,
+    locked: true,
+    spentBy: null,
+  }]);
   event = makeGatewayEventWithAuthorizer('my-wallet', { token_id: 'token3' });
   result = await balancesGet(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
@@ -498,10 +509,29 @@ test('GET /balances', async () => {
     timelockExpires: lockExpires2,
     transactions: 3,
   }]);
-  await addToUtxoTable(mysql, [
-    ['txId2', 0, 'token4', ADDRESSES[0], 3, 0, lockExpires2, null, true, null],
-    ['txId3', 0, 'token4', ADDRESSES[0], 2, 0, lockExpires, null, true, null],
-  ]);
+  await addToUtxoTable(mysql, [{
+    txId: 'txId2',
+    index: 0,
+    tokenId: 'token4',
+    address: ADDRESSES[0],
+    value: 3,
+    authorities: 0,
+    timelock: lockExpires2,
+    heightlock: null,
+    locked: true,
+    spentBy: null,
+  }, {
+    txId: 'txId3',
+    index: 0,
+    tokenId: 'token4',
+    address: ADDRESSES[0],
+    value: 2,
+    authorities: 0,
+    timelock: lockExpires,
+    heightlock: null,
+    locked: true,
+    spentBy: null,
+  }]);
   event = makeGatewayEventWithAuthorizer('my-wallet', { token_id: 'token4' });
   result = await balancesGet(event, null, null) as APIGatewayProxyResult;
   returnBody = JSON.parse(result.body as string);
@@ -1355,16 +1385,102 @@ test('GET /wallet/tokens/token_id/details', async () => {
     { id: token2.id, name: token2.name, symbol: token2.symbol, transactions: 0 },
   ]);
 
-  await addToUtxoTable(mysql, [
-    ['txId', 0, token1.id, ADDRESSES[0], 100, 0, null, null, false, null], // total tokens created
-    ['txId', 1, token1.id, ADDRESSES[0], 0, constants.TOKEN_MINT_MASK, null, null, false, null], // mint
-    ['txId', 2, token1.id, ADDRESSES[0], 0, constants.TOKEN_MINT_MASK, null, null, false, null], // another mint
-    ['txId2', 0, token2.id, ADDRESSES[0], 250, 0, null, null, true, null], // total tokens created
-    ['txId2', 1, token2.id, ADDRESSES[0], 0, constants.TOKEN_MINT_MASK, 1000, null, true, null], // locked utxo
-    ['txId2', 2, token2.id, ADDRESSES[0], 0, constants.TOKEN_MINT_MASK, 1000, null, true, 'txid2'], // spent utxo
-    ['txId3', 0, token2.id, ADDRESSES[0], 0, constants.TOKEN_MINT_MASK, null, null, false, null],
-    ['txId3', 1, token2.id, ADDRESSES[0], 0, constants.TOKEN_MELT_MASK, null, null, false, null], // melt utxo
-  ]);
+  await addToUtxoTable(mysql, [{
+    // Total tokens created
+    txId: 'txId',
+    index: 0,
+    tokenId: token1.id,
+    address: ADDRESSES[0],
+    value: 100,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    // Mint UTXO:
+    txId: 'txId',
+    index: 1,
+    tokenId: token1.id,
+    address: ADDRESSES[0],
+    value: 0,
+    authorities: constants.TOKEN_MINT_MASK,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    // Another Mint UTXO
+    txId: 'txId',
+    index: 2,
+    tokenId: token1.id,
+    address: ADDRESSES[0],
+    value: 0,
+    authorities: constants.TOKEN_MINT_MASK,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    // Total tokens created
+    txId: 'txId2',
+    index: 0,
+    tokenId: token2.id,
+    address: ADDRESSES[0],
+    value: 250,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: true,
+    spentBy: null,
+  }, {
+    // Locked utxo
+    txId: 'txId2',
+    index: 1,
+    tokenId: token2.id,
+    address: ADDRESSES[0],
+    value: 0,
+    authorities: constants.TOKEN_MINT_MASK,
+    timelock: 1000,
+    heightlock: null,
+    locked: true,
+    spentBy: null,
+  }, {
+    // Spent utxo
+    txId: 'txId2',
+    index: 2,
+    tokenId: token2.id,
+    address: ADDRESSES[0],
+    value: 0,
+    authorities: constants.TOKEN_MINT_MASK,
+    timelock: 1000,
+    heightlock: null,
+    locked: true,
+    spentBy: 'txid2',
+  }, {
+    txId: 'txId3',
+    index: 0,
+    tokenId: token2.id,
+    address: ADDRESSES[0],
+    value: 0,
+    authorities: constants.TOKEN_MINT_MASK,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    // Melt UTXO
+    txId: 'txId3',
+    index: 1,
+    tokenId: token2.id,
+    address: ADDRESSES[0],
+    value: 0,
+    authorities: constants.TOKEN_MELT_MASK,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }]);
 
   await addToAddressTxHistoryTable(mysql, [
     { address: ADDRESSES[0], txId: 'txId', tokenId: token1.id, balance: 100, timestamp: 0 },

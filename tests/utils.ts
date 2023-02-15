@@ -9,6 +9,7 @@ import {
   WalletBalanceValue,
   StringMap,
   PushProvider,
+  DbTxOutput,
 } from '@src/types';
 import { getWalletId } from '@src/utils';
 import { walletUtils, network, HathorWalletServiceWallet } from '@hathor/wallet-lib';
@@ -560,16 +561,38 @@ export const addToTransactionTable = async (
 
 export const addToUtxoTable = async (
   mysql: ServerlessMysql,
-  entries: unknown[][],
+  entries: DbTxOutput[],
 ): Promise<void> => {
+  const payload = entries.map((entry: DbTxOutput) => ([
+    entry.txId,
+    entry.index,
+    entry.tokenId,
+    entry.address,
+    entry.value,
+    entry.authorities,
+    entry.timelock || null,
+    entry.heightlock || null,
+    entry.locked,
+    entry.spentBy || null,
+    entry.txProposalId || null,
+    entry.txProposalIndex,
+  ]));
   await mysql.query(
-    `INSERT INTO \`tx_output\`(\`tx_id\`, \`index\`,
-                          \`token_id\`, \`address\`,
-                          \`value\`, \`authorities\`,
-                          \`timelock\`, \`heightlock\`,
-                          \`locked\`, \`spent_by\`)
+    `INSERT INTO \`tx_output\`(
+                   \`tx_id\`
+                 , \`index\`
+                 , \`token_id\`
+                 , \`address\`
+                 , \`value\`
+                 , \`authorities\`
+                 , \`timelock\`
+                 , \`heightlock\`
+                 , \`locked\`
+                 , \`spent_by\`
+                 , \`tx_proposal\`
+                 , \`tx_proposal_index\`)
      VALUES ?`,
-    [entries],
+    [payload],
   );
 };
 
