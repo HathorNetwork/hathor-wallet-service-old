@@ -50,13 +50,13 @@ export const destroy: APIGatewayProxyHandler = middy(walletIdProxyHandler(async 
 
   await updateTxProposal(
     mysql,
-    txProposalId,
+    [txProposalId],
     now,
     TxProposalStatus.CANCELLED,
   );
 
   // Remove tx_proposal_id and tx_proposal_index from utxo table
-  await releaseTxProposalUtxos(mysql, txProposalId);
+  await releaseTxProposalUtxos(mysql, [txProposalId]);
 
   await closeDbConnection(mysql);
 

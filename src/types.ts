@@ -789,3 +789,16 @@ export interface WalletBalanceValue {
   addresses: string[],
   walletBalanceForTx: TokenBalanceValue[],
 }
+
+/**
+ * Alerts should follow the on-call guide for alerting, see
+ * https://github.com/HathorNetwork/ops-tools/blob/master/docs/on-call/guide.md#alert-severitypriority
+ */
+export enum Severity {
+  CRITICAL = 'critical',
+  MAJOR = 'major',
+  MEDIUM = 'medium',
+  MINOR = 'minor',
+  WARNING = 'warning',
+  INFO = 'info',
+}

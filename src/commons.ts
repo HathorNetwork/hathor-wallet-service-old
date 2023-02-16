@@ -57,8 +57,10 @@ import {
   WalletBalance,
   Transaction,
   WalletBalanceValue,
+  Severity,
 } from '@src/types';
 import { Logger } from 'winston';
+import { addAlert } from '@src/utils/alerting.utils';
 
 import {
   getUnixTimestamp,
@@ -515,7 +517,13 @@ export const handleReorg = async (mysql: ServerlessMysql, logger: Logger): Promi
   });
 
   if ((currentHeight - height) > WARN_MAX_REORG_SIZE) {
-    logger.error(`[ALERT] A reorg with ${currentHeight - height} blocks has been detected`);
+    logger.error(`A reorg with ${currentHeight - height} blocks has been detected`);
+    await addAlert(
+      'Big reorg detected',
+      `A reorg with ${currentHeight - height} blocks has been detected`,
+      Severity.MINOR,
+      { walletServiceHeight: currentHeight, fullNodeHeight: height },
+    );
   }
 
   // fetch all block transactions where height > latestValidBlock

@@ -6,7 +6,8 @@
  */
 
 import { Lambda } from 'aws-sdk';
-import { Transaction } from '@src/types';
+import { addAlert } from '@src/utils/alerting.utils';
+import { Transaction, Severity } from '@src/types';
 import hathorLib from '@hathor/wallet-lib';
 import createDefaultLogger from '@src/logger';
 
@@ -144,6 +145,12 @@ export class NftUtils {
 
     // Event InvocationType returns 202 for a successful invokation
     if (response.StatusCode !== 202) {
+      addAlert(
+        'Error on NFTHandler lambda',
+        'Erroed on invokeNftHandlerLambda invocation',
+        Severity.MINOR,
+        { TxId: txId },
+      );
       throw new Error(`onNewNftEvent lambda invoke failed for tx: ${txId}`);
     }
   }

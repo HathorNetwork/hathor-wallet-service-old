@@ -50,6 +50,7 @@ import {
   TokenBalanceMap,
   Wallet,
   Tx,
+  Severity,
 } from '@src/types';
 import {
   closeDbConnection,
@@ -59,6 +60,7 @@ import {
 import createDefaultLogger from '@src/logger';
 import { NftUtils } from '@src/utils/nft.utils';
 import { PushNotificationUtils, isPushNotificationEnabled } from '@src/utils/pushnotification.utils';
+import { addAlert } from '@src/utils/alerting.utils';
 
 const mysql = getDbConnection();
 
@@ -136,6 +138,12 @@ export const onNewTxRequest: APIGatewayProxyHandler = async (event, context) => 
   } catch (e) {
     // eslint-disable-next-line
     logger.error('Errored on onNewTxRequest: ', e);
+    await addAlert(
+      'Error on onNewTxRequest',
+      'Erroed on onNewTxRequest lambda',
+      Severity.MINOR,
+      { TxId: tx.tx_id, error: e.message },
+    );
 
     return {
       statusCode: 500,
@@ -159,7 +167,7 @@ export const onNewTxRequest: APIGatewayProxyHandler = async (event, context) => 
     const { length: hasAffectWallets } = Object.keys(walletBalanceMap);
     if (hasAffectWallets) {
       PushNotificationUtils.invokeOnTxPushNotificationRequestedLambda(walletBalanceMap)
-        .catch((err) => logger.error('[ALERT] Errored on invokeOnTxPushNotificationRequestedLambda invocation', err));
+        .catch((err: Error) => logger.error('Errored on invokeOnTxPushNotificationRequestedLambda invocation', err));
     }
   }
 

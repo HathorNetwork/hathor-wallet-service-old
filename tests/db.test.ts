@@ -1,5 +1,6 @@
+import { logger } from '@tests/winston.mock';
+import { mockedAddAlert } from '@tests/utils/alerting.utils.mock';
 import { v4 as uuidv4 } from 'uuid';
-
 import {
   addNewAddresses,
   addUtxos,
@@ -76,7 +77,11 @@ import {
   getTokenSymbols,
   countStalePushDevices,
   deleteStalePushDevices,
+  releaseTxProposalUtxos,
+  getUnsentTxProposals,
 } from '@src/db';
+import * as Db from '@src/db';
+import { cleanUnsentTxProposalsUtxos } from '@src/db/cron.routines';
 import {
   beginTransaction,
   rollbackTransaction,
@@ -93,6 +98,7 @@ import {
   DbTxOutput,
   PushDevice,
   PushProvider,
+  Severity,
 } from '@src/types';
 import {
   closeDbConnection,
@@ -142,6 +148,7 @@ for (const [index, address] of ADDRESSES.entries()) {
 }
 
 beforeEach(async () => {
+  jest.resetModules();
   await cleanDatabase(mysql);
 });
 
@@ -1061,7 +1068,18 @@ test('updateAddressLockedBalance', async () => {
   await expect(checkAddressBalanceTable(mysql, 3, addr1, otherToken, 5, 5, null, 1)).resolves.toBe(true);
 
   // now pretend there's another locked authority, so final balance of locked authorities should be updated accordingly
-  await addToUtxoTable(mysql, [['txId', 0, tokenId, addr1, 0, 0b01, 10000, null, true, null]]);
+  await addToUtxoTable(mysql, [{
+    txId: 'txId',
+    index: 0,
+    tokenId,
+    address: addr1,
+    value: 0,
+    authorities: 0b01,
+    timelock: 10000,
+    heightlock: null,
+    locked: true,
+    spentBy: null,
+  }]);
   const newMap = TokenBalanceMap.fromStringMap({ [tokenId]: { unlocked: 0, locked: 0, unlockedAuthorities: new Authorities(0b10) } });
   await updateAddressLockedBalance(mysql, { [addr1]: newMap });
   await expect(checkAddressBalanceTable(mysql, 3, addr1, tokenId, 60, 10, null, 3, 0b11, 0b01)).resolves.toBe(true);
@@ -1250,17 +1268,94 @@ test('getWalletSortedValueUtxos', async () => {
   }]);
   await addToUtxoTable(mysql, [
     // authority utxos should be ignored
-    [txId, 0, tokenId, addr1, 0, 0b01, null, null, false, null],
+    {
+      txId,
+      index: 0,
+      tokenId,
+      address: addr1,
+      value: 0,
+      authorities: 0b01,
+      timelock: null,
+      heightlock: null,
+      locked: false,
+      spentBy: null,
+    },
     // locked utxos should be ignored
-    [txId, 1, tokenId, addr1, 10, 0, 10000, null, true, null],
+    {
+      txId,
+      index: 1,
+      tokenId,
+      address: addr1,
+      value: 10,
+      authorities: 0,
+      timelock: 10000,
+      heightlock: null,
+      locked: true,
+      spentBy: null,
+    },
     // another wallet
-    [txId, 2, tokenId, 'otherAddr', 10, 0, null, null, false, null],
+    {
+      txId,
+      index: 2,
+      tokenId,
+      address: 'otherAddr',
+      value: 10,
+      authorities: 0,
+      timelock: null,
+      heightlock: null,
+      locked: false,
+      spentBy: null,
+    },
     // another token
-    [txId, 3, 'tokenId2', addr1, 5, 0, null, null, false, null],
+    {
+      txId,
+      index: 3,
+      tokenId: 'tokenId2',
+      address: addr1,
+      value: 5,
+      authorities: 0,
+      timelock: null,
+      heightlock: null,
+      locked: false,
+      spentBy: null,
+    },
     // these sould be fetched
-    [txId, 4, tokenId, addr1, 4, 0, null, null, false, null],
-    [txId, 5, tokenId, addr2, 1, 0, null, null, false, null],
-    [txId, 6, tokenId, addr1, 7, 0, null, null, false, null],
+    {
+      txId,
+      index: 4,
+      tokenId,
+      address: addr1,
+      value: 4,
+      authorities: 0,
+      timelock: null,
+      heightlock: null,
+      locked: false,
+      spentBy: null,
+    },
+    {
+      txId,
+      index: 5,
+      tokenId,
+      address: addr2,
+      value: 1,
+      authorities: 0,
+      timelock: null,
+      heightlock: null,
+      locked: false,
+      spentBy: null,
+    },
+    {
+      txId,
+      index: 6,
+      tokenId,
+      address: addr1,
+      value: 7,
+      authorities: 0,
+      timelock: null,
+      heightlock: null,
+      locked: false,
+      spentBy: null,
+    },
   ]);
 
   const utxos = await getWalletSortedValueUtxos(mysql, walletId, tokenId);
@@ -1368,7 +1463,7 @@ test('markUtxosWithProposalId and getTxProposalInputs', async () => {
   expect(await getTxProposalInputs(mysql, txProposalId)).toStrictEqual(inputs);
 });
 
-test('createTxProposal, updateTxProposal and getTxProposal', async () => {
+test('createTxProposal, updateTxProposal, getTxProposal, countUnsentTxProposals, releaseTxProposalUtxos', async () => {
   expect.hasAssertions();
 
   const now = getUnixTimestamp();
@@ -1380,12 +1475,83 @@ test('createTxProposal, updateTxProposal and getTxProposal', async () => {
   expect(txProposal).toStrictEqual({ id: txProposalId, walletId, status: TxProposalStatus.OPEN, createdAt: now, updatedAt: null });
 
   // update
-  await updateTxProposal(mysql, txProposalId, now + 7, TxProposalStatus.SENT);
+  await updateTxProposal(mysql, [txProposalId], now + 7, TxProposalStatus.SENT);
   txProposal = await getTxProposal(mysql, txProposalId);
   expect(txProposal).toStrictEqual({ id: txProposalId, walletId, status: TxProposalStatus.SENT, createdAt: now, updatedAt: now + 7 });
 
   // tx proposal not found
   expect(await getTxProposal(mysql, 'aaa')).toBeNull();
+
+  const txProposalId1: string = uuidv4() as string;
+  const txProposalId2: string = uuidv4() as string;
+  const txProposalId3: string = uuidv4() as string;
+  const txProposalId4: string = uuidv4() as string;
+
+  // Create old tx proposals
+  await createTxProposal(mysql, txProposalId1, walletId, 1);
+  await createTxProposal(mysql, txProposalId2, walletId, 1);
+  await createTxProposal(mysql, txProposalId3, walletId, 1);
+
+  // Create a new tx proposal, that won't be removed
+  await createTxProposal(mysql, txProposalId4, walletId, now);
+
+  const txProposalsBefore = now - (5 * 60); // 5 minutes in seconds
+
+  // Fetch the list of unsent tx proposals
+  const unsentTxProposals = await getUnsentTxProposals(mysql, txProposalsBefore);
+  expect(unsentTxProposals).toContain(txProposalId1);
+  expect(unsentTxProposals).toContain(txProposalId2);
+  expect(unsentTxProposals).toContain(txProposalId3);
+
+  // The new tx proposal should not be in the unsent list
+  expect(unsentTxProposals).not.toContain(txProposalId4);
+
+  // Add utxos for the unsent tx proposals so we can check if they got cleaned up
+  await addToUtxoTable(mysql, [{
+    txId: 'tx1',
+    index: 0,
+    tokenId: '00',
+    address: 'address1',
+    value: 5,
+    authorities: 0,
+    timelock: 0,
+    heightlock: 0,
+    locked: false,
+    spentBy: null,
+    txProposalId: txProposalId1,
+    txProposalIndex: 0,
+  }, {
+    txId: 'tx2',
+    index: 0,
+    tokenId: '00',
+    address: 'address1',
+    value: 5,
+    authorities: 0,
+    timelock: 0,
+    heightlock: 0,
+    locked: false,
+    spentBy: null,
+    txProposalId: txProposalId2,
+    txProposalIndex: 0,
+  }, {
+    txId: 'tx3',
+    index: 0,
+    tokenId: '00',
+    address: 'address1',
+    value: 5,
+    authorities: 0,
+    timelock: 0,
+    heightlock: 0,
+    locked: false,
+    spentBy: null,
+    txProposalId: txProposalId3,
+    txProposalIndex: 0,
+  }]);
+
+  // Release txProposalUtxos should properly release the utxos. This method will throw an error if the
+  // updated count is different from the sent tx proposals count.
+  await releaseTxProposalUtxos(mysql, [txProposalId1, txProposalId2, txProposalId3]);
+  await expect(releaseTxProposalUtxos(mysql, ['invalid-tx-proposal'])).rejects.toMatchInlineSnapshot('[AssertionError: Not all utxos were correctly updated]');
 });
 
 test('updateVersionData', async () => {
@@ -1786,18 +1952,87 @@ test('filterTxOutputs', async () => {
     transactions: 1,
   }]);
 
-  await addToUtxoTable(mysql, [
-    [txId3, 0, '00', addr1, 6000, 0, null, null, false, null],
-    [txId, 0, tokenId, addr1, 100, 0, null, null, false, null],
-    [txId2, 0, tokenId, addr1, 500, 0, null, null, false, null],
-    [txId2, 1, tokenId, addr1, 1000, 0, null, null, false, null],
+  await addToUtxoTable(mysql, [{
+    txId: txId3,
+    index: 0,
+    tokenId: '00',
+    address: addr1,
+    value: 6000,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId,
+    index: 0,
+    tokenId,
+    address: addr1,
+    value: 100,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: txId2,
+    index: 0,
+    tokenId,
+    address: addr1,
+    value: 500,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: txId2,
+    index: 1,
+    tokenId,
+    address: addr1,
+    value: 1000,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
     // locked utxo:
-    [txId2, 2, tokenId, addr2, 1500, 0, null, null, true, null],
+    txId: txId2,
+    index: 2,
+    tokenId,
+    address: addr2,
+    value: 1500,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: true,
+    spentBy: null,
+  }, {
     // authority utxo:
-    [txId2, 3, tokenId, addr2, 0, 0b01, null, null, false, null],
+    txId: txId2,
+    index: 3,
+    tokenId,
+    address: addr2,
+    value: 0,
+    authorities: 0b01,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
     // another authority utxo:
-    [txId2, 4, tokenId, addr2, 0, 0b01, null, null, false, null],
-  ]);
+    txId: txId2,
+    index: 4,
+    tokenId,
+    address: addr2,
+    value: 0,
+    authorities: 0b01,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }]);
 
   // filter all hathor utxos from addr1 and addr2
   let utxos = await filterTxOutputs(mysql, { addresses: [addr1, addr2] });
@@ -1901,11 +2136,40 @@ test('beginTransaction, commitTransaction, rollbackTransaction', async () => {
 
   await beginTransaction(mysql);
 
-  await addToUtxoTable(mysql, [
-    [txId, 0, tokenId, addr1, 0, 0b01, null, null, false, null],
-    [txId, 1, tokenId, addr1, 10, 0, 10000, null, true, null],
-    [txId, 2, tokenId, 'otherAddr', 10, 0, null, null, false, null],
-  ]);
+  await addToUtxoTable(mysql, [{
+    txId,
+    index: 0,
+    tokenId,
+    address: addr1,
+    value: 0,
+    authorities: 0b01,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId,
+    index: 1,
+    tokenId,
+    address: addr1,
+    value: 10,
+    authorities: 0,
+    timelock: 10000,
+    heightlock: null,
+    locked: true,
+    spentBy: null,
+  }, {
+    txId,
+    index: 2,
+    tokenId,
+    address: 'otherAddr',
+    value: 10,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }]);
 
   await commitTransaction(mysql);
 
@@ -1915,12 +2179,51 @@ test('beginTransaction, commitTransaction, rollbackTransaction', async () => {
 
   await beginTransaction(mysql);
 
-  await addToUtxoTable(mysql, [
-    [txId, 3, 'tokenId2', addr1, 5, 0, null, null, false, null],
-    [txId, 4, tokenId, addr1, 4, 0, null, null, false, null],
-    [txId, 5, tokenId, addr2, 1, 0, null, null, false, null],
-    [txId, 6, tokenId, addr1, 7, 0, null, null, false, null],
-  ]);
+  await addToUtxoTable(mysql, [{
+    txId,
+    index: 3,
+    tokenId: 'tokenId2',
+    address: addr1,
+    value: 5,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId,
+    index: 4,
+    tokenId,
+    address: addr1,
+    value: 4,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId,
+    index: 5,
+    tokenId,
+    address: addr2,
+    value: 1,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId,
+    index: 6,
+    tokenId,
+    address: addr1,
+    value: 7,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }]);
 
   await rollbackTransaction(mysql);
 
@@ -1988,6 +2291,17 @@ test('getTotalSupply', async () => {
   expect(await getTotalSupply(mysql, '00')).toStrictEqual(20);
   expect(await getTotalSupply(mysql, 'token2')).toStrictEqual(25);
   expect(await getTotalSupply(mysql, 'token1')).toStrictEqual(35);
+
+  const mysqlQuerySpy = jest.spyOn(mysql, 'query');
+  mysqlQuerySpy.mockImplementationOnce(() => Promise.resolve({ length: null }));
+
+  await expect(getTotalSupply(mysql, 'undefined-token')).rejects.toThrow('Total supply query returned no results');
+  expect(mockedAddAlert).toHaveBeenCalledWith(
+    'Total supply query returned no results',
+    '-',
+    Severity.MINOR,
+    { tokenId: 'undefined-token' },
+  );
 });
 
 test('getExpiredTimelocksUtxos', async () => {
@@ -2047,6 +2361,17 @@ test('getTotalTransactions', async () => {
 
   expect(await getTotalTransactions(mysql, 'token1')).toStrictEqual(3);
   expect(await getTotalTransactions(mysql, 'token2')).toStrictEqual(2);
+
+  const mysqlQuerySpy = jest.spyOn(mysql, 'query');
+  mysqlQuerySpy.mockImplementationOnce(() => Promise.resolve({ length: null }));
+
+  await expect(getTotalTransactions(mysql, 'undefined-token')).rejects.toThrow('Total transactions query returned no results');
+  expect(mockedAddAlert).toHaveBeenCalledWith(
+    'Total transactions query returned no results',
+    '-',
+    Severity.MINOR,
+    { tokenId: 'undefined-token' },
+  );
 });
 
 test('getAvailableAuthorities', async () => {
@@ -2057,12 +2382,51 @@ test('getAvailableAuthorities', async () => {
   const tokenId = 'token1';
   const tokenId2 = 'token2';
 
-  await addToUtxoTable(mysql, [
-    ['txId', 0, tokenId, addr1, 0, 0b01, null, null, false, 'tx1'],
-    ['txId', 1, tokenId, addr1, 0, 0b11, 1000, null, true, null],
-    ['txId', 2, tokenId, addr1, 0, 0b10, null, null, false, null],
-    ['txId', 3, tokenId2, addr2, 0, 0b01, null, null, false, null],
-  ]);
+  await addToUtxoTable(mysql, [{
+    txId: 'txId',
+    index: 0,
+    tokenId,
+    address: addr1,
+    value: 0,
+    authorities: 0b01,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: 'tx1',
+  }, {
+    txId: 'txId',
+    index: 1,
+    tokenId,
+    address: addr1,
+    value: 0,
+    authorities: 0b11,
+    timelock: 1000,
+    heightlock: null,
+    locked: true,
+    spentBy: null,
+  }, {
+    txId: 'txId',
+    index: 2,
+    tokenId,
+    address: addr1,
+    value: 0,
+    authorities: 0b10,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }, {
+    txId: 'txId',
+    index: 3,
+    tokenId: tokenId2,
+    address: addr2,
+    value: 0,
+    authorities: 0b01,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }]);
 
   expect(await getAvailableAuthorities(mysql, 'token1')).toHaveLength(1);
   expect(await getAvailableAuthorities(mysql, 'token2')).toHaveLength(1);
@@ -2074,8 +2438,30 @@ test('getUtxo, getAuthorityUtxo', async () => {
   const tokenId = 'tokenId';
   const addr1 = 'addr1';
 
-  await addToUtxoTable(mysql, [['txId', 0, tokenId, addr1, 0, constants.TOKEN_MINT_MASK, 10000, null, true, null]]);
-  await addToUtxoTable(mysql, [['txId', 1, tokenId, addr1, 0, constants.TOKEN_MELT_MASK, 10000, null, true, null]]);
+  await addToUtxoTable(mysql, [{
+    txId: 'txId',
+    index: 0,
+    tokenId,
+    address: addr1,
+    value: 0,
+    authorities: constants.TOKEN_MINT_MASK,
+    timelock: 10000,
+    heightlock: null,
+    locked: true,
+    spentBy: null,
+  }]);
+  await addToUtxoTable(mysql, [{
+    txId: 'txId',
+    index: 1,
+    tokenId,
+    address: addr1,
+    value: 0,
+    authorities: constants.TOKEN_MELT_MASK,
+    timelock: 10000,
+    heightlock: null,
+    locked: true,
+    spentBy: null,
+  }]);
 
   const utxo = await getTxOutput(mysql, 'txId', 0, true);
   expect(utxo).toStrictEqual({
@@ -2964,5 +3350,100 @@ describe('deleteStalePushDevices', () => {
     await deleteStalePushDevices(mysql);
 
     await expect(countStalePushDevices(mysql)).resolves.toBe(0);
+  });
+});
+
+describe('Clear unsent txProposals utxos', () => {
+  it('should unset txProposal and txProposalId from unsent txProposals', async () => {
+    expect.hasAssertions();
+
+    const walletId = 'wallet-id';
+
+    const txProposalId1: string = uuidv4() as string;
+    const txProposalId2: string = uuidv4() as string;
+    const txProposalId3: string = uuidv4() as string;
+
+    // count unsent tx proposals
+    await createTxProposal(mysql, txProposalId1, walletId, 1);
+    await createTxProposal(mysql, txProposalId2, walletId, 1);
+    await createTxProposal(mysql, txProposalId3, walletId, 1);
+
+    await addToUtxoTable(mysql, [{
+      txId: 'tx1',
+      index: 0,
+      tokenId: '00',
+      address: 'address1',
+      value: 5,
+      authorities: 0,
+      timelock: 0,
+      heightlock: 0,
+      locked: false,
+      spentBy: null,
+      txProposalId: txProposalId1,
+      txProposalIndex: 0,
+    }, {
+      txId: 'tx2',
+      index: 0,
+      tokenId: '00',
+      address: 'address1',
+      value: 5,
+      authorities: 0,
+      timelock: 0,
+      heightlock: 0,
+      locked: false,
+      spentBy: null,
+      txProposalId: txProposalId2,
+      txProposalIndex: 0,
+    }, {
+      txId: 'tx3',
+      index: 0,
+      tokenId: '00',
+      address: 'address1',
+      value: 5,
+      authorities: 0,
+      timelock: 0,
+      heightlock: 0,
+      locked: false,
+      spentBy: null,
+      txProposalId: txProposalId3,
+      txProposalIndex: 0,
+    }]);
+
+    let utxo1 = await getTxOutput(mysql, 'tx1', 0, false);
+    let utxo2 = await getTxOutput(mysql, 'tx2', 0, false);
+    let utxo3 = await getTxOutput(mysql, 'tx3', 0, false);
+
+    expect(utxo1.txProposalId).toStrictEqual(txProposalId1);
+    expect(utxo2.txProposalId).toStrictEqual(txProposalId2);
+    expect(utxo3.txProposalId).toStrictEqual(txProposalId3);
+
+    await cleanUnsentTxProposalsUtxos();
+
+    utxo1 = await getTxOutput(mysql, 'tx1', 0, false);
+    utxo2 = await getTxOutput(mysql, 'tx2', 0, false);
+    utxo3 = await getTxOutput(mysql, 'tx3', 0, false);
+
+    expect(utxo1.txProposalId).toBeNull();
+    expect(utxo2.txProposalId).toBeNull();
+    expect(utxo3.txProposalId).toBeNull();
+
+    const txProposals = await Promise.all([
+      getTxProposal(mysql, txProposalId1),
+      getTxProposal(mysql, txProposalId2),
+      getTxProposal(mysql, txProposalId3),
+    ]);
+
+    expect(txProposals[0].status).toStrictEqual(TxProposalStatus.CANCELLED);
+    expect(txProposals[1].status).toStrictEqual(TxProposalStatus.CANCELLED);
+    expect(txProposals[2].status).toStrictEqual(TxProposalStatus.CANCELLED);
+
+    const spy = jest.spyOn(Db, 'releaseTxProposalUtxos');
+    spy.mockImplementationOnce(() => {
+      throw new Error('error-releasing-tx-proposal');
+    });
+
+    await cleanUnsentTxProposalsUtxos();
+
+    expect(logger.error).toHaveBeenCalledWith('Failed to release unspent tx proposals: ', expect.anything());
   });
 });

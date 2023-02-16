@@ -40,6 +40,7 @@ import {
   PushDevice,
   TxByIdToken,
   PushDeviceSettings,
+  Severity,
 } from '@src/types';
 import {
   getUnixTimestamp,
@@ -52,6 +53,7 @@ import {
   getWalletFromDbEntry,
   getTxsFromDBResult,
 } from '@src/db/utils';
+import { addAlert } from '@src/utils/alerting.utils';
 
 const BLOCK_VERSION = [
   constants.BLOCK_VERSION,
@@ -1711,23 +1713,28 @@ export const createTxProposal = async (
 };
 
 /**
- * Update a tx proposal.
+ * Update a list of tx proposals.
  *
  * @param mysql - Database connection
- * @param txProposalId - The transaction proposal id
+ * @param txProposalIds - The transaction proposal ids
  * @param now - The current timestamp
  * @param status - The new status
  */
 export const updateTxProposal = async (
   mysql: ServerlessMysql,
-  txProposalId: string,
+  txProposalIds: string[],
   now: number,
   status: TxProposalStatus,
 ): Promise<void> => {
-  await mysql.query(
-    'UPDATE `tx_proposal` SET `updated_at` = ?, `status` = ? WHERE `id` = ?',
-    [now, status, txProposalId],
-  );
+  await mysql.query(`
+    UPDATE \`tx_proposal\`
+       SET \`updated_at\` = ?,
+           \`status\` = ?
+     WHERE \`id\` IN (?)`, [
+    now,
+    status,
+    txProposalIds,
+  ]);
 };
 
 /**
@@ -1763,11 +1770,20 @@ export const getTxProposal = async (
  */
 export const releaseTxProposalUtxos = async (
   mysql: ServerlessMysql,
-  txProposalId: string,
+  txProposalIds: string[],
 ): Promise<void> => {
-  await mysql.query(
-    'UPDATE `tx_output` SET `tx_proposal` = NULL, `tx_proposal_index` = NULL WHERE `tx_proposal` = ?',
-    [txProposalId],
+  const result: OkPacket = await mysql.query(
+    `UPDATE \`tx_output\`
+        SET \`tx_proposal\` = NULL,
+            \`tx_proposal_index\` = NULL
+      WHERE \`tx_proposal\` IN (?)`,
+    [txProposalIds],
+  );
+
+  assert.strictEqual(
+    result.affectedRows,
+    txProposalIds.length,
+    'Not all utxos were correctly updated',
   );
 };
 
@@ -2444,7 +2460,7 @@ export const getMinersList = async (
 };
 
 /**
- * Get the total sum of HTR utxos, excluding the burned and voided ones
+ * Get the total sum of a token's utxos, excluding the burned and voided ones
  *
  * @param mysql - Database connection
 
@@ -2465,7 +2481,13 @@ export const getTotalSupply = async (
 
   if (!results.length) {
     // This should never happen.
-    throw new Error('[ALERT] Total supply query returned no results');
+    await addAlert(
+      'Total supply query returned no results',
+      '-',
+      Severity.MINOR,
+      { tokenId },
+    );
+    throw new Error('Total supply query returned no results');
   }
 
   return results[0].value as number;
@@ -2517,7 +2539,13 @@ export const getTotalTransactions = async (
 
   if (!results.length) {
     // This should never happen.
-    throw new Error('[ALERT] Total transactions query returned no results');
+    await addAlert(
+      'Total transactions query returned no results',
+      '-',
+      Severity.MINOR,
+      { tokenId },
+    );
+    throw new Error('Total transactions query returned no results');
   }
 
   return results[0].count as number;
@@ -2999,4 +3027,31 @@ export const getTokenSymbols = async (
     prev[token.id] = token.symbol;
     return prev;
   }, {}) as unknown as StringMap<string>;
+};
+
+/**
+ * Fetches all txProposals that are either in the OPEN, SEND_ERROR or CANCELLED status
+ *
+ * @param mysql - Database connection
+ *
+ * @returns The number of txProposals before a given date
+ */
+export const getUnsentTxProposals = async (
+  mysql: ServerlessMysql,
+  txProposalsBefore: number,
+): Promise<string[]> => {
+  const result = await mysql.query<{ id: string }[]>(
+    `
+    SELECT id
+      FROM \`tx_proposal\`
+     WHERE created_at < ?
+       AND status IN (?)`,
+    [txProposalsBefore, [
+      TxProposalStatus.OPEN,
+      TxProposalStatus.SEND_ERROR,
+      TxProposalStatus.CANCELLED,
+    ]],
+  );
+
+  return result.map((row) => row.id);
 };

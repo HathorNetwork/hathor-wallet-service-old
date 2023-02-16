@@ -9,12 +9,19 @@ import 'source-map-support/register';
 import {
   countStalePushDevices,
   deleteStalePushDevices,
+  getUnsentTxProposals,
+  releaseTxProposalUtxos,
+  updateTxProposal,
 } from '@src/db';
 import {
   closeDbConnection,
   getDbConnection,
+  getUnixTimestamp,
 } from '@src/utils';
 import createDefaultLogger from '@src/logger';
+import { TxProposalStatus } from '@src/types';
+
+const STALE_TX_PROPOSAL_INTERVAL = 5 * 60;
 
 const mysql = getDbConnection();
 
@@ -36,4 +43,26 @@ export const cleanStalePushDevices = async (): Promise<void> => {
   await deleteStalePushDevices(mysql);
 
   await closeDbConnection(mysql);
+};
+
+/**
+ * Function called to cleanup old unsent tx proposal utxos
+ *
+ * @remarks
+ * This is a lambda function that should be triggered by an scheduled event. This will run by default with
+ * frequency of 5 minutes (configurable on serverless.yml) and will query for devices not updated more than 5 minutes
+ */
+export const cleanUnsentTxProposalsUtxos = async (): Promise<void> => {
+  const logger = createDefaultLogger();
+
+  const now = getUnixTimestamp();
+  const txProposalsBefore = now - STALE_TX_PROPOSAL_INTERVAL;
+  const unsentTxProposals: string[] = await getUnsentTxProposals(mysql, txProposalsBefore);
+
+  try {
+    await releaseTxProposalUtxos(mysql, unsentTxProposals);
+    await updateTxProposal(mysql, unsentTxProposals, now, TxProposalStatus.CANCELLED);
+  } catch (e) {
+    logger.error('Failed to release unspent tx proposals: ', unsentTxProposals);
+  }
 };

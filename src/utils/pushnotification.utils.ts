@@ -1,53 +1,35 @@
 import { Lambda } from 'aws-sdk';
-import { PushProvider, SendNotificationToDevice, StringMap, WalletBalanceValue } from '@src/types';
+import { PushProvider, Severity, SendNotificationToDevice, StringMap, WalletBalanceValue } from '@src/types';
 import fcmAdmin, { credential, messaging, ServiceAccount } from 'firebase-admin';
 import { MulticastMessage } from 'firebase-admin/messaging';
 import createDefaultLogger from '@src/logger';
+import { assertEnvVariablesExistence } from '@src/utils';
+import { addAlert } from '@src/utils/alerting.utils';
 
 const logger = createDefaultLogger();
 
-if (!process.env.WALLET_SERVICE_LAMBDA_ENDPOINT) {
-  logger.error('[ALERT] env.WALLET_SERVICE_LAMBDA_ENDPOINT can not be null or undefined.');
-}
+try {
+  assertEnvVariablesExistence([
+    'WALLET_SERVICE_LAMBDA_ENDPOINT',
+    'STAGE',
+    'FIREBASE_PROJECT_ID',
+    'FIREBASE_PRIVATE_KEY_ID',
+    'FIREBASE_PRIVATE_KEY',
+    'FIREBASE_CLIENT_EMAIL',
+    'FIREBASE_CLIENT_ID',
+    'FIREBASE_AUTH_URI',
+    'FIREBASE_TOKEN_URI',
+    'FIREBASE_AUTH_PROVIDER_X509_CERT_URL',
+    'FIREBASE_CLIENT_X509_CERT_URL',
+  ]);
+} catch (e) {
+  logger.error(e);
 
-if (!process.env.STAGE) {
-  logger.error('[ALERT] env.STAGE can not be null or undefined.');
-}
-
-if (!process.env.FIREBASE_PROJECT_ID) {
-  logger.error('[ALERT] env.FIREBASE_PROJECT_ID can not be null or undefined.');
-}
-
-if (!process.env.FIREBASE_PRIVATE_KEY_ID) {
-  logger.error('[ALERT] env.FIREBASE_PRIVATE_KEY_ID can not be null or undefined.');
-}
-
-if (!process.env.FIREBASE_PRIVATE_KEY) {
-  logger.error('[ALERT] env.FIREBASE_PRIVATE_KEY can not be null or undefined.');
-}
-
-if (!process.env.FIREBASE_CLIENT_EMAIL) {
-  logger.error('[ALERT] env.FIREBASE_CLIENT_EMAIL can not be null or undefined.');
-}
-
-if (!process.env.FIREBASE_CLIENT_ID) {
-  logger.error('[ALERT] env.FIREBASE_CLIENT_ID can not be null or undefined.');
-}
-
-if (!process.env.FIREBASE_AUTH_URI) {
-  logger.error('[ALERT] env.FIREBASE_AUTH_URI can not be null or undefined.');
-}
-
-if (!process.env.FIREBASE_TOKEN_URI) {
-  logger.error('[ALERT] env.FIREBASE_TOKEN_URI can not be null or undefined.');
-}
-
-if (!process.env.FIREBASE_AUTH_PROVIDER_X509_CERT_URL) {
-  logger.error('[ALERT] env.FIREBASE_AUTH_PROVIDER_X509_CERT_URL can not be null or undefined.');
-}
-
-if (!process.env.FIREBASE_CLIENT_X509_CERT_URL) {
-  logger.error('[ALERT] env.FIREBASE_CLIENT_X509_CERT_URL can not be null or undefined.');
+  addAlert(
+    'Lambda missing env variables',
+    e.message, // This should contain the list of env variables that are missing
+    Severity.MINOR,
+  );
 }
 
 export function buildFunctionName(functionName: string): string {
@@ -193,7 +175,13 @@ export class PushNotificationUtils {
       return { success: false, errorMessage: PushNotificationError.INVALID_DEVICE_ID };
     }
 
-    logger.error('[ALERT] Error while calling sendMulticast(message) of Firebase Cloud Message.', { error });
+    await addAlert(
+      'Error on PushNotificationUtils',
+      'Error while calling sendMulticast(message) of Firebase Cloud Message.',
+      Severity.MAJOR,
+      { error },
+    );
+    logger.error('Error while calling sendMulticast(message) of Firebase Cloud Message.', { error });
     return { success: false, errorMessage: PushNotificationError.UNKNOWN };
   }
 
@@ -220,6 +208,12 @@ export class PushNotificationUtils {
 
     // Event InvocationType returns 202 for a successful invokation
     if (response.StatusCode !== 202) {
+      await addAlert(
+        'Error on PushNotificationUtils',
+        `${SEND_NOTIFICATION_FUNCTION_NAME} lambda invoke failed for device: ${notification.deviceId}`,
+        Severity.MINOR,
+        { DeviceId: notification.deviceId },
+      );
       throw new Error(`${SEND_NOTIFICATION_FUNCTION_NAME} lambda invoke failed for device: ${notification.deviceId}`);
     }
   }
@@ -250,6 +244,12 @@ export class PushNotificationUtils {
     // Event InvocationType returns 202 for a successful invokation
     const walletIdList = Object.keys(walletBalanceValueMap);
     if (response.StatusCode !== 202) {
+      await addAlert(
+        'Error on PushNotificationUtils',
+        `${ON_TX_PUSH_NOTIFICATION_REQUESTED_FUNCTION_NAME} lambda invoke failed for wallets`,
+        Severity.MINOR,
+        { Wallets: walletIdList },
+      );
       throw new Error(`${ON_TX_PUSH_NOTIFICATION_REQUESTED_FUNCTION_NAME} lambda invoke failed for wallets: ${walletIdList}`);
     }
   }

@@ -8,10 +8,11 @@
 import { Handler } from 'aws-lambda';
 import { closeDbConnection, getDbConnection } from '@src/utils';
 import Joi, { ValidationError } from 'joi';
-import { SendNotificationToDevice } from '@src/types';
+import { Severity, SendNotificationToDevice } from '@src/types';
 import { getPushDevice, unregisterPushDevice } from '@src/db';
 import createDefaultLogger from '@src/logger';
-import { PushNotificationUtils, PushNotificationError, isPushProviderAllowed } from '@src/utils/pushnotification.utils';
+import { isPushProviderAllowed, PushNotificationUtils, PushNotificationError } from '@src/utils/pushnotification.utils';
+import { addAlert } from '@src/utils/alerting.utils';
 
 const mysql = getDbConnection();
 
@@ -63,7 +64,13 @@ export const send: Handler<unknown, { success: boolean, message?: string, detail
 
   if (!pushDevice) {
     closeDbConnection(mysql);
-    logger.error('[ALERT] Device not found.', {
+    await addAlert(
+      'Device not found while trying to send notification',
+      '-',
+      Severity.MINOR,
+      { deviceId: body.deviceId },
+    );
+    logger.error('Device not found.', {
       deviceId: body.deviceId,
     });
     return { success: false, message: 'Failed due to device not found.' };
@@ -71,7 +78,13 @@ export const send: Handler<unknown, { success: boolean, message?: string, detail
 
   if (!isPushProviderAllowed(pushDevice.pushProvider)) {
     closeDbConnection(mysql);
-    logger.error('[ALERT] Provider invalid.', {
+    await addAlert(
+      'Invalid provider error while sending push notification',
+      '-',
+      Severity.MINOR,
+      { deviceId: body.deviceId, pushProvider: pushDevice.pushProvider },
+    );
+    logger.error('Provider invalid.', {
       deviceId: body.deviceId,
       pushProvider: pushDevice.pushProvider,
     });
