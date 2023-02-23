@@ -36,7 +36,7 @@
     "mysql2": "^2.2.5",
     "prom-client": "^13.2.0",
     "redis": "^3.1.2",
-    "sequelize": "^6.6.4",
+    "sequelize": "^6.28.2",
     "serverless-mysql": "^1.5.4",
     "source-map-support": "^0.5.19",
     "tiny-secp256k1": "^2.2.1",
