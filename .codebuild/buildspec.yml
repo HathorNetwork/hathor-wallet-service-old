@@ -16,7 +16,7 @@ env:
     dev_DEFAULT_SERVER: "https://wallet-service.private-nodes.testnet.hathor.network/v1a/"
     dev_WS_DOMAIN: "ws.dev.wallet-service.testnet.hathor.network"
     dev_NETWORK: "testnet"
-    dev_LOG_LEVEL: "info"
+    dev_LOG_LEVEL: "debug"
     dev_EXPLORER_STAGE: "dev"
     dev_EXPLORER_SERVICE_LAMBDA_ENDPOINT: "https://lambda.eu-central-1.amazonaws.com"
     dev_WALLET_SERVICE_LAMBDA_ENDPOINT: "https://lambda.eu-central-1.amazonaws.com"
@@ -26,7 +26,7 @@ env:
     testnet_DEFAULT_SERVER: "https://wallet-service.private-nodes.testnet.hathor.network/v1a/"
     testnet_WS_DOMAIN: "ws.wallet-service.testnet.hathor.network"
     testnet_NETWORK: "testnet"
-    testnet_LOG_LEVEL: "info"
+    testnet_LOG_LEVEL: "debug"
     testnet_EXPLORER_STAGE: "testnet"
     testnet_EXPLORER_SERVICE_LAMBDA_ENDPOINT: "https://lambda.eu-central-1.amazonaws.com"
     testnet_WALLET_SERVICE_LAMBDA_ENDPOINT: "https://lambda.eu-central-1.amazonaws.com"
@@ -36,7 +36,7 @@ env:
     mainnet_DEFAULT_SERVER: "https://wallet-service.private-nodes.hathor.network/v1a/"
     mainnet_WS_DOMAIN: "ws.wallet-service.hathor.network"
     mainnet_NETWORK: "mainnet"
-    mainnet_LOG_LEVEL: "info"
+    mainnet_LOG_LEVEL: "debug"
     mainnet_EXPLORER_STAGE: "mainnet"
     mainnet_EXPLORER_SERVICE_LAMBDA_ENDPOINT: "https://lambda.eu-central-1.amazonaws.com"
     mainnet_WALLET_SERVICE_LAMBDA_ENDPOINT: "https://lambda.eu-central-1.amazonaws.com"
@@ -69,6 +69,7 @@ env:
     dev_FIREBASE_TOKEN_URI: "WalletService/dev:FIREBASE_TOKEN_URI"
     dev_FIREBASE_AUTH_PROVIDER_X509_CERT_URL: "WalletService/dev:FIREBASE_AUTH_PROVIDER_X509_CERT_URL"
     dev_FIREBASE_CLIENT_X509_CERT_URL: "WalletService/dev:FIREBASE_CLIENT_X509_CERT_URL"
+    dev_ALERT_QUEUE_URL: "WalletService/dev:ALERT_QUEUE_URL"
     # Testnet secrets
     testnet_ACCOUNT_ID: "WalletService/testnet:account_id"
     testnet_ADMINTOKEN: "WalletService/testnet:admintoken"
@@ -93,6 +94,7 @@ env:
     testnet_FIREBASE_TOKEN_URI: "WalletService/testnet:FIREBASE_TOKEN_URI"
     testnet_FIREBASE_AUTH_PROVIDER_X509_CERT_URL: "WalletService/testnet:FIREBASE_AUTH_PROVIDER_X509_CERT_URL"
     testnet_FIREBASE_CLIENT_X509_CERT_URL: "WalletService/testnet:FIREBASE_CLIENT_X509_CERT_URL"
+    testnet_ALERT_QUEUE_URL: "WalletService/testnet:ALERT_QUEUE_URL"
     # Mainnet secrets
     mainnet_ACCOUNT_ID: "WalletService/mainnet:account_id"
     mainnet_ADMINTOKEN: "WalletService/mainnet:admintoken"
@@ -117,6 +119,7 @@ env:
     mainnet_FIREBASE_TOKEN_URI: "WalletService/mainnet:FIREBASE_TOKEN_URI"
     mainnet_FIREBASE_AUTH_PROVIDER_X509_CERT_URL: "WalletService/mainnet:FIREBASE_AUTH_PROVIDER_X509_CERT_URL"
     mainnet_FIREBASE_CLIENT_X509_CERT_URL: "WalletService/mainnet:FIREBASE_CLIENT_X509_CERT_URL"
+    mainnet_ALERT_QUEUE_URL: "WalletService/mainnet:ALERT_QUEUE_URL"
 phases:
   install:
     #If you use the Ubuntu standard image 2.0 or later, you must specify runtime-versions.
