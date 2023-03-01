@@ -184,14 +184,15 @@ provider:
     FIREBASE_AUTH_PROVIDER_X509_CERT_URL: ${env:FIREBASE_AUTH_PROVIDER_X509_CERT_URL}
     FIREBASE_CLIENT_X509_CERT_URL: ${env:FIREBASE_CLIENT_X509_CERT_URL}
     LOG_LEVEL: ${env:LOG_LEVEL}
-    ALERT_QUEUE_URL: ${env:ALERT_QUEUE_URL}
+    ALERT_MANAGER_REGION: ${env:ALERT_MANAGER_REGION}
+    ALERT_MANAGER_TOPIC: ${env:ALERT_MANAGER_TOPIC}
   iamRoleStatements:
     - Effect: Allow
       Action:
         - sqs:*
       Resource:
         - Fn::GetAtt: [ WalletServiceNewTxQueue, Arn ]
-        - arn:aws:sqs:us-east-1:${self:provider.environment.ACCOUNT_ID}:alert-manager-*-alertsQueue
+        - arn:aws:sqs:${self:provider.environment.ALERT_MANAGER_REGION}:${self:provider.environment.ACCOUNT_ID}:${self:provider.environment.ALERT_MANAGER_TOPIC}
 
 functions:
   onHandleOldVoidedTxs:
