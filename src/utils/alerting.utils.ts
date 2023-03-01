@@ -50,9 +50,13 @@ export const addAlert = async (
     },
   };
 
-  sqs.sendMessage(params, (err) => {
-    if (err) {
-      logger.error('[ALERT] Erroed while sending message to the alert sqs queue', err);
-    }
+  await new Promise<void>((resolve) => {
+    sqs.sendMessage(params, (err) => {
+      if (err) {
+        logger.error('[ALERT] Erroed while sending message to the alert sqs queue', err);
+      }
+
+      resolve();
+    });
   });
 };
