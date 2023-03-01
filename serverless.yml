@@ -9,10 +9,6 @@ custom:
       enabled: true
       events:
         - schedule: rate(5 minutes)
-  logLevelMap:
-    mainnet: info
-    testnet: info
-    dev-testnet: info
   webpack:
     webpackConfig: ./webpack.config.js
     includeModules: true
@@ -175,7 +171,6 @@ provider:
     DEFAULT_SERVER: ${env:DEFAULT_SERVER}
     WS_DOMAIN: ${env:WS_DOMAIN}
     TX_HISTORY_MAX_COUNT: ${env:TX_HISTORY_MAX_COUNT}
-    LOG_LEVEL: ${self:custom.logLevel}
     WALLET_SERVICE_LAMBDA_ENDPOINT: ${env:WALLET_SERVICE_LAMBDA_ENDPOINT}
     PUSH_NOTIFICATION_ENABLED: ${env:PUSH_NOTIFICATION_ENABLED}
     PUSH_ALLOWED_PROVIDERS: ${env:PUSH_ALLOWED_PROVIDERS}
@@ -195,7 +190,8 @@ provider:
       Action:
         - sqs:*
       Resource:
-        Fn::GetAtt: [ WalletServiceNewTxQueue, Arn ]
+        - Fn::GetAtt: [ WalletServiceNewTxQueue, Arn ]
+        - arn:aws:sqs:us-east-1:${self:provider.environment.ACCOUNT_ID}:alert-manager-*-alertsQueue
 
 functions:
   onHandleOldVoidedTxs:
