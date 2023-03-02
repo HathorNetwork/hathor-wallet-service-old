@@ -7,10 +7,10 @@
 
 import 'source-map-support/register';
 import {
-  countStalePushDevices,
-  deleteStalePushDevices,
   getUnsentTxProposals,
   releaseTxProposalUtxos,
+  countStalePushDevices,
+  deleteStalePushDevices,
   updateTxProposal,
 } from '@src/db';
 import {
@@ -65,4 +65,6 @@ export const cleanUnsentTxProposalsUtxos = async (): Promise<void> => {
   } catch (e) {
     logger.error('Failed to release unspent tx proposals: ', unsentTxProposals);
   }
+
+  await closeDbConnection(mysql);
 };
