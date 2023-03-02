@@ -3450,4 +3450,12 @@ describe('Clear unsent txProposals utxos', () => {
       expect.anything(),
     );
   });
+
+  it('should not fail when there is nothing to clear', async () => {
+    expect.hasAssertions();
+
+    await cleanUnsentTxProposalsUtxos();
+
+    expect(logger.debug).toHaveBeenCalledWith('No txproposals utxos to clean.');
+  });
 });
