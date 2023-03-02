@@ -3444,6 +3444,10 @@ describe('Clear unsent txProposals utxos', () => {
 
     await cleanUnsentTxProposalsUtxos();
 
-    expect(logger.error).toHaveBeenCalledWith('Failed to release unspent tx proposals: ', expect.anything());
+    expect(logger.error).toHaveBeenCalledWith(
+      'Failed to release unspent tx proposals: ',
+      expect.anything(),
+      expect.anything(),
+    );
   });
 });
