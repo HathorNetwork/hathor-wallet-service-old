@@ -81,7 +81,7 @@ import {
   getUnsentTxProposals,
 } from '@src/db';
 import * as Db from '@src/db';
-import { cleanUnsentTxProposalsUtxos } from '@src/db/scheduled.routines';
+import { cleanUnsentTxProposalsUtxos } from '@src/db/cronRoutines';
 import {
   beginTransaction,
   rollbackTransaction,
