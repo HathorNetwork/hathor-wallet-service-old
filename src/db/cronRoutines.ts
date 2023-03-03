@@ -7,10 +7,10 @@
 
 import 'source-map-support/register';
 import {
-  countStalePushDevices,
-  deleteStalePushDevices,
   getUnsentTxProposals,
   releaseTxProposalUtxos,
+  countStalePushDevices,
+  deleteStalePushDevices,
   updateTxProposal,
 } from '@src/db';
 import {
@@ -59,10 +59,18 @@ export const cleanUnsentTxProposalsUtxos = async (): Promise<void> => {
   const txProposalsBefore = now - STALE_TX_PROPOSAL_INTERVAL;
   const unsentTxProposals: string[] = await getUnsentTxProposals(mysql, txProposalsBefore);
 
-  try {
-    await releaseTxProposalUtxos(mysql, unsentTxProposals);
-    await updateTxProposal(mysql, unsentTxProposals, now, TxProposalStatus.CANCELLED);
-  } catch (e) {
-    logger.error('Failed to release unspent tx proposals: ', unsentTxProposals);
+  if (unsentTxProposals.length > 0) {
+    logger.debug(`Will clean utxos from ${unsentTxProposals.length} txproposals`);
+
+    try {
+      await releaseTxProposalUtxos(mysql, unsentTxProposals);
+      await updateTxProposal(mysql, unsentTxProposals, now, TxProposalStatus.CANCELLED);
+    } catch (e) {
+      logger.error('Failed to release unspent tx proposals: ', unsentTxProposals, e);
+    }
+  } else {
+    logger.debug('No txproposals utxos to clean.');
   }
+
+  await closeDbConnection(mysql);
 };
