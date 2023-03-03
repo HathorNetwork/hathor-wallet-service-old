@@ -81,6 +81,9 @@ jobs:
           EXPLORER_SERVICE_LAMBDA_ENDPOINT: https://lambda.eu-central-1.amazonaws.com
           WALLET_SERVICE_LAMBDA_ENDPOINT: https://lambda.eu-central-1.amazonaws.com
           APPLICATION_NAME: wallet-service-test
+          ACCOUNT_ID: 1
+          ALERT_MANAGER_REGION: unknown-region-1
+          ALERT_MANAGER_TOPIC: alert-manager-void
       - name: Upload coverage
         uses: codecov/codecov-action@v3
         with:

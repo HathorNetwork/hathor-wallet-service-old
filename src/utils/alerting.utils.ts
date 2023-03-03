@@ -13,6 +13,9 @@ import createDefaultLogger from '@src/logger';
 assertEnvVariablesExistence([
   'NETWORK',
   'APPLICATION_NAME',
+  'ACCOUNT_ID',
+  'ALERT_MANAGER_REGION',
+  'ALERT_MANAGER_TOPIC',
 ]);
 
 /**
@@ -38,10 +41,16 @@ export const addAlert = async (
   };
 
   const sqs = new AWS.SQS({ apiVersion: '2015-03-31' });
+  const {
+    ACCOUNT_ID,
+    ALERT_MANAGER_REGION,
+    ALERT_MANAGER_TOPIC,
+  } = process.env;
 
+  const QUEUE_URL = `https://sqs.${ALERT_MANAGER_REGION}.amazonaws.com/${ACCOUNT_ID}/${ALERT_MANAGER_TOPIC}`;
   const params = {
     MessageBody: JSON.stringify(preparedMessage),
-    QueueUrl: process.env.ALERT_QUEUE_URL as string,
+    QueueUrl: QUEUE_URL,
     MessageAttributes: {
       None: {
         DataType: 'String',
@@ -50,9 +59,13 @@ export const addAlert = async (
     },
   };
 
-  sqs.sendMessage(params, (err) => {
-    if (err) {
-      logger.error('[ALERT] Erroed while sending message to the alert sqs queue', err);
-    }
+  await new Promise<void>((resolve) => {
+    sqs.sendMessage(params, (err) => {
+      if (err) {
+        logger.error('[ALERT] Erroed while sending message to the alert sqs queue', err);
+      }
+
+      resolve();
+    });
   });
 };
