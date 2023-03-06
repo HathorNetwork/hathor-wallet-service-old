@@ -81,7 +81,7 @@ import {
   getUnsentTxProposals,
 } from '@src/db';
 import * as Db from '@src/db';
-import { cleanUnsentTxProposalsUtxos } from '@src/db/cron.routines';
+import { cleanUnsentTxProposalsUtxos } from '@src/db/cronRoutines';
 import {
   beginTransaction,
   rollbackTransaction,
@@ -3444,6 +3444,18 @@ describe('Clear unsent txProposals utxos', () => {
 
     await cleanUnsentTxProposalsUtxos();
 
-    expect(logger.error).toHaveBeenCalledWith('Failed to release unspent tx proposals: ', expect.anything());
+    expect(logger.error).toHaveBeenCalledWith(
+      'Failed to release unspent tx proposals: ',
+      expect.anything(),
+      expect.anything(),
+    );
+  });
+
+  it('should not fail when there is nothing to clear', async () => {
+    expect.hasAssertions();
+
+    await cleanUnsentTxProposalsUtxos();
+
+    expect(logger.debug).toHaveBeenCalledWith('No txproposals utxos to clean.');
   });
 });

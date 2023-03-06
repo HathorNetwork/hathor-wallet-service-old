@@ -55,7 +55,7 @@ describe('PushNotificationUtils', () => {
     });
 
     // reload module
-    const { PushNotificationUtils } = await import('@src/utils/pushnotification.utils');
+    await import('@src/utils/pushnotification.utils');
 
     const resultMessageOfLastCallToLoggerError = logger.error.mock.calls[0][0];
     expect(resultMessageOfLastCallToLoggerError).toMatchInlineSnapshot('"Error initializing Firebase Admin SDK. ErrorMessage: Failed to parse private key: Error: Invalid PEM formatted message."');
@@ -69,7 +69,7 @@ describe('PushNotificationUtils', () => {
       process.env.WALLET_SERVICE_LAMBDA_ENDPOINT = '';
 
       // reload module
-      const { PushNotificationUtils } = await import('@src/utils/pushnotification.utils');
+      await import('@src/utils/pushnotification.utils');
 
       expect(mockedAddAlert).toHaveBeenLastCalledWith(
         'Lambda missing env variables',
@@ -85,7 +85,7 @@ describe('PushNotificationUtils', () => {
       process.env.STAGE = '';
 
       // reload module
-      const { PushNotificationUtils } = await import('@src/utils/pushnotification.utils');
+      await import('@src/utils/pushnotification.utils');
 
       expect(mockedAddAlert).toHaveBeenLastCalledWith(
         'Lambda missing env variables',
@@ -101,7 +101,7 @@ describe('PushNotificationUtils', () => {
       process.env.FIREBASE_PROJECT_ID = '';
 
       // reload module
-      const { PushNotificationUtils } = await import('@src/utils/pushnotification.utils');
+      await import('@src/utils/pushnotification.utils');
 
       expect(mockedAddAlert).toHaveBeenLastCalledWith(
         'Lambda missing env variables',
@@ -117,7 +117,7 @@ describe('PushNotificationUtils', () => {
       process.env.FIREBASE_PRIVATE_KEY_ID = '';
 
       // reload module
-      const { PushNotificationUtils } = await import('@src/utils/pushnotification.utils');
+      await import('@src/utils/pushnotification.utils');
 
       expect(mockedAddAlert).toHaveBeenLastCalledWith(
         'Lambda missing env variables',
@@ -133,7 +133,7 @@ describe('PushNotificationUtils', () => {
       process.env.FIREBASE_PRIVATE_KEY = '';
 
       // reload module
-      const { PushNotificationUtils } = await import('@src/utils/pushnotification.utils');
+      await import('@src/utils/pushnotification.utils');
 
       expect(mockedAddAlert).toHaveBeenLastCalledWith(
         'Lambda missing env variables',
@@ -150,7 +150,7 @@ describe('PushNotificationUtils', () => {
       process.env.FIREBASE_CLIENT_EMAIL = '';
 
       // reload module
-      const { PushNotificationUtils } = await import('@src/utils/pushnotification.utils');
+      await import('@src/utils/pushnotification.utils');
 
       expect(mockedAddAlert).toHaveBeenLastCalledWith(
         'Lambda missing env variables',
@@ -167,7 +167,7 @@ describe('PushNotificationUtils', () => {
       process.env.FIREBASE_CLIENT_ID = '';
 
       // reload module
-      const { PushNotificationUtils } = await import('@src/utils/pushnotification.utils');
+      await import('@src/utils/pushnotification.utils');
 
       expect(mockedAddAlert).toHaveBeenLastCalledWith(
         'Lambda missing env variables',
@@ -184,7 +184,7 @@ describe('PushNotificationUtils', () => {
       process.env.FIREBASE_AUTH_URI = '';
 
       // reload module
-      const { PushNotificationUtils } = await import('@src/utils/pushnotification.utils');
+      await import('@src/utils/pushnotification.utils');
 
       expect(mockedAddAlert).toHaveBeenLastCalledWith(
         'Lambda missing env variables',
@@ -201,7 +201,7 @@ describe('PushNotificationUtils', () => {
       process.env.FIREBASE_TOKEN_URI = '';
 
       // reload module
-      const { PushNotificationUtils } = await import('@src/utils/pushnotification.utils');
+      await import('@src/utils/pushnotification.utils');
 
       expect(mockedAddAlert).toHaveBeenLastCalledWith(
         'Lambda missing env variables',
@@ -218,7 +218,7 @@ describe('PushNotificationUtils', () => {
       process.env.FIREBASE_AUTH_PROVIDER_X509_CERT_URL = '';
 
       // reload module
-      const { PushNotificationUtils } = await import('@src/utils/pushnotification.utils');
+      await import('@src/utils/pushnotification.utils');
 
       expect(mockedAddAlert).toHaveBeenLastCalledWith(
         'Lambda missing env variables',
@@ -235,7 +235,7 @@ describe('PushNotificationUtils', () => {
       process.env.FIREBASE_CLIENT_X509_CERT_URL = '';
 
       // reload module
-      const { PushNotificationUtils } = await import('@src/utils/pushnotification.utils');
+      await import('@src/utils/pushnotification.utils');
 
       expect(mockedAddAlert).toHaveBeenLastCalledWith(
         'Lambda missing env variables',
@@ -252,7 +252,7 @@ describe('PushNotificationUtils', () => {
       process.env.FIREBASE_PRIVATE_KEY = true as unknown as string;
 
       // reload module
-      const { PushNotificationUtils } = await import('@src/utils/pushnotification.utils');
+      await import('@src/utils/pushnotification.utils');
 
       expect(logger.error).toHaveBeenLastCalledWith('[ALERT] Error while parsing the env.FIREBASE_PRIVATE_KEY.');
     });
@@ -264,7 +264,7 @@ describe('PushNotificationUtils', () => {
       process.env.PUSH_ALLOWED_PROVIDERS = '';
 
       // reload module
-      const { PushNotificationUtils } = await import('@src/utils/pushnotification.utils');
+      await import('@src/utils/pushnotification.utils');
 
       expect(logger.error).toHaveBeenLastCalledWith('[ALERT] env.PUSH_ALLOWED_PROVIDERS is empty.');
     });

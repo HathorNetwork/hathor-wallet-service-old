@@ -9,10 +9,6 @@ custom:
       enabled: true
       events:
         - schedule: rate(5 minutes)
-  logLevelMap:
-    mainnet: info
-    testnet: info
-    dev-testnet: info
   webpack:
     webpackConfig: ./webpack.config.js
     includeModules: true
@@ -175,7 +171,6 @@ provider:
     DEFAULT_SERVER: ${env:DEFAULT_SERVER}
     WS_DOMAIN: ${env:WS_DOMAIN}
     TX_HISTORY_MAX_COUNT: ${env:TX_HISTORY_MAX_COUNT}
-    LOG_LEVEL: ${self:custom.logLevel}
     WALLET_SERVICE_LAMBDA_ENDPOINT: ${env:WALLET_SERVICE_LAMBDA_ENDPOINT}
     PUSH_NOTIFICATION_ENABLED: ${env:PUSH_NOTIFICATION_ENABLED}
     PUSH_ALLOWED_PROVIDERS: ${env:PUSH_ALLOWED_PROVIDERS}
@@ -188,12 +183,16 @@ provider:
     FIREBASE_TOKEN_URI: ${env:FIREBASE_TOKEN_URI}
     FIREBASE_AUTH_PROVIDER_X509_CERT_URL: ${env:FIREBASE_AUTH_PROVIDER_X509_CERT_URL}
     FIREBASE_CLIENT_X509_CERT_URL: ${env:FIREBASE_CLIENT_X509_CERT_URL}
+    LOG_LEVEL: ${env:LOG_LEVEL}
+    ALERT_MANAGER_REGION: ${env:ALERT_MANAGER_REGION}
+    ALERT_MANAGER_TOPIC: ${env:ALERT_MANAGER_TOPIC}
   iamRoleStatements:
     - Effect: Allow
       Action:
         - sqs:*
       Resource:
-        Fn::GetAtt: [ WalletServiceNewTxQueue, Arn ]
+        - Fn::GetAtt: [ WalletServiceNewTxQueue, Arn ]
+        - arn:aws:sqs:${self:provider.environment.ALERT_MANAGER_REGION}:${self:provider.environment.ACCOUNT_ID}:${self:provider.environment.ALERT_MANAGER_TOPIC}
 
 functions:
   onHandleOldVoidedTxs:
@@ -670,14 +669,14 @@ functions:
         Resource:
           Fn::GetAtt: [ SendNotificationToDeviceLambdaFunction , Arn ]
   deleteStalePushDevices:
-    handler: src/db/cron.routines.cleanStalePushDevices
+    handler: src/db/cronRoutines.cleanStalePushDevices
     events:
       - schedule: cron(17 3 */15 * ? *) # run every 15 days at 3:17 (GMT)
     warmup:
       walletWarmer:
         enabled: false
   cleanUnsentTxProposalsUtxos:
-    handler: src/db/cron.routines.cleanUnsentTxProposalsUtxos
+    handler: src/db/cronRoutines.cleanUnsentTxProposalsUtxos
     timeout: 60 # 1 minute
     events:
       - schedule: cron(*/5 * * * ? *) # run every 5 minutes
