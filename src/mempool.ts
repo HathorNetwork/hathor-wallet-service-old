@@ -7,10 +7,12 @@
 
 import 'source-map-support/register';
 import {
+  getBlockByHeight,
+  getLatestHeight,
   getMempoolTransactionsBeforeDate,
   updateTx,
 } from '@src/db';
-import { Severity, Tx } from '@src/types';
+import { Block, Severity, Tx } from '@src/types';
 import { handleVoided } from '@src/commons';
 import {
   isTxVoided,
@@ -36,12 +38,15 @@ export const onHandleOldVoidedTxs = async (): Promise<void> => {
   const logger = createDefaultLogger();
 
   const VOIDED_TX_OFFSET: number = parseInt(process.env.VOIDED_TX_OFFSET, 10) * 60; // env is in minutes
-  const now: number = getUnixTimestamp();
-  const date: number = now - VOIDED_TX_OFFSET;
+  const latestHeight: number = await getLatestHeight(mysql);
+  const bestBlock: Block = await getBlockByHeight(mysql, latestHeight);
+  const bestBlockTimestamp = bestBlock.timestamp;
+
+  const date: number = bestBlockTimestamp - VOIDED_TX_OFFSET;
 
   // Fetch voided transactions that are older than 20m
   const voidedTransactions: Tx[] = await getMempoolTransactionsBeforeDate(mysql, date);
-  logger.debug(`Found ${voidedTransactions.length} voided transactions older than ${process.env.VOIDED_TX_OFFSET}m`, {
+  logger.debug(`Found ${voidedTransactions.length} voided transactions older than ${process.env.VOIDED_TX_OFFSET}m from the best block`, {
     voidedTransactions,
   });
 

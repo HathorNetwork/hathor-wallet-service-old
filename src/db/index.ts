@@ -1602,6 +1602,7 @@ export const getBlockByHeight = async (mysql: ServerlessMysql, height: number): 
     return {
       txId: results[0].tx_id as string,
       height: results[0].height as number,
+      timestamp: results[0].timestamp as number,
     };
   }
 
