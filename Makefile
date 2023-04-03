@@ -6,6 +6,10 @@ deploy-lambdas-dev-testnet:
 deploy-lambdas-testnet:
 	npx serverless deploy --stage testnet --region eu-central-1
 
+.PHONY: deploy-lambdas-mainnet-staging
+deploy-lambdas-mainnet:
+	npx serverless deploy --stage mainnet-staging --region eu-central-1
+
 .PHONY: deploy-lambdas-mainnet
 deploy-lambdas-mainnet:
 	npx serverless deploy --stage mainnet --region eu-central-1
