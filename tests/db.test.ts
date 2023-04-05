@@ -1171,6 +1171,10 @@ test('updateTx should add height to a tx', async () => {
 test('getLatestBlockByHeight', async () => {
   expect.hasAssertions();
 
+  // It should return null when the database has no blocks
+  const nullBestBlock: Block = await getLatestBlockByHeight(mysql);
+  expect(nullBestBlock).toBeNull();
+
   await addOrUpdateTx(mysql, 'block0', 0, 0, 0, 60);
   await addOrUpdateTx(mysql, 'block1', 1, 0, 0, 60);
   await addOrUpdateTx(mysql, 'block2', 2, 0, 0, 60);
