@@ -79,6 +79,7 @@ import {
   deleteStalePushDevices,
   releaseTxProposalUtxos,
   getUnsentTxProposals,
+  getLatestBlockByHeight,
 } from '@src/db';
 import * as Db from '@src/db';
 import { cleanUnsentTxProposalsUtxos } from '@src/db/cronRoutines';
@@ -99,6 +100,7 @@ import {
   PushDevice,
   PushProvider,
   Severity,
+  Block,
 } from '@src/types';
 import {
   closeDbConnection,
@@ -1164,6 +1166,24 @@ test('updateTx should add height to a tx', async () => {
 
   expect(tx.txId).toStrictEqual('txId1');
   expect(tx.height).toStrictEqual(5);
+});
+
+test('getLatestBlockByHeight', async () => {
+  expect.hasAssertions();
+
+  await addOrUpdateTx(mysql, 'block0', 0, 0, 0, 60);
+  await addOrUpdateTx(mysql, 'block1', 1, 0, 0, 60);
+  await addOrUpdateTx(mysql, 'block2', 2, 0, 0, 60);
+  await addOrUpdateTx(mysql, 'block3', 3, 0, 0, 60);
+  await addOrUpdateTx(mysql, 'tx1', 3, 0, 1, 60); // Tx
+  // Confirmed by a block we don't have, this is an impossible situation, but
+  // works for the test:
+  await addOrUpdateTx(mysql, 'tx2', 4, 0, 1, 60);
+
+  const bestBlock: Block = await getLatestBlockByHeight(mysql);
+
+  expect(bestBlock.height).toStrictEqual(3);
+  expect(bestBlock.txId).toStrictEqual('block3');
 });
 
 test('getLatestHeight, getTxsAfterHeight, deleteBlocksAfterHeight and removeTxsHeight', async () => {

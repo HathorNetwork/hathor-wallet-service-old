@@ -7,8 +7,7 @@
 
 import 'source-map-support/register';
 import {
-  getBlockByHeight,
-  getLatestHeight,
+  getLatestBlockByHeight,
   getMempoolTransactionsBeforeDate,
   updateTx,
 } from '@src/db';
@@ -19,7 +18,6 @@ import {
   fetchBlockHeight,
   closeDbConnection,
   getDbConnection,
-  getUnixTimestamp,
 } from '@src/utils';
 import createDefaultLogger from '@src/logger';
 import { addAlert } from '@src/utils/alerting.utils';
@@ -38,8 +36,7 @@ export const onHandleOldVoidedTxs = async (): Promise<void> => {
   const logger = createDefaultLogger();
 
   const VOIDED_TX_OFFSET: number = parseInt(process.env.VOIDED_TX_OFFSET, 10) * 60; // env is in minutes
-  const latestHeight: number = await getLatestHeight(mysql);
-  const bestBlock: Block = await getBlockByHeight(mysql, latestHeight);
+  const bestBlock: Block = await getLatestBlockByHeight(mysql);
   const bestBlockTimestamp = bestBlock.timestamp;
 
   const date: number = bestBlockTimestamp - VOIDED_TX_OFFSET;
