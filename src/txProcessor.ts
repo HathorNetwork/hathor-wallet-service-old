@@ -155,7 +155,7 @@ export const onNewTxRequest: APIGatewayProxyHandler = async (event, context) => 
   }
 
   // Validating for NFTs only after the tx is successfully added
-  if (NftUtils.isTransactionNFTCreation(tx)) {
+  if (NftUtils.shouldInvokeNftHandlerForTx(tx)) {
     // This process is not critical, so we run it in a fire-and-forget manner, not waiting for the promise.
     // In case of errors, just log the asynchronous exception and take no action on it.
     NftUtils.invokeNftHandlerLambda(tx.tx_id)

@@ -167,6 +167,7 @@ provider:
     SERVICE_NAME: ${self:service}
     STAGE: ${self:custom.stage}
     EXPLORER_SERVICE_STAGE: ${self:custom.explorerServiceStage}
+    NFT_AUTO_REVIEW_ENABLED: ${env:NFT_AUTO_REVIEW_ENABLED}
     VOIDED_TX_OFFSET: ${env:VOIDED_TX_OFFSET}
     DEFAULT_SERVER: ${env:DEFAULT_SERVER}
     WS_DOMAIN: ${env:WS_DOMAIN}

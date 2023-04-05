@@ -17,7 +17,21 @@ export const MAX_METADATA_UPDATE_RETRIES: number = parseInt(process.env.MAX_META
  * A helper for generating and updating a NFT Token's metadata.
  */
 
+/** This env-var based feature toggle can be used to disable this feature */
+const NFT_AUTO_REVIEW_ENABLED = process.env.NFT_AUTO_REVIEW_ENABLED;
+
+export const isNftAutoReviewEnabled = (): boolean => NFT_AUTO_REVIEW_ENABLED === 'true';
+
 export class NftUtils {
+  /**
+   * Returns whether we should invoke our NFT handler for this tx
+   * @param {Transaction} tx
+   * @returns {boolean}
+   */
+  static shouldInvokeNftHandlerForTx(tx: Transaction): boolean {
+    return isNftAutoReviewEnabled() && this.isTransactionNFTCreation(tx);
+  }
+
   /**
    * Returns if the transaction in the parameter is a NFT Creation.
    * @param {Transaction} tx
