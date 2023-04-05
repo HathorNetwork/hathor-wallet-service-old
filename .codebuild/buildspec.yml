@@ -39,7 +39,8 @@ env:
     mainnet_staging_WS_DOMAIN: "ws.wallet-service.hathor.network"
     mainnet_staging_NETWORK: "mainnet"
     mainnet_staging_LOG_LEVEL: "debug"
-    mainnet_staging_EXPLORER_STAGE: "mainnet_staging"  # TODO: What to use here?
+    mainnet_staging_NFT_AUTO_REVIEW_ENABLED: "false"
+    mainnet_staging_EXPLORER_STAGE: "mainnet-staging"  # This stage doesn't exist in explorer-service and we don't need it because we have disabled the integration.
     mainnet_staging_EXPLORER_SERVICE_LAMBDA_ENDPOINT: "https://lambda.eu-central-1.amazonaws.com"
     mainnet_staging_WALLET_SERVICE_LAMBDA_ENDPOINT: "https://lambda.eu-central-1.amazonaws.com"
     mainnet_staging_PUSH_NOTIFICATION_ENABLED: "true"
