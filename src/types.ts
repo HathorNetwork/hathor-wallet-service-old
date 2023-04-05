@@ -641,6 +641,7 @@ export interface DbTxOutput {
 export interface Block {
   txId: string;
   height: number;
+  timestamp: number;
 }
 
 // maybe use templates <TEvent = any, TResult = any>

@@ -1582,6 +1582,33 @@ export const getLatestHeight = async (mysql: ServerlessMysql): Promise<number> =
 };
 
 /**
+ * Gets the best block from the database
+ *
+ * @param mysql - Database connection
+ *
+ * @returns The latest height
+ */
+export const getLatestBlockByHeight = async (mysql: ServerlessMysql): Promise<Block> => {
+  const results: DbSelectResult = await mysql.query(
+    `SELECT *
+       FROM \`transaction\`
+      WHERE \`version\` IN (?)
+      ORDER BY height DESC
+      LIMIT 1`, [BLOCK_VERSION],
+  );
+
+  if (results.length > 0) {
+    return {
+      txId: results[0].tx_id as string,
+      height: results[0].height as number,
+      timestamp: results[0].timestamp as number,
+    };
+  }
+
+  return null;
+};
+
+/**
  * Get block by height
  *
  * @param mysql - Database connection
@@ -1602,6 +1629,7 @@ export const getBlockByHeight = async (mysql: ServerlessMysql, height: number): 
     return {
       txId: results[0].tx_id as string,
       height: results[0].height as number,
+      timestamp: results[0].timestamp as number,
     };
   }
 
