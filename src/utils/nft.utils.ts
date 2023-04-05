@@ -18,9 +18,7 @@ export const MAX_METADATA_UPDATE_RETRIES: number = parseInt(process.env.MAX_META
  */
 
 /** This env-var based feature toggle can be used to disable this feature */
-const NFT_AUTO_REVIEW_ENABLED = process.env.NFT_AUTO_REVIEW_ENABLED;
-
-export const isNftAutoReviewEnabled = (): boolean => NFT_AUTO_REVIEW_ENABLED === 'true';
+export const isNftAutoReviewEnabled = (): boolean => process.env.NFT_AUTO_REVIEW_ENABLED === 'true';
 
 export class NftUtils {
   /**

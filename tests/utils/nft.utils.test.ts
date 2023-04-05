@@ -10,6 +10,43 @@ jest.mock('aws-sdk', () => {
   return { Lambda: jest.fn(() => mLambda) };
 });
 
+describe('shouldInvokeNftHandlerForTx', () => {
+  it('should return false for a NFT transaction if the feature is disabled', () => {
+    // Preparation
+    const tx = getTransaction();
+    const is_nft_transaction = NftUtils.isTransactionNFTCreation(tx);
+    expect(is_nft_transaction).toBe(true);
+
+    expect(process.env.NFT_AUTO_REVIEW_ENABLED).not.toEqual('true');
+
+    // Execution
+    const result = NftUtils.shouldInvokeNftHandlerForTx(tx);
+
+    // Assertion
+    expect(result).toBe(false);
+  });
+
+  it('should return true for a NFT transaction if the feature is enabled', () => {
+    // Preparation
+    const tx = getTransaction();
+    const is_nft_transaction = NftUtils.isTransactionNFTCreation(tx);
+    expect(is_nft_transaction).toBe(true);
+
+    const old_value = process.env.NFT_AUTO_REVIEW_ENABLED;
+    process.env.NFT_AUTO_REVIEW_ENABLED = 'true';
+    expect(process.env.NFT_AUTO_REVIEW_ENABLED).toEqual('true');
+
+    // Execution
+    const result = NftUtils.shouldInvokeNftHandlerForTx(tx);
+
+    // Assertion
+    expect(result).toBe(true);
+
+    // Tearing Down
+    process.env.NFT_AUTO_REVIEW_ENABLED = old_value;
+  });
+});
+
 describe('isTransactionNFTCreation', () => {
   it('should return false on quick validations', () => {
     expect.hasAssertions();
