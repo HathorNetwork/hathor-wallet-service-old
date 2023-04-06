@@ -12,12 +12,14 @@ jest.mock('aws-sdk', () => {
 
 describe('shouldInvokeNftHandlerForTx', () => {
   it('should return false for a NFT transaction if the feature is disabled', () => {
+    expect.hasAssertions();
+
     // Preparation
     const tx = getTransaction();
-    const is_nft_transaction = NftUtils.isTransactionNFTCreation(tx);
-    expect(is_nft_transaction).toBe(true);
+    const isNftTransaction = NftUtils.isTransactionNFTCreation(tx);
+    expect(isNftTransaction).toStrictEqual(true);
 
-    expect(process.env.NFT_AUTO_REVIEW_ENABLED).not.toEqual('true');
+    expect(process.env.NFT_AUTO_REVIEW_ENABLED).not.toStrictEqual('true');
 
     // Execution
     const result = NftUtils.shouldInvokeNftHandlerForTx(tx);
@@ -27,14 +29,16 @@ describe('shouldInvokeNftHandlerForTx', () => {
   });
 
   it('should return true for a NFT transaction if the feature is enabled', () => {
+    expect.hasAssertions();
+
     // Preparation
     const tx = getTransaction();
-    const is_nft_transaction = NftUtils.isTransactionNFTCreation(tx);
-    expect(is_nft_transaction).toBe(true);
+    const isNftTransaction = NftUtils.isTransactionNFTCreation(tx);
+    expect(isNftTransaction).toStrictEqual(true);
 
-    const old_value = process.env.NFT_AUTO_REVIEW_ENABLED;
+    const oldValue = process.env.NFT_AUTO_REVIEW_ENABLED;
     process.env.NFT_AUTO_REVIEW_ENABLED = 'true';
-    expect(process.env.NFT_AUTO_REVIEW_ENABLED).toEqual('true');
+    expect(process.env.NFT_AUTO_REVIEW_ENABLED).toStrictEqual('true');
 
     // Execution
     const result = NftUtils.shouldInvokeNftHandlerForTx(tx);
@@ -43,7 +47,7 @@ describe('shouldInvokeNftHandlerForTx', () => {
     expect(result).toBe(true);
 
     // Tearing Down
-    process.env.NFT_AUTO_REVIEW_ENABLED = old_value;
+    process.env.NFT_AUTO_REVIEW_ENABLED = oldValue;
   });
 });
 
