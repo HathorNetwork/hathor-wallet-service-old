@@ -4,10 +4,12 @@ send_slack_message() {
     DEPLOYED_VERSION=$1;
 
     curl -H "Content-type: application/json" \
-        --data "{\"channel\":\"${SLACK_CHANNEL_ID}\",\"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"*Hathor Wallet Service*\nNew version deployed: ${DEPLOYED_VERSION}\"}}]}" \
+        --data "{\"channel\":\"${SLACK_DEPLOYS_CHANNEL_ID}\",\"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"*Hathor Wallet Service*\nNew version deployed: ${DEPLOYED_VERSION}\"}}]}" \
         -H "Authorization: Bearer ${SLACK_OAUTH_TOKEN}" \
         -X POST https://slack.com/api/chat.postMessage;
 }
+
+echo "Building git ref ${GIT_REF_TO_DEPLOY}..."
 
 if expr "${GIT_REF_TO_DEPLOY}" : "master" >/dev/null; then
     # Gets all env vars with `testnet_` prefix and re-exports them without the prefix

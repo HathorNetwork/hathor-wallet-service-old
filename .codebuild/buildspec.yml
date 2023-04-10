@@ -61,7 +61,7 @@ env:
   secrets-manager:
     # CI secrets
     SLACK_OAUTH_TOKEN: "WalletService/ci:slack_oauth_token"
-    SLACK_CHANNEL_ID: "WalletService/ci:slack_channel_id"
+    SLACK_DEPLOYS_CHANNEL_ID: "WalletService/ci:slack_deploys_channel_id"
     # Dev secrets
     dev_ACCOUNT_ID: "WalletService/dev:account_id"
     dev_AUTH_SECRET: "WalletService/dev:auth_secret"
