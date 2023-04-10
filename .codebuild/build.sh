@@ -14,14 +14,14 @@ echo "Building git ref ${GIT_REF_TO_DEPLOY}..."
 if expr "${GIT_REF_TO_DEPLOY}" : "master" >/dev/null; then
     # Gets all env vars with `testnet_` prefix and re-exports them without the prefix
     for var in "${!testnet_@}"; do
-    export ${var#testnet_}="${!var}"
+        export ${var#testnet_}="${!var}"
     done
     make migrate;
     make deploy-lambdas-testnet;
 elif expr "${GIT_REF_TO_DEPLOY}" : "v[0-9]\+\.[0-9]\+\.[0-9]\+-rc\.[0-9]\+" >/dev/null; then
     # Gets all env vars with `mainnet_staging_` prefix and re-exports them without the prefix
     for var in "${!mainnet_staging_@}"; do
-    export ${var#mainnet_staging_}="${!var}"
+        export ${var#mainnet_staging_}="${!var}"
     done
     make migrate;
     make deploy-lambdas-mainnet-staging;
@@ -29,7 +29,7 @@ elif expr "${GIT_REF_TO_DEPLOY}" : "v[0-9]\+\.[0-9]\+\.[0-9]\+-rc\.[0-9]\+" >/de
 elif expr "${GIT_REF_TO_DEPLOY}" : "v.*" >/dev/null; then
     # Gets all env vars with `mainnet_` prefix and re-exports them without the prefix
     for var in "${!mainnet_@}"; do
-    export ${var#mainnet_}="${!var}"
+        export ${var#mainnet_}="${!var}"
     done
     make migrate;
     make deploy-lambdas-mainnet;
@@ -37,9 +37,8 @@ elif expr "${GIT_REF_TO_DEPLOY}" : "v.*" >/dev/null; then
 else
     # Gets all env vars with `dev_` prefix and re-exports them without the prefix
     for var in "${!dev_@}"; do
-    export ${var#dev_}="${!var}"
+        export ${var#dev_}="${!var}"
     done
     make migrate;
     make deploy-lambdas-dev-testnet;
-    send_slack_message "${GIT_REF_TO_DEPLOY}"  # TODO: Remove this from here
 fi;
