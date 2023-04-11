@@ -14,19 +14,19 @@ echo "Building git ref ${GIT_REF_TO_DEPLOY}..."
 # Checks whether there is a file called "rollback_production", which is used by our other CodeBuild to indicate that this is a rollback
 if [ -f "rollback_production" ]; then
     # Gets all env vars with `testnet_` prefix and re-exports them without the prefix
-    # for var in "${!testnet_@}"; do
-    #     export ${var#testnet_}="${!var}"
-    # done
-    # make migrate;
-    # make deploy-lambdas-testnet;
+    for var in "${!testnet_@}"; do
+        export ${var#testnet_}="${!var}"
+    done
+    make migrate;
+    make deploy-lambdas-testnet;
     send_slack_message "Rollback performed on testnet-production to: ${GIT_REF_TO_DEPLOY}"
 
     # Gets all env vars with `mainnet_` prefix and re-exports them without the prefix
-    # for var in "${!mainnet_@}"; do
-    #     export ${var#mainnet_}="${!var}"
-    # done
-    # make migrate;
-    # make deploy-lambdas-mainnet;
+    for var in "${!mainnet_@}"; do
+        export ${var#mainnet_}="${!var}"
+    done
+    make migrate;
+    make deploy-lambdas-mainnet;
     send_slack_message "Rollback performed on mainnet-production to: ${GIT_REF_TO_DEPLOY}"
 elif expr "${GIT_REF_TO_DEPLOY}" : "master" >/dev/null; then
     # Gets all env vars with `testnet_` prefix and re-exports them without the prefix
