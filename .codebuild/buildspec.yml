@@ -35,6 +35,17 @@ env:
     testnet_PUSH_NOTIFICATION_ENABLED: "true"
     testnet_PUSH_ALLOWED_PROVIDERS: "android"
     testnet_APPLICATION_NAME: "wallet-service-testnet"
+    mainnet_staging_DEFAULT_SERVER: "https://wallet-service.private-nodes.hathor.network/v1a/"
+    mainnet_staging_WS_DOMAIN: "ws.staging.wallet-service.hathor.network"
+    mainnet_staging_NETWORK: "mainnet"
+    mainnet_staging_LOG_LEVEL: "debug"
+    mainnet_staging_NFT_AUTO_REVIEW_ENABLED: "false"
+    mainnet_staging_EXPLORER_STAGE: "mainnet-staging"  # This stage doesn't exist in explorer-service and we don't need it because we have disabled the integration.
+    mainnet_staging_EXPLORER_SERVICE_LAMBDA_ENDPOINT: "https://lambda.eu-central-1.amazonaws.com"
+    mainnet_staging_WALLET_SERVICE_LAMBDA_ENDPOINT: "https://lambda.eu-central-1.amazonaws.com"
+    mainnet_staging_PUSH_NOTIFICATION_ENABLED: "true"
+    mainnet_staging_PUSH_ALLOWED_PROVIDERS: "android"
+    mainnet_staging_APPLICATION_NAME: "wallet-service-mainnet-staging"
     mainnet_DEFAULT_SERVER: "https://wallet-service.private-nodes.hathor.network/v1a/"
     mainnet_WS_DOMAIN: "ws.wallet-service.hathor.network"
     mainnet_NETWORK: "mainnet"
@@ -50,7 +61,6 @@ env:
   secrets-manager:
     # Dev secrets
     dev_ACCOUNT_ID: "WalletService/dev:account_id"
-    dev_ADMINTOKEN: "WalletService/dev:admintoken"
     dev_AUTH_SECRET: "WalletService/dev:auth_secret"
     dev_AWS_VPC_DEFAULT_SG_ID: "WalletService/dev:aws_vpc_default_sg_id"
     dev_AWS_SUBNET_ID_1: "WalletService/dev:aws_subnet_id_1"
@@ -76,7 +86,6 @@ env:
     dev_ALERT_MANAGER_TOPIC: "WalletService/dev:ALERT_MANAGER_TOPIC"
     # Testnet secrets
     testnet_ACCOUNT_ID: "WalletService/testnet:account_id"
-    testnet_ADMINTOKEN: "WalletService/testnet:admintoken"
     testnet_AUTH_SECRET: "WalletService/testnet:auth_secret"
     testnet_AWS_VPC_DEFAULT_SG_ID: "WalletService/testnet:aws_vpc_default_sg_id"
     testnet_AWS_SUBNET_ID_1: "WalletService/testnet:aws_subnet_id_1"
@@ -100,9 +109,33 @@ env:
     testnet_FIREBASE_CLIENT_X509_CERT_URL: "WalletService/testnet:FIREBASE_CLIENT_X509_CERT_URL"
     testnet_ALERT_MANAGER_REGION: "WalletService/testnet:ALERT_MANAGER_REGION"
     testnet_ALERT_MANAGER_TOPIC: "WalletService/testnet:ALERT_MANAGER_TOPIC"
+    # Mainnet Staging secrets
+    mainnet_staging_ACCOUNT_ID: "WalletService/mainnet_staging:account_id"
+    mainnet_staging_AUTH_SECRET: "WalletService/mainnet_staging:auth_secret"
+    mainnet_staging_AWS_VPC_DEFAULT_SG_ID: "WalletService/mainnet_staging:aws_vpc_default_sg_id"
+    mainnet_staging_AWS_SUBNET_ID_1: "WalletService/mainnet_staging:aws_subnet_id_1"
+    mainnet_staging_AWS_SUBNET_ID_2: "WalletService/mainnet_staging:aws_subnet_id_2"
+    mainnet_staging_AWS_SUBNET_ID_3: "WalletService/mainnet_staging:aws_subnet_id_3"
+    mainnet_staging_DB_NAME: "WalletService/rds/mainnet_staging:dbname"
+    mainnet_staging_DB_USER: "WalletService/rds/mainnet_staging:username"
+    mainnet_staging_DB_PASS: "WalletService/rds/mainnet_staging:password"
+    mainnet_staging_DB_ENDPOINT: "WalletService/rds/mainnet_staging:host"
+    mainnet_staging_DB_PORT: "WalletService/rds/mainnet_staging:port"
+    mainnet_staging_REDIS_URL: "WalletService/redis/mainnet_staging:url"
+    mainnet_staging_REDIS_PASSWORD: "WalletService/redis/mainnet_staging:password"
+    mainnet_staging_FIREBASE_PROJECT_ID: "WalletService/mainnet_staging:FIREBASE_PROJECT_ID"
+    mainnet_staging_FIREBASE_PRIVATE_KEY_ID: "WalletService/mainnet_staging:FIREBASE_PRIVATE_KEY_ID"
+    mainnet_staging_FIREBASE_PRIVATE_KEY: "WalletService/mainnet_staging:FIREBASE_PRIVATE_KEY"
+    mainnet_staging_FIREBASE_CLIENT_EMAIL: "WalletService/mainnet_staging:FIREBASE_CLIENT_EMAIL"
+    mainnet_staging_FIREBASE_CLIENT_ID: "WalletService/mainnet_staging:FIREBASE_CLIENT_ID"
+    mainnet_staging_FIREBASE_AUTH_URI: "WalletService/mainnet_staging:FIREBASE_AUTH_URI"
+    mainnet_staging_FIREBASE_TOKEN_URI: "WalletService/mainnet_staging:FIREBASE_TOKEN_URI"
+    mainnet_staging_FIREBASE_AUTH_PROVIDER_X509_CERT_URL: "WalletService/mainnet_staging:FIREBASE_AUTH_PROVIDER_X509_CERT_URL"
+    mainnet_staging_FIREBASE_CLIENT_X509_CERT_URL: "WalletService/mainnet_staging:FIREBASE_CLIENT_X509_CERT_URL"
+    mainnet_staging_ALERT_MANAGER_REGION: "WalletService/mainnet_staging:ALERT_MANAGER_REGION"
+    mainnet_staging_ALERT_MANAGER_TOPIC: "WalletService/mainnet_staging:ALERT_MANAGER_TOPIC"
     # Mainnet secrets
     mainnet_ACCOUNT_ID: "WalletService/mainnet:account_id"
-    mainnet_ADMINTOKEN: "WalletService/mainnet:admintoken"
     mainnet_AUTH_SECRET: "WalletService/mainnet:auth_secret"
     mainnet_AWS_VPC_DEFAULT_SG_ID: "WalletService/mainnet:aws_vpc_default_sg_id"
     mainnet_AWS_SUBNET_ID_1: "WalletService/mainnet:aws_subnet_id_1"
@@ -150,6 +183,13 @@ phases:
           done
           make migrate;
           make deploy-lambdas-testnet;
+        elif expr "${GIT_REF_TO_DEPLOY}" : "v[0-9]\+\.[0-9]\+\.[0-9]\+-rc\.[0-9]\+" >/dev/null; then
+          # Gets all env vars with `mainnet_staging_` prefix and re-exports them without the prefix
+          for var in "${!mainnet_staging_@}"; do
+            export ${var#mainnet_staging_}="${!var}"
+          done
+          make migrate;
+          make deploy-lambdas-mainnet-staging;
         elif expr "${GIT_REF_TO_DEPLOY}" : "v.*" >/dev/null; then
           # Gets all env vars with `mainnet_` prefix and re-exports them without the prefix
           for var in "${!mainnet_@}"; do
