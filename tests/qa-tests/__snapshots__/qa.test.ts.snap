@@ -1,0 +1,98 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`/wallet/proxy/transactions/{txId} 1`] = `
+Object {
+  "meta": Object {
+    "accumulated_weight": 17.384151840320193,
+    "children": Array [
+      "00000000000000000a9664acb87f660c5893dcfd25b77e86d9082d68688a3e83",
+      "000087bd0ed3cb0952b87bca3994b4f9cd014d60e6ddc82f82bdef3fb0a95002",
+      "00000000000000000abed9e9d7537ac2839befbb62ab1a7d3e2efdb05d813727",
+      "00001808469bd9cf6b3c5f26a02f5bc5e8a75e9dd7a222510145bb99f4b23623",
+      "000000000000000007624d7a9cac9eb7938c7aa3a741ed3c694fd348d01c6e8d",
+    ],
+    "conflict_with": Array [],
+    "first_block": "00000000000000000a9664acb87f660c5893dcfd25b77e86d9082d68688a3e83",
+    "first_block_height": 3419474,
+    "hash": "000025451fcc127ef89cfa515b68b3b656b521fd4ff5ba66a81decfadd0b9c7d",
+    "height": 0,
+    "min_height": 3419191,
+    "received_by": Array [],
+    "score": 0,
+    "spent_outputs": Array [
+      Array [
+        0,
+        Array [],
+      ],
+      Array [
+        1,
+        Array [
+          "000087bd0ed3cb0952b87bca3994b4f9cd014d60e6ddc82f82bdef3fb0a95002",
+        ],
+      ],
+    ],
+    "twins": Array [],
+    "validation": "full",
+    "voided_by": Array [],
+  },
+  "spent_outputs": Object {
+    "1": "000087bd0ed3cb0952b87bca3994b4f9cd014d60e6ddc82f82bdef3fb0a95002",
+  },
+  "success": true,
+  "tx": Object {
+    "hash": "000025451fcc127ef89cfa515b68b3b656b521fd4ff5ba66a81decfadd0b9c7d",
+    "inputs": Array [
+      Object {
+        "decoded": Object {
+          "address": "HVVHV7iTT4xDBZVRzw7FngGX4wqgu6YFpT",
+          "timelock": null,
+          "token_data": 0,
+          "type": "P2PKH",
+          "value": 800,
+        },
+        "index": 0,
+        "script": "dqkU+/GoMUPeTDwiPQRXmV2WHts/Pl2IrA==",
+        "token_data": 0,
+        "tx_id": "00000000033c029cecb5d75c40e831e1e8e513dcad7679db2c73c87f8c9fc3d2",
+        "value": 800,
+      },
+    ],
+    "nonce": "284679",
+    "outputs": Array [
+      Object {
+        "decoded": Object {
+          "address": "HUWhe7WDNQXgarPrbepyqQax4JUHJHxQkv",
+          "timelock": null,
+          "token_data": 0,
+          "type": "P2PKH",
+          "value": 799,
+        },
+        "script": "dqkU8T4cYKfoSFmXZlERw/G7KKIJ+lKIrA==",
+        "token_data": 0,
+        "value": 799,
+      },
+      Object {
+        "decoded": Object {
+          "address": "HBCQgVR8Xsyv1BLDjf9NJPK1Hwg4rKUh62",
+          "timelock": null,
+          "token_data": 0,
+          "type": "P2PKH",
+          "value": 1,
+        },
+        "script": "dqkUM05UG96vCHbm/CDwZXBW4ELQNvSIrA==",
+        "token_data": 0,
+        "value": 1,
+      },
+    ],
+    "parents": Array [
+      "0000012259b65ef48e9dc09c0a22a6bdab4ca6735ee604cac9b519147d86547a",
+      "000007d75b2da1a447e84409886ba8cb6cb1841319b4982383d66e5c864f56d4",
+    ],
+    "raw": "000100010200000000033c029cecb5d75c40e831e1e8e513dcad7679db2c73c87f8c9fc3d2000069463044022007ea6a0e39bb3739fe481d60be90d301c8f7a92eb09feef21c199c5bcb9f1e0702200270a71053763fee86bb98a2d491ca367e9beca5197cc0885240368fd57ac527210367ac671fe0ac779d4e8cd7beee99089b7b105891c21a7f7085b6030a9d1a804a0000031f00001976a914f13e1c60a7e8485997665111c3f1bb28a209fa5288ac0000000100001976a914334e541bdeaf0876e6fc20f0657056e042d036f488ac40316257c666df9a6438470f020000012259b65ef48e9dc09c0a22a6bdab4ca6735ee604cac9b519147d86547a000007d75b2da1a447e84409886ba8cb6cb1841319b4982383d66e5c864f56d400045807",
+    "timestamp": 1681409807,
+    "tokens": Array [],
+    "version": 1,
+    "weight": 17.384151840320193,
+  },
+}
+`;
