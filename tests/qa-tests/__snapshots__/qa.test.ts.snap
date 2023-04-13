@@ -1,9 +1,194 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`/wallet/proxy/transactions/{txId} 1`] = `
+exports[`GET /wallet/addresses 1`] = `
+Array [
+  Object {
+    "address": "HBCQgVR8Xsyv1BLDjf9NJPK1Hwg4rKUh62",
+    "index": 0,
+    "transactions": 2,
+  },
+  Object {
+    "address": "HPDWdurEygcubNMUUnTDUAzngrSXFaqGQc",
+    "index": 1,
+    "transactions": 0,
+  },
+  Object {
+    "address": "HEYCNNZZYrimD97AtoRcgcNFzyxtkgtt9Q",
+    "index": 2,
+    "transactions": 0,
+  },
+  Object {
+    "address": "HPTtSRrDd4ekU4ZQ2jnSLYayL8hiToE5D4",
+    "index": 3,
+    "transactions": 0,
+  },
+  Object {
+    "address": "HTYymKpjyXnz4ssEAnywtwnXnfneZH1Dbh",
+    "index": 4,
+    "transactions": 0,
+  },
+  Object {
+    "address": "HUp754aDZ7yKndw2JchXEiMvgzKuXasUmF",
+    "index": 5,
+    "transactions": 0,
+  },
+  Object {
+    "address": "HLfGaQoxssGbZ4h9wbLyiCafdE8kPm6Fo4",
+    "index": 6,
+    "transactions": 0,
+  },
+  Object {
+    "address": "HV3ox5B1Dai6Jp5EhV8DvUiucc1z3WJHjL",
+    "index": 7,
+    "transactions": 0,
+  },
+  Object {
+    "address": "HNWxs2bxgYtzfCpU6cJMGLgmqv7eGupTHr",
+    "index": 8,
+    "transactions": 0,
+  },
+  Object {
+    "address": "H9Ef7qteC4vAoVUYx5mvP9jCfmZgU9rSvL",
+    "index": 9,
+    "transactions": 0,
+  },
+  Object {
+    "address": "H7hxR75zsPzwfPWbrdkkFbKN2SiL2Lvyuw",
+    "index": 10,
+    "transactions": 0,
+  },
+  Object {
+    "address": "HVCa4QJbHB6pkqvNkmQZD2vpmwTYMNdzVo",
+    "index": 11,
+    "transactions": 0,
+  },
+  Object {
+    "address": "HBchgf1JLxwJzUg6epckK3YJn6Bq8XJMPV",
+    "index": 12,
+    "transactions": 0,
+  },
+  Object {
+    "address": "HVWf61fwoj9Dx15NvWicqXQgGMYVYedSx4",
+    "index": 13,
+    "transactions": 0,
+  },
+  Object {
+    "address": "H7PfxBmaqjoBisFRzpizoB9JcYSvoo8D2j",
+    "index": 14,
+    "transactions": 0,
+  },
+  Object {
+    "address": "HC1NXVzGcVAd84QMfFngHiKyK2K8SUiTaL",
+    "index": 15,
+    "transactions": 0,
+  },
+  Object {
+    "address": "HCqsSDrbs1cfqnF6QMUQkdGYXjEMyt9N3Y",
+    "index": 16,
+    "transactions": 0,
+  },
+  Object {
+    "address": "H91QTkhcrFgrT3TAu1sgvxfDMqXj2TeF9K",
+    "index": 17,
+    "transactions": 0,
+  },
+  Object {
+    "address": "HDVb7QR3MQ7Ypzs17PUBbvjdoLnPwq1nWU",
+    "index": 18,
+    "transactions": 0,
+  },
+  Object {
+    "address": "H82H4FeDc23rKAxahcNBA3kNRjZAqRviEG",
+    "index": 19,
+    "transactions": 0,
+  },
+  Object {
+    "address": "HULUsaW2h1zavJ1kXY8DewHVGcKdPfSYxk",
+    "index": 20,
+    "transactions": 0,
+  },
+]
+`;
+
+exports[`GET /wallet/history 1`] = `
+Array [
+  Object {
+    "balance": -1,
+    "timestamp": 1681409837,
+    "txId": "000087bd0ed3cb0952b87bca3994b4f9cd014d60e6ddc82f82bdef3fb0a95002",
+    "version": 1,
+    "voided": 0,
+  },
+  Object {
+    "balance": 1,
+    "timestamp": 1681409807,
+    "txId": "000025451fcc127ef89cfa515b68b3b656b521fd4ff5ba66a81decfadd0b9c7d",
+    "version": 1,
+    "voided": 0,
+  },
+]
+`;
+
+exports[`GET /wallet/proxy/graphviz/neighbours 1`] = `
+"digraph {
+	rankdir=RL
+	node [shape=oval style=\\"\\"]
+	\\"000025451fcc127ef89cfa515b68b3b656b521fd4ff5ba66a81decfadd0b9c7d\\" [label=\\"9c7d\\" penwidth=5.0 style=filled]
+	\\"000025451fcc127ef89cfa515b68b3b656b521fd4ff5ba66a81decfadd0b9c7d\\" -> \\"0000012259b65ef48e9dc09c0a22a6bdab4ca6735ee604cac9b519147d86547a\\"
+	\\"000025451fcc127ef89cfa515b68b3b656b521fd4ff5ba66a81decfadd0b9c7d\\" -> \\"000007d75b2da1a447e84409886ba8cb6cb1841319b4982383d66e5c864f56d4\\"
+	\\"00001808469bd9cf6b3c5f26a02f5bc5e8a75e9dd7a222510145bb99f4b23623\\" [label=3623]
+	\\"00001808469bd9cf6b3c5f26a02f5bc5e8a75e9dd7a222510145bb99f4b23623\\" -> \\"000087bd0ed3cb0952b87bca3994b4f9cd014d60e6ddc82f82bdef3fb0a95002\\"
+	\\"00001808469bd9cf6b3c5f26a02f5bc5e8a75e9dd7a222510145bb99f4b23623\\" -> \\"000025451fcc127ef89cfa515b68b3b656b521fd4ff5ba66a81decfadd0b9c7d\\"
+	\\"000011dd2f550e18c7a60b2720b673a3fe36b3df510f3a39d4b7b08d067bef72\\" [label=ef72]
+	\\"000011dd2f550e18c7a60b2720b673a3fe36b3df510f3a39d4b7b08d067bef72\\" -> \\"00000000454576da062712e48f970cf7d34d3ed9f6f7484339598e2e61eef48d\\"
+	\\"000011dd2f550e18c7a60b2720b673a3fe36b3df510f3a39d4b7b08d067bef72\\" -> \\"00001808469bd9cf6b3c5f26a02f5bc5e8a75e9dd7a222510145bb99f4b23623\\"
+	\\"000001e40c51a86bbd56eb4a772c35d7a70cd471f2ffc8bbc3260253b05ec18a\\" [label=c18a]
+	\\"000001e40c51a86bbd56eb4a772c35d7a70cd471f2ffc8bbc3260253b05ec18a\\" -> \\"0000025c2357235426fb38e75fe307bfa2fce398454f06e6585c0b87ae0d5dce\\"
+	\\"000001e40c51a86bbd56eb4a772c35d7a70cd471f2ffc8bbc3260253b05ec18a\\" -> \\"000011dd2f550e18c7a60b2720b673a3fe36b3df510f3a39d4b7b08d067bef72\\"
+	\\"00001c3b31932e29cbcfe3b31965a09315c7346b7ccb3eb1f7c29300aa0ed62f\\" [label=d62f]
+	\\"00001c3b31932e29cbcfe3b31965a09315c7346b7ccb3eb1f7c29300aa0ed62f\\" -> \\"00004078dfca66d9130e28e05f6f5f3a3fad87ec7779e3cb955e498ab7e67bf4\\"
+	\\"00001c3b31932e29cbcfe3b31965a09315c7346b7ccb3eb1f7c29300aa0ed62f\\" -> \\"000001e40c51a86bbd56eb4a772c35d7a70cd471f2ffc8bbc3260253b05ec18a\\"
+	\\"00004078dfca66d9130e28e05f6f5f3a3fad87ec7779e3cb955e498ab7e67bf4\\" [label=\\"7bf4\\"]
+	\\"00004078dfca66d9130e28e05f6f5f3a3fad87ec7779e3cb955e498ab7e67bf4\\" -> \\"000001e40c51a86bbd56eb4a772c35d7a70cd471f2ffc8bbc3260253b05ec18a\\"
+	\\"00004078dfca66d9130e28e05f6f5f3a3fad87ec7779e3cb955e498ab7e67bf4\\" -> \\"0000025c2357235426fb38e75fe307bfa2fce398454f06e6585c0b87ae0d5dce\\"
+	\\"0000025c2357235426fb38e75fe307bfa2fce398454f06e6585c0b87ae0d5dce\\" [label=\\"5dce\\"]
+	\\"0000025c2357235426fb38e75fe307bfa2fce398454f06e6585c0b87ae0d5dce\\" -> \\"000011dd2f550e18c7a60b2720b673a3fe36b3df510f3a39d4b7b08d067bef72\\"
+	\\"0000025c2357235426fb38e75fe307bfa2fce398454f06e6585c0b87ae0d5dce\\" -> \\"00000000454576da062712e48f970cf7d34d3ed9f6f7484339598e2e61eef48d\\"
+	\\"00000000454576da062712e48f970cf7d34d3ed9f6f7484339598e2e61eef48d\\" [label=f48d]
+	\\"00000000454576da062712e48f970cf7d34d3ed9f6f7484339598e2e61eef48d\\" -> \\"00001808469bd9cf6b3c5f26a02f5bc5e8a75e9dd7a222510145bb99f4b23623\\"
+	\\"00000000454576da062712e48f970cf7d34d3ed9f6f7484339598e2e61eef48d\\" -> \\"000087bd0ed3cb0952b87bca3994b4f9cd014d60e6ddc82f82bdef3fb0a95002\\"
+	\\"000087bd0ed3cb0952b87bca3994b4f9cd014d60e6ddc82f82bdef3fb0a95002\\" [label=5002]
+	\\"000087bd0ed3cb0952b87bca3994b4f9cd014d60e6ddc82f82bdef3fb0a95002\\" -> \\"000025451fcc127ef89cfa515b68b3b656b521fd4ff5ba66a81decfadd0b9c7d\\"
+	\\"000087bd0ed3cb0952b87bca3994b4f9cd014d60e6ddc82f82bdef3fb0a95002\\" -> \\"0000012259b65ef48e9dc09c0a22a6bdab4ca6735ee604cac9b519147d86547a\\"
+	\\"000007d75b2da1a447e84409886ba8cb6cb1841319b4982383d66e5c864f56d4\\" [label=\\"56d4\\"]
+	\\"000007d75b2da1a447e84409886ba8cb6cb1841319b4982383d66e5c864f56d4\\" -> \\"00000446e4a3718d9e0fb92b0903648de6d71f1ec8fedf41266abb28b77a2ff5\\"
+	\\"000007d75b2da1a447e84409886ba8cb6cb1841319b4982383d66e5c864f56d4\\" -> \\"0000061594cac2c50bcb9b948b53a272319e4d3ce217dc8c66e5c08ef9ecfc88\\"
+	\\"0000061594cac2c50bcb9b948b53a272319e4d3ce217dc8c66e5c08ef9ecfc88\\" [label=fc88]
+	\\"0000061594cac2c50bcb9b948b53a272319e4d3ce217dc8c66e5c08ef9ecfc88\\" -> \\"000007d8423f2b609f51d43002837ea99c8d992478f171c7d0cb36193c093aa3\\"
+	\\"0000061594cac2c50bcb9b948b53a272319e4d3ce217dc8c66e5c08ef9ecfc88\\" -> \\"000005825591ea0e277b42f96f3b0b0aebc0cde19c6541dae2c9606e28c221ba\\"
+	\\"000005825591ea0e277b42f96f3b0b0aebc0cde19c6541dae2c9606e28c221ba\\" [label=\\"21ba\\"]
+	\\"000005825591ea0e277b42f96f3b0b0aebc0cde19c6541dae2c9606e28c221ba\\" -> \\"0000000082df841ba2c22be17788078d49f9cdc780a262bf3a9be3a1079d5983\\"
+	\\"000005825591ea0e277b42f96f3b0b0aebc0cde19c6541dae2c9606e28c221ba\\" -> \\"000001a40317c9f9bfdfe6b292e347d04750354bcfe2145f345b3c31a7380373\\"
+	\\"000001a40317c9f9bfdfe6b292e347d04750354bcfe2145f345b3c31a7380373\\" [label=0373]
+	\\"0000000082df841ba2c22be17788078d49f9cdc780a262bf3a9be3a1079d5983\\" [label=5983]
+	\\"0000000082df841ba2c22be17788078d49f9cdc780a262bf3a9be3a1079d5983\\" -> \\"000001a40317c9f9bfdfe6b292e347d04750354bcfe2145f345b3c31a7380373\\"
+	\\"000007d8423f2b609f51d43002837ea99c8d992478f171c7d0cb36193c093aa3\\" [label=\\"3aa3\\"]
+	\\"000007d8423f2b609f51d43002837ea99c8d992478f171c7d0cb36193c093aa3\\" -> \\"000005825591ea0e277b42f96f3b0b0aebc0cde19c6541dae2c9606e28c221ba\\"
+	\\"000007d8423f2b609f51d43002837ea99c8d992478f171c7d0cb36193c093aa3\\" -> \\"0000000082df841ba2c22be17788078d49f9cdc780a262bf3a9be3a1079d5983\\"
+	\\"00000446e4a3718d9e0fb92b0903648de6d71f1ec8fedf41266abb28b77a2ff5\\" [label=\\"2ff5\\"]
+	\\"00000446e4a3718d9e0fb92b0903648de6d71f1ec8fedf41266abb28b77a2ff5\\" -> \\"0000061594cac2c50bcb9b948b53a272319e4d3ce217dc8c66e5c08ef9ecfc88\\"
+	\\"00000446e4a3718d9e0fb92b0903648de6d71f1ec8fedf41266abb28b77a2ff5\\" -> \\"000007d8423f2b609f51d43002837ea99c8d992478f171c7d0cb36193c093aa3\\"
+	\\"0000012259b65ef48e9dc09c0a22a6bdab4ca6735ee604cac9b519147d86547a\\" [label=\\"547a\\"]
+	\\"0000012259b65ef48e9dc09c0a22a6bdab4ca6735ee604cac9b519147d86547a\\" -> \\"000007d75b2da1a447e84409886ba8cb6cb1841319b4982383d66e5c864f56d4\\"
+	\\"0000012259b65ef48e9dc09c0a22a6bdab4ca6735ee604cac9b519147d86547a\\" -> \\"00000446e4a3718d9e0fb92b0903648de6d71f1ec8fedf41266abb28b77a2ff5\\"
+}
+"
+`;
+
+exports[`GET /wallet/proxy/transactions/{txId} 1`] = `
 Object {
   "meta": Object {
-    "accumulated_weight": 17.384151840320193,
+    "accumulated_weight": 70.12392675219921,
     "children": Array [
       "00000000000000000a9664acb87f660c5893dcfd25b77e86d9082d68688a3e83",
       "000087bd0ed3cb0952b87bca3994b4f9cd014d60e6ddc82f82bdef3fb0a95002",
@@ -94,5 +279,15 @@ Object {
     "version": 1,
     "weight": 17.384151840320193,
   },
+}
+`;
+
+exports[`POST /wallet/addresses/check_mine 1`] = `
+Object {
+  "H9A6fG4JxT1HCktiaZwLQCCgsgUM7axndb": false,
+  "HBCQgVR8Xsyv1BLDjf9NJPK1Hwg4rKUh62": true,
+  "HJbeBkDqBewxkAqsnvvV2Ge8qu31Tmc3XK": false,
+  "HLfGaQoxssGbZ4h9wbLyiCafdE8kPm6Fo4": true,
+  "HPDWdurEygcubNMUUnTDUAzngrSXFaqGQc": true,
 }
 `;
