@@ -11,7 +11,7 @@ Each case deploys to a different environment:
 - `master` branch -> `testnet` environment
 - `v*` tags -> `mainnet` environment
 
-All of them require manual approval to proceed. You should keep an eye in the `#deploys` channel in Slack, the approval requests are sent there.
+All of them require manual approval to proceed. You should keep an eye in the `#wallet-service-deploys` channel in Slack, the approval requests are sent there.
 
 If you need to know the exact steps that take place during deployment, check [this document](2021-07-29-infrastructure-design.md#how-the-process-works)
 
