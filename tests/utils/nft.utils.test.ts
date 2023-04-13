@@ -38,7 +38,6 @@ describe('shouldInvokeNftHandlerForTx', () => {
 
     const oldValue = process.env.NFT_AUTO_REVIEW_ENABLED;
     process.env.NFT_AUTO_REVIEW_ENABLED = 'true';
-    expect(process.env.NFT_AUTO_REVIEW_ENABLED).toStrictEqual('true');
 
     // Execution
     const result = NftUtils.shouldInvokeNftHandlerForTx(tx);

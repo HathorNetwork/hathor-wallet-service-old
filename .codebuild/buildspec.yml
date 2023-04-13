@@ -59,6 +59,9 @@ env:
     mainnet_APPLICATION_NAME: "wallet-service-mainnet"
   # https://eu-central-1.console.aws.amazon.com/secretsmanager/home?region=eu-central-1#!/listSecrets
   secrets-manager:
+    # CI secrets
+    SLACK_OAUTH_TOKEN: "WalletService/ci:slack_oauth_token"
+    SLACK_DEPLOYS_CHANNEL_ID: "WalletService/ci:slack_deploys_channel_id"
     # Dev secrets
     dev_ACCOUNT_ID: "WalletService/dev:account_id"
     dev_AUTH_SECRET: "WalletService/dev:auth_secret"
@@ -170,38 +173,8 @@ phases:
       - npm i --also=dev
   pre_build:
     commands:
-      # This file is created in another CodeBuild specification that runs before this and is not commited to this repo.
+      # This file is created in another CodeBuild specification that runs before this and is not committed to this repo.
       - export GIT_REF_TO_DEPLOY=$(cat git_ref_to_deploy)
   build:
     commands:
-      - |
-        set -e;
-        if expr "${GIT_REF_TO_DEPLOY}" : "master" >/dev/null; then
-          # Gets all env vars with `testnet_` prefix and re-exports them without the prefix
-          for var in "${!testnet_@}"; do
-            export ${var#testnet_}="${!var}"
-          done
-          make migrate;
-          make deploy-lambdas-testnet;
-        elif expr "${GIT_REF_TO_DEPLOY}" : "v[0-9]\+\.[0-9]\+\.[0-9]\+-rc\.[0-9]\+" >/dev/null; then
-          # Gets all env vars with `mainnet_staging_` prefix and re-exports them without the prefix
-          for var in "${!mainnet_staging_@}"; do
-            export ${var#mainnet_staging_}="${!var}"
-          done
-          make migrate;
-          make deploy-lambdas-mainnet-staging;
-        elif expr "${GIT_REF_TO_DEPLOY}" : "v.*" >/dev/null; then
-          # Gets all env vars with `mainnet_` prefix and re-exports them without the prefix
-          for var in "${!mainnet_@}"; do
-            export ${var#mainnet_}="${!var}"
-          done
-          make migrate;
-          make deploy-lambdas-mainnet;
-        else
-          # Gets all env vars with `dev_` prefix and re-exports them without the prefix
-          for var in "${!dev_@}"; do
-            export ${var#dev_}="${!var}"
-          done
-          make migrate;
-          make deploy-lambdas-dev-testnet;
-        fi;
+      - bash .codebuild/build.sh
