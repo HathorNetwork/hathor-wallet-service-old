@@ -80,7 +80,7 @@ export const checkTxWasVoided = async (mysql: ServerlessMysql, txId: string): Pr
 
   const addressTxHistory = results[0];
 
-  return addressTxHistory.voided as boolean;
+  return Boolean(addressTxHistory.voided);
 };
 
 export const cleanupVoidedTx = async (mysql: ServerlessMysql, tx: Tx): Promise<void> => {
@@ -101,7 +101,7 @@ export const cleanupVoidedTx = async (mysql: ServerlessMysql, tx: Tx): Promise<v
       WHERE tx_id = ?`,
     [tx.txId],
   );
-}
+};
 
 /**
  * Given an xpubkey, generate its addresses.

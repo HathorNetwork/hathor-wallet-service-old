@@ -63,6 +63,7 @@ import createDefaultLogger from '@src/logger';
 import { NftUtils } from '@src/utils/nft.utils';
 import { PushNotificationUtils, isPushNotificationEnabled } from '@src/utils/pushnotification.utils';
 import { addAlert } from '@src/utils/alerting.utils';
+
 const mysql = getDbConnection();
 
 export const IGNORE_TXS = {
