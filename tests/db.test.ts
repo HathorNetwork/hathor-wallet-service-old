@@ -82,6 +82,7 @@ import {
   getLatestBlockByHeight,
   cleanupVoidedTx,
   checkTxWasVoided,
+  getWalletTxHistory,
 } from '@src/db';
 import * as Db from '@src/db';
 import { cleanUnsentTxProposalsUtxos } from '@src/db/cronRoutines';
@@ -1804,6 +1805,8 @@ test('cleanupVoidedTx', async () => {
   expect.hasAssertions();
   const txId = 'txId1';
   const addr1 = 'addr1';
+  const walletId = 'walletid';
+  const tokenId = '00';
 
   const tx: Tx = {
     txId,
@@ -1815,9 +1818,9 @@ test('cleanupVoidedTx', async () => {
   };
 
   await addToUtxoTable(mysql, [{
-    txId: tx.txId,
+    txId: txId,
     index: 0,
-    tokenId: '00',
+    tokenId,
     address: addr1,
     value: 100,
     authorities: 0,
@@ -1827,14 +1830,32 @@ test('cleanupVoidedTx', async () => {
     spentBy: null,
   }]);
 
-  const utxo = await getTxOutput(mysql, txId, 0, false);
+  await addToAddressTxHistoryTable(mysql, [{
+    address: addr1,
+    txId: txId,
+    tokenId,
+    balance: 0,
+    timestamp: 1,
+    voided: true,
+  }]);
+
+  await addToWalletTxHistoryTable(mysql, [
+    [walletId, txId, tokenId, 0, 0, true],
+  ]);
 
   await cleanupVoidedTx(mysql, tx);
 
-
-  dbTxs = await getTransactionsById(mysql, [tx.txId]);
-
-  expect(dbTxs.length).toStrictEqual(0);
+  expect(await getTxOutput(mysql, txId, 0, false)).toStrictEqual(null);
+  expect(await getWalletTxHistory(mysql, walletId, tokenId, 0, 10)).toHaveLength(0);
+  expect(await checkAddressTxHistoryTable(
+    mysql,
+    0,
+    addr1,
+    txId,
+    tokenId,
+    0,
+    1,
+  )).toStrictEqual(true);
 });
 
 test('rebuildAddressBalancesFromUtxos', async () => {

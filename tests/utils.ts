@@ -298,6 +298,11 @@ export const checkAddressTxHistoryTable = async (
     };
   }
 
+  // If we expect the table to be empty, we can return now.
+  if (totalResults === 0) {
+    return true;
+  }
+
   // now fetch the exact entry
   results = await mysql.query(
     `SELECT *
