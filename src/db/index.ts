@@ -61,6 +61,48 @@ const BLOCK_VERSION = [
 ];
 const BURN_ADDRESS = 'HDeadDeadDeadDeadDeadDeadDeagTPgmn';
 
+export const checkTxWasVoided = async (mysql: ServerlessMysql, txId: string): Promise<boolean> => {
+  /**
+   * Since we delete transactions from the transactions table when it's voided,
+   * we can use the address_tx_history table (which stores voided txs) to check
+   * if it's there.
+   */
+  const results: DbSelectResult = await mysql.query(
+    `SELECT * FROM \`address_tx_history\`
+      WHERE tx_id = ?
+      LIMIT 1`,
+    [txId],
+  );
+
+  if (!results.length) {
+    return false;
+  }
+
+  const addressTxHistory = results[0];
+
+  return addressTxHistory.voided as boolean;
+};
+
+export const cleanupVoidedTx = async (mysql: ServerlessMysql, tx: Tx): Promise<void> => {
+  await mysql.query(
+    `DELETE FROM \`tx_output\`
+      WHERE tx_id = ?`,
+    [tx.txId],
+  );
+
+  await mysql.query(
+    `DELETE FROM \`address_tx_history\`
+      WHERE tx_id = ?`,
+    [tx.txId],
+  );
+
+  await mysql.query(
+    `DELETE FROM \`wallet_tx_history\`
+      WHERE tx_id = ?`,
+    [tx.txId],
+  );
+}
+
 /**
  * Given an xpubkey, generate its addresses.
  *

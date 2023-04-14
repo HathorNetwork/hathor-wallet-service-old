@@ -80,6 +80,8 @@ import {
   releaseTxProposalUtxos,
   getUnsentTxProposals,
   getLatestBlockByHeight,
+  cleanupVoidedTx,
+  checkTxWasVoided,
 } from '@src/db';
 import * as Db from '@src/db';
 import { cleanUnsentTxProposalsUtxos } from '@src/db/cronRoutines';
@@ -136,6 +138,7 @@ import {
   checkPushDevicesTable,
   buildPushRegister,
   insertPushDevice,
+  addToTransactionTable,
   daysAgo,
 } from '@tests/utils';
 import { AddressTxHistoryTableEntry } from '@tests/types';
@@ -1767,6 +1770,71 @@ test('addTx, fetchTx, getTransactionsById and markTxsAsVoided', async () => {
   expect(await fetchTx(mysql, txId3)).toBeNull();
   expect(await fetchTx(mysql, txId4)).toBeNull();
   expect(await fetchTx(mysql, txId5)).toBeNull();
+});
+
+test('checkTxWasVoided', async () => {
+  expect.hasAssertions();
+
+  const tx1 = 'tx1';
+  const tx2 = 'tx2';
+  const address1 = 'address1';
+  const address2 = 'address2';
+
+  await addToAddressTxHistoryTable(mysql, [{
+    address: address1,
+    txId: tx1,
+    tokenId: '00',
+    balance: 0,
+    timestamp: 1,
+    voided: true,
+  }, {
+    address: address2,
+    txId: tx2,
+    tokenId: '00',
+    balance: 0,
+    timestamp: 1,
+    voided: false,
+  }]);
+
+  expect(await checkTxWasVoided(mysql, tx1)).toStrictEqual(true);
+  expect(await checkTxWasVoided(mysql, tx2)).toStrictEqual(false);
+});
+
+test('cleanupVoidedTx', async () => {
+  expect.hasAssertions();
+  const txId = 'txId1';
+  const addr1 = 'addr1';
+
+  const tx: Tx = {
+    txId,
+    height: 15,
+    timestamp: 1,
+    version: 0,
+    voided: true,
+    weight: 60,
+  };
+
+  await addToUtxoTable(mysql, [{
+    txId: tx.txId,
+    index: 0,
+    tokenId: '00',
+    address: addr1,
+    value: 100,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    spentBy: null,
+  }]);
+
+  const utxo = await getTxOutput(mysql, txId, 0, false);
+
+  await cleanupVoidedTx(mysql, tx);
+
+
+  dbTxs = await getTransactionsById(mysql, [tx.txId]);
+
+  expect(dbTxs.length).toStrictEqual(0);
 });
 
 test('rebuildAddressBalancesFromUtxos', async () => {
