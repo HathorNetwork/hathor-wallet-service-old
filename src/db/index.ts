@@ -61,12 +61,19 @@ const BLOCK_VERSION = [
 ];
 const BURN_ADDRESS = 'HDeadDeadDeadDeadDeadDeadDeagTPgmn';
 
+/**
+ * Checks if a transaction was on the database in the past and got voided.
+ *
+ * @remarks
+ * Since we delete transactions from the transactions table when it's voided,
+ * we can use the address_tx_history table (which stores voided txs) to check
+ * if it's there.
+ *
+ * @param mysql - Database connection
+ * @param txId - The transaction id to search for
+ * @returns True or False
+ */
 export const checkTxWasVoided = async (mysql: ServerlessMysql, txId: string): Promise<boolean> => {
-  /**
-   * Since we delete transactions from the transactions table when it's voided,
-   * we can use the address_tx_history table (which stores voided txs) to check
-   * if it's there.
-   */
   const results: DbSelectResult = await mysql.query(
     `SELECT * FROM \`address_tx_history\`
       WHERE tx_id = ?
@@ -83,6 +90,17 @@ export const checkTxWasVoided = async (mysql: ServerlessMysql, txId: string): Pr
   return Boolean(addressTxHistory.voided);
 };
 
+/**
+ * Cleanup all records from a transaction that was voided in the past
+ *
+ * @remarks
+ * This does not re-calculates balances, so it's only supposed to be used to clear
+ * the tx_output, address_tx_history and wallet_tx_history tables after the
+ * handleReorg method voided this transaction
+ *
+ * @param mysql - Database connection
+ * @param tx - The transaction to clear from database
+ */
 export const cleanupVoidedTx = async (mysql: ServerlessMysql, tx: Tx): Promise<void> => {
   await mysql.query(
     `DELETE FROM \`tx_output\`
