@@ -99,25 +99,35 @@ export const checkTxWasVoided = async (mysql: ServerlessMysql, txId: string): Pr
  * handleReorg method voided this transaction
  *
  * @param mysql - Database connection
- * @param tx - The transaction to clear from database
+ * @param txId - The transaction to clear from database
  */
-export const cleanupVoidedTx = async (mysql: ServerlessMysql, tx: Tx): Promise<void> => {
+export const cleanupVoidedTx = async (mysql: ServerlessMysql, txId: string): Promise<void> => {
+  await mysql.query(
+    `DELETE FROM \`transaction\`
+      WHERE tx_id = ?
+        AND voided = true`,
+    [txId],
+  );
+
   await mysql.query(
     `DELETE FROM \`tx_output\`
-      WHERE tx_id = ?`,
-    [tx.txId],
+      WHERE tx_id = ?
+        AND voided = true`,
+    [txId],
   );
 
   await mysql.query(
     `DELETE FROM \`address_tx_history\`
-      WHERE tx_id = ?`,
-    [tx.txId],
+      WHERE tx_id = ?
+        AND voided = true`,
+    [txId],
   );
 
   await mysql.query(
     `DELETE FROM \`wallet_tx_history\`
-      WHERE tx_id = ?`,
-    [tx.txId],
+      WHERE tx_id = ?
+        AND voided = true`,
+    [txId],
   );
 };
 

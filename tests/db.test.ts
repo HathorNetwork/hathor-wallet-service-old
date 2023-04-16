@@ -139,7 +139,6 @@ import {
   checkPushDevicesTable,
   buildPushRegister,
   insertPushDevice,
-  addToTransactionTable,
   daysAgo,
 } from '@tests/utils';
 import { AddressTxHistoryTableEntry } from '@tests/types';
@@ -1808,15 +1807,6 @@ test('cleanupVoidedTx', async () => {
   const walletId = 'walletid';
   const tokenId = '00';
 
-  const tx: Tx = {
-    txId,
-    height: 15,
-    timestamp: 1,
-    version: 0,
-    voided: true,
-    weight: 60,
-  };
-
   await addToUtxoTable(mysql, [{
     txId,
     index: 0,
@@ -1828,6 +1818,7 @@ test('cleanupVoidedTx', async () => {
     heightlock: null,
     locked: false,
     spentBy: null,
+    voided: true,
   }]);
 
   await addToAddressTxHistoryTable(mysql, [{
@@ -1843,7 +1834,7 @@ test('cleanupVoidedTx', async () => {
     [walletId, txId, tokenId, 0, 0, true],
   ]);
 
-  await cleanupVoidedTx(mysql, tx);
+  await cleanupVoidedTx(mysql, txId);
 
   expect(await getTxOutput(mysql, txId, 0, false)).toBeNull();
   expect(await getWalletTxHistory(mysql, walletId, tokenId, 0, 10)).toHaveLength(0);

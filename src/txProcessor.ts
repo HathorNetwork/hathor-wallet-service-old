@@ -96,6 +96,7 @@ export const onNewTxEvent = async (event: SQSEvent): Promise<APIGatewayProxyResu
   // TODO not sure if it should be 'now' or max(now, tx.timestamp), as we allow some flexibility for timestamps
   const now = getUnixTimestamp();
   const blockRewardLock = parseInt(process.env.BLOCK_REWARD_LOCK, 10);
+
   for (const evt of event.Records) {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
@@ -344,11 +345,14 @@ const _unsafeAddNewTx = async (_logger: Logger, tx: Transaction, now: number, bl
   const voidedTx = await checkTxWasVoided(mysql, txId);
 
   if (voidedTx) {
+    logger.info(`Transaction ${txId} received and was voided on databse`, {
+      tx,
+    });
     // this tx was already in the database in the past as voided and is now valid
     // again, we need to cleanup the tx_output and address_tx_history tables so we
     // can safely add it again. Balances were already re-calculated on the handleReorg
     // method, so we don't need to handle that here.
-    await cleanupVoidedTx(mysql, dbTx);
+    await cleanupVoidedTx(mysql, txId);
   }
 
   let heightlock = null;

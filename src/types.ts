@@ -636,6 +636,7 @@ export interface DbTxOutput {
   spentBy?: string | null;
   txProposalId?: string;
   txProposalIndex?: number;
+  voided?: boolean | null;
 }
 
 export interface Block {
