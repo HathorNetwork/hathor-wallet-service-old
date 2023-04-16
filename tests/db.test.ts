@@ -1818,7 +1818,7 @@ test('cleanupVoidedTx', async () => {
   };
 
   await addToUtxoTable(mysql, [{
-    txId: txId,
+    txId,
     index: 0,
     tokenId,
     address: addr1,
@@ -1832,7 +1832,7 @@ test('cleanupVoidedTx', async () => {
 
   await addToAddressTxHistoryTable(mysql, [{
     address: addr1,
-    txId: txId,
+    txId,
     tokenId,
     balance: 0,
     timestamp: 1,
@@ -1845,7 +1845,7 @@ test('cleanupVoidedTx', async () => {
 
   await cleanupVoidedTx(mysql, tx);
 
-  expect(await getTxOutput(mysql, txId, 0, false)).toStrictEqual(null);
+  expect(await getTxOutput(mysql, txId, 0, false)).toBeNull();
   expect(await getWalletTxHistory(mysql, walletId, tokenId, 0, 10)).toHaveLength(0);
   expect(await checkAddressTxHistoryTable(
     mysql,
