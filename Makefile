@@ -19,6 +19,10 @@ migrate:
 	@echo "Migrating..."
 	npx sequelize-cli db:migrate
 
+.PHONY: new-migration
+new-migration:
+	npx sequelize migration:generate --name "$(NAME)"
+
 .PHONY: seed_testnet
 seed_testnet:
 	npx sequelize-cli db:seed --seed testnet

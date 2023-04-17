@@ -39,10 +39,18 @@ If it's a secret, you'll need to add it to `env.secrets-manager`, and one for ea
 To create a new DB migration, run:
 
 ```bash
-npx sequelize migration:generate --name "<migrate-name>"
+make new-migration NAME=migration_name
 ```
 
 It will create an empty migration file for you. You should include your migration logic there.
+
+To run your migration:
+
+```bash
+make migrate
+```
+
+The migrations will run in the database specified in your local environment configuration. If you need to configure it for a local database, check [this](https://github.com/HathorNetwork/hathor-wallet-service/blob/dev/README.md#local-database).
 
 ## Enabling debug logs
 
