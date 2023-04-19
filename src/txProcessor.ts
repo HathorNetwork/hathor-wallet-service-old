@@ -345,7 +345,7 @@ const _unsafeAddNewTx = async (_logger: Logger, tx: Transaction, now: number, bl
   const voidedTx = await checkTxWasVoided(mysql, txId);
 
   if (voidedTx) {
-    logger.info(`Transaction ${txId} received and was voided on databse`, {
+    logger.info(`Transaction ${txId} received and was voided on database`, {
       tx,
     });
     // this tx was already in the database in the past as voided and is now valid
