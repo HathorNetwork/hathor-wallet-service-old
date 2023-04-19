@@ -97,6 +97,15 @@ module.exports = (sequelize, DataTypes) => {
     }, {
       name: 'tx_output_txproposal_idx',
       fields: 'tx_proposal',
+    }, {
+      name: 'tx_output_spent_by_idx',
+      fields: 'spent_by',
+    }, {
+      name: 'tx_output_voided_idx',
+      fields: 'voided',
+    }, {
+      name: 'tx_output_locked_idx',
+      fields: 'locked',
     }],
   });
   return TxOutput;
