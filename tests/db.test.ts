@@ -140,6 +140,7 @@ import {
   buildPushRegister,
   insertPushDevice,
   daysAgo,
+  addToTransactionTable,
 } from '@tests/utils';
 import { AddressTxHistoryTableEntry } from '@tests/types';
 
@@ -1803,6 +1804,7 @@ test('checkTxWasVoided', async () => {
 test('cleanupVoidedTx', async () => {
   expect.hasAssertions();
   const txId = 'txId1';
+  const txId2 = 'txId2';
   const addr1 = 'addr1';
   const walletId = 'walletid';
   const tokenId = '00';
@@ -1843,6 +1845,56 @@ test('cleanupVoidedTx', async () => {
     0,
     addr1,
     txId,
+    tokenId,
+    0,
+    1,
+  )).toStrictEqual(true);
+
+  // It shouldn't do anything on non-voided transactions
+
+  await addToTransactionTable(mysql, [
+    [txId2, 0, 1, false, 0, 0],
+  ]);
+
+  const utxo2 = {
+    txId: txId2,
+    index: 0,
+    tokenId,
+    address: addr1,
+    value: 100,
+    authorities: 0,
+    timelock: null,
+    heightlock: null,
+    locked: false,
+    txProposalId: null,
+    txProposalIndex: null,
+    spentBy: null,
+  };
+
+  await addToUtxoTable(mysql, [utxo2]);
+
+  await addToAddressTxHistoryTable(mysql, [{
+    txId: txId2,
+    timestamp: 1,
+    address: addr1,
+    tokenId,
+    balance: 0,
+    voided: false,
+  }]);
+
+  await addToWalletTxHistoryTable(mysql, [
+    [walletId, txId2, tokenId, 0, 0, false],
+  ]);
+
+  await cleanupVoidedTx(mysql, txId2);
+
+  expect(await getWalletTxHistory(mysql, walletId, tokenId, 0, 10)).toHaveLength(1);
+  expect(await getTxOutput(mysql, txId2, 0, false)).toStrictEqual(utxo2);
+  expect(await checkAddressTxHistoryTable(
+    mysql,
+    1,
+    addr1,
+    txId2,
     tokenId,
     0,
     1,
