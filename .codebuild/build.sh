@@ -41,12 +41,12 @@ if [ "$exit" = true ]; then
 fi
 
 if expr "${GIT_REF_TO_DEPLOY}" : "master" >/dev/null; then
-    # Gets all env vars with `testnet_` prefix and re-exports them without the prefix
-    for var in "${!testnet_@}"; do
-        export ${var#testnet_}="${!var}"
+    # Gets all env vars with `dev_` prefix and re-exports them without the prefix
+    for var in "${!dev_@}"; do
+        export ${var#dev_}="${!var}"
     done
     make migrate;
-    make deploy-lambdas-testnet;
+    make deploy-lambdas-dev-testnet;
 elif expr "${GIT_REF_TO_DEPLOY}" : "v[0-9]\+\.[0-9]\+\.[0-9]\+-rc\.[0-9]\+" >/dev/null; then
     # Gets all env vars with `mainnet_staging_` prefix and re-exports them without the prefix
     for var in "${!mainnet_staging_@}"; do
@@ -56,6 +56,18 @@ elif expr "${GIT_REF_TO_DEPLOY}" : "v[0-9]\+\.[0-9]\+\.[0-9]\+-rc\.[0-9]\+" >/de
     make deploy-lambdas-mainnet-staging;
     send_slack_message "New version deployed to mainnet-staging: ${GIT_REF_TO_DEPLOY}"
 elif expr "${GIT_REF_TO_DEPLOY}" : "v.*" >/dev/null; then
+    # Gets all env vars with `testnet_` prefix and re-exports them without the prefix
+    for var in "${!testnet_@}"; do
+        export ${var#testnet_}="${!var}"
+    done
+    make migrate;
+    make deploy-lambdas-testnet;
+
+    # Unsets all the testnet env vars so we make sure they don't leak to the mainnet deploy below
+    for var in "${!testnet_@}"; do
+        unset ${var#testnet_}
+    done
+
     # Gets all env vars with `mainnet_` prefix and re-exports them without the prefix
     for var in "${!mainnet_@}"; do
         export ${var#mainnet_}="${!var}"
