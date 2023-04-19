@@ -4,7 +4,13 @@ import { mockedAddAlert } from '@tests/utils/alerting.utils.mock';
 import hathorLib from '@hathor/wallet-lib';
 import eventTemplate from '@events/eventTemplate.json';
 import tokenCreationTx from '@events/tokenCreationTx.json';
-import { getLatestHeight, getTokenInformation } from '@src/db';
+import {
+  getLatestHeight,
+  getTokenInformation,
+  fetchTx,
+  getTxOutput,
+  getWalletTxHistory,
+} from '@src/db';
 import * as Db from '@src/db';
 import * as txProcessor from '@src/txProcessor';
 import { closeDbConnection, getDbConnection, isAuthority } from '@src/utils';
@@ -26,12 +32,14 @@ import {
   createOutput,
   createInput,
   addToAddressTxHistoryTable,
+  addToWalletTxHistoryTable,
 } from '@tests/utils';
 import { getHandlerContext, nftCreationTx } from '@events/nftCreationTx';
 import * as pushNotificationUtils from '@src/utils/pushnotification.utils';
 import * as commons from '@src/commons';
 import { Context } from 'aws-lambda';
 import { StringMap, WalletBalanceValue, Severity } from '@src/types';
+import createDefaultLogger from '@src/logger';
 
 const mysql = getDbConnection();
 const blockReward = 6400;
@@ -255,6 +263,85 @@ test('txProcessor', async () => {
   await expect(checkAddressBalanceTable(mysql, 4, 'address1', '00', blockReward, 0, null, 3)).resolves.toBe(true);
   // address2 balance is still locked
   await expect(checkAddressBalanceTable(mysql, 4, 'address2', '00', 0, blockReward, null, 1)).resolves.toBe(true);
+});
+
+test('txProcessor should be able to re-process txs that were voided in the past', async () => {
+  expect.hasAssertions();
+
+  const walletId = 'walletId';
+  const txId = 'txId1';
+  const address = 'address1';
+  const tokenId = '00';
+
+  await addToWalletTable(mysql, [{
+    id: walletId,
+    xpubkey: XPUBKEY,
+    authXpubkey: AUTH_XPUBKEY,
+    status: 'ready',
+    maxGap: 10,
+    createdAt: 1,
+    readyAt: 2,
+  }]);
+
+  await addToAddressTable(mysql, [
+    { address, index: 0, walletId, transactions: 1 },
+  ]);
+
+  // receive a block
+  const evt = JSON.parse(JSON.stringify(eventTemplate));
+  const block = evt.Records[0].body;
+  const blockUtxo = createOutput(0, blockReward, address);
+  block.version = 0;
+  block.tx_id = txId;
+  block.height = 1;
+  block.inputs = [];
+  block.outputs = [blockUtxo];
+
+  await txProcessor.onNewTxEvent(evt);
+
+  const logger = createDefaultLogger();
+
+  // void it
+  const transaction = await fetchTx(mysql, txId);
+  await commons.handleVoided(mysql, logger, transaction);
+
+  // call it again with the same tx
+  await txProcessor.onNewTxEvent(evt);
+
+  expect(await getTxOutput(mysql, txId, 0, false)).toStrictEqual({
+    txId,
+    index: 0,
+    tokenId,
+    address,
+    value: blockReward,
+    authorities: 0,
+    timelock: null,
+    heightlock: 2,
+    locked: true,
+    txProposalId: null,
+    txProposalIndex: null,
+    spentBy: null,
+  });
+
+  expect(await getWalletTxHistory(mysql, walletId, tokenId, 0, 10)).toStrictEqual([
+    {
+      txId: 'txId1',
+      timestamp: expect.anything(),
+      voided: 0,
+      balance: 6400,
+      version: 0,
+    },
+  ]);
+
+  expect(await checkAddressTxHistoryTable(
+    mysql,
+    1,
+    address,
+    txId,
+    tokenId,
+    blockReward,
+    block.timestamp,
+  )).toStrictEqual(true);
 });
 
 test('txProcessor should ignore NFT outputs', async () => {
