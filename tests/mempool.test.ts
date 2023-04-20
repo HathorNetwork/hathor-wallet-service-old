@@ -32,6 +32,8 @@ test('onHandleOldVoidedTxs', async () => {
     [TX_IDS[0], 1, 2, false, null, 60],
     [TX_IDS[1], 601, 2, false, null, 60],
     [TX_IDS[2], 1000, 2, false, null, 60],
+    // This should be our best block:
+    [TX_IDS[3], 20 * 60, 0, false, 10, 60],
   ];
 
   const utxos = [{
@@ -100,11 +102,8 @@ test('onHandleOldVoidedTxs', async () => {
   await addToTransactionTable(mysql, transactions);
   await addToUtxoTable(mysql, utxos);
 
-  const timestampSpy = jest.spyOn(Utils, 'getUnixTimestamp');
   const isTxVoidedSpy = jest.spyOn(Utils, 'isTxVoided');
 
-  // we need to mock current timestamp
-  timestampSpy.mockReturnValue(20 * 60);
   // and the check on the fullnode
   isTxVoidedSpy.mockReturnValue(Promise.resolve([true, {}]));
   // we also need to mock the offset
@@ -120,6 +119,8 @@ test('onHandleOldVoidedTxs should try to confirm the block by fetching the first
 
   const transactions = [
     [TX_IDS[0], 1, 2, false, null, 60],
+    // This is the block tx:
+    [TX_IDS[3], 15 * 60, 0, false, 10, 60],
   ];
 
   const utxos = [{
@@ -138,13 +139,10 @@ test('onHandleOldVoidedTxs should try to confirm the block by fetching the first
   await addToTransactionTable(mysql, transactions);
   await addToUtxoTable(mysql, utxos);
 
-  const timestampSpy = jest.spyOn(Utils, 'getUnixTimestamp');
   const isTxVoidedSpy = jest.spyOn(Utils, 'isTxVoided');
   const fetchBlockHeightSpy = jest.spyOn(Utils, 'fetchBlockHeight');
   const updateTxSpy = jest.spyOn(Db, 'updateTx');
 
-  // we need to mock current timestamp
-  timestampSpy.mockReturnValue(15 * 60);
   // also the fetchBlockHeight that goes to the fullnode
   fetchBlockHeightSpy.mockReturnValue(Promise.resolve([5, {}] as [number, any]));
   // also the check on the fullnode

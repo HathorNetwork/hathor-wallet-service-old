@@ -11,7 +11,7 @@ Each case deploys to a different environment:
 - `master` branch -> `testnet` environment
 - `v*` tags -> `mainnet` environment
 
-All of them require manual approval to proceed. You should keep an eye in the `#deploys` channel in Slack, the approval requests are sent there.
+All of them require manual approval to proceed. You should keep an eye in the `#wallet-service-deploys` channel in Slack, the approval requests are sent there.
 
 If you need to know the exact steps that take place during deployment, check [this document](2021-07-29-infrastructure-design.md#how-the-process-works)
 
@@ -22,7 +22,7 @@ Check [this document](2021-07-29-infrastructure-design.md#avoiding-downtimes-dur
 
 In case it's not possible to build a downtime-safe migration (this can happen), we have a maintenance mode in place that should be enabled before deploying, or before approving the deployment request in CodePipeline. Check below how to enable it.
 
-### Adding new environment variables
+## Adding new environment variables
 
 If you need to add new environment variables, there are some steps that should be taken.
 
@@ -33,6 +33,24 @@ First step would be to add it to the [serverless.yml](https://github.com/HathorN
 Then, you need to add it in [.codebuild/buildspec.yml](https://github.com/HathorNetwork/hathor-wallet-service/blob/master/.codebuild/buildspec.yml). If it's not a secret, just add it under `env.variables`. 
 
 If it's a secret, you'll need to add it to `env.secrets-manager`, and one for each environment we have (`dev`, `testnet` and `mainnet`). You should use the same name for it as you did in the `serverless.yml` file, but adding a prefix indicating the name of the environment. The value should be the path to a key in AWS Secrets Manager. Ask some account admin for help on adding the secrets there and providing you with the key path.
+
+## Creating a new DB migration
+
+To create a new DB migration, run:
+
+```bash
+make new-migration NAME=migration_name
+```
+
+It will create an empty migration file for you. You should include your migration logic there.
+
+To run your migration:
+
+```bash
+make migrate
+```
+
+The migrations will run in the database specified in your local environment configuration. If you need to configure it for a local database, check [this](https://github.com/HathorNetwork/hathor-wallet-service/blob/dev/README.md#local-database).
 
 ## Enabling debug logs
 

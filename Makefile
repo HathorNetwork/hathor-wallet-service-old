@@ -6,6 +6,10 @@ deploy-lambdas-dev-testnet:
 deploy-lambdas-testnet:
 	npx serverless deploy --stage testnet --region eu-central-1
 
+.PHONY: deploy-lambdas-mainnet-staging
+deploy-lambdas-mainnet-staging:
+	npx serverless deploy --stage mainnet-stg --region eu-central-1
+
 .PHONY: deploy-lambdas-mainnet
 deploy-lambdas-mainnet:
 	npx serverless deploy --stage mainnet --region eu-central-1
@@ -14,6 +18,10 @@ deploy-lambdas-mainnet:
 migrate:
 	@echo "Migrating..."
 	npx sequelize-cli db:migrate
+
+.PHONY: new-migration
+new-migration:
+	npx sequelize migration:generate --name "$(NAME)"
 
 .PHONY: seed_testnet
 seed_testnet:
