@@ -1,6 +1,6 @@
 {
   "name": "hathor-wallet-service",
-  "version": "1.26.0-rc+beta",
+  "version": "1.26.0+beta",
   "description": "",
   "scripts": {
     "postinstall": "npm dedupe",
