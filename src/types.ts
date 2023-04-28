@@ -636,11 +636,13 @@ export interface DbTxOutput {
   spentBy?: string | null;
   txProposalId?: string;
   txProposalIndex?: number;
+  voided?: boolean | null;
 }
 
 export interface Block {
   txId: string;
   height: number;
+  timestamp: number;
 }
 
 // maybe use templates <TEvent = any, TResult = any>

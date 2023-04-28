@@ -62,6 +62,76 @@ const BLOCK_VERSION = [
 const BURN_ADDRESS = 'HDeadDeadDeadDeadDeadDeadDeagTPgmn';
 
 /**
+ * Checks if a transaction was on the database in the past and got voided.
+ *
+ * @remarks
+ * Since we delete transactions from the transactions table when it's voided,
+ * we can use the address_tx_history table (which stores voided txs) to check
+ * if it's there.
+ *
+ * @param mysql - Database connection
+ * @param txId - The transaction id to search for
+ * @returns True or False
+ */
+export const checkTxWasVoided = async (mysql: ServerlessMysql, txId: string): Promise<boolean> => {
+  const results: DbSelectResult = await mysql.query(
+    `SELECT * FROM \`address_tx_history\`
+      WHERE tx_id = ?
+      LIMIT 1`,
+    [txId],
+  );
+
+  if (!results.length) {
+    return false;
+  }
+
+  const addressTxHistory = results[0];
+
+  return Boolean(addressTxHistory.voided);
+};
+
+/**
+ * Cleanup all records from a transaction that was voided in the past
+ *
+ * @remarks
+ * This does not re-calculates balances, so it's only supposed to be used to clear
+ * the tx_output, address_tx_history and wallet_tx_history tables after the
+ * handleReorg method voided this transaction
+ *
+ * @param mysql - Database connection
+ * @param txId - The transaction to clear from database
+ */
+export const cleanupVoidedTx = async (mysql: ServerlessMysql, txId: string): Promise<void> => {
+  await mysql.query(
+    `DELETE FROM \`transaction\`
+      WHERE tx_id = ?
+        AND voided = true`,
+    [txId],
+  );
+
+  await mysql.query(
+    `DELETE FROM \`tx_output\`
+      WHERE tx_id = ?
+        AND voided = true`,
+    [txId],
+  );
+
+  await mysql.query(
+    `DELETE FROM \`address_tx_history\`
+      WHERE tx_id = ?
+        AND voided = true`,
+    [txId],
+  );
+
+  await mysql.query(
+    `DELETE FROM \`wallet_tx_history\`
+      WHERE tx_id = ?
+        AND voided = true`,
+    [txId],
+  );
+};
+
+/**
  * Given an xpubkey, generate its addresses.
  *
  * @remarks
@@ -1582,6 +1652,33 @@ export const getLatestHeight = async (mysql: ServerlessMysql): Promise<number> =
 };
 
 /**
+ * Gets the best block from the database
+ *
+ * @param mysql - Database connection
+ *
+ * @returns The latest height
+ */
+export const getLatestBlockByHeight = async (mysql: ServerlessMysql): Promise<Block> => {
+  const results: DbSelectResult = await mysql.query(
+    `SELECT *
+       FROM \`transaction\`
+      WHERE \`version\` IN (?)
+      ORDER BY height DESC
+      LIMIT 1`, [BLOCK_VERSION],
+  );
+
+  if (results.length > 0) {
+    return {
+      txId: results[0].tx_id as string,
+      height: results[0].height as number,
+      timestamp: results[0].timestamp as number,
+    };
+  }
+
+  return null;
+};
+
+/**
  * Get block by height
  *
  * @param mysql - Database connection
@@ -1602,6 +1699,7 @@ export const getBlockByHeight = async (mysql: ServerlessMysql, height: number): 
     return {
       txId: results[0].tx_id as string,
       height: results[0].height as number,
+      timestamp: results[0].timestamp as number,
     };
   }
 

@@ -298,6 +298,11 @@ export const checkAddressTxHistoryTable = async (
     };
   }
 
+  // If we expect the table to be empty, we can return now.
+  if (totalResults === 0) {
+    return true;
+  }
+
   // now fetch the exact entry
   results = await mysql.query(
     `SELECT *
@@ -576,6 +581,7 @@ export const addToUtxoTable = async (
     entry.spentBy || null,
     entry.txProposalId || null,
     entry.txProposalIndex,
+    entry.voided || false,
   ]));
   await mysql.query(
     `INSERT INTO \`tx_output\`(
@@ -590,7 +596,8 @@ export const addToUtxoTable = async (
                  , \`locked\`
                  , \`spent_by\`
                  , \`tx_proposal\`
-                 , \`tx_proposal_index\`)
+                 , \`tx_proposal_index\`
+                 , \`voided\`)
      VALUES ?`,
     [payload],
   );

@@ -39,6 +39,8 @@ import {
   incrementTokensTxCount,
   fetchTx,
   addMiner,
+  cleanupVoidedTx,
+  checkTxWasVoided,
 } from '@src/db';
 import {
   transactionDecorator,
@@ -94,6 +96,7 @@ export const onNewTxEvent = async (event: SQSEvent): Promise<APIGatewayProxyResu
   // TODO not sure if it should be 'now' or max(now, tx.timestamp), as we allow some flexibility for timestamps
   const now = getUnixTimestamp();
   const blockRewardLock = parseInt(process.env.BLOCK_REWARD_LOCK, 10);
+
   for (const evt of event.Records) {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
@@ -155,7 +158,7 @@ export const onNewTxRequest: APIGatewayProxyHandler = async (event, context) => 
   }
 
   // Validating for NFTs only after the tx is successfully added
-  if (NftUtils.isTransactionNFTCreation(tx)) {
+  if (NftUtils.shouldInvokeNftHandlerForTx(tx)) {
     // This process is not critical, so we run it in a fire-and-forget manner, not waiting for the promise.
     // In case of errors, just log the asynchronous exception and take no action on it.
     NftUtils.invokeNftHandlerLambda(tx.tx_id)
@@ -185,6 +188,7 @@ export const onNewTxRequest: APIGatewayProxyHandler = async (event, context) => 
  */
 export const onHandleReorgRequest: APIGatewayProxyHandler = async (_event, context) => {
   const logger = createDefaultLogger();
+
   logger.defaultMeta = {
     requestId: context.awsRequestId,
   };
@@ -335,6 +339,20 @@ const _unsafeAddNewTx = async (_logger: Logger, tx: Transaction, now: number, bl
     await updateTx(mysql, txId, tx.height, tx.timestamp, tx.version, tx.weight);
 
     return;
+  }
+
+  // check if this tx was already on the database in the past and got voided:
+  const voidedTx = await checkTxWasVoided(mysql, txId);
+
+  if (voidedTx) {
+    logger.info(`Transaction ${txId} received and was voided on database`, {
+      tx,
+    });
+    // this tx was already in the database in the past as voided and is now valid
+    // again, we need to cleanup the tx_output and address_tx_history tables so we
+    // can safely add it again. Balances were already re-calculated on the handleReorg
+    // method, so we don't need to handle that here.
+    await cleanupVoidedTx(mysql, txId);
   }
 
   let heightlock = null;

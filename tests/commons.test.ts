@@ -611,6 +611,7 @@ test('searchForLatestValidBlock should find the first voided block', async () =>
   const mockData: Block[] = TX_IDS.map((tx, index) => ({
     txId: tx,
     height: index,
+    timestamp: 0,
   }));
 
   for (let i = 0; i < mockData.length; i++) {
