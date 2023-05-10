@@ -31,6 +31,7 @@ custom:
   alerts:
     stages: # Select which stages to deploy alarms to
       - mainnet
+      - mainnet-stg
       - testnet
     topics: # SNS Topics to send alerts to
       major:
@@ -144,7 +145,6 @@ provider:
     minimumCompressionSize: 1024 # Enable gzip compression for responses > 1 KB
   environment:
     ACCOUNT_ID: ${env:ACCOUNT_ID}
-    ADMINTOKEN: ${env:ADMINTOKEN}
     AUTH_SECRET: ${env:AUTH_SECRET}
     AWS_VPC_DEFAULT_SG_ID: ${env:AWS_VPC_DEFAULT_SG_ID}
     AWS_SUBNET_ID_1: ${env:AWS_SUBNET_ID_1}
@@ -167,6 +167,7 @@ provider:
     SERVICE_NAME: ${self:service}
     STAGE: ${self:custom.stage}
     EXPLORER_SERVICE_STAGE: ${self:custom.explorerServiceStage}
+    NFT_AUTO_REVIEW_ENABLED: ${env:NFT_AUTO_REVIEW_ENABLED}
     VOIDED_TX_OFFSET: ${env:VOIDED_TX_OFFSET}
     DEFAULT_SERVER: ${env:DEFAULT_SERVER}
     WS_DOMAIN: ${env:WS_DOMAIN}

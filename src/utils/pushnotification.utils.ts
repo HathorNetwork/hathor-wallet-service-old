@@ -163,6 +163,32 @@ export class PushNotificationUtils {
          */
         priority: 'high',
       },
+      apns: {
+        headers: {
+          /**
+           * FCM requires priority 5 for data message, other priority is reject with error.
+           * See https://firebase.google.com/docs/cloud-messaging/concept-options#setting-the-priority-of-a-message
+           *
+           */
+          'apns-priority': '5',
+        },
+        payload: {
+          /**
+           * Background notification flag.
+           * It is labeled as low priority and may not be delivered by the platform.
+           * It is subject to severe throttling.
+           *
+           * See Push Background:
+           * https://developer.apple.com/documentation/usernotifications/setting_up_a_remote_notification_server/pushing_background_updates_to_your_app#overview
+           *
+           * See Payload key reference:
+           * https://developer.apple.com/documentation/usernotifications/setting_up_a_remote_notification_server/generating_a_remote_notification#2943360
+           */
+          aps: {
+            'content-available': 1,
+          },
+        },
+      },
     };
     const multicastResult = await messaging().sendMulticast(message);
 
