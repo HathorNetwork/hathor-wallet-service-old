@@ -789,7 +789,11 @@ export const updateTxOutputSpentBy = async (mysql: ServerlessMysql, inputs: TxIn
       [txId, entries],
     );
 
-    assert.strictEqual(result.affectedRows, inputs.length);
+    assert.strictEqual(
+      result.affectedRows,
+      inputs.length,
+      new Error('Not all informed UTXOs had their spentBy updated'),
+    );
   }
 };
 
