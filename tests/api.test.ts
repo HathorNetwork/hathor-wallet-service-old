@@ -180,6 +180,17 @@ test('GET /addresses', async () => {
     index: addresses[0].index,
     transactions: addresses[0].transactions,
   });
+
+  // we should receive ApiError.ADDRESS_NOT_FOUND if the address was not found
+  event = makeGatewayEventWithAuthorizer('my-wallet', {
+    index: '150',
+  });
+  result = await addressesGet(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(404);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.ADDRESS_NOT_FOUND);
 });
 
 test('GET /addresses/check_mine', async () => {

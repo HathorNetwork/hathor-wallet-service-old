@@ -140,15 +140,8 @@ export const get: APIGatewayProxyHandler = middy(
     if (body.index) {
       const address: AddressInfo | null = await dbGetAddressAtIndex(mysql, walletId, body.index);
 
-      // If the walletId is valid and the wallet is ready we should have the address in our
-      // database. If we don't, alert.
       if (!address) {
-        await addAlert(
-          'Error on onNewTxRequest',
-          'Erroed on onNewTxRequest lambda',
-          Severity.MINOR,
-          { walletId, error: `getAddressAtIndex was called with a valid walletId but could not find the address at index ${body.index}` },
-        );
+        return closeDbAndGetError(mysql, ApiError.ADDRESS_NOT_FOUND);
       }
 
       response = {

@@ -53,6 +53,7 @@ export const STATUS_CODE_TABLE = {
   [ApiError.TOKEN_NOT_FOUND]: 404,
   [ApiError.DEVICE_NOT_FOUND]: 404,
   [ApiError.TX_NOT_FOUND]: 404,
+  [ApiError.ADDRESS_NOT_FOUND]: 404,
 };
 
 /**
