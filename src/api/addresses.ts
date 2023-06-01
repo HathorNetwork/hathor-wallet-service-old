@@ -7,17 +7,19 @@
 
 import 'source-map-support/register';
 
-import Joi from 'joi';
+import Joi, { ValidationError } from 'joi';
 import { APIGatewayProxyHandler } from 'aws-lambda';
 import { ApiError } from '@src/api/errors';
 import { closeDbAndGetError, warmupMiddleware } from '@src/api/utils';
 import {
   getWallet,
   getWalletAddresses,
+  getAddressAtIndex as dbGetAddressAtIndex,
 } from '@src/db';
-import { AddressInfo } from '@src/types';
+import { AddressInfo, AddressAtIndexRequest, Severity } from '@src/types';
 import { closeDbConnection, getDbConnection } from '@src/utils';
 import { walletIdProxyHandler } from '@src/commons';
+import { addAlert } from '@src/utils/alerting.utils';
 import middy from '@middy/core';
 import cors from '@middy/http-cors';
 
@@ -31,6 +33,19 @@ const checkMineBodySchema = Joi.object({
     .max(512) // max number of addresses in a tx (256 outputs and 256 inputs)
     .required(),
 });
+
+class AddressAtIndexValidator {
+  static readonly bodySchema = Joi.object({
+    index: Joi.number().min(0).required(),
+  });
+
+  static validate(payload: unknown): { value: AddressAtIndexRequest, error: ValidationError} {
+    return AddressAtIndexValidator.bodySchema.validate(payload, {
+      abortEarly: false, // We want it to return all the errors not only the first
+      convert: true, // We need to convert as parameters are sent on the QueryString
+    }) as { value: AddressAtIndexRequest, error: ValidationError };
+  }
+}
 
 /*
  * Check if a list of addresses belong to the caller wallet
@@ -91,6 +106,57 @@ export const checkMine: APIGatewayProxyHandler = middy(walletIdProxyHandler(asyn
     }),
   };
 })).use(cors());
+
+/*
+ * Get the addresses of a wallet
+ *
+ * This lambda is called by API Gateway on GET /addresses
+ */
+export const getAddressAtIndex: APIGatewayProxyHandler = middy(
+  walletIdProxyHandler(async (walletId, event) => {
+    const status = await getWallet(mysql, walletId);
+
+    if (!status) {
+      return closeDbAndGetError(mysql, ApiError.WALLET_NOT_FOUND);
+    }
+
+    if (!status.readyAt) {
+      return closeDbAndGetError(mysql, ApiError.WALLET_NOT_READY);
+    }
+
+    const { value: body, error } = AddressAtIndexValidator.validate(event.pathParameters);
+
+    if (error) {
+      const details = error.details.map((err) => ({
+        message: err.message,
+        path: err.path,
+      }));
+
+      return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, { details });
+    }
+
+    const address: AddressInfo | null = await dbGetAddressAtIndex(mysql, walletId, body.index);
+
+    // If the walletId is valid and the wallet is ready we should have the address in our
+    // database. If we don't, alert.
+    if (!address) {
+      await addAlert(
+        'Error on onNewTxRequest',
+        'Erroed on onNewTxRequest lambda',
+        Severity.MINOR,
+        { walletId, error: `getAddressAtIndex was called with a valid walletId but could not find the address at index ${body.index}` },
+      );
+    }
+
+    await closeDbConnection(mysql);
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify({ success: true, address }),
+    };
+  }),
+).use(cors())
+  .use(warmupMiddleware());
 
 /*
  * Get the addresses of a wallet

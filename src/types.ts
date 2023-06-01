@@ -709,6 +709,10 @@ export interface PushDelete {
   deviceId: string,
 }
 
+export interface AddressAtIndexRequest {
+  index: number,
+}
+
 export interface TxByIdRequest {
   txId: string,
 }
