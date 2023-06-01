@@ -36,7 +36,7 @@ const checkMineBodySchema = Joi.object({
 
 class AddressAtIndexValidator {
   static readonly bodySchema = Joi.object({
-    index: Joi.number().min(0).required(),
+    index: Joi.number().min(0).optional(),
   });
 
   static validate(payload: unknown): { value: AddressAtIndexRequest, error: ValidationError} {
@@ -112,7 +112,7 @@ export const checkMine: APIGatewayProxyHandler = middy(walletIdProxyHandler(asyn
  *
  * This lambda is called by API Gateway on GET /addresses
  */
-export const getAddressAtIndex: APIGatewayProxyHandler = middy(
+export const get: APIGatewayProxyHandler = middy(
   walletIdProxyHandler(async (walletId, event) => {
     const status = await getWallet(mysql, walletId);
 
@@ -135,51 +135,44 @@ export const getAddressAtIndex: APIGatewayProxyHandler = middy(
       return closeDbAndGetError(mysql, ApiError.INVALID_PAYLOAD, { details });
     }
 
-    const address: AddressInfo | null = await dbGetAddressAtIndex(mysql, walletId, body.index);
+    let response = null;
 
-    // If the walletId is valid and the wallet is ready we should have the address in our
-    // database. If we don't, alert.
-    if (!address) {
-      await addAlert(
-        'Error on onNewTxRequest',
-        'Erroed on onNewTxRequest lambda',
-        Severity.MINOR,
-        { walletId, error: `getAddressAtIndex was called with a valid walletId but could not find the address at index ${body.index}` },
-      );
+    if (body.index) {
+      const address: AddressInfo | null = await dbGetAddressAtIndex(mysql, walletId, body.index);
+
+      // If the walletId is valid and the wallet is ready we should have the address in our
+      // database. If we don't, alert.
+      if (!address) {
+        await addAlert(
+          'Error on onNewTxRequest',
+          'Erroed on onNewTxRequest lambda',
+          Severity.MINOR,
+          { walletId, error: `getAddressAtIndex was called with a valid walletId but could not find the address at index ${body.index}` },
+        );
+      }
+
+      response = {
+        statusCode: 200,
+        body: JSON.stringify({
+          success: true,
+          addresses: [address],
+        }),
+      };
+    } else {
+      // Searching for multiple addresses
+      const addresses = await getWalletAddresses(mysql, walletId);
+      response = {
+        statusCode: 200,
+        body: JSON.stringify({
+          success: true,
+          addresses,
+        }),
+      };
     }
 
     await closeDbConnection(mysql);
 
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ success: true, address }),
-    };
+    return response;
   }),
 ).use(cors())
-  .use(warmupMiddleware());
-
-/*
- * Get the addresses of a wallet
- *
- * This lambda is called by API Gateway on GET /addresses
- */
-export const get: APIGatewayProxyHandler = middy(walletIdProxyHandler(async (walletId) => {
-  const status = await getWallet(mysql, walletId);
-
-  if (!status) {
-    return closeDbAndGetError(mysql, ApiError.WALLET_NOT_FOUND);
-  }
-  if (!status.readyAt) {
-    return closeDbAndGetError(mysql, ApiError.WALLET_NOT_READY);
-  }
-
-  const addresses = await getWalletAddresses(mysql, walletId);
-
-  await closeDbConnection(mysql);
-
-  return {
-    statusCode: 200,
-    body: JSON.stringify({ success: true, addresses }),
-  };
-})).use(cors())
   .use(warmupMiddleware());

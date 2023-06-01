@@ -132,13 +132,13 @@ test('GET /addresses', async () => {
     createdAt: 10000,
     readyAt: 10001,
   }]);
-  await addToAddressTable(mysql, [
+
+  const addresses = [
     { address: ADDRESSES[0], index: 0, walletId: 'my-wallet', transactions: 0 },
     { address: ADDRESSES[1], index: 1, walletId: 'my-wallet', transactions: 0 },
-  ]);
+  ];
 
-  // TODO: test missing walletId?
-  // Authorizer should be responsible for this
+  await addToAddressTable(mysql, addresses);
 
   // missing wallet
   await _testMissingWallet(addressesGet, 'some-wallet');
@@ -149,14 +149,37 @@ test('GET /addresses', async () => {
   await _testCORSHeaders(addressesGet, 'my-wallet', {});
 
   // success case
-  const event = makeGatewayEventWithAuthorizer('my-wallet', {});
-  const result = await addressesGet(event, null, null) as APIGatewayProxyResult;
-  const returnBody = JSON.parse(result.body as string);
+  let event = makeGatewayEventWithAuthorizer('my-wallet', {});
+  let result = await addressesGet(event, null, null) as APIGatewayProxyResult;
+  let returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(200);
   expect(returnBody.success).toBe(true);
   expect(returnBody.addresses).toHaveLength(2);
-  expect(returnBody.addresses).toContainEqual({ address: ADDRESSES[0], index: 0, transactions: 0 });
-  expect(returnBody.addresses).toContainEqual({ address: ADDRESSES[1], index: 1, transactions: 0 });
+  expect(returnBody.addresses).toContainEqual({
+    address: addresses[0].address,
+    index: addresses[0].index,
+    transactions: addresses[0].transactions,
+  });
+  expect(returnBody.addresses).toContainEqual({
+    address: addresses[1].address,
+    index: addresses[1].index,
+    transactions: addresses[1].transactions,
+  });
+
+  // we should be able to filter for a specific index
+  event = makeGatewayEventWithAuthorizer('my-wallet', {
+    index: String(addresses[0].index),
+  });
+  result = await addressesGet(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(true);
+  expect(returnBody.addresses).toContainEqual({
+    address: addresses[0].address,
+    index: addresses[0].index,
+    transactions: addresses[0].transactions,
+  });
 });
 
 test('GET /addresses/check_mine', async () => {
