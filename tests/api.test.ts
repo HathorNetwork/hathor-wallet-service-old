@@ -175,11 +175,12 @@ test('GET /addresses', async () => {
 
   expect(result.statusCode).toBe(200);
   expect(returnBody.success).toBe(true);
-  expect(returnBody.addresses).toContainEqual({
+  expect(returnBody.addresses).toHaveLength(1);
+  expect(returnBody.addresses).toStrictEqual([{
     address: addresses[0].address,
     index: addresses[0].index,
     transactions: addresses[0].transactions,
-  });
+  }]);
 
   // we should receive ApiError.ADDRESS_NOT_FOUND if the address was not found
   event = makeGatewayEventWithAuthorizer('my-wallet', {

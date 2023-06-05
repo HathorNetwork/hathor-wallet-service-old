@@ -138,7 +138,7 @@ export const get: APIGatewayProxyHandler = middy(
 
     let response = null;
 
-    if (body.index) {
+    if ('index' in body) {
       const address: AddressInfo | null = await dbGetAddressAtIndex(mysql, walletId, body.index);
 
       if (!address) {
