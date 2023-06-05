@@ -7,7 +7,7 @@
 import { strict as assert } from 'assert';
 import { ServerlessMysql } from 'serverless-mysql';
 import { get } from 'lodash';
-import { OkPacket } from 'mysql2';
+import { OkPacket } from 'mysql';
 import { constants } from '@hathor/wallet-lib';
 import {
   AddressIndexMap,
