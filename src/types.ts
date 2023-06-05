@@ -710,7 +710,7 @@ export interface PushDelete {
 }
 
 export interface AddressAtIndexRequest {
-  index: number,
+  index?: number,
 }
 
 export interface TxByIdRequest {
