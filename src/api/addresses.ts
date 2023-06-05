@@ -16,10 +16,9 @@ import {
   getWalletAddresses,
   getAddressAtIndex as dbGetAddressAtIndex,
 } from '@src/db';
-import { AddressInfo, AddressAtIndexRequest, Severity } from '@src/types';
+import { AddressInfo, AddressAtIndexRequest } from '@src/types';
 import { closeDbConnection, getDbConnection } from '@src/utils';
 import { walletIdProxyHandler } from '@src/commons';
-import { addAlert } from '@src/utils/alerting.utils';
 import middy from '@middy/core';
 import cors from '@middy/http-cors';
 
