@@ -28,6 +28,7 @@ import * as Wallet from '@src/api/wallet';
 import * as Db from '@src/db';
 import { ApiError } from '@src/api/errors';
 import { closeDbConnection, getDbConnection, getUnixTimestamp, getWalletId } from '@src/utils';
+import { STATUS_CODE_TABLE } from '@src/api/utils';
 import { WalletStatus, FullNodeVersionData } from '@src/types';
 import { walletUtils, constants, network, HathorWalletServiceWallet } from '@hathor/wallet-lib';
 import bitcore from 'bitcore-lib';
@@ -165,6 +166,18 @@ test('GET /addresses', async () => {
     index: addresses[1].index,
     transactions: addresses[1].transactions,
   });
+
+  // we should error on invalid index parameter
+  event = makeGatewayEventWithAuthorizer('my-wallet', {
+    index: '-50',
+  });
+  result = await addressesGet(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(STATUS_CODE_TABLE[ApiError.INVALID_PAYLOAD]);
+  expect(returnBody.details).toHaveLength(1);
+  expect(returnBody.details[0].message)
+    .toMatchInlineSnapshot('"\\"index\\" must be greater than or equal to 0"');
 
   // we should be able to filter for a specific index
   event = makeGatewayEventWithAuthorizer('my-wallet', {
