@@ -108,7 +108,9 @@ export const checkMine: APIGatewayProxyHandler = middy(walletIdProxyHandler(asyn
 })).use(cors());
 
 /*
- * Get the addresses of a wallet
+ * Get the addresses of a wallet, allowing an index filter
+ * Notice: If the index filter is passed, it will only find addresses
+ * that are already in our database, this will not derive new addresses
  *
  * This lambda is called by API Gateway on GET /addresses
  */
