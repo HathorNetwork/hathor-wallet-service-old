@@ -28,6 +28,7 @@ import * as Wallet from '@src/api/wallet';
 import * as Db from '@src/db';
 import { ApiError } from '@src/api/errors';
 import { closeDbConnection, getDbConnection, getUnixTimestamp, getWalletId } from '@src/utils';
+import { STATUS_CODE_TABLE } from '@src/api/utils';
 import { WalletStatus, FullNodeVersionData } from '@src/types';
 import { walletUtils, constants, network, HathorWalletServiceWallet } from '@hathor/wallet-lib';
 import bitcore from 'bitcore-lib';
@@ -132,13 +133,13 @@ test('GET /addresses', async () => {
     createdAt: 10000,
     readyAt: 10001,
   }]);
-  await addToAddressTable(mysql, [
+
+  const addresses = [
     { address: ADDRESSES[0], index: 0, walletId: 'my-wallet', transactions: 0 },
     { address: ADDRESSES[1], index: 1, walletId: 'my-wallet', transactions: 0 },
-  ]);
+  ];
 
-  // TODO: test missing walletId?
-  // Authorizer should be responsible for this
+  await addToAddressTable(mysql, addresses);
 
   // missing wallet
   await _testMissingWallet(addressesGet, 'some-wallet');
@@ -149,14 +150,61 @@ test('GET /addresses', async () => {
   await _testCORSHeaders(addressesGet, 'my-wallet', {});
 
   // success case
-  const event = makeGatewayEventWithAuthorizer('my-wallet', {});
-  const result = await addressesGet(event, null, null) as APIGatewayProxyResult;
-  const returnBody = JSON.parse(result.body as string);
+  let event = makeGatewayEventWithAuthorizer('my-wallet', {});
+  let result = await addressesGet(event, null, null) as APIGatewayProxyResult;
+  let returnBody = JSON.parse(result.body as string);
   expect(result.statusCode).toBe(200);
   expect(returnBody.success).toBe(true);
   expect(returnBody.addresses).toHaveLength(2);
-  expect(returnBody.addresses).toContainEqual({ address: ADDRESSES[0], index: 0, transactions: 0 });
-  expect(returnBody.addresses).toContainEqual({ address: ADDRESSES[1], index: 1, transactions: 0 });
+  expect(returnBody.addresses).toContainEqual({
+    address: addresses[0].address,
+    index: addresses[0].index,
+    transactions: addresses[0].transactions,
+  });
+  expect(returnBody.addresses).toContainEqual({
+    address: addresses[1].address,
+    index: addresses[1].index,
+    transactions: addresses[1].transactions,
+  });
+
+  // we should error on invalid index parameter
+  event = makeGatewayEventWithAuthorizer('my-wallet', {
+    index: '-50',
+  });
+  result = await addressesGet(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(STATUS_CODE_TABLE[ApiError.INVALID_PAYLOAD]);
+  expect(returnBody.details).toHaveLength(1);
+  expect(returnBody.details[0].message)
+    .toMatchInlineSnapshot('"\\"index\\" must be greater than or equal to 0"');
+
+  // we should be able to filter for a specific index
+  event = makeGatewayEventWithAuthorizer('my-wallet', {
+    index: String(addresses[0].index),
+  });
+  result = await addressesGet(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(200);
+  expect(returnBody.success).toBe(true);
+  expect(returnBody.addresses).toHaveLength(1);
+  expect(returnBody.addresses).toStrictEqual([{
+    address: addresses[0].address,
+    index: addresses[0].index,
+    transactions: addresses[0].transactions,
+  }]);
+
+  // we should receive ApiError.ADDRESS_NOT_FOUND if the address was not found
+  event = makeGatewayEventWithAuthorizer('my-wallet', {
+    index: '150',
+  });
+  result = await addressesGet(event, null, null) as APIGatewayProxyResult;
+  returnBody = JSON.parse(result.body as string);
+
+  expect(result.statusCode).toBe(404);
+  expect(returnBody.success).toBe(false);
+  expect(returnBody.error).toBe(ApiError.ADDRESS_NOT_FOUND);
 });
 
 test('GET /addresses/check_mine', async () => {

@@ -24,3 +24,5 @@ coverage
 
 # fcm account config
 **/fcm.config.json
+
+.direnv

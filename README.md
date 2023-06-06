@@ -207,3 +207,16 @@ Sometimes, jest will use old cached js files, even after you modified the typesc
 ## Standard Operating Procedures
 
 Check it in [docs/SOP.md](docs/SOP.md)
+
+
+## Nix flakes
+
+## Using this project
+
+This project uses [Nix](https://nixos.org/) with [direnv](https://direnv.net/) to help with dependencies, including Node.js. To get started, you need to have Nix and direnv installed.
+
+1. Install [Nix](https://nixos.org/download.html) and [Direnv](https://direnv.net/docs/installation.html).
+2. Enable flake support in Nix: `nix-env -iA nixpkgs.nixUnstable`
+3. Allow direnv to work in your shell by running `direnv allow`
+
+Now, every time you enter the project directory, direnv will automatically activate the environment from flake.nix, including the specific version of Node.js specified there. When you leave the directory, it will deactivate. This ensures a consistent and isolated environment per project.

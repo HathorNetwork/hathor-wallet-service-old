@@ -28,6 +28,7 @@ import {
   getTxOutput,
   getTransactionsById,
   getTxsAfterHeight,
+  getAddressAtIndex,
   initWalletBalance,
   initWalletTxHistory,
   markUtxosWithProposalId,
@@ -104,6 +105,7 @@ import {
   PushProvider,
   Severity,
   Block,
+  AddressInfo,
 } from '@src/types';
 import {
   closeDbConnection,
@@ -3613,5 +3615,41 @@ describe('Clear unsent txProposals utxos', () => {
     await cleanUnsentTxProposalsUtxos();
 
     expect(logger.debug).toHaveBeenCalledWith('No txproposals utxos to clean.');
+  });
+});
+
+describe('getAddressByIndex', () => {
+  it('should find a wallets address from its index', async () => {
+    expect.hasAssertions();
+
+    const address = 'address';
+    const walletId = 'walletId';
+    const index = 0;
+    const transactions = 0;
+
+    await addToAddressTable(mysql, [{
+      address,
+      index,
+      walletId,
+      transactions,
+    }]);
+
+    await expect(getAddressAtIndex(mysql, walletId, index))
+      .resolves
+      .toStrictEqual({
+        address,
+        index,
+        transactions,
+      });
+  });
+
+  it('should return null if an address couldnt be found', async () => {
+    expect.hasAssertions();
+
+    const walletId = 'walletId';
+
+    await expect(getAddressAtIndex(mysql, walletId, 1))
+      .resolves
+      .toBeNull();
   });
 });
