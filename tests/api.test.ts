@@ -54,6 +54,10 @@ import {
 } from '@tests/utils';
 import fullnode from '@src/fullnode';
 
+// Monkey patch bitcore-lib
+
+bitcore.Message.MAGIC_BYTES = Buffer.from('Hathor Signed Message:\n');
+
 const mysql = getDbConnection();
 
 beforeEach(async () => {
