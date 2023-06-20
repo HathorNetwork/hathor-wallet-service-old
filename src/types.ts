@@ -556,6 +556,8 @@ export interface Transaction {
   tx_id: string;
   nonce: number;
   timestamp: number;
+  // eslint-disable-next-line camelcase
+  signal_bits: number;
   version: number;
   weight: number;
   parents: string[];
