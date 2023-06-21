@@ -334,7 +334,16 @@ export const verifySignature = (
   try {
     const message = String(timestamp).concat(walletId).concat(address);
 
-    return bitcoinMessage.verify(message, address, Buffer.from(signature, 'base64'));
+    return bitcoinMessage.verify(
+      message,
+      address,
+      Buffer.from(signature, 'base64'),
+      // Different from bitcore-lib, bitcoinjs-lib does not prefix the messagePrefix
+      // length on the message, so we need to do this by using a "End of Transmission
+      // Block" with the length (22) in hex (17). This is the same thing that is done
+      // for the default Bitcoin message (\u0018Bitcoin Signed Message:\n).
+      '\u0017Hathor Signed Message:\n',
+    );
   } catch (e) {
     // Since this will try to verify the signature passing user input, the verify method might
     // throw, we can just return false in this case.
