@@ -97,10 +97,18 @@ test('onHandleOldVoidedTxs', async () => {
     [ADDRESSES[3], '00', 0, 0, null, 1, 0, 0, 400],
   ];
 
+  console.time('addToAddressBalanceTable');
   await addToAddressBalanceTable(mysql, addressEntries);
+  console.timeEnd('addToAddressBalanceTable');
+  console.time('addToAddressTxHistoryTable');
   await addToAddressTxHistoryTable(mysql, txHistory);
+  console.timeEnd('addToAddressTxHistoryTable');
+  console.time('addToTransactionTable');
   await addToTransactionTable(mysql, transactions);
+  console.timeEnd('addToTransactionTable');
+  console.time('addToUtxoTable');
   await addToUtxoTable(mysql, utxos);
+  console.timeEnd('addToUtxoTable');
 
   const isTxVoidedSpy = jest.spyOn(Utils, 'isTxVoided');
 
@@ -109,7 +117,9 @@ test('onHandleOldVoidedTxs', async () => {
   // we also need to mock the offset
   process.env.VOIDED_TX_OFFSET = '10'; // query will be on timestamp < 600
 
+  console.time('onHandleOldVoidedTxs');
   await onHandleOldVoidedTxs();
+  console.timeEnd('onHandleOldVoidedTxs');
 
   await expect(checkUtxoTable(mysql, 4, TX_IDS[0], 0, '00', ADDRESSES[0], 50, 0, null, null, false, null, true)).resolves.toBe(true);
 });
