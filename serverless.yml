@@ -314,6 +314,10 @@ functions:
           method: get
           cors: true
           authorizer: ${self:custom.authorizer.walletBearer}
+          request:
+            parameters:
+              paths:
+                index: false
     warmup:
       walletWarmer:
         enabled: true

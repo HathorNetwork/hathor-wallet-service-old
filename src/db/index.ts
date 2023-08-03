@@ -789,7 +789,11 @@ export const updateTxOutputSpentBy = async (mysql: ServerlessMysql, inputs: TxIn
       [txId, entries],
     );
 
-    assert.strictEqual(result.affectedRows, inputs.length);
+    assert.strictEqual(
+      result.affectedRows,
+      inputs.length,
+      new Error('Not all informed UTXOs had their spentBy updated'),
+    );
   }
 };
 
@@ -3152,4 +3156,39 @@ export const getUnsentTxProposals = async (
   );
 
   return result.map((row) => row.id);
+};
+
+/**
+ * Gets a specific address from an index and a walletId
+ *
+ * @param mysql - Database connection
+ * @param walletId - The wallet id to search for
+ * @param index - The address index to search for
+ *
+ * @returns An object containing the address, its index and the number of transactions
+ */
+export const getAddressAtIndex = async (
+  mysql: ServerlessMysql,
+  walletId: string,
+  index: number,
+): Promise<AddressInfo | null> => {
+  const addresses = await mysql.query<AddressInfo[]>(
+    `
+    SELECT \`address\`, \`index\`, \`transactions\`
+      FROM \`address\` pd
+     WHERE \`index\` = ?
+       AND \`wallet_id\` = ?
+     LIMIT 1`,
+    [walletId, index],
+  );
+
+  if (addresses.length <= 0) {
+    return null;
+  }
+
+  return {
+    address: addresses[0].address as string,
+    index: addresses[0].index as number,
+    transactions: addresses[0].transactions as number,
+  } as AddressInfo;
 };
