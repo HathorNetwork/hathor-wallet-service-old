@@ -65,7 +65,7 @@
     "serverless-iam-roles-per-function": "^3.2.0",
     "serverless-offline": "^8.0.0",
     "serverless-plugin-aws-alerts": "^1.7.5",
-    "serverless-plugin-warmup": "^6.2.1",
+    "serverless-plugin-warmup": "^7.2.0",
     "serverless-prune-plugin": "^1.5.0",
     "serverless-webpack": "^5.5.0",
     "sqlite3": "^5.0.2",
