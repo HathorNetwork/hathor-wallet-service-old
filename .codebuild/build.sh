@@ -76,10 +76,10 @@ elif expr "${GIT_REF_TO_DEPLOY}" : "v.*" >/dev/null; then
     make deploy-lambdas-mainnet;
     send_slack_message "New version deployed to testnet-production and mainnet-production: ${GIT_REF_TO_DEPLOY}"
 else
-    # Gets all env vars with `mainnet_staging_` prefix and re-exports them without the prefix
-    for var in "${!mainnet_staging_@}"; do
-        export ${var#mainnet_staging_}="${!var}"
+    # Gets all env vars with `dev_` prefix and re-exports them without the prefix
+    for var in "${!dev_@}"; do
+        export ${var#dev_}="${!var}"
     done
     make migrate;
-    make deploy-lambdas-mainnet-staging;
+    make deploy-lambdas-dev-testnet;
 fi;
