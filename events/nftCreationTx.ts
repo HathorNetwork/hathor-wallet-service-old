@@ -19,6 +19,7 @@ import { Transaction } from '@src/types';
  */
 export const nftCreationTx = {
   tx_id: '0025a6488045d7466639ead179a7f6beb188320f41cdb6df3a971db2ee86dbc3',
+  signal_bits: 0,
   version: 2,
   weight: 8.000001,
   timestamp: 1656543561,
@@ -119,6 +120,7 @@ export function getTransaction(): Transaction {
     tx_id: nftCreationTx.tx_id,
     nonce: 1,
     timestamp: nftCreationTx.timestamp,
+    signal_bits: nftCreationTx.signal_bits,
     version: nftCreationTx.version,
     weight: nftCreationTx.weight,
     parents: nftCreationTx.parents,
