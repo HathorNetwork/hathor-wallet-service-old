@@ -167,7 +167,7 @@ phases:
     #If you use the Ubuntu standard image 2.0 or later, you must specify runtime-versions.
     #If you specify runtime-versions and use an image other than Ubuntu standard image 2.0, the build fails.
     runtime-versions:
-      nodejs: 14
+      nodejs: 18
       # name: version
     commands:
       - npm i --also=dev
