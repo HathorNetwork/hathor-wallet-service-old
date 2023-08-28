@@ -170,7 +170,7 @@ phases:
       nodejs: 18
       # name: version
     commands:
-      - npm ci --also=dev
+      - npm ci --include=dev
   pre_build:
     commands:
       # This file is created in another CodeBuild specification that runs before this and is not committed to this repo.
