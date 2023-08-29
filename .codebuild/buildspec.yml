@@ -167,10 +167,10 @@ phases:
     #If you use the Ubuntu standard image 2.0 or later, you must specify runtime-versions.
     #If you specify runtime-versions and use an image other than Ubuntu standard image 2.0, the build fails.
     runtime-versions:
-      nodejs: 14
+      nodejs: 16
       # name: version
     commands:
-      - npm i --also=dev
+      - npm ci --include=dev
   pre_build:
     commands:
       # This file is created in another CodeBuild specification that runs before this and is not committed to this repo.
