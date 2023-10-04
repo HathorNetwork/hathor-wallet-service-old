@@ -260,6 +260,7 @@ functions:
           arn:aws:lambda:eu-central-1:${self:provider.environment.ACCOUNT_ID}:function:hathor-explorer-service-${self:custom.explorerServiceStage}-create_or_update_dag_metadata
   loadWalletAsync:
     handler: src/api/wallet.loadWallet
+    timeout: 300 # 5 minutes
     warmup:
       walletWarmer:
         enabled: false
