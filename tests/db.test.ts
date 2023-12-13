@@ -1263,6 +1263,10 @@ test('storeTokenInformation and getTokenInformation', async () => {
 test('validateTokenTimestamps', async () => {
   expect.hasAssertions();
 
+  // We are using fake timers globally and this test expects the database to
+  // fill in updated_at, so we need real timers here.
+  jest.useRealTimers();
+
   const info = new TokenInfo('tokenId', 'tokenName', 'TKNS');
   storeTokenInformation(mysql, info.id, info.name, info.symbol);
   let result = await mysql.query('SELECT * FROM `token` WHERE `id` = ?', [info.id]);
@@ -1275,6 +1279,9 @@ test('validateTokenTimestamps', async () => {
 
   // After updating the entry, the created_at and updated_at must be different
   expect(result[0].created_at).not.toStrictEqual(result[0].updated_at);
+
+  // Go back to fake timers
+  jest.useFakeTimers();
 });
 
 test('getWalletSortedValueUtxos', async () => {
